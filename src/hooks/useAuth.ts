@@ -18,33 +18,77 @@ export type AppUserRecord = {
   created_at: string
 }
 
+const ROLE_VALUES: Role[] = ['admin', 'leader', 'user']
+
+function isRole(value: unknown): value is Role {
+  return typeof value === 'string' && ROLE_VALUES.includes(value as Role)
+}
+
+function toAuthUser(data: { id: number; name: string; login_id?: string | null; role: string }): AuthUser {
+  return {
+    id: data.id,
+    loginId: data.login_id ?? data.name,
+    name: data.name,
+    role: isRole(data.role) ? data.role : 'user',
+  }
+}
+
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [allUsers, setAllUsers] = useState<AppUserRecord[]>([])
 
   useEffect(() => {
-    // 1. 저장된 세션 확인 (자동 로그인)
-    const storedSession = localStorage.getItem('auth_session')
-    if (storedSession) {
+    let cancelled = false
+
+    const restoreSession = async () => {
+      const storedSession = localStorage.getItem('auth_session')
+      if (!storedSession) {
+        if (!cancelled) setLoading(false)
+        return
+      }
+
       try {
         const parsed = JSON.parse(storedSession)
-        if (parsed && parsed.name && parsed.role) {
+        if (parsed?.id) {
+          const { data, error } = await supabase
+            .from('app_users')
+            .select('id, name, login_id, role')
+            .eq('id', parsed.id)
+            .maybeSingle()
+
+          if (error) throw error
+          if (data && !cancelled) {
+            const freshUser = toAuthUser(data)
+            setUser(freshUser)
+            localStorage.setItem('currentVisitor', freshUser.name)
+            localStorage.setItem('auth_session', JSON.stringify(freshUser))
+            setLoading(false)
+            return
+          }
+        }
+
+        if (parsed && parsed.name && parsed.role && !cancelled) {
           const restoredUser: AuthUser = {
             id: parsed.id,
             loginId: parsed.loginId ?? parsed.name,
             name: parsed.name,
-            role: parsed.role,
+            role: isRole(parsed.role) ? parsed.role : 'user',
           }
           setUser(restoredUser)
-          // 하위 호환성을 위해 기존 currentVisitor에도 저장
           localStorage.setItem('currentVisitor', restoredUser.name)
         }
       } catch (e) {
         console.error('Failed to parse auth_session', e)
+      } finally {
+        if (!cancelled) setLoading(false)
       }
     }
-    setLoading(false)
+
+    void restoreSession()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const login = async (loginId: string, pin: string, rememberMe: boolean) => {
@@ -88,12 +132,7 @@ export function useAuth() {
         return false
       }
 
-      const authUser: AuthUser = {
-        id: data.id,
-        loginId: data.login_id ?? data.name,
-        name: data.name,
-        role: data.role as Role,
-      }
+      const authUser = toAuthUser(data)
       setUser(authUser)
 
       localStorage.setItem('currentVisitor', authUser.name)
