@@ -1,0 +1,6 @@
+{
+  "advisorModel": "haiku",
+  "permissions": {
+    "deny": ["Skill"]
+  }
+}

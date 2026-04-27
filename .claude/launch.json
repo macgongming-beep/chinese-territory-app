@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "chinese-territory-app",
+      "runtimeExecutable": "/Users/gm/Documents/New project/chinese-territory-app/node_modules/.bin/vite",
+      "runtimeArgs": [],
+      "autoPort": true,
+      "port": 5174
+    }
+  ]
+}
