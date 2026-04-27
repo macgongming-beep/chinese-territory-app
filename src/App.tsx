@@ -16,10 +16,19 @@ const Login = lazy(() =>
 )
 
 const DESKTOP_MEDIA_QUERY = '(min-width: 980px)'
+const ROLE_VALUES: Role[] = ['admin', 'leader', 'user']
 
 function getInitialDesktopMode() {
   if (typeof window === 'undefined') return true
   return window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+}
+
+function getViewModeStorageKey(userId: number) {
+  return `chsViewMode:${userId}`
+}
+
+function isRole(value: unknown): value is Role {
+  return typeof value === 'string' && ROLE_VALUES.includes(value as Role)
 }
 
 function App() {
@@ -115,6 +124,24 @@ function App() {
     mediaQuery.addEventListener('change', onChange)
     return () => mediaQuery.removeEventListener('change', onChange)
   }, [])
+
+  useEffect(() => {
+    if (!user) return
+    if (actualRole !== 'admin') {
+      setMobileViewMode(actualRole)
+      return
+    }
+
+    const storedViewMode = window.localStorage.getItem(getViewModeStorageKey(user.id))
+    setMobileViewMode(isRole(storedViewMode) ? storedViewMode : 'admin')
+  }, [actualRole, user])
+
+  const handleChangeViewMode = (role: Role) => {
+    setMobileViewMode(role)
+    if (user && actualRole === 'admin') {
+      window.localStorage.setItem(getViewModeStorageKey(user.id), role)
+    }
+  }
 
   if (authLoading || loading) {
     return (
@@ -222,7 +249,7 @@ function App() {
             onUpdateUnitFlags={updateUnitFlags}
             onSaveCardBoundary={saveCardBoundary}
             visitHistories={visitHistories}
-            onChangeViewMode={setMobileViewMode}
+            onChangeViewMode={handleChangeViewMode}
             onLogout={logout}
             reviewTasks={reviewTasks}
             onCreateReviewTask={createReviewTask}
@@ -244,7 +271,7 @@ function App() {
               viewMode={mobileViewMode}
               notices={notices}
               serviceSessions={serviceSessions}
-              onChangeViewMode={setMobileViewMode}
+              onChangeViewMode={handleChangeViewMode}
               onApplyToEvent={applyToEvent}
               onCreateCalendarEvent={createCalendarEvent}
               onDeleteCalendarEvent={deleteCalendarEvent}
