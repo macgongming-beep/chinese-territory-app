@@ -48,15 +48,14 @@ export function DesktopSettings({
   const [showOldLogs, setShowOldLogs] = useState(false)
 
   useEffect(() => {
-    // 최근 7일 로그인 기록만 조회
+    // 최근 7일 로그인 기록만 조회 (RPC 사용)
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
     supabase
-      .from('login_logs')
-      .select('id, logged_in_at')
-      .eq('user_id', currentUserId)
-      .gte('logged_in_at', since)
-      .order('logged_in_at', { ascending: false })
-      .limit(50)
+      .rpc('get_login_logs', {
+        p_user_id: currentUserId,
+        p_since: since,
+        p_limit: 50,
+      })
       .then(({ data, error }) => {
         if (error) { console.error('[settings] login_logs fetch failed:', error); return }
         setMyLogs((data ?? []) as { id: number; logged_in_at: string }[])

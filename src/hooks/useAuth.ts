@@ -500,28 +500,26 @@ export function useAuth() {
     return true
   }
 
-  /** 내 로그인 기록 — 본인만 조회 가능 */
+  /** 내 로그인 기록 — 본인만 조회 가능 (RPC 사용) */
   const fetchMyLoginLogs = async (limit = 20) => {
     if (!user) return []
-    const { data, error } = await supabase
-      .from('login_logs')
-      .select('id, logged_in_at')
-      .eq('user_id', user.id)
-      .order('logged_in_at', { ascending: false })
-      .limit(limit)
+    const { data, error } = await supabase.rpc('get_login_logs', {
+      p_user_id: user.id,
+      p_since: null,
+      p_limit: limit,
+    })
     if (error) { console.error('fetchMyLoginLogs:', error); return [] }
     return (data ?? []) as { id: number; logged_in_at: string }[]
   }
 
-  /** 특정 사용자의 로그인 기록 — developer만 조회 가능 */
+  /** 특정 사용자의 로그인 기록 — developer만 조회 가능 (RPC 사용) */
   const fetchUserLoginLogs = async (userId: number, limit = 30) => {
     if (user?.role !== 'developer') return []
-    const { data, error } = await supabase
-      .from('login_logs')
-      .select('id, logged_in_at')
-      .eq('user_id', userId)
-      .order('logged_in_at', { ascending: false })
-      .limit(limit)
+    const { data, error } = await supabase.rpc('get_login_logs', {
+      p_user_id: userId,
+      p_since: null,
+      p_limit: limit,
+    })
     if (error) { console.error('fetchUserLoginLogs:', error); return [] }
     return (data ?? []) as { id: number; logged_in_at: string }[]
   }
