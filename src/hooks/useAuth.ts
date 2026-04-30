@@ -27,6 +27,10 @@ function isRole(value: unknown): value is Role {
   return typeof value === 'string' && ROLE_VALUES.includes(value as Role)
 }
 
+function isDeveloperAccount(data: { name?: string | null; login_id?: string | null; loginId?: string | null; role?: string | null }) {
+  return data.role === 'developer' || data.login_id === '개발자' || data.loginId === '개발자' || data.name === '개발자'
+}
+
 /** 관리자 수준 이상 권한 여부 (developer 포함) */
 function isAdminLike(role: Role | undefined) {
   return role === 'admin' || role === 'developer'
@@ -38,7 +42,7 @@ function toAuthUser(data: { id: number; name: string; phone?: string | null; log
     loginId: data.login_id ?? data.name,
     name: data.name,
     phone: data.phone ?? null,
-    role: isRole(data.role) ? data.role : 'user',
+    role: isDeveloperAccount(data) ? 'developer' : isRole(data.role) ? data.role : 'user',
   }
 }
 
@@ -295,16 +299,17 @@ export function useAuth() {
 
     if (!error && data) {
       const rows = data as Array<{ id: number; name: string; phone?: string | null; login_id: string | null; role: Role; created_at: string; last_login_at?: string | null }>
-      setAllUsers(rows.map((item) => ({
-        id: item.id,
-        loginId: item.login_id ?? item.name,
-        name: item.name,
-        phone: item.phone ?? null,
-        // developer는 자신에게만 보임 — 다른 admin에게는 'admin'으로 표시
-        role: (item.role === 'developer' && user.role !== 'developer') ? 'admin' : item.role,
-        created_at: item.created_at,
-        lastLoginAt: item.last_login_at ?? null,
-      })))
+      setAllUsers(rows
+        .filter((item) => user.role === 'developer' || !isDeveloperAccount(item))
+        .map((item) => ({
+          id: item.id,
+          loginId: item.login_id ?? item.name,
+          name: item.name,
+          phone: item.phone ?? null,
+          role: isDeveloperAccount(item) ? 'developer' : item.role,
+          created_at: item.created_at,
+          lastLoginAt: item.last_login_at ?? null,
+        })))
       return
     }
 
@@ -314,15 +319,17 @@ export function useAuth() {
         .select(error.message.includes('login_id') ? 'id, name, role, created_at' : 'id, name, login_id, role, created_at, last_login_at')
         .order('created_at', { ascending: false })
       if (!fallback.error && fallback.data) {
-        setAllUsers((fallback.data as unknown as Array<{ id: number; name: string; login_id?: string | null; role: Role; created_at: string; last_login_at?: string | null }>).map((item) => ({
-          id: item.id,
-          loginId: item.login_id ?? item.name,
-          name: item.name,
-          role: item.role,
-          created_at: item.created_at,
-          lastLoginAt: item.last_login_at ?? null,
-          phone: null,
-        })))
+        setAllUsers((fallback.data as unknown as Array<{ id: number; name: string; login_id?: string | null; role: Role; created_at: string; last_login_at?: string | null }>)
+          .filter((item) => user.role === 'developer' || !isDeveloperAccount(item))
+          .map((item) => ({
+            id: item.id,
+            loginId: item.login_id ?? item.name,
+            name: item.name,
+            role: isDeveloperAccount(item) ? 'developer' : item.role,
+            created_at: item.created_at,
+            lastLoginAt: item.last_login_at ?? null,
+            phone: null,
+          })))
       }
     }
   }

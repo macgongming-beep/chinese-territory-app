@@ -109,10 +109,9 @@ export function DesktopSettings({
             <div className="ds-avatar" aria-hidden="true">{currentVisitor.slice(0, 1) || '사'}</div>
             <div className="ds-account-main">
               <strong>{currentVisitor}</strong>
-              <span>{roleLabels[actualRole]} · 경기지부</span>
+              <span>{roleLabels[actualRole]}</span>
             </div>
             <div className="ds-account-actions">
-              <button className="ds-btn ds-btn-secondary" type="button">계정 관리</button>
               <button className="ds-btn ds-btn-danger" onClick={onLogout} type="button">로그아웃</button>
             </div>
           </div>

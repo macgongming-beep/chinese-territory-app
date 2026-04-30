@@ -57,7 +57,7 @@ export function MobileUsers() {
   useEffect(() => {
     if (isAdminLike) void fetchAllUsers()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminLike])
+  }, [isAdminLike, currentUser?.role])
 
   const users = useMemo(() => {
     return allUsers
