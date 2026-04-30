@@ -12,16 +12,30 @@ import type { Dispatch, SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
 import { showToast } from '../lib/toast'
 import { isValidMapCoordinate } from '../utils/mapUtils'
+import { getCurrentTimeSlot } from '../utils/timeUtils'
 import type {
   Building,
   CalendarEvent,
   CardBoundary,
   GeoPoint,
   Notice,
+  ReturnVisit,
   ReviewTask,
+  ServiceSession,
   TerritoryCard,
+  TimeSlot,
+  Unit,
   UnitStatus,
+  VisitHistory,
 } from '../types'
+
+/** YYYY-MM-DD (로컬) */
+function getLocalDateString() {
+  const date = new Date()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
 
 /** localStorage 의 currentVisitor 를 직접 사용 (useStore 의 getCurrentVisitor 와 동일) */
 function getCurrentVisitor(): string {
@@ -1053,5 +1067,565 @@ export function makeBuildingMutations(deps: {
     updateBuilding,
     moveBuildingToCard,
     reassignBuildingsToCards,
+  }
+}
+
+// ===============================================================
+// 방문 / 호수 상태 (Visit / Unit operations)
+// ===============================================================
+export function makeVisitMutations(deps: {
+  fetchAll: () => Promise<void>
+  visitHistories: VisitHistory[]
+  /** 봉사 세션 기록을 위한 헬퍼 (useStore 내부에서 주입) */
+  getRecordServiceSession: (buildingId?: number, visitedAt?: string) => ServiceSession | undefined
+  /** 활성 특별봉사 시즌 ID 반환 */
+  getActiveSpecialPeriodIdForDate: (dateStr: string) => number | null
+}) {
+  const { fetchAll, visitHistories, getRecordServiceSession, getActiveSpecialPeriodIdForDate } = deps
+
+  const updateUnitStatus = async (
+    buildingId: number,
+    unitId: number,
+    status: UnitStatus,
+    memo?: string,
+    timeSlot: TimeSlot = getCurrentTimeSlot(),
+    invitationLeft: boolean = false,
+  ) => {
+    const recordSession = getRecordServiceSession(buildingId)
+    const effectiveTimeSlot = recordSession?.timeSlot ?? timeSlot
+    const statusResult = await supabase.from('units').update({ status }).eq('id', unitId)
+    if (statusResult.error) {
+      reportMutationError('호수 상태를 저장하지 못했습니다.', statusResult.error)
+      return
+    }
+
+    const visitedAt = getLocalDateString()
+    const visitor = localStorage.getItem('currentVisitor') ?? '김민준'
+    const existingAttemptResult = await supabase
+      .from('visit_histories')
+      .select('id')
+      .eq('unit_id', unitId)
+      .eq('visitor_name', visitor)
+      .eq('visited_at', visitedAt)
+      .eq('time_slot', effectiveTimeSlot)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (existingAttemptResult.error) {
+      reportMutationError('기존 방문 이력을 확인하지 못했습니다. 호수 상태는 변경됐을 수 있습니다.', existingAttemptResult.error)
+      return
+    }
+
+    const existingAttempt = existingAttemptResult.data?.[0]
+    const activePeriodId = getActiveSpecialPeriodIdForDate(visitedAt)
+    const historyPayload = {
+      result: status,
+      memo: memo?.trim() || null,
+      ...(recordSession ? { service_session_id: recordSession.id } : {}),
+      special_period_id: activePeriodId,
+      invitation_left: invitationLeft,
+    }
+    const historyResult = existingAttempt
+      ? await supabase.from('visit_histories').update(historyPayload).eq('id', existingAttempt.id)
+      : await supabase.from('visit_histories').insert({
+          unit_id: unitId,
+          visitor_name: visitor,
+          result: status,
+          time_slot: effectiveTimeSlot,
+          ...(recordSession ? { service_session_id: recordSession.id } : {}),
+          memo: memo?.trim() || null,
+          visited_at: visitedAt,
+          special_period_id: activePeriodId,
+          invitation_left: invitationLeft,
+        })
+
+    if (historyResult.error) {
+      reportMutationError('방문 이력을 저장하지 못했습니다. 호수 상태는 변경됐을 수 있습니다.', historyResult.error)
+      return
+    }
+    await fetchAll()
+  }
+
+  const toggleInvitationLeft = async (buildingId: number, unitId: number) => {
+    const todayStr = getLocalDateString()
+    const recordSession = getRecordServiceSession(buildingId)
+    const slot = recordSession?.timeSlot ?? getCurrentTimeSlot()
+    const visitor = localStorage.getItem('currentVisitor') ?? '김민준'
+
+    const existingResult = await supabase
+      .from('visit_histories')
+      .select('id, invitation_left')
+      .eq('unit_id', unitId)
+      .eq('visitor_name', visitor)
+      .eq('visited_at', todayStr)
+      .eq('time_slot', slot)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (existingResult.error) {
+      reportMutationError('기존 방문 기록 확인에 실패했습니다.', existingResult.error)
+      return
+    }
+
+    const existing = existingResult.data?.[0]
+
+    if (existing) {
+      const next = !existing.invitation_left
+      const updateResult = await supabase
+        .from('visit_histories')
+        .update({ invitation_left: next })
+        .eq('id', existing.id)
+      if (updateResult.error) {
+        reportMutationError('초대장 표시를 업데이트하지 못했습니다.', updateResult.error)
+        return
+      }
+    } else {
+      const activePeriodId = getActiveSpecialPeriodIdForDate(todayStr)
+      const insertResult = await supabase.from('visit_histories').insert({
+        unit_id: unitId,
+        visitor_name: visitor,
+        result: '미방문',
+        visited_at: todayStr,
+        time_slot: slot,
+        ...(recordSession ? { service_session_id: recordSession.id } : {}),
+        special_period_id: activePeriodId,
+        invitation_left: true,
+      })
+      if (insertResult.error) {
+        reportMutationError('초대장 기록을 저장하지 못했습니다.', insertResult.error)
+        return
+      }
+    }
+    await fetchAll()
+  }
+
+  const quickLogVisit = async (
+    buildingId: number,
+    unitId: number,
+    result: UnitStatus,
+    invitationLeft: boolean = false,
+  ) => {
+    const todayStr = getLocalDateString()
+    const recordSession = getRecordServiceSession(buildingId)
+    const slot = recordSession?.timeSlot ?? getCurrentTimeSlot()
+    const visitor = localStorage.getItem('currentVisitor') ?? '김민준'
+
+    const unitUpdate = await supabase.from('units').update({ status: result }).eq('id', unitId)
+    if (unitUpdate.error) {
+      reportMutationError('세대 상태를 업데이트하지 못했습니다.', unitUpdate.error)
+      return
+    }
+
+    const existingResult = await supabase
+      .from('visit_histories')
+      .select('id')
+      .eq('unit_id', unitId)
+      .eq('visitor_name', visitor)
+      .eq('visited_at', todayStr)
+      .eq('time_slot', slot)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (existingResult.error) {
+      reportMutationError('기존 방문 기록 확인에 실패했습니다.', existingResult.error)
+      return
+    }
+
+    const existing = existingResult.data?.[0]
+    let historyStatus = ''
+
+    if (existing) {
+      const updateResult = await supabase
+        .from('visit_histories')
+        .update({
+          result,
+          ...(recordSession ? { service_session_id: recordSession.id } : {}),
+          ...(invitationLeft ? { invitation_left: true } : {}),
+        })
+        .eq('id', existing.id)
+      if (updateResult.error) {
+        reportMutationError('방문 기록을 업데이트하지 못했습니다.', updateResult.error)
+        return
+      }
+      historyStatus = '업데이트됨'
+    } else {
+      const activePeriodId = getActiveSpecialPeriodIdForDate(todayStr)
+      const insertResult = await supabase.from('visit_histories').insert({
+        unit_id: unitId,
+        visitor_name: visitor,
+        result,
+        visited_at: todayStr,
+        time_slot: slot,
+        ...(recordSession ? { service_session_id: recordSession.id } : {}),
+        special_period_id: activePeriodId,
+        invitation_left: invitationLeft,
+      })
+      if (insertResult.error) {
+        reportMutationError('방문 기록을 저장하지 못했습니다.', insertResult.error)
+        return
+      }
+      historyStatus = '기록됨'
+    }
+
+    await fetchAll()
+    showToast(`${slot} ${result} ${historyStatus}`, 'success')
+  }
+
+  const updateUnitFlags = async (unitId: number, flags: Partial<Unit>) => {
+    const dbFlags: Record<string, unknown> = {}
+    if (flags.isChinese !== undefined) dbFlags.is_chinese = flags.isChinese
+    if (flags.isKorean !== undefined) dbFlags.is_korean = flags.isKorean
+    if (flags.memo !== undefined) dbFlags.memo = flags.memo
+
+    if (Object.keys(dbFlags).length > 0) {
+      const result = await supabase.from('units').update(dbFlags).eq('id', unitId)
+      if (result.error) {
+        reportMutationError('세대 정보를 수정하지 못했습니다.', result.error)
+        return
+      }
+    }
+
+    if (flags.isForbidden !== undefined) {
+      const statusResult = await supabase
+        .from('units')
+        .update({ status: flags.isForbidden ? '거절' : '미방문' })
+        .eq('id', unitId)
+      if (statusResult.error) {
+        reportMutationError('방문금지 상태를 수정하지 못했습니다.', statusResult.error)
+        return
+      }
+    }
+    await fetchAll()
+  }
+
+  const undoLatestVisit = async (_buildingId: number, unitId: number) => {
+    const unitHistories = visitHistories.filter((h) => h.unitId === unitId)
+    const latestHistory = unitHistories[0]
+    const previousHistory = unitHistories[1]
+    if (!latestHistory) return
+
+    const deleteResult = await supabase.from('visit_histories').delete().eq('id', latestHistory.id)
+    if (deleteResult.error) {
+      reportMutationError('최근 방문 이력을 취소하지 못했습니다.', deleteResult.error)
+      return
+    }
+
+    const restoreStatus: UnitStatus = previousHistory?.result ?? '미방문'
+    const statusResult = await supabase.from('units').update({ status: restoreStatus }).eq('id', unitId)
+    if (statusResult.error) {
+      reportMutationError('방문 이력은 취소됐지만 호수 상태를 되돌리지 못했습니다.', statusResult.error)
+      return
+    }
+
+    await fetchAll()
+    showToast('최근 입력이 취소됐습니다')
+  }
+
+  const updateVisitHistory = async (
+    historyId: number,
+    unitId: number,
+    input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string },
+  ) => {
+    const historyResult = await supabase
+      .from('visit_histories')
+      .update({
+        result: input.result,
+        time_slot: input.timeSlot,
+        memo: input.memo.trim() || null,
+        visited_at: input.visitedAt,
+      })
+      .eq('id', historyId)
+
+    if (historyResult.error) {
+      reportMutationError('방문 이력을 수정하지 못했습니다.', historyResult.error)
+      return
+    }
+
+    const latestHistory = visitHistories.find((h) => h.unitId === unitId)
+    if (latestHistory?.id === historyId) {
+      const statusResult = await supabase.from('units').update({ status: input.result }).eq('id', unitId)
+      if (statusResult.error) {
+        reportMutationError('방문 이력은 수정됐지만 호수 대표 상태를 맞추지 못했습니다.', statusResult.error)
+        return
+      }
+    }
+    await fetchAll()
+  }
+
+  const addVisitHistory = async (
+    buildingId: number,
+    unitId: number,
+    input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean },
+  ) => {
+    const recordSession = getRecordServiceSession(buildingId, input.visitedAt)
+    const activePeriodId = getActiveSpecialPeriodIdForDate(input.visitedAt)
+    const visitor = localStorage.getItem('currentVisitor') ?? '김민준'
+
+    const insertResult = await supabase.from('visit_histories').insert({
+      unit_id: unitId,
+      visitor_name: visitor,
+      result: input.result,
+      time_slot: input.timeSlot,
+      ...(recordSession ? { service_session_id: recordSession.id, time_slot: recordSession.timeSlot } : {}),
+      memo: input.memo.trim() || null,
+      visited_at: input.visitedAt,
+      special_period_id: activePeriodId,
+      invitation_left: input.invitationLeft ?? false,
+    })
+
+    if (insertResult.error) {
+      reportMutationError('방문 이력을 추가하지 못했습니다.', insertResult.error)
+      return
+    }
+
+    const unitHistories = visitHistories.filter((h) => h.unitId === unitId)
+    const latestExistingDate = unitHistories[0]?.visitedAt ?? ''
+    if (!latestExistingDate || input.visitedAt >= latestExistingDate) {
+      const statusResult = await supabase.from('units').update({ status: input.result }).eq('id', unitId)
+      if (statusResult.error) {
+        reportMutationError('방문 이력은 추가됐지만 호수 대표 상태를 맞추지 못했습니다.', statusResult.error)
+        return
+      }
+    }
+    await fetchAll()
+    showToast('방문 기록이 추가됐습니다')
+  }
+
+  const deleteVisitHistory = async (historyId: number, unitId: number) => {
+    const result = await supabase.from('visit_histories').delete().eq('id', historyId)
+    if (result.error) {
+      reportMutationError('방문 히스토리 삭제를 실패했습니다.', result.error)
+      return
+    }
+
+    const remainingHistories = visitHistories.filter((h) => h.unitId === unitId && h.id !== historyId)
+    const latestRemaining = remainingHistories[0]
+    const newStatus = latestRemaining?.result ?? '미방문'
+
+    const statusUpdate = await supabase.from('units').update({ status: newStatus }).eq('id', unitId)
+    if (statusUpdate.error) {
+      reportMutationError('호수 상태 동기화에 실패했습니다.', statusUpdate.error)
+    }
+
+    await fetchAll()
+    showToast('방문 기록이 삭제되었습니다.')
+  }
+
+  return {
+    updateUnitStatus,
+    toggleInvitationLeft,
+    quickLogVisit,
+    updateUnitFlags,
+    undoLatestVisit,
+    updateVisitHistory,
+    addVisitHistory,
+    deleteVisitHistory,
+  }
+}
+
+// ===============================================================
+// 정기방문 / 재방문 / 중국인 거주 (Regular / Return / Chinese)
+// ===============================================================
+export function makeRegularVisitMutations(deps: {
+  fetchAll: () => Promise<void>
+  buildings: Building[]
+  cards: TerritoryCard[]
+  returnVisits: ReturnVisit[]
+}) {
+  const { fetchAll, buildings, cards, returnVisits } = deps
+
+  const toggleRegularVisit = async (buildingId: number, unitId: number, visitorName?: string) => {
+    const building = buildings.find((b) => b.id === buildingId)
+    const unit = building?.units.find((u) => u.id === unitId)
+    if (!building || !unit) return
+
+    if (unit.isRegularVisit) {
+      const result = await supabase.from('regular_visits').delete().eq('unit_id', unitId)
+      if (result.error) {
+        reportMutationError('정기방문을 해제하지 못했습니다.', result.error)
+        return
+      }
+      await fetchAll()
+      showToast('정기방문이 해제됐습니다')
+    } else {
+      const name = visitorName || (localStorage.getItem('currentVisitor') ?? '김민준')
+      const result = await supabase.from('regular_visits').insert({ unit_id: unitId, visitor_name: name })
+      if (result.error) {
+        reportMutationError('정기방문을 등록하지 못했습니다.', result.error)
+        return
+      }
+
+      // return_visits 생성 (중복 방지: 같은 unit_id 존재 시 skip)
+      const existing = returnVisits.find((rv) => rv.unitId === unitId)
+      if (!existing) {
+        const card = cards.find((c) => c.id === building.cardId)
+        const region = (card?.region as string) ?? ''
+        const cardName = card?.name ?? ''
+        let nameWithoutRegion = cardName
+        for (const r of ['처인구', '기흥구', '수지구', '영통구', '화성시']) {
+          if (cardName.startsWith(r)) { nameWithoutRegion = cardName.slice(r.length).trim(); break }
+        }
+        if (region && nameWithoutRegion === cardName && cardName.startsWith(region)) {
+          nameWithoutRegion = cardName.slice(region.length).trim()
+        }
+        const dong = nameWithoutRegion.split(' ')[0] || building.name
+        const displayName = `${dong} ${unit.number}`
+        await supabase.from('return_visits').insert({
+          unit_id: unitId,
+          building_id: buildingId,
+          display_name: displayName,
+          address: building.address,
+          unit_number: unit.number,
+          assigned_user_name: name,
+          created_by: name,
+        })
+      }
+      await fetchAll()
+      showToast('정기방문이 등록됐습니다')
+    }
+  }
+
+  const setRegularVisitor = async (unitId: number, visitorName: string) => {
+    const name = visitorName.trim()
+    if (!name) {
+      const result = await supabase.from('regular_visits').delete().eq('unit_id', unitId)
+      if (result.error) {
+        reportMutationError('정기방문자를 해제하지 못했습니다.', result.error)
+        return
+      }
+      await fetchAll()
+      showToast('정기방문자가 해제됐습니다')
+      return
+    }
+
+    const result = await supabase
+      .from('regular_visits')
+      .upsert({ unit_id: unitId, visitor_name: name }, { onConflict: 'unit_id' })
+
+    if (result.error) {
+      reportMutationError('정기방문자를 저장하지 못했습니다.', result.error)
+      return
+    }
+    await fetchAll()
+    showToast('정기방문자가 저장됐습니다')
+  }
+
+  const toggleChinese = async (buildingId: number, unitId: number) => {
+    const building = buildings.find((b) => b.id === buildingId)
+    const unit = building?.units.find((u) => u.id === unitId)
+    if (!building || !unit) return
+
+    const newValue = !unit.isChinese
+    const result = await supabase.from('units').update({ is_chinese: newValue }).eq('id', unitId)
+    if (result.error) {
+      reportMutationError('중국인 거주 여부를 저장하지 못했습니다.', result.error)
+      return
+    }
+    await fetchAll()
+    showToast(newValue ? '중국인 거주가 등록됐습니다' : '중국인 거주가 해제됐습니다')
+  }
+
+  const addReturnVisitLog = async (
+    returnVisitId: number,
+    result: '만남' | '부재' | null,
+    memo: string,
+  ) => {
+    const visitor = localStorage.getItem('currentVisitor') ?? '김민준'
+    const now = new Date().toISOString()
+    const logRes = await supabase.from('return_visit_logs').insert({
+      return_visit_id: returnVisitId,
+      result: result ?? null,
+      memo,
+      created_by: visitor,
+      visited_at: now,
+    })
+    if (logRes.error) {
+      reportMutationError('기록을 저장하지 못했습니다.', logRes.error)
+      return
+    }
+    if (result) {
+      await supabase.from('return_visits')
+        .update({ last_visited_at: now, last_result: result })
+        .eq('id', returnVisitId)
+    }
+    await fetchAll()
+    showToast('기록이 저장됐습니다')
+  }
+
+  const createManualReturnVisit = async (input: {
+    displayName: string
+    address: string
+    memo: string
+    unitId?: number | null
+    buildingId?: number | null
+  }) => {
+    const visitor = localStorage.getItem('currentVisitor') ?? '김민준'
+    const res = await supabase.from('return_visits').insert({
+      unit_id: input.unitId ?? null,
+      building_id: input.buildingId ?? null,
+      display_name: input.displayName,
+      nickname: input.displayName,
+      address: input.address,
+      unit_number: '',
+      assigned_user_name: visitor,
+      created_by: visitor,
+    })
+    if (res.error) { reportMutationError('정기방문을 추가하지 못했습니다.', res.error); return }
+    await fetchAll()
+    showToast('정기방문이 추가됐습니다')
+  }
+
+  const updateReturnVisitLog = async (id: number, result: '만남' | '부재' | null, memo: string) => {
+    const res = await supabase.from('return_visit_logs').update({ result: result ?? null, memo }).eq('id', id)
+    if (res.error) { reportMutationError('기록을 수정하지 못했습니다.', res.error); return }
+    await fetchAll()
+    showToast('기록이 수정됐습니다')
+  }
+
+  const deleteReturnVisitLog = async (id: number) => {
+    const res = await supabase.from('return_visit_logs').delete().eq('id', id)
+    if (res.error) {
+      reportMutationError('기록을 삭제하지 못했습니다.', res.error)
+      return
+    }
+    await fetchAll()
+    showToast('기록이 삭제됐습니다')
+  }
+
+  const deleteReturnVisit = async (id: number) => {
+    const res = await supabase.from('return_visits').delete().eq('id', id)
+    if (res.error) {
+      reportMutationError('정기방문을 삭제하지 못했습니다.', res.error)
+      return
+    }
+    await fetchAll()
+    showToast('정기방문이 삭제됐습니다')
+  }
+
+  const updateReturnVisitNickname = async (id: number, nickname: string) => {
+    const res = await supabase.from('return_visits').update({ nickname: nickname.trim() }).eq('id', id)
+    if (res.error) { reportMutationError('별칭을 저장하지 못했습니다.', res.error); return }
+    await fetchAll()
+    showToast('별칭이 저장됐습니다')
+  }
+
+  const updateReturnVisitAddress = async (id: number, address: string) => {
+    const res = await supabase.from('return_visits').update({ address: address.trim() }).eq('id', id)
+    if (res.error) { reportMutationError('주소를 저장하지 못했습니다.', res.error); return }
+    await fetchAll()
+    showToast('주소가 저장됐습니다')
+  }
+
+  return {
+    toggleRegularVisit,
+    setRegularVisitor,
+    toggleChinese,
+    addReturnVisitLog,
+    createManualReturnVisit,
+    updateReturnVisitLog,
+    deleteReturnVisitLog,
+    deleteReturnVisit,
+    updateReturnVisitNickname,
+    updateReturnVisitAddress,
   }
 }
