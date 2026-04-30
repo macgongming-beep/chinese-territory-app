@@ -106,7 +106,7 @@ export function DesktopHome({
   serviceSessions,
   onApplyToEvent,
   onStartServiceSession,
-  onEndServiceSession,
+  onEndServiceSession: _onEndServiceSession,
   onOpenCalendar,
   onOpenNotices,
   onOpenTerritory,
@@ -298,29 +298,6 @@ export function DesktopHome({
 
   const userCards = myCards.length > 0 ? myCards : cards.slice(0, 3)
 
-  const modeCopy: Record<Role, { label: string; title: string; description: string }> = {
-    user: {
-      label: '봉사자 홈',
-      title: `${currentVisitor}님, 오늘 봉사를 시작할 준비가 됐습니다`,
-      description: '신청한 일정과 오늘 방문할 카드를 빠르게 확인합니다.',
-    },
-    leader: {
-      label: '인도자 홈',
-      title: '오늘 봉사 운영과 카드 진행을 확인합니다',
-      description: '참여자, 담당 카드, 검토가 필요한 현장 기록을 한곳에서 봅니다.',
-    },
-    admin: {
-      label: '관리자 홈',
-      title: '전체 구역 운영 현황을 관리합니다',
-      description: '봉사 세션, 카드 진행, 검토 필요 항목과 통계를 확인합니다.',
-    },
-    developer: {
-      label: '개발자 홈',
-      title: '전체 구역 운영 현황을 관리합니다',
-      description: '봉사 세션, 카드 진행, 검토 필요 항목과 통계를 확인합니다.',
-    },
-  }
-
   if (role === 'leader') {
     const usedCardCount = new Set(
       myTodaySessions
@@ -439,23 +416,6 @@ export function DesktopHome({
         <SpecialPeriodBanner specialPeriods={specialPeriods} variant="card" onClick={onOpenSettings} />
       )}
 
-      {role !== 'admin' && (
-        <section className={`home-role-hero home-role-hero-${role}`}>
-          <div>
-            <span>{modeCopy[role].label}</span>
-            <h1>{modeCopy[role].title}</h1>
-            <p>{modeCopy[role].description}</p>
-          </div>
-          <button
-            className="home-primary-action"
-            onClick={() => setShowServiceStart((open) => !open)}
-            type="button"
-          >
-            {activeMySession ? `${activeMySession.timeSlot} 봉사 중` : '봉사 시작'}
-          </button>
-        </section>
-      )}
-
       {role !== 'admin' && showServiceStart && (
         <section className="home-service-launcher">
           <div>
@@ -544,34 +504,6 @@ export function DesktopHome({
           >
             시작
           </button>
-        </section>
-      )}
-
-      {role !== 'admin' && myTodaySessions.length > 0 && (
-        <section className="home-today-sessions">
-          <div className="home-section-title">
-            <span className="home-section-icon">●</span>
-            <h2>오늘 내가 봉사한 카드</h2>
-          </div>
-          <div className="home-session-list">
-            {myTodaySessions.map((session) => {
-              const card = cards.find((item) => item.id === session.primaryCardId)
-              const isActive = session.status === 'active' && !session.endedAt
-              return (
-                <div className="home-session-card" key={session.id}>
-                  <div>
-                    <strong>{card?.name ?? '카드 미지정'}</strong>
-                    <span>{session.timeSlot} · {isActive ? '진행 중' : '종료됨'}</span>
-                  </div>
-                  {isActive && (
-                    <button onClick={() => onEndServiceSession(session.id)} type="button">
-                      종료
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
         </section>
       )}
 
