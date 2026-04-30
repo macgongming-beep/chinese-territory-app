@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Database backups (민감 — 절대 커밋 금지)
+backups/
