@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { MapCanvas } from './MapCanvas'
-import { territoryAreasByRegion, territoryRegions, visitTargetTypes } from '../data/territoryStructure'
+import { SpecialPeriodBanner } from './SpecialPeriodBanner'
+import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
 import type {
   Building,
   BuildingStatus,
@@ -15,6 +16,7 @@ import type {
   UnitStatus,
   VisitTargetType,
   VisitHistory,
+  SpecialPeriod,
 } from '../types'
 import { formatDisplayAddress, getBuildingStatus, getCardName, findCardForCoordinates, getSortedAreaOptions, isValidMapCoordinate, normalizeMapCoordinates } from '../utils/mapUtils'
 import { showToast } from '../lib/toast'
@@ -30,6 +32,7 @@ type HistoryEditor = {
   timeSlot: TimeSlot
   memo: string
   visitedAt: string
+  invitationLeft?: boolean
 }
 
 function getLocalDateString() {
@@ -63,8 +66,10 @@ export function DesktopMap({
   onDeleteVisitHistory,
   onUpdateBuilding,
   onQuickLogVisit,
+  onToggleInvitationLeft,
   onUpdateUnitFlags,
   visitHistories,
+  specialPeriods,
 }: {
   buildings: Building[]
   boundaryEditRequest?: number
@@ -95,12 +100,12 @@ export function DesktopMap({
   onUpdateVisitHistory: (
     historyId: number,
     unitId: number,
-    input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string },
+    input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean },
   ) => void
   onAddVisitHistory: (
     buildingId: number,
     unitId: number,
-    input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string },
+    input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean },
   ) => void
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
   onUpdateUnitStatus: (
@@ -110,9 +115,11 @@ export function DesktopMap({
     memo?: string,
     timeSlot?: TimeSlot,
   ) => void
-  onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus) => void
+  onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus, invitationLeft?: boolean) => void
+  onToggleInvitationLeft?: (buildingId: number, unitId: number) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
   visitHistories: VisitHistory[]
+  specialPeriods?: SpecialPeriod[]
 }) {
   const [cardFilter, setCardFilter] = useState<number | '전체'>('전체')
   const [regionFilter, setRegionFilter] = useState<TerritoryRegion | '전체'>('전체')
@@ -146,6 +153,8 @@ export function DesktopMap({
   const [undoStack, setUndoStack] = useState<GeoPoint[][]>([])
   const [expandedUnitId, setExpandedUnitId] = useState<number | null>(null)
   const [expandedBuildingIds, setExpandedBuildingIds] = useState<Set<number>>(new Set())
+  const [collapsedStatusGroups, setCollapsedStatusGroups] = useState<Set<BuildingStatus>>(new Set(['방문완료']))
+  const [hiddenMapStatuses, setHiddenMapStatuses] = useState<Set<BuildingStatus>>(new Set())
   const [unitMemos, setUnitMemos] = useState<Record<number, string>>({})
   const [_absentTimestamps, _setAbsentTimestamps] = useState<Record<number, number>>({})
   const [coordinateRepairTick, setCoordinateRepairTick] = useState(0)
@@ -511,6 +520,24 @@ export function DesktopMap({
   )
 
   const panelBuildings = filteredBuildings
+  const mapBuildings = useMemo(
+    () => contextBuildings.filter((building) => !hiddenMapStatuses.has(getBuildingStatus(building))),
+    [contextBuildings, hiddenMapStatuses],
+  )
+  const panelBuildingGroups = useMemo(() => {
+    const order: BuildingStatus[] = ['방문금지', '방문필요', '정기방문', '방문완료']
+    const labels: Record<BuildingStatus, string> = {
+      방문금지: '방문금지',
+      방문필요: '방문필요',
+      정기방문: '정기방문',
+      방문완료: '방문완료',
+    }
+    return order.map((status) => ({
+      status,
+      label: labels[status],
+      buildings: panelBuildings.filter((building) => getBuildingStatus(building) === status),
+    }))
+  }, [panelBuildings])
   const panelUnitTotal = useMemo(() => panelBuildings.reduce((total, building) => total + building.units.length, 0), [panelBuildings])
   const panelVisitedTotal = useMemo(() => panelBuildings.reduce(
     (total, building) => total + building.units.filter((unit) => unit.status !== '미방문').length,
@@ -654,6 +681,37 @@ export function DesktopMap({
     moveMapToBuilding(building)
   }
 
+  const toggleStatusGroup = (status: BuildingStatus) => {
+    setCollapsedStatusGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(status)) next.delete(status)
+      else next.add(status)
+      return next
+    })
+  }
+
+  const toggleStatusFromLegend = (status: BuildingStatus) => {
+    if (status !== '방문완료' && status !== '정기방문') {
+      toggleStatusGroup(status)
+      return
+    }
+
+    const nextHidden = !hiddenMapStatuses.has(status)
+    setHiddenMapStatuses((prev) => {
+      const next = new Set(prev)
+      if (nextHidden) next.add(status)
+      else next.delete(status)
+      return next
+    })
+
+    setCollapsedStatusGroups((prev) => {
+      const next = new Set(prev)
+      if (nextHidden) next.add(status)
+      else next.delete(status)
+      return next
+    })
+  }
+
   const openHistoryEditorForAdd = (buildingId: number, unitId: number) => {
     if (!requireRecordAccess()) return
     setEditingHistoryId(null)
@@ -665,6 +723,7 @@ export function DesktopMap({
       timeSlot: getCurrentTimeSlot(),
       memo: '',
       visitedAt: getLocalDateString(),
+      invitationLeft: false,
     })
   }
 
@@ -680,7 +739,14 @@ export function DesktopMap({
       timeSlot: history.timeSlot,
       memo: history.memo ?? '',
       visitedAt: history.visitedAt,
+      invitationLeft: history.invitationLeft ?? false,
     })
+  }
+
+  // 특정 날짜에 활성화된 특별봉사 시즌 (없으면 null)
+  const getActivePeriodForDate = (dateStr: string): SpecialPeriod | null => {
+    if (!specialPeriods) return null
+    return specialPeriods.find((p) => dateStr >= p.startDate && dateStr <= p.endDate) ?? null
   }
 
   const saveHistoryEditor = () => {
@@ -690,6 +756,7 @@ export function DesktopMap({
       timeSlot: historyEditor.timeSlot,
       memo: historyEditor.memo,
       visitedAt: historyEditor.visitedAt,
+      invitationLeft: historyEditor.invitationLeft,
     }
 
     if (historyEditor.mode === 'edit' && historyEditor.historyId) {
@@ -742,6 +809,11 @@ export function DesktopMap({
   return (
     <section className={detailOpen ? 'map-layout ots-theme' : 'map-layout detail-collapsed ots-theme'}>
       <div className="map-main">
+        {specialPeriods && (
+          <div style={{ padding: '8px 16px 0' }}>
+            <SpecialPeriodBanner specialPeriods={specialPeriods} variant="compact" />
+          </div>
+        )}
         {activeServiceSession && (
           <div className="current-session-banner">
             <div>
@@ -755,180 +827,96 @@ export function DesktopMap({
             </em>
           </div>
         )}
-        <div className="map-control-panel" aria-label="지도 필터">
-          <label>
-            <span>지역</span>
-            <select
-              aria-label="지역 필터"
-              onChange={(e) => {
-                setRegionFilter(e.target.value as TerritoryRegion | '전체')
-                setAreaFilter('전체')
-              }}
-              value={regionFilter}
-            >
+        <div className="map-toolbar" aria-label="지도 필터">
+          {/* 지역 */}
+          <div className="map-toolbar-item">
+            <span className="map-toolbar-label">지역</span>
+            <select className="map-toolbar-select" value={regionFilter} onChange={(e) => { setRegionFilter(e.target.value as TerritoryRegion | '전체'); setAreaFilter('전체') }}>
               <option value="전체">전체</option>
-              {territoryRegions.map((region) => (
-                <option key={region} value={region}>
-                  {region}
-                </option>
-              ))}
+              {territoryRegions.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
-          </label>
-          <label>
-            <span>동</span>
-            <select
-              aria-label="동 필터"
-              onChange={(e) => setAreaFilter(e.target.value)}
-              value={areaFilter}
-            >
+          </div>
+          {/* 동 */}
+          <div className="map-toolbar-item">
+            <span className="map-toolbar-label">동</span>
+            <select className="map-toolbar-select" value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
               <option value="전체">전체</option>
-              {areaFilterOptions.map((area) => (
-                <option key={area} value={area}>
-                  {area}
-                </option>
-              ))}
+              {areaFilterOptions.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
-          </label>
-          <label className="wide-filter">
-            <span>카드</span>
-            <select
-              aria-label="카드 필터"
-              onChange={(e) => {
-                const nextValue = e.target.value === '전체' ? '전체' : Number(e.target.value)
-                setCardFilter(nextValue)
-                if (nextValue !== '전체') setBoundaryCardId(nextValue)
-              }}
-              value={cardFilter}
-            >
+          </div>
+          {/* 카드 */}
+          <div className="map-toolbar-item">
+            <span className="map-toolbar-label">카드</span>
+            <select className="map-toolbar-select wide" value={cardFilter} onChange={(e) => { const v = e.target.value === '전체' ? '전체' : Number(e.target.value); setCardFilter(v); if (v !== '전체') setBoundaryCardId(v as number) }}>
               <option value="전체">전체 카드</option>
-              {orderedCards.map((card) => (
-                <option key={card.id} value={card.id}>
-                  {card.name}
-                </option>
-              ))}
+              {orderedCards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-          </label>
-          <div className="target-segment" aria-label="방문 대상 필터">
-            <span>대상</span>
-            <div>
-              {visitTargetTypes.map((type) => (
+          </div>
+          {/* 건물 유형 segment */}
+          <div className="map-toolbar-item">
+            <span className="map-toolbar-label">건물</span>
+            <div className="map-toolbar-seg">
+              {(['전체', '상가', '주택'] as Array<Building['type'] | '전체'>).map((t) => (
+                <button key={t} className={statusFilter === t ? 'active' : ''} onClick={() => setStatusFilter(t as BuildingStatus | '전체')} type="button">{t}</button>
+              ))}
+            </div>
+          </div>
+          {/* 상태 segment */}
+          <div className="map-toolbar-item">
+            <span className="map-toolbar-label">상태</span>
+            <div className="map-toolbar-seg">
+              {([
+                { key: '전체', label: '전체' },
+                { key: '중국인', label: '중국인' },
+                { key: '부재', label: '부재' },
+                { key: '만남', label: '만남' },
+              ] as const).map(({ key, label }) => (
                 <button
-                  className={targetTypeFilter === type ? 'active' : ''}
-                  key={type}
-                  onClick={() => setTargetTypeFilter(type)}
+                  key={key}
+                  className={
+                    key === '전체' ? (!chineseOnlyFilter && visitResultFilter === '전체' ? 'active' : '') :
+                    key === '중국인' ? (chineseOnlyFilter ? 'active' : '') :
+                    key === '부재' ? (visitResultFilter === '부재' ? 'active' : '') :
+                    (visitResultFilter === '만남' ? 'active' : '')
+                  }
+                  onClick={() => {
+                    if (key === '전체') { setChineseOnlyFilter(false); setVisitResultFilter('전체') }
+                    else if (key === '중국인') setChineseOnlyFilter((c) => !c)
+                    else if (key === '부재') setVisitResultFilter((c) => c === '부재' ? '전체' : '부재')
+                    else setVisitResultFilter((c) => c === '만남' ? '전체' : '만남')
+                  }}
                   type="button"
-                >
-                  {type === '전체' ? '전체' : type}
-                </button>
+                >{label}</button>
               ))}
             </div>
           </div>
-          <label>
-            <span>상태</span>
-            <select
-              aria-label="상태 필터"
-              onChange={(e) => setStatusFilter(e.target.value as BuildingStatus | '전체')}
-              value={statusFilter}
-            >
-              <option value="전체">전체</option>
-              <option value="방문필요">방문필요</option>
-              <option value="방문완료">방문완료</option>
-              <option value="방문금지">방문금지</option>
-              <option value="정기방문">정기방문</option>
-            </select>
-          </label>
-          <div className="strategy-segment" aria-label="운영 필터">
-            <span>운영</span>
-            <div>
-              <button
-                className={!chineseOnlyFilter && visitResultFilter === '전체' ? 'active' : ''}
-                onClick={() => {
-                  setChineseOnlyFilter(false)
-                  setVisitResultFilter('전체')
-                }}
-                type="button"
-              >
-                전체
-              </button>
-              <button
-                className={chineseOnlyFilter ? 'active' : ''}
-                onClick={() => setChineseOnlyFilter((current) => !current)}
-                type="button"
-              >
-                중국인
-              </button>
-              <button
-                className={visitResultFilter === '부재' ? 'active' : ''}
-                onClick={() => setVisitResultFilter((current) => (current === '부재' ? '전체' : '부재'))}
-                type="button"
-              >
-                부재
-              </button>
-              <button
-                className={visitResultFilter === '만남' ? 'active' : ''}
-                onClick={() => setVisitResultFilter((current) => (current === '만남' ? '전체' : '만남'))}
-                type="button"
-              >
-                만남
-              </button>
-            </div>
-          </div>
-
+          {/* spacer */}
+          <div style={{ flex: 1 }} />
+          {/* 구역선 버튼 */}
           {isAdmin && (
-          <div className="ots-control-tools" style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-            <button
-              className="ots-tool-btn"
-              onClick={handleStartBoundaryDrawing}
-              disabled={drawingBoundary}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 'var(--r-md)',
-                background: drawingBoundary ? '#f1f5f9' : '#1e293b',
-                color: drawingBoundary ? '#94a3b8' : '#fff',
-                border: 'none',
-                fontWeight: 700,
-                cursor: drawingBoundary ? 'default' : 'pointer',
-                fontSize: '13px'
-              }}
-            >
-              {savedBoundary ? '구역선 수정' : '구역선 그리기'}
-            </button>
-            {savedBoundary && (
-              <button
-                className="ots-tool-btn danger"
-                onClick={() => {
-                  if (confirm(`${selectedBoundaryCard?.name ?? '선택 카드'} 구역선을 삭제할까요?`)) {
-                    handleDeleteBoundary(boundaryCardId)
-                  }
-                }}
-                disabled={drawingBoundary}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: 'var(--r-md)',
-                  background: 'var(--danger-100)',
-                  color: 'var(--danger-600)',
-                  border: 'none',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontSize: '13px'
-                }}
-              >
-                삭제
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="tbl-ghost-btn" onClick={handleStartBoundaryDrawing} disabled={drawingBoundary} type="button">
+                {savedBoundary ? '구역선 변경' : '구역선 그리기'}
               </button>
-            )}
-          </div>
+              {savedBoundary && (
+                <button className="tbl-ghost-btn" style={{ color: 'var(--danger-600)', borderColor: 'var(--danger-200)' }} onClick={() => { if (confirm(`${selectedBoundaryCard?.name ?? '선택 카드'} 구역선을 삭제할까요?`)) { handleDeleteBoundary(boundaryCardId) } }} disabled={drawingBoundary} type="button">
+                  삭제
+                </button>
+              )}
+            </div>
           )}
         </div>
 
         <div className="map-workspace">
           <aside className="map-card-panel" aria-label="지도 카드 목록">
-            <div className="map-card-panel-head">
+            <div className="map-panel-head">
               <div>
-                <p>구역 카드</p>
-                <strong>{orderedCards.length}개</strong>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>구역 카드</p>
+                <strong style={{ fontSize: 18, fontWeight: 700, color: 'var(--gray-900)', lineHeight: 1.2 }}>{orderedCards.length}개</strong>
               </div>
               <button
-                className={visibleBoundarySelection === '전체' ? 'active' : ''}
+                className="tbl-soft-btn sm"
+                style={{ flexShrink: 0 }}
                 onClick={toggleAllBoundaries}
                 type="button"
               >
@@ -946,31 +934,24 @@ export function DesktopMap({
                 const hasBoundary = boundariesByCardId.has(card.id)
                 const boundaryVisible = visibleBoundarySelection === card.id || visibleBoundarySelection === '전체'
                 return (
-                  <article className={cardFilter === card.id ? 'selected' : ''} key={card.id}>
-                    <button onClick={() => handleSelectCardForMap(card.id)} type="button">
+                  <article
+                    className={cardFilter === card.id ? 'map-card-item selected' : 'map-card-item'}
+                    key={card.id}
+                  >
+                    <button className="map-card-item__content" onClick={() => handleSelectCardForMap(card.id)} type="button">
                       <strong>{card.name}</strong>
                       <span>
-                        건물 {cardBuildings.length} · 세대 {card.units} · {card.progress}%
+                        건물 <b className="tnum">{cardBuildings.length}</b> · 세대 <b className="tnum">{card.units}</b> · <b className="tnum">{card.progress}%</b>
                       </span>
                     </button>
-                    <div>
-                      <em className={hasBoundary ? 'has-boundary' : ''}>
-                        {hasBoundary ? (boundaryVisible ? '구역선 표시' : '구역선 숨김') : '구역선 없음'}
-                      </em>
-                      {isAdmin && hasBoundary && (
-                        <button
-                          className="line-delete-action"
-                          onClick={() => {
-                            if (confirm(`${card.name} 구역선을 삭제할까요?`)) {
-                              handleDeleteBoundary(card.id)
-                            }
-                          }}
-                          type="button"
-                        >
-                          삭제
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      className={`map-card-boundary-btn${boundaryVisible ? ' active' : ''}`}
+                      disabled={!hasBoundary}
+                      onClick={(e) => { e.stopPropagation(); setVisibleBoundarySelection((prev) => prev === card.id ? null : card.id) }}
+                      type="button"
+                    >
+                      구역선
+                    </button>
                   </article>
                 )
               })}
@@ -978,20 +959,31 @@ export function DesktopMap({
           </aside>
 
           <div className="map-canvas-panel">
-              <div className="ots-map-legend">
-                {Object.entries(statusCounts).map(([status, count]) => (
-                  <div className="legend-item" key={status}>
-                    <i className={`map-dot status-${status}`} />
-                    <strong>{count}</strong>
-                    <span>{status}</span>
-                  </div>
-                ))}
+              <div className="map-legend-card">
+                {[
+                  { status: '방문필요', color: 'var(--info-700, #3b82f6)', label: '방문필요' },
+                  { status: '방문완료', color: '#10B981', label: '방문완료' },
+                  { status: '방문금지', color: '#EF4444', label: '방문금지' },
+                  { status: '정기방문', color: '#F59E0B', label: '정기방문' },
+                ].map(({ status, color, label }) => {
+                  const typedStatus = status as BuildingStatus
+                  const isCollapsed = collapsedStatusGroups.has(typedStatus)
+                  const isHiddenOnMap = hiddenMapStatuses.has(typedStatus)
+                  return (
+                  <button
+                    className={`map-legend-toggle${isCollapsed ? ' collapsed' : ''}${isHiddenOnMap ? ' map-hidden' : ''}`}
+                    key={status}
+                    onClick={() => toggleStatusFromLegend(typedStatus)}
+                    title={`${label} 목록 ${isCollapsed ? '펼치기' : '접기'}${typedStatus === '방문완료' || typedStatus === '정기방문' ? ' · 지도 핀 토글' : ''}`}
+                    type="button"
+                  >
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, border: '2px solid white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: 'var(--gray-600)' }}>{label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray-900)', marginLeft: 'auto' }}>{(statusCounts as Record<string, number>)[status] ?? 0}</span>
+                  </button>
+                  )
+                })}
               </div>
-
-              {/* Detail Toggle Overlay */}
-              <button className="ots-detail-toggle" onClick={() => setDetailOpen((open) => !open)} type="button">
-                {detailOpen ? '상세 접기' : '상세 열기'}
-              </button>
 
             {drawingBoundary && (
               <div className="boundary-toolbar editing" aria-label="카드 구역선 편집">
@@ -1058,7 +1050,7 @@ export function DesktopMap({
             )}
 
             <MapCanvas
-              buildings={contextBuildings}
+              buildings={mapBuildings}
               cardBoundaries={cardBoundaries}
               highlightedCardIds={highlightedCardIds}
               cards={cards}
@@ -1156,14 +1148,20 @@ export function DesktopMap({
 
       {detailOpen && (
       <aside className="map-detail-pane" style={{ position: 'relative' }}>
-        <div className="map-panel-header">
-          <div>
-            <p>{cardFilter === '전체' ? '전체 필터' : getCardName(cards, cardFilter)}</p>
-            <h2>건물 목록 <span className="panel-count">{panelBuildings.length}</span></h2>
-          </div>
-          <div className="panel-progress">
-            <strong>{panelCompletionRate}%</strong>
-            <span>{panelVisitedTotal}/{panelUnitTotal} 세대</span>
+        <div className="map-detail-head">
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gray-900)' }}>
+                건물 목록 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{panelBuildings.length}</span>
+              </span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--success-600)', fontVariantNumeric: 'tabular-nums' }}>{panelCompletionRate}%</span>
+            </div>
+            <div style={{ height: 4, background: 'var(--gray-100)', borderRadius: 'var(--radius-full)', overflow: 'hidden', margin: '6px 0' }}>
+              <div style={{ height: '100%', width: `${panelCompletionRate}%`, background: 'var(--success-500)', borderRadius: 'var(--radius-full)', transition: 'width 0.3s' }} />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--gray-500)' }}>
+              {panelVisitedTotal}/{panelUnitTotal} 세대 · {cardFilter !== '전체' ? getCardName(cards, cardFilter) : '전체 필터'}
+            </div>
           </div>
         </div>
 
@@ -1181,7 +1179,28 @@ export function DesktopMap({
               <small>필터를 변경하거나 건물을 추가해 주세요</small>
             </div>
           )}
-          {panelBuildings.map((building) => {
+          {panelBuildingGroups.map(({ status, label, buildings: groupedBuildings }) => {
+            if (groupedBuildings.length === 0) return null
+            const isGroupCollapsed = collapsedStatusGroups.has(status)
+            const isHiddenOnMap = hiddenMapStatuses.has(status)
+            return (
+              <section className={`building-status-group status-${status}${isGroupCollapsed ? ' collapsed' : ''}`} key={status}>
+                <button
+                  className="building-status-group-head"
+                  onClick={() => toggleStatusGroup(status)}
+                  type="button"
+                >
+                  <span className="building-status-title">
+                    <i className={`map-dot status-${status}`} />
+                    {label}
+                  </span>
+                  <span className="building-status-meta">
+                    {isHiddenOnMap && <em>지도 숨김</em>}
+                    <b className="tnum">{groupedBuildings.length}</b>
+                    <span>{isGroupCollapsed ? '펼치기' : '접기'}</span>
+                  </span>
+                </button>
+                {!isGroupCollapsed && groupedBuildings.map((building) => {
             const isExpanded = expandedBuildingIds.has(building.id)
             const buildingStatus = getBuildingStatus(building)
             const handledUnits = building.units.filter((unit) => unit.status !== '미방문').length
@@ -1250,8 +1269,9 @@ export function DesktopMap({
                       <span>{getCardName(cards, building.cardId)}</span>
                     </div>
 
-                    <div className="unit-col-header">
+                    <div className={`unit-col-header${getActivePeriodForDate(getLocalDateString()) ? ' with-invitation' : ''}`}>
                       <span>세대 정보</span>
+                      {getActivePeriodForDate(getLocalDateString()) && <span style={{ color: '#f59e0b' }}>초대장</span>}
                       <span>만남</span>
                       <span>부재</span>
                       <span>한국</span>
@@ -1267,7 +1287,7 @@ export function DesktopMap({
 
                       return (
                         <div className={`unit-grid-row${isUnitExpanded ? ' ugr-expanded' : ''}${unit.isRegularVisit ? ' ugr-regular' : ''}`} key={unit.id}>
-                          <div className="unit-grid-main">
+                          <div className={`unit-grid-main${getActivePeriodForDate(getLocalDateString()) ? ' with-invitation' : ''}`}>
                             <button className="unit-name-btn" onClick={() => setExpandedUnitId(isUnitExpanded ? null : unit.id)} type="button">
                               <span className="unit-chevron">{isUnitExpanded ? '▾' : '▸'}</span>
                               <span className="unit-number-text">{unit.number}</span>
@@ -1279,6 +1299,22 @@ export function DesktopMap({
                                 </span>
                               )}
                             </button>
+                            {getActivePeriodForDate(getLocalDateString()) && (() => {
+                              const todayInvitation = unitHistories.find(
+                                (h) => h.visitedAt === getLocalDateString() && h.invitationLeft,
+                              )
+                              return (
+                                <button
+                                  className={`unit-check-btn unit-check-btn-invitation${todayInvitation ? ' ucb-invitation' : ''}${!canRecordVisits ? ' locked' : ''}`}
+                                  onClick={() => {
+                                    if (!requireRecordAccess()) return
+                                    onToggleInvitationLeft?.(building.id, unit.id)
+                                  }}
+                                  type="button"
+                                  title="초대장 남김 (단독 토글)"
+                                >{todayInvitation ? '✓' : ''}</button>
+                              )
+                            })()}
                             <button
                               className={`unit-check-btn${unit.status === '만남' ? ' ucb-meet' : ''}${!canRecordVisits ? ' locked' : ''}`}
                               onClick={() => {
@@ -1417,6 +1453,9 @@ export function DesktopMap({
                   </div>
                 )}
               </article>
+            )
+          })}
+              </section>
             )
           })}
         </div>
@@ -1762,14 +1801,39 @@ export function DesktopMap({
               />
 
               <label>메모</label>
-              <textarea 
+              <textarea
                 value={historyEditor.memo}
                 onChange={e => setHistoryEditor({ ...historyEditor, memo: e.target.value })}
                 style={{ width: '100%', padding: '8px', height: '60px', marginBottom: '12px' }}
               />
+
+              {/* 특별봉사 활성 시즌일 때만 표시 */}
+              {getActivePeriodForDate(historyEditor.visitedAt) && (
+                <div style={{
+                  marginTop: '4px',
+                  marginBottom: '8px',
+                  padding: '10px 12px',
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: '8px',
+                }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e', marginBottom: '6px' }}>
+                    🟠 {getActivePeriodForDate(historyEditor.visitedAt)?.label}
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
+                    <input
+                      type="checkbox"
+                      checked={historyEditor.invitationLeft ?? false}
+                      onChange={(e) => setHistoryEditor({ ...historyEditor, invitationLeft: e.target.checked })}
+                      style={{ width: '15px', height: '15px', accentColor: '#f59e0b', cursor: 'pointer' }}
+                    />
+                    초대장 남김
+                  </label>
+                </div>
+              )}
             </div>
             <div className="admin-modal-footer">
-              <button 
+              <button
                 onClick={() => setHistoryEditor(null)}
                 style={{ background: '#f1f5f9', color: 'var(--ink-500)' }}
               >취소</button>

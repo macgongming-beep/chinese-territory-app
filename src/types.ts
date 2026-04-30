@@ -1,6 +1,6 @@
-export type Role = 'user' | 'leader' | 'admin'
+export type Role = 'user' | 'leader' | 'admin' | 'developer'
 export type ScheduleType = '비공식' | '상가' | '주택' | '정기방문' | '혼합'
-export type DesktopPage = '홈' | '공지' | '캘린더' | '구역' | '나의봉사' | '지도' | '배정' | '사용자' | '설정'
+export type DesktopPage = '홈' | '공지' | '캘린더' | '구역' | '나의봉사' | '지도' | '배정' | '사용자' | '통계' | '설정'
 export type UnitStatus = '미방문' | '만남' | '부재' | '한국인' | '거절' | '확인필요'
 export type BuildingStatus = '방문필요' | '방문완료' | '방문금지' | '정기방문'
 export type TimeSlot = '오전' | '오후' | '저녁'
@@ -21,6 +21,7 @@ export type CalendarEvent = {
   title: string
   type: ScheduleType
   place: string
+  mapLink?: string
   leader: string
   card: string
   hasMeeting: boolean
@@ -102,6 +103,8 @@ export type VisitHistory = {
   serviceSessionId?: number | null
   createdAt?: string
   memo?: string
+  specialPeriodId?: number | null
+  invitationLeft?: boolean
 }
 
 export type ServiceSession = {
@@ -126,10 +129,11 @@ export const roleLabels: Record<Role, string> = {
   user: '일반',
   leader: '인도자',
   admin: '관리자',
+  developer: '개발자',
 }
 
 export const desktopPages: DesktopPage[] = [
-  '홈', '공지', '캘린더', '구역', '지도', '배정', '사용자', '설정',
+  '홈', '공지', '캘린더', '구역', '지도', '배정', '사용자', '통계', '설정',
 ]
 
 export const visitResults: UnitStatus[] = ['만남', '부재', '한국인', '거절', '확인필요']

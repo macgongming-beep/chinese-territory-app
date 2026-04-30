@@ -415,4 +415,5 @@ export const roleCopy = {
   user: { title: '내 봉사 일정', summary: ['신청 1', '입명 1', '내 카드 1'] },
   leader: { title: '카드 배정 현황', summary: ['받은 카드 3', '재배정 5', '미배정 1'] },
   admin: { title: '인도자 배정 관리', summary: ['인도자 2', '배정 카드 7', '승인대기 3'] },
+  developer: { title: '개발자 관리', summary: ['시스템', 'DB', '로그'] },
 } satisfies Record<import('../types').Role, { title: string; summary: string[] }>

@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
 import { showToast } from '../lib/toast'
 import { findCardForCoordinates, formatDisplayAddress, isValidMapCoordinate, normalizeMapCoordinates, parseCoordinate } from '../utils/mapUtils'
-import type { Building, CardBoundary, TerritoryCard, TerritoryRegion, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, CardBoundary, Role, TerritoryCard, TerritoryRegion, Unit, UnitStatus, VisitHistory } from '../types'
 
 type CsvBuildingImport = {
   cardId: number
@@ -158,6 +158,7 @@ export function DesktopTerritory({
   onCreateCard,
   onDeleteBuildings,
   onDeleteCards,
+  onMergeDuplicateBuildings,
   onImportBuildings,
   onMoveBuildingToCard,
   onReassignBuildingsToCards,
@@ -165,20 +166,24 @@ export function DesktopTerritory({
   onToggleChinese,
   onToggleRegularVisit,
   onSetRegularVisitor,
+  onAddUnit,
+  onDeleteUnit,
   onUpdateUnitFlags,
   onUpdateUnitStatus,
   onOpenCardMap,
   onOpenBuildingMap,
   visitHistories,
+  onCreateBuilding,
 }: {
   buildings: Building[]
   cardBoundaries: CardBoundary[]
   cards: TerritoryCard[]
-  role: 'user' | 'leader' | 'admin'
+  role: Role
   onSetCardLeaders: (cardId: number, leaderNames: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
   onSetMultipleCardLeaders: (cardIds: number[], leaderNames: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
   onDeleteBuildings: (buildingIds: number[]) => void
   onDeleteCards: (cardIds: number[]) => void
+  onMergeDuplicateBuildings: (scopeCardId?: number, nameOverrides?: Record<number, string>) => Promise<void>
   onImportBuildings: (inputs: CsvBuildingImport[]) => Promise<{ inserted: number; skipped: number }>
   onMoveBuildingToCard: (buildingId: number, cardId: number) => void
   onReassignBuildingsToCards: (updates: Array<{ buildingId: number; cardId: number }>) => Promise<{ updated: number; failed: number }>
@@ -186,6 +191,8 @@ export function DesktopTerritory({
   onToggleChinese: (buildingId: number, unitId: number) => void
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
+  onAddUnit: (buildingId: number, unitNumber: string) => void
+  onDeleteUnit: (buildingId: number, unitId: number) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
   onUpdateUnitStatus: (buildingId: number, unitId: number, status: UnitStatus, memo?: string) => void
   onOpenCardMap: (cardId: number, editBoundary?: boolean) => void
@@ -197,6 +204,7 @@ export function DesktopTerritory({
     index: number
     pinCount: number
   }) => Promise<number | null> | number | null
+  onCreateBuilding?: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => Promise<void> | void
 }) {
   const { allUsers, fetchAllUsers } = useAuth()
   const isAdmin = role === 'admin'
@@ -215,11 +223,17 @@ export function DesktopTerritory({
   const [pendingBoundaryCard, setPendingBoundaryCard] = useState<{ id: number; name: string } | null>(null)
   const [regionFilter, setRegionFilter] = useState<TerritoryRegion | '전체'>('전체')
   const [areaFilter, setAreaFilter] = useState('전체')
+  const [areaExpanded, setAreaExpanded] = useState(false)
+  const AREA_CHIP_LIMIT = 10
   const [assignmentFilter, setAssignmentFilter] = useState<'전체' | '미배정'>('전체')
   const [buildingCardFilter, setBuildingCardFilter] = useState<number | '전체'>('전체')
   const [buildingTypeFilter, setBuildingTypeFilter] = useState<Building['type'] | '전체'>('전체')
   const [pointStatusFilter, setPointStatusFilter] = useState<UnitStatus | '전체'>('전체')
+  type BuildingSortKey = '카드' | '건물' | '주소' | '유형'
+  const [buildingSort, setBuildingSort] = useState<{ key: BuildingSortKey; dir: 'asc' | 'desc' }>({ key: '카드', dir: 'asc' })
   const [editingBuildingId, setEditingBuildingId] = useState<number | null>(null)
+  const [editingUnitId, setEditingUnitId] = useState<number | null>(null)
+  const [unitEditDraft, setUnitEditDraft] = useState<{ number: string; status: UnitStatus; memo: string; isChinese: boolean; isRegularVisit: boolean; isForbidden: boolean }>({ number: '', status: '미방문', memo: '', isChinese: false, isRegularVisit: false, isForbidden: false })
   const [buildingEditDraft, setBuildingEditDraft] = useState({
     name: '',
     address: '',
@@ -228,6 +242,15 @@ export function DesktopTerritory({
     memo: '',
   })
   const [showCsvModal, setShowCsvModal] = useState(false)
+  // 중복 주소 합치기 이름 선택 모달
+  const [mergeModalGroups, setMergeModalGroups] = useState<Array<{ primaryId: number; address: string; names: string[] }> | null>(null)
+  const [mergeNameChoices, setMergeNameChoices] = useState<Record<number, string>>({})
+  // 건물 추가 모달
+  const [addBuildingOpen, setAddBuildingOpen] = useState(false)
+  const [addBuildingForm, setAddBuildingForm] = useState<{ name: string; address: string; type: Building['type']; cardId: number | 'auto' }>({ name: '', address: '', type: '주택', cardId: 'auto' })
+  const [addBuildingGeoState, setAddBuildingGeoState] = useState<'idle' | 'loading' | 'ok' | 'fail'>('idle')
+  const [addBuildingLatLng, setAddBuildingLatLng] = useState<{ lat: number; lng: number } | null>(null)
+  const [addBuildingSubmitting, setAddBuildingSubmitting] = useState(false)
   const [csvPreviewRows, setCsvPreviewRows] = useState<CsvPreviewRow[]>([])
   const [csvSkippedRows, setCsvSkippedRows] = useState(0)
   const [csvSkippedDetails, setCsvSkippedDetails] = useState<CsvSkippedRow[]>([])
@@ -384,7 +407,97 @@ export function DesktopTerritory({
     if (buildingTypeFilter !== '전체' && building.type !== buildingTypeFilter) return false
     return true
   })
-  const buildingUnitsTotal = filteredBuildings.reduce((sum, building) => sum + building.units.length, 0)
+  // 건물 추가 — 카드 자동 매칭 (동 이름 기준)
+  const findCardForAddress = (address: string): number | null => {
+    if (filteredCards.length === 0) return null
+    // 주소에서 동 이름 추출
+    const dongMatch = address.match(/([가-힣]+동)/)
+    if (dongMatch) {
+      const dong = dongMatch[1]
+      const found = cards.find((c) => c.area.includes(dong) || dong.includes(c.area))
+      if (found) return found.id
+    }
+    return filteredCards[0]?.id ?? null
+  }
+
+  const handleAddBuildingSubmit = async () => {
+    if (!addBuildingForm.address.trim() || !onCreateBuilding) return
+    setAddBuildingSubmitting(true)
+
+    // 1. 좌표 확보 (이미 찾았으면 재사용)
+    let latLng = addBuildingLatLng
+    if (!latLng) {
+      setAddBuildingGeoState('loading')
+      latLng = await geocodeAddress(addBuildingForm.address)
+      setAddBuildingGeoState(latLng ? 'ok' : 'fail')
+    }
+
+    // 2. 카드 자동 배정: 좌표 → 경계선 매칭 → 동 이름 매칭 → 첫 번째 카드 순
+    let cardId: number
+    if (addBuildingForm.cardId !== 'auto') {
+      cardId = addBuildingForm.cardId
+    } else if (latLng) {
+      const byBoundary = findCardForCoordinates(latLng.lat, latLng.lng, cardBoundaries)
+      if (byBoundary) {
+        cardId = byBoundary
+        const matchedCard = cards.find((c) => c.id === byBoundary)
+        if (matchedCard) showToast(`"${matchedCard.name}" 카드에 자동 배정됐습니다`, 'success')
+      } else {
+        cardId = findCardForAddress(addBuildingForm.address) ?? cards[0]?.id ?? 0
+      }
+    } else {
+      cardId = findCardForAddress(addBuildingForm.address) ?? cards[0]?.id ?? 0
+    }
+
+    await onCreateBuilding({
+      cardId,
+      name: addBuildingForm.name,
+      address: addBuildingForm.address,
+      type: addBuildingForm.type,
+      lat: latLng?.lat ?? 0,
+      lng: latLng?.lng ?? 0,
+    })
+    setAddBuildingOpen(false)
+    setAddBuildingForm({ name: '', address: '', type: '주택', cardId: 'auto' })
+    setAddBuildingLatLng(null)
+    setAddBuildingGeoState('idle')
+    setAddBuildingSubmitting(false)
+  }
+
+  // 정렬 적용
+  const naturalCompare = (x: string, y: string) =>
+    x.localeCompare(y, 'ko', { numeric: true, sensitivity: 'base' })
+
+  const sortedBuildings = [...filteredBuildings].sort((a, b) => {
+    const dir = buildingSort.dir === 'asc' ? 1 : -1
+    if (buildingSort.key === '카드') {
+      const cardA = cardMap.get(a.cardId)?.name ?? ''
+      const cardB = cardMap.get(b.cardId)?.name ?? ''
+      return naturalCompare(cardA, cardB) * dir
+    }
+    if (buildingSort.key === '건물') return naturalCompare(a.name, b.name) * dir
+    if (buildingSort.key === '주소') return naturalCompare(a.address, b.address) * dir
+    if (buildingSort.key === '유형') return naturalCompare(a.type, b.type) * dir
+    return 0
+  })
+
+  // const buildingUnitsTotal = filteredBuildings.reduce((sum, building) => sum + building.units.length, 0)
+
+  // 중복 주소 그룹 탐지 (필터된 건물 기준)
+  // 주소 정규화: 공백 통일, 소문자, 숫자 앞뒤 공백 제거 (진덕로19-3 == 진덕로 19-3)
+  const normalizeAddress = (addr: string) =>
+    addr.trim().toLowerCase().replace(/\s+/g, '').replace(/[-‐]/g, '-')
+
+  const duplicateAddressGroups = (() => {
+    const groupMap = new Map<string, Building[]>()
+    for (const b of filteredBuildings) {
+      const key = `${b.cardId}::${normalizeAddress(b.address)}`
+      if (!groupMap.has(key)) groupMap.set(key, [])
+      groupMap.get(key)!.push(b)
+    }
+    return Array.from(groupMap.values()).filter((g) => g.length > 1)
+  })()
+  const duplicateBuildingIds = new Set(duplicateAddressGroups.flatMap((g) => g.map((b) => b.id)))
   const pointRows = filteredBuildings.flatMap((building) =>
     building.units
       .filter((unit) => unit.isChinese || unit.isRegularVisit)
@@ -393,8 +506,8 @@ export function DesktopTerritory({
         return { building, unit, latestHistory: histories[0] }
       }),
   ).filter(({ unit }) => pointStatusFilter === '전체' || unit.status === pointStatusFilter)
-  const chinesePointTotal = pointRows.filter(({ unit }) => unit.isChinese).length
-  const regularPointTotal = pointRows.filter(({ unit }) => unit.isRegularVisit).length
+  // const chinesePointTotal = pointRows.filter(({ unit }) => unit.isChinese).length
+  // const regularPointTotal = pointRows.filter(({ unit }) => unit.isRegularVisit).length
   const startBuildingEdit = (building: Building) => {
     setEditingBuildingId(building.id)
     setBuildingEditDraft({
@@ -876,6 +989,161 @@ export function DesktopTerritory({
         </div>
       )}
 
+      {/* 건물 추가 모달 */}
+      {addBuildingOpen && (
+        <div className="cal-modal-backdrop" onClick={() => setAddBuildingOpen(false)}>
+          <div className="cal-modal add-building-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cal-modal-head">
+              <div className="cal-modal-title">
+                <h2>건물 추가</h2>
+                <p className="merge-name-modal-sub">주소 입력 후 자동으로 좌표를 찾고 카드에 배정됩니다.</p>
+              </div>
+              <button className="cal-modal-close" onClick={() => setAddBuildingOpen(false)} type="button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="add-building-modal-body">
+              <label className="add-building-field">
+                <span>주소 <em className="add-building-required">*</em></span>
+                <div className="add-building-address-row">
+                  <input
+                    className="add-building-input"
+                    placeholder="예) 경기도 용인시 처인구 언동로 213"
+                    value={addBuildingForm.address}
+                    onChange={(e) => {
+                      setAddBuildingForm((f) => ({ ...f, address: e.target.value }))
+                      setAddBuildingLatLng(null)
+                      setAddBuildingGeoState('idle')
+                    }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); geocodeAddress(addBuildingForm.address).then((r) => { setAddBuildingLatLng(r); setAddBuildingGeoState(r ? 'ok' : 'fail') }) }}}
+                  />
+                  <button
+                    className="add-building-geocode-btn"
+                    type="button"
+                    disabled={!addBuildingForm.address.trim() || addBuildingGeoState === 'loading'}
+                    onClick={async () => {
+                      setAddBuildingGeoState('loading')
+                      const r = await geocodeAddress(addBuildingForm.address)
+                      setAddBuildingLatLng(r)
+                      setAddBuildingGeoState(r ? 'ok' : 'fail')
+                    }}
+                  >
+                    {addBuildingGeoState === 'loading' ? '검색 중...' : '좌표 찾기'}
+                  </button>
+                </div>
+                {addBuildingGeoState === 'ok' && addBuildingLatLng && (
+                  <span className="add-building-geo-ok">📍 좌표 확인 ({addBuildingLatLng.lat.toFixed(5)}, {addBuildingLatLng.lng.toFixed(5)})</span>
+                )}
+                {addBuildingGeoState === 'fail' && (
+                  <span className="add-building-geo-fail">주소를 찾지 못했습니다. 핀 없이 건물이 생성됩니다.</span>
+                )}
+              </label>
+              <label className="add-building-field">
+                <span>건물명 <em className="add-building-hint">(비워두면 주소에서 자동 설정)</em></span>
+                <input
+                  className="add-building-input"
+                  placeholder="예) 언동로빌라, 고진로상가 등"
+                  value={addBuildingForm.name}
+                  onChange={(e) => setAddBuildingForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </label>
+              <div className="add-building-row2">
+                <label className="add-building-field">
+                  <span>유형</span>
+                  <select className="add-building-select" value={addBuildingForm.type} onChange={(e) => setAddBuildingForm((f) => ({ ...f, type: e.target.value as Building['type'] }))}>
+                    <option value="주택">주택</option>
+                    <option value="상가">상가</option>
+                  </select>
+                </label>
+                <label className="add-building-field">
+                  <span>카드 배정</span>
+                  <select className="add-building-select" value={addBuildingForm.cardId === 'auto' ? 'auto' : String(addBuildingForm.cardId)} onChange={(e) => setAddBuildingForm((f) => ({ ...f, cardId: e.target.value === 'auto' ? 'auto' : Number(e.target.value) }))}>
+                    <option value="auto">자동 (주소 기준)</option>
+                    {cards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div className="merge-name-modal-footer">
+              <button className="cal-cancel-btn" onClick={() => setAddBuildingOpen(false)} type="button">취소</button>
+              <button
+                className="dup-address-merge-btn"
+                type="button"
+                disabled={!addBuildingForm.address.trim() || addBuildingSubmitting}
+                onClick={handleAddBuildingSubmit}
+                style={{ background: '#2563eb' }}
+              >
+                {addBuildingSubmitting ? '추가 중...' : '건물 추가'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 중복 주소 건물 이름 선택 모달 */}
+      {mergeModalGroups && (
+        <div className="cal-modal-backdrop" onClick={() => setMergeModalGroups(null)}>
+          <div className="cal-modal merge-name-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cal-modal-head">
+              <div className="cal-modal-title">
+                <h2>합칠 건물 이름 선택</h2>
+                <p className="merge-name-modal-sub">각 주소별로 남길 건물 이름을 선택해주세요.</p>
+              </div>
+              <button className="cal-modal-close" onClick={() => setMergeModalGroups(null)} type="button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="merge-name-modal-body">
+              {mergeModalGroups.map((group) => (
+                <div className="merge-name-group" key={group.primaryId}>
+                  <div className="merge-name-address">{group.address}</div>
+                  <div className="merge-name-chips">
+                    {group.names.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        className={`merge-name-chip${mergeNameChoices[group.primaryId] === name ? ' active' : ''}`}
+                        onClick={() => setMergeNameChoices((prev) => ({ ...prev, [group.primaryId]: name }))}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    className="merge-name-custom-input"
+                    placeholder="직접 입력 (또는 위에서 선택)"
+                    value={mergeNameChoices[group.primaryId] ?? ''}
+                    onChange={(e) => setMergeNameChoices((prev) => ({ ...prev, [group.primaryId]: e.target.value }))}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="merge-name-modal-footer">
+              <button className="cal-cancel-btn" onClick={() => setMergeModalGroups(null)} type="button">취소</button>
+              <button
+                className="dup-address-merge-btn"
+                type="button"
+                onClick={async () => {
+                  // 빈 입력은 첫 번째 이름으로 fallback
+                  const finalChoices: Record<number, string> = {}
+                  mergeModalGroups.forEach((g) => {
+                    finalChoices[g.primaryId] = mergeNameChoices[g.primaryId]?.trim() || g.names[0]
+                  })
+                  setMergeModalGroups(null)
+                  await onMergeDuplicateBuildings(undefined, finalChoices)
+                }}
+              >
+                합치기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCsvModal && (
         <div className="cal-modal-backdrop" onClick={() => setShowCsvModal(false)}>
           <div className="cal-modal csv-import-modal" style={{ maxWidth: '720px' }} onClick={(e) => e.stopPropagation()}>
@@ -976,337 +1244,333 @@ export function DesktopTerritory({
       )}
 
       <div className="territory-main">
-        <div className="calendar-toolbar territory-toolbar">
+        {/* ── Page Head ── */}
+        <div className="home-page-head" style={{ marginBottom: 20, alignItems: 'center' }}>
           <div>
-            <p>구역 관리</p>
-            <h1>{activeTab}</h1>
+            <p className="home-page-eyebrow">구역 관리</p>
+            <h1 className="home-page-title">{activeTab}</h1>
           </div>
-          <div className="toolbar-actions">
+          <div style={{ display: 'flex', gap: 8 }}>
             {activeTab === '카드 관리' ? (
               <>
-                <button onClick={() => setDetailPaneOpen((open) => !open)} type="button">
+                <button className="tbl-ghost-btn" onClick={() => setDetailPaneOpen((o) => !o)} type="button">
                   {detailPaneOpen ? '상세 접기' : '상세 열기'}
                 </button>
                 {isAdmin && (
                   <>
-                    <button
-                      className="danger-outline-btn"
-                      disabled={checkedCardIds.size === 0}
-                      onClick={handleDeleteCheckedCards}
-                      type="button"
-                    >
-                      선택 삭제 {checkedCardIds.size > 0 ? checkedCardIds.size : ''}
+                    <button className="tbl-ghost-btn" disabled={checkedCardIds.size === 0} onClick={handleDeleteCheckedCards} type="button">
+                      선택 삭제{checkedCardIds.size > 0 ? ` ${checkedCardIds.size}` : ''}
                     </button>
-                    <button className="cal-add-btn" onClick={openModal} style={{ width: 'auto', padding: '0 18px', borderRadius: 'var(--r-md)', minHeight: '42px', fontSize: '14px' }} type="button">
-                      + 카드 추가
-                    </button>
+                    <button className="tbl-primary-btn" onClick={openModal} type="button">+ 카드 추가</button>
                   </>
                 )}
               </>
             ) : (
               <>
                 {isAdmin && (
-                <button
-                  className="danger-outline-btn"
-                  disabled={checkedBuildingIds.size === 0}
-                  onClick={handleDeleteCheckedBuildings}
-                  type="button"
-                >
-                  선택 삭제 {checkedBuildingIds.size > 0 ? checkedBuildingIds.size : ''}
-                </button>
+                  <button className="tbl-ghost-btn" disabled={checkedBuildingIds.size === 0} onClick={handleDeleteCheckedBuildings} type="button">
+                    선택 삭제{checkedBuildingIds.size > 0 ? ` ${checkedBuildingIds.size}` : ''}
+                  </button>
                 )}
-                <button
-                  disabled={reassigningByBoundary}
-                  onClick={handleReassignByBoundary}
-                  type="button"
-                >
+                <button className="tbl-ghost-btn" disabled={reassigningByBoundary} onClick={handleReassignByBoundary} type="button">
                   {reassigningByBoundary ? '재배정 중...' : '좌표 기준 재배정'}
                 </button>
-                <button className="cal-add-btn" onClick={() => setShowCsvModal(true)} style={{ width: 'auto', padding: '0 18px', borderRadius: 'var(--r-md)', minHeight: '42px', fontSize: '14px' }} type="button">
-                  건물 CSV 업로드
-                </button>
+                {onCreateBuilding && (
+                  <button className="tbl-ghost-btn" onClick={() => { setAddBuildingForm({ name: '', address: '', type: '주택', cardId: 'auto' }); setAddBuildingLatLng(null); setAddBuildingGeoState('idle'); setAddBuildingOpen(true) }} type="button">
+                    + 건물 추가
+                  </button>
+                )}
+                <button className="tbl-primary-btn" onClick={() => setShowCsvModal(true)} type="button">건물 CSV 업로드</button>
               </>
             )}
           </div>
         </div>
 
-        <div className="territory-tabs" role="tablist" aria-label="구역 관리 방식">
+        {/* ── Segment Tab ── */}
+        <div className="tbl-seg-tab">
           {(['카드 관리', '건물 관리'] as const).map((tab) => (
-            <button
-              aria-selected={activeTab === tab}
-              className={activeTab === tab ? 'active' : ''}
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              role="tab"
-              type="button"
-            >
+            <button className={activeTab === tab ? 'active' : ''} key={tab} onClick={() => setActiveTab(tab)} type="button">
               {tab}
             </button>
           ))}
         </div>
 
-        <div className="territory-stats" aria-label="구역 요약">
-          {activeTab === '카드 관리' ? (
-            <>
-              <div><strong>{totalCards}</strong><span>전체 카드</span></div>
-              <div><strong>{assignedCards}</strong><span>인도자 배정</span></div>
-              <div><strong>{totalUnits}</strong><span>전체 세대</span></div>
-              <div><strong>{completedUnits}</strong><span>방문 완료</span></div>
-            </>
-          ) : (
-            <>
-              <div><strong>{filteredBuildings.length}</strong><span>표시 건물</span></div>
-              <div><strong>{buildingUnitsTotal}</strong><span>표시 세대</span></div>
-              <div><strong>{chinesePointTotal}</strong><span>중국인 포인트</span></div>
-              <div><strong>{regularPointTotal}</strong><span>정기방문</span></div>
-            </>
-          )}
-        </div>
+        {/* ── KPI (카드 관리만) ── */}
+        {activeTab === '카드 관리' && (
+          <div className="desk-grid-12" style={{ marginBottom: 16 }}>
+            <div className="desk-kpi" style={{ gridColumn: 'span 3' }}>
+              <div className="desk-kpi__num tnum">{totalCards}</div>
+              <div className="desk-kpi__label">전체 카드</div>
+            </div>
+            <div className="desk-kpi" style={{ gridColumn: 'span 3' }}>
+              <div className="desk-kpi__num tnum">{assignedCards}</div>
+              <div className="desk-kpi__label">인도자 배정</div>
+            </div>
+            <div className="desk-kpi" style={{ gridColumn: 'span 3' }}>
+              <div className="desk-kpi__num tnum">{totalUnits}</div>
+              <div className="desk-kpi__label">전체 세대</div>
+            </div>
+            <div className="desk-kpi" style={{ gridColumn: 'span 3' }}>
+              <div className="desk-kpi__num tnum">{completedUnits}</div>
+              <div className="desk-kpi__label">방문 완료</div>
+            </div>
+          </div>
+        )}
 
+        {/* ── 건물 관리 서브탭 ── */}
         {activeTab === '건물 관리' && (
-          <div className="territory-subtabs" role="tablist" aria-label="건물 관리 세부 메뉴">
+          <div className="territory-subtabs" style={{ marginBottom: 16 }}>
             {(['건물 목록', '중국인 포인트'] as const).map((tab) => (
-              <button
-                aria-selected={buildingSubTab === tab}
-                className={buildingSubTab === tab ? 'active' : ''}
-                key={tab}
-                onClick={() => setBuildingSubTab(tab)}
-                role="tab"
-                type="button"
-              >
-                {tab}
-              </button>
+              <button className={buildingSubTab === tab ? 'active' : ''} key={tab} onClick={() => setBuildingSubTab(tab)} type="button">{tab}</button>
             ))}
           </div>
         )}
 
-        <div className="territory-filters" aria-label="카드 필터">
-          <div className="territory-filter-group region-filter-group">
-            <span>지역</span>
-            {(['전체', ...territoryRegions] as Array<TerritoryRegion | '전체'>).map((filter) => (
-              <button
-                className={filter === regionFilter ? 'active' : ''}
-                key={filter}
-                onClick={() => { setRegionFilter(filter); setAreaFilter('전체') }}
-                type="button"
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
-          <div className="territory-filter-group area-filter-group">
-            <span>동</span>
-            <button className={areaFilter === '전체' ? 'active' : ''} onClick={() => setAreaFilter('전체')} type="button">전체 동</button>
-            {areaFilterOptions.map((area) => (
-              <button className={areaFilter === area ? 'active' : ''} key={area} onClick={() => setAreaFilter(area)} type="button">
-                {area}<small>{getAreaMetricCount(area)}</small>
-              </button>
-            ))}
-          </div>
-          <div className="territory-filter-group assignment-filter-group">
-            {activeTab === '카드 관리' ? (
-              <>
-                <span>배정</span>
-                {(['전체', '미배정'] as const).map((filter) => (
-                  <button className={filter === assignmentFilter ? 'active' : ''} key={filter} onClick={() => setAssignmentFilter(filter)} type="button">
-                    {filter}
+        {/* ── Big Card ── */}
+        <div className="desk-card" style={{ padding: 0, overflow: 'visible' }}>
+          {/* Layer 1: 지역 칩 */}
+          <div className="tbl-filter-layer">
+            <span className="tbl-filter-label">지역</span>
+            <div className="tbl-chip-row">
+              {(['전체', ...territoryRegions] as Array<TerritoryRegion | '전체'>).map((r) => {
+                const count = r === '전체' ? cards.length : cards.filter((c) => c.region === r).length
+                return (
+                  <button key={r} className={`tbl-chip${regionFilter === r ? ' active' : ''}`} onClick={() => { setRegionFilter(r); setAreaFilter('전체'); setAreaExpanded(false) }} type="button">
+                    {r}<span className="tbl-chip__count">{count}</span>
                   </button>
-                ))}
-                <div className="territory-filter-actions">
-                  {isAdmin && (
-                    <>
-                      <details className="territory-multi-select">
-                        <summary>
-                          {bulkLeaderNames.length > 0 ? `인도자 선택 ${bulkLeaderNames.length}` : '인도자 선택'}
-                        </summary>
-                        <div className="territory-multi-select-menu">
-                          {leaderOptions.map((leaderName) => (
-                            <label key={leaderName} className="territory-multi-option">
-                              <input
-                                type="checkbox"
-                                checked={bulkLeaderNames.includes(leaderName)}
-                                onChange={() => toggleBulkLeaderName(leaderName)}
-                              />
-                              {leaderName}
-                            </label>
-                          ))}
-                          <button
-                            className="territory-multi-clear"
-                            onClick={() => setBulkLeaderNames([])}
-                            type="button"
-                          >
-                            모두 해제
-                          </button>
-                        </div>
-                      </details>
-                      <button
-                        disabled={checkedCardIds.size === 0 || bulkAssigning}
-                        onClick={handleAssignLeaderBulk}
-                        type="button"
-                      >
-                        {bulkAssigning ? '적용 중...' : `일괄 적용 ${checkedCardIds.size > 0 ? checkedCardIds.size : ''}`}
-                      </button>
-                    </>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <span>유형</span>
-                {(['전체', '상가', '주택'] as Array<Building['type'] | '전체'>).map((filter) => (
-                  <button className={filter === buildingTypeFilter ? 'active' : ''} key={filter} onClick={() => setBuildingTypeFilter(filter)} type="button">
-                    {filter}
-                  </button>
-                ))}
-              </>
-            )}
+                )
+              })}
+            </div>
           </div>
-          {activeTab === '건물 관리' && (
-            <label className="territory-card-select-filter">
-              <span>카드</span>
-              <select
-                value={buildingCardFilter}
-                onChange={(event) => setBuildingCardFilter(event.target.value === '전체' ? '전체' : Number(event.target.value))}
-              >
+
+          {/* Layer 2: 동 칩 */}
+          <div className="tbl-filter-layer">
+            <span className="tbl-filter-label">동</span>
+            <div className="tbl-chip-row" style={{ flexWrap: 'wrap' }}>
+              <button className={`tbl-chip${areaFilter === '전체' ? ' active' : ''}`} onClick={() => setAreaFilter('전체')} type="button">
+                전체 동<span className="tbl-chip__count">{filteredCards.length}</span>
+              </button>
+              {(areaExpanded ? areaFilterOptions : areaFilterOptions.slice(0, AREA_CHIP_LIMIT)).map((area) => (
+                <button key={area} className={`tbl-chip${areaFilter === area ? ' active' : ''}`} onClick={() => setAreaFilter(area)} type="button">
+                  {area}<span className="tbl-chip__count">{getAreaMetricCount(area)}</span>
+                </button>
+              ))}
+              {areaFilterOptions.length > AREA_CHIP_LIMIT && (
+                <button
+                  className="tbl-chip"
+                  onClick={() => setAreaExpanded((v) => !v)}
+                  type="button"
+                  style={{ color: 'var(--primary-600)', borderColor: 'var(--primary-200)', background: 'var(--primary-50)' }}
+                >
+                  {areaExpanded ? '접기 ▴' : `더보기 ▾`}
+                  {!areaExpanded && <span className="tbl-chip__count" style={{ background: 'var(--primary-100)', color: 'var(--primary-700)' }}>{areaFilterOptions.length - AREA_CHIP_LIMIT}</span>}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Layer 3: 배정 필터 (카드 관리) */}
+          {activeTab === '카드 관리' && (
+            <div className="tbl-filter-layer">
+              <span className="tbl-filter-label">배정</span>
+              <div className="tbl-mini-seg">
+                {(['전체', '미배정'] as const).map((f) => (
+                  <button key={f} className={assignmentFilter === f ? 'active' : ''} onClick={() => setAssignmentFilter(f)} type="button">{f}</button>
+                ))}
+              </div>
+              <div style={{ flex: 1 }} />
+              {isAdmin && (
+                <>
+                  <details className="territory-multi-select">
+                    <summary>{bulkLeaderNames.length > 0 ? `인도자 선택 ${bulkLeaderNames.length}` : '인도자 선택'}</summary>
+                    <div className="territory-multi-select-menu">
+                      {leaderOptions.map((name) => (
+                        <label key={name} className="territory-multi-option">
+                          <input type="checkbox" checked={bulkLeaderNames.includes(name)} onChange={() => toggleBulkLeaderName(name)} />
+                          {name}
+                        </label>
+                      ))}
+                      <button className="territory-multi-clear" onClick={() => setBulkLeaderNames([])} type="button">모두 해제</button>
+                    </div>
+                  </details>
+                  <button className="tbl-ghost-btn sm" disabled={checkedCardIds.size === 0 || bulkAssigning} onClick={handleAssignLeaderBulk} type="button">
+                    {bulkAssigning ? '적용 중...' : `일괄 적용${checkedCardIds.size > 0 ? ` ${checkedCardIds.size}` : ''}`}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Layer 3: 건물 관리 필터 */}
+          {activeTab === '건물 관리' && buildingSubTab === '건물 목록' && (
+            <div className="tbl-filter-layer" style={{ gap: 12 }}>
+              <span className="tbl-filter-label">유형</span>
+              <div className="tbl-mini-seg">
+                {(['전체', '상가', '주택'] as Array<Building['type'] | '전체'>).map((f) => (
+                  <button key={f} className={buildingTypeFilter === f ? 'active' : ''} onClick={() => setBuildingTypeFilter(f)} type="button">{f}</button>
+                ))}
+              </div>
+              <span className="tbl-filter-label">카드</span>
+              <select value={buildingCardFilter} onChange={(e) => setBuildingCardFilter(e.target.value === '전체' ? '전체' : Number(e.target.value))} style={{ fontSize: 12, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '4px 8px', background: 'var(--bg-card)' }}>
                 <option value="전체">전체 카드</option>
-                {filteredCards.map((card) => (
-                  <option key={card.id} value={card.id}>{card.name}</option>
-                ))}
+                {filteredCards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-            </label>
+              <span className="tbl-filter-label">정렬</span>
+              <div className="tbl-mini-seg">
+                {(['카드', '건물', '주소', '유형'] as BuildingSortKey[]).map((key) => (
+                  <button key={key} className={buildingSort.key === key ? 'active' : ''} onClick={() => setBuildingSort((prev) => prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' })} type="button">
+                    {key}{buildingSort.key === key ? (buildingSort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           {activeTab === '건물 관리' && buildingSubTab === '중국인 포인트' && (
-            <label className="territory-card-select-filter">
-              <span>상태</span>
-              <select
-                value={pointStatusFilter}
-                onChange={(event) => setPointStatusFilter(event.target.value as UnitStatus | '전체')}
-              >
+            <div className="tbl-filter-layer">
+              <span className="tbl-filter-label">상태</span>
+              <select value={pointStatusFilter} onChange={(e) => setPointStatusFilter(e.target.value as UnitStatus | '전체')} style={{ fontSize: 12, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '4px 8px', background: 'var(--bg-card)' }}>
                 <option value="전체">전체 상태</option>
                 <option value="미방문">미방문</option>
                 <option value="만남">만남</option>
                 <option value="부재">부재</option>
                 <option value="한국인">한국인</option>
-                <option value="확인필요">확인필요</option>
-                <option value="거절">거절</option>
               </select>
-            </label>
-          )}
-          <p className="territory-filter-summary">
-            {regionFilter === '전체' ? '전체 지역' : regionFilter}
-            {' · '}
-            {areaFilter === '전체' ? '전체 동' : areaFilter}
-            {' · 표시 '}
-            {activeTab === '카드 관리'
-              ? `${filteredCards.length}개 카드`
-              : buildingSubTab === '건물 목록'
-                ? `${filteredBuildings.length}개 건물`
-                : `${pointRows.length}개 포인트`}
-          </p>
-        </div>
-
-        {activeTab === '카드 관리' ? (
-        <div className="card-table" role="table" aria-label="구역 카드 목록">
-          <div className="card-table-head" role="row">
-            <label className="bulk-check">
-              <input
-                checked={filteredCards.length > 0 && filteredCards.every((card) => checkedCardIds.has(card.id))}
-                onChange={toggleAllFilteredCards}
-                type="checkbox"
-              />
-            </label>
-            <span>카드</span>
-            <span>진행</span>
-            <span>인도자</span>
-            <span>건물</span>
-            <span>중국인</span>
-            <span>정기방문</span>
-            <span>구역선</span>
-            <span>상태</span>
-            <span>지도</span>
-          </div>
-          {filteredCards.map((card) => {
-            const cardBuildings = buildings.filter((building) => building.cardId === card.id)
-            const chinesePointCount = cardBuildings.reduce(
-              (sum, building) => sum + building.units.filter((unit) => unit.isChinese).length,
-              0,
-            )
-            const hasBoundary = cardBoundaries.some((boundary) => boundary.cardId === card.id)
-            return (
-              <div className={card.id === selectedCard?.id ? 'card-row selected' : 'card-row'} key={card.id} role="row">
-                <label className="bulk-check">
-                  <input
-                    checked={checkedCardIds.has(card.id)}
-                    onChange={() => toggleCheckedCard(card.id)}
-                    onClick={(event) => event.stopPropagation()}
-                    type="checkbox"
-                  />
-                </label>
-                <button className="card-row-main" onClick={() => setSelectedCardId(card.id)} type="button">
-                  <strong>{card.name}</strong>
-                  <em>{card.region} {card.area} · 건물 {card.buildings}개 · 세대 {card.units}개</em>
-                </button>
-                <span>
-                  <i className="mini-progress"><b style={{ width: `${card.progress}%` }} /></i>
-                  <em>{card.progress}%</em>
-                </span>
-                <span onClick={(event) => event.stopPropagation()}>
-                  {isAdmin ? (
-                    <details style={{ position: 'relative' }}>
-                      <summary style={{ listStyle: 'none', cursor: 'pointer', minHeight: '34px', borderRadius: '8px', border: '1px solid #d1d5db', padding: '6px 10px', fontSize: '13px', background: '#fff' }}>
-                        {getCardLeaderList(card).length > 0 ? getCardLeaderList(card).join(', ') : '미배정'}
-                      </summary>
-                      <div style={{ position: 'absolute', zIndex: 15, top: 'calc(100% + 6px)', left: 0, minWidth: '220px', maxHeight: '220px', overflow: 'auto', border: '1px solid #d1d5db', borderRadius: '10px', background: '#fff', padding: '8px' }}>
-                        {leaderOptions.map((leaderName) => (
-                          <label key={leaderName} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 2px', fontSize: '13px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={getCardLeaderList(card).includes(leaderName)}
-                              onChange={() => void toggleCardLeader(card.id, leaderName)}
-                            />
-                            {leaderName}
-                          </label>
-                        ))}
-                        <button
-                          type="button"
-                          style={{ marginTop: '8px', width: '100%', minHeight: '32px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#fff', fontSize: '12px', fontWeight: 600 }}
-                          onClick={() => void onSetCardLeaders(card.id, [])}
-                        >
-                          모두 해제
-                        </button>
-                      </div>
-                    </details>
-                  ) : (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', minHeight: '34px', padding: '0 10px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f8fafc', fontSize: '13px', color: 'var(--ink-700)', fontWeight: 600 }}>
-                      {getCardLeaderList(card).length > 0 ? getCardLeaderList(card).join(', ') : '미배정'}
-                    </span>
-                  )}
-                </span>
-                <span>{card.buildings}개</span>
-                <span>{chinesePointCount}건</span>
-                <span>{card.regularVisits}건</span>
-                <span>
-                  <b className={hasBoundary ? 'territory-state-pill ok' : 'territory-state-pill muted'}>
-                    {hasBoundary ? '있음' : '없음'}
-                  </b>
-                </span>
-                <span>
-                  <b className={`territory-state-pill status-${card.status}`}>{card.status}</b>
-                </span>
-                <span className="card-map-actions">
-                  <button onClick={() => onOpenCardMap(card.id)} type="button">지도 보기</button>
-                  <button onClick={() => onOpenCardMap(card.id, true)} type="button">구역선 수정</button>
-                </span>
-              </div>
-            )
-          })}
-          {filteredCards.length === 0 && (
-            <div className="empty-card-row">
-              {cards.length === 0 ? '카드가 없습니다. 위의 + 카드 추가 버튼으로 첫 카드를 만들어보세요.' : '조건에 맞는 카드가 없습니다.'}
             </div>
           )}
-        </div>
-        ) : buildingSubTab === '건물 목록' ? (
+
+          {/* Layer 4: 결과 카운트 */}
+          <div style={{ padding: '10px 18px', fontSize: 12, color: 'var(--gray-500)', borderBottom: '1px solid var(--border-subtle)' }}>
+            {regionFilter === '전체' ? '전체 지역' : regionFilter}
+            {' · '}{areaFilter === '전체' ? '전체 동' : areaFilter}
+            {' · 표시 '}
+            {activeTab === '카드 관리' ? `${filteredCards.length}개 카드` : buildingSubTab === '건물 목록' ? `${filteredBuildings.length}개 건물` : `${pointRows.length}개 포인트`}
+          </div>
+
+          {/* ── 카드 관리 테이블 ── */}
+          {activeTab === '카드 관리' ? (
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th style={{ width: 52, paddingLeft: 18 }}>
+                  <input type="checkbox" checked={filteredCards.length > 0 && filteredCards.every((c) => checkedCardIds.has(c.id))} onChange={toggleAllFilteredCards} />
+                </th>
+                <th>카드</th>
+                <th style={{ width: 140 }}>진행</th>
+                <th>인도자</th>
+                <th style={{ width: 60, textAlign: 'right' }}>건물</th>
+                <th style={{ width: 80, textAlign: 'right' }}>중국인</th>
+                <th style={{ width: 90, textAlign: 'right' }}>정기방문</th>
+                <th style={{ width: 80 }}>구역선</th>
+                <th style={{ width: 80 }}>상태</th>
+                <th style={{ width: 160, textAlign: 'right', paddingRight: 18 }}>작업</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCards.map((card) => {
+                const cardBuildings = buildings.filter((b) => b.cardId === card.id)
+                const chinesePointCount = cardBuildings.reduce((sum, b) => sum + b.units.filter((u) => u.isChinese).length, 0)
+                const hasBoundary = cardBoundaries.some((b) => b.cardId === card.id)
+                const leaders = getCardLeaderList(card)
+                return (
+                  <tr key={card.id} onClick={() => setSelectedCardId(card.id)} style={{ cursor: 'pointer' }}>
+                    <td style={{ width: 52, paddingLeft: 18 }} onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={checkedCardIds.has(card.id)} onChange={() => toggleCheckedCard(card.id)} />
+                    </td>
+                    <td>
+                      <div className="tbl__title">{card.name}</div>
+                      <div className="tbl__sub">{card.region} {card.area} · 건물 {card.buildings}개 · 세대 {card.units}개</div>
+                    </td>
+                    <td style={{ width: 140 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ flex: 1, height: 6, background: 'var(--gray-100)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${card.progress}%`, background: card.progress >= 100 ? 'var(--success-500)' : card.progress > 0 ? 'var(--warning-500)' : 'var(--gray-300)', borderRadius: 'var(--radius-full)' }} />
+                        </div>
+                        <span className="tnum" style={{ fontSize: 12, color: 'var(--gray-600)', minWidth: 32, textAlign: 'right' }}>{card.progress}%</span>
+                      </div>
+                    </td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      {isAdmin ? (
+                        <details style={{ position: 'relative' }}>
+                          <summary style={{ listStyle: 'none', cursor: 'pointer', fontSize: 13, color: leaders.length > 0 ? 'var(--gray-900)' : '#B45309', fontWeight: leaders.length > 0 ? 500 : 600 }}>
+                            {leaders.length > 0 ? leaders.join(', ') : '미배정'}
+                          </summary>
+                          <div style={{ position: 'absolute', zIndex: 15, top: 'calc(100% + 4px)', left: 0, minWidth: 200, maxHeight: 200, overflow: 'auto', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', background: '#fff', padding: 8, boxShadow: 'var(--shadow-md)' }}>
+                            {leaderOptions.map((name) => (
+                              <label key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px', fontSize: 13, cursor: 'pointer' }}>
+                                <input type="checkbox" checked={getCardLeaderList(card).includes(name)} onChange={() => void toggleCardLeader(card.id, name)} />
+                                {name}
+                              </label>
+                            ))}
+                            <button type="button" style={{ marginTop: 8, width: '100%', minHeight: 32, borderRadius: 8, border: '1px solid var(--border-default)', background: '#fff', fontSize: 12, fontWeight: 600 }} onClick={() => void onSetCardLeaders(card.id, [])}>모두 해제</button>
+                          </div>
+                        </details>
+                      ) : (
+                        <span style={{ fontSize: 13, color: leaders.length > 0 ? 'var(--gray-900)' : '#B45309', fontWeight: leaders.length > 0 ? 500 : 600 }}>
+                          {leaders.length > 0 ? leaders.join(', ') : '미배정'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="tnum" style={{ width: 60, textAlign: 'right', fontSize: 13 }}>{card.buildings}개</td>
+                    <td className="tnum" style={{ width: 80, textAlign: 'right', fontSize: 13 }}>{chinesePointCount}건</td>
+                    <td className="tnum" style={{ width: 90, textAlign: 'right', fontSize: 13 }}>{card.regularVisits}건</td>
+                    <td style={{ width: 80 }}>
+                      <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-sm)', background: hasBoundary ? 'var(--gray-100)' : 'transparent', color: hasBoundary ? 'var(--gray-600)' : 'var(--gray-400)', fontSize: 11, fontWeight: 600 }}>
+                        {hasBoundary ? '있음' : '없음'}
+                      </span>
+                    </td>
+                    <td style={{ width: 80 }}>
+                      <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600,
+                        background: card.status === '진행중' ? 'var(--primary-100)' : card.status === '미배정' ? 'var(--warning-100)' : 'var(--success-100)',
+                        color: card.status === '진행중' ? 'var(--primary-700)' : card.status === '미배정' ? 'var(--warning-700)' : 'var(--success-700)',
+                      }}>
+                        {card.status}
+                      </span>
+                    </td>
+                    <td style={{ width: 160, textAlign: 'right', paddingRight: 18 }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                        <button className="tbl-ghost-btn sm" onClick={() => onOpenCardMap(card.id)} type="button">지도</button>
+                        <button className="tbl-soft-btn sm" onClick={() => onOpenCardMap(card.id, true)} type="button">수정</button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+              {filteredCards.length === 0 && (
+                <tr><td colSpan={10} style={{ textAlign: 'center', padding: '32px 18px', color: 'var(--gray-400)', fontSize: 13 }}>
+                  {cards.length === 0 ? '카드가 없습니다. 위의 + 카드 추가 버튼으로 첫 카드를 만들어보세요.' : '조건에 맞는 카드가 없습니다.'}
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+          ) : buildingSubTab === '건물 목록' ? (
+          <>
+          {duplicateAddressGroups.length > 0 && (
+            <div className="dup-address-banner">
+              <span className="dup-address-icon">⚠️</span>
+              <span className="dup-address-text">
+                중복 주소 건물 <strong>{duplicateAddressGroups.length}그룹</strong> ({duplicateAddressGroups.reduce((s, g) => s + g.length, 0)}개 건물) 발견
+              </span>
+              <button
+                className="dup-address-merge-btn"
+                onClick={() => {
+                  // 각 그룹의 이름 목록 수집
+                  const groups = duplicateAddressGroups.map((group) => {
+                    const sorted = [...group].sort((a, b) => a.id - b.id)
+                    return {
+                      primaryId: sorted[0].id,
+                      address: sorted[0].address,
+                      names: sorted.map((b) => b.name),
+                    }
+                  })
+                  setMergeModalGroups(groups)
+                  setMergeNameChoices({})
+                }}
+                type="button"
+              >
+                중복 주소 합치기
+              </button>
+            </div>
+          )}
           <div className="building-management-table" role="table" aria-label="건물 관리 목록">
             <div className="building-management-head" role="row">
               <label className="bulk-check">
@@ -1326,83 +1590,213 @@ export function DesktopTerritory({
               <span>메모</span>
               <span>작업</span>
             </div>
-            {filteredBuildings.map((building) => {
+            {sortedBuildings.map((building) => {
               const card = cardMap.get(building.cardId)
               const chineseCount = building.units.filter((unit) => unit.isChinese).length
               const regularCount = building.units.filter((unit) => unit.isRegularVisit).length
               const isEditing = editingBuildingId === building.id
+              const isDuplicate = duplicateBuildingIds.has(building.id)
               return (
-                <div className="building-management-row" key={building.id} role="row">
-                  <label className="bulk-check">
-                    <input
-                      checked={checkedBuildingIds.has(building.id)}
-                      onChange={() => toggleCheckedBuilding(building.id)}
-                      type="checkbox"
-                    />
-                  </label>
-                  {isEditing ? (
-                    <>
+                <div className={`building-management-block${isDuplicate ? ' dup-address-row' : ''}`} key={building.id}>
+                  <div className={`building-management-row${isEditing ? ' is-editing' : ''}`} role="row">
+                    <label className="bulk-check">
                       <input
-                        aria-label="건물명"
-                        value={buildingEditDraft.name}
-                        onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, name: event.target.value }))}
+                        checked={checkedBuildingIds.has(building.id)}
+                        onChange={() => toggleCheckedBuilding(building.id)}
+                        type="checkbox"
                       />
-                      <input
-                        aria-label="주소"
-                        value={buildingEditDraft.address}
-                        onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, address: event.target.value }))}
-                      />
-                      <select
-                        aria-label="카드 재배정"
-                        value={buildingEditDraft.cardId}
-                        onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, cardId: Number(event.target.value) }))}
-                      >
-                        {cards.map((item) => (
-                          <option key={item.id} value={item.id}>{item.name}</option>
-                        ))}
-                      </select>
-                      <select
-                        aria-label="건물 유형"
-                        value={buildingEditDraft.type}
-                        onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, type: event.target.value as Building['type'] }))}
-                      >
-                        <option value="상가">상가</option>
-                        <option value="주택">주택</option>
-                      </select>
-                      <span>{building.units.length}개</span>
-                      <span>{chineseCount}건</span>
-                      <span>{regularCount}건</span>
-                      <input
-                        aria-label="메모"
-                        value={buildingEditDraft.memo}
-                        onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, memo: event.target.value }))}
-                      />
-                      <span className="building-row-actions">
-                        <button onClick={() => saveBuildingEdit(building)} type="button">저장</button>
-                        <button onClick={() => setEditingBuildingId(null)} type="button">취소</button>
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        className="building-name-link"
-                        onClick={() => onOpenBuildingMap(building.id)}
-                        type="button"
-                      >
-                        {building.name || '건물명 없음'}
-                      </button>
-                      <span title={building.address}>{formatDisplayAddress(building.address)}</span>
-                      <span>{card?.name ?? '카드 없음'}</span>
-                      <span>{building.type}</span>
-                      <span>{building.units.length}개</span>
-                      <span>{chineseCount}건</span>
-                      <span>{regularCount}건</span>
-                      <span>{building.memo || '-'}</span>
-                      <span className="building-row-actions">
-                        <button onClick={() => startBuildingEdit(building)} type="button">수정</button>
-                        <button onClick={() => onOpenBuildingMap(building.id)} type="button">지도</button>
-                      </span>
-                    </>
+                    </label>
+                    {isEditing ? (
+                      <>
+                        <input
+                          aria-label="건물명"
+                          value={buildingEditDraft.name}
+                          onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, name: event.target.value }))}
+                        />
+                        <input
+                          aria-label="주소"
+                          value={buildingEditDraft.address}
+                          onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, address: event.target.value }))}
+                        />
+                        <select
+                          aria-label="카드 재배정"
+                          value={buildingEditDraft.cardId}
+                          onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, cardId: Number(event.target.value) }))}
+                        >
+                          {cards.map((item) => (
+                            <option key={item.id} value={item.id}>{item.name}</option>
+                          ))}
+                        </select>
+                        <select
+                          aria-label="건물 유형"
+                          value={buildingEditDraft.type}
+                          onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, type: event.target.value as Building['type'] }))}
+                        >
+                          <option value="상가">상가</option>
+                          <option value="주택">주택</option>
+                        </select>
+                        <span>{building.units.length}개</span>
+                        <span>{chineseCount}건</span>
+                        <span>{regularCount}건</span>
+                        <input
+                          aria-label="메모"
+                          value={buildingEditDraft.memo}
+                          onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, memo: event.target.value }))}
+                        />
+                        <span className="building-row-actions">
+                          <button onClick={() => saveBuildingEdit(building)} type="button">저장</button>
+                          <button onClick={() => setEditingBuildingId(null)} type="button">취소</button>
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          className="building-name-link"
+                          onClick={() => onOpenBuildingMap(building.id)}
+                          type="button"
+                        >
+                          {building.name || '건물명 없음'}
+                        </button>
+                        <span title={building.address}>{formatDisplayAddress(building.address)}</span>
+                        <span>{card?.name ?? '카드 없음'}</span>
+                        <span>{building.type}</span>
+                        <span>{building.units.length}개</span>
+                        <span>{chineseCount}건</span>
+                        <span>{regularCount}건</span>
+                        <span>{building.memo || '-'}</span>
+                        <span className="building-row-actions">
+                          <button onClick={() => startBuildingEdit(building)} type="button">수정</button>
+                          <button onClick={() => onOpenBuildingMap(building.id)} type="button">지도</button>
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {/* 수정 모드: 세대 목록 */}
+                  {isEditing && (
+                    <div className="building-units-panel">
+                      <div className="building-units-panel-head">
+                        <strong>세대 목록</strong>
+                        <span className="building-units-count">{building.units.length}개</span>
+                      </div>
+                      <div className="building-units-list">
+                        {[...building.units].sort((a, b) => a.number.localeCompare(b.number, 'ko', { numeric: true })).map((unit) => {
+                          const isEditingThisUnit = editingUnitId === unit.id
+                          return (
+                            <div className="building-unit-row" key={unit.id}>
+                              {isEditingThisUnit ? (
+                                <div className="unit-edit-layout">
+                                  <div className="unit-edit-row1">
+                                    <input
+                                      aria-label="호수"
+                                      className="unit-number-input"
+                                      value={unitEditDraft.number}
+                                      onChange={(e) => setUnitEditDraft((d) => ({ ...d, number: e.target.value }))}
+                                    />
+                                    <select
+                                      aria-label="상태"
+                                      value={unitEditDraft.status}
+                                      onChange={(e) => setUnitEditDraft((d) => ({ ...d, status: e.target.value as UnitStatus }))}
+                                    >
+                                      {(['미방문', '만남', '부재', '한국인'] as UnitStatus[]).map((s) => (
+                                        <option key={s} value={s}>{s}</option>
+                                      ))}
+                                    </select>
+                                    <input
+                                      aria-label="메모"
+                                      className="unit-memo-input"
+                                      placeholder="메모"
+                                      value={unitEditDraft.memo}
+                                      onChange={(e) => setUnitEditDraft((d) => ({ ...d, memo: e.target.value }))}
+                                    />
+                                    <span className="unit-row-actions">
+                                      <button
+                                        onClick={() => {
+                                          onUpdateUnitStatus(building.id, unit.id, unitEditDraft.status, unitEditDraft.memo)
+                                          onUpdateUnitFlags(unit.id, {
+                                            isChinese: unitEditDraft.isChinese,
+                                            isRegularVisit: unitEditDraft.isRegularVisit,
+                                            isForbidden: unitEditDraft.isForbidden,
+                                            memo: unitEditDraft.memo,
+                                          })
+                                          setEditingUnitId(null)
+                                        }}
+                                        type="button"
+                                      >저장</button>
+                                      <button onClick={() => setEditingUnitId(null)} type="button">취소</button>
+                                    </span>
+                                  </div>
+                                  <div className="unit-edit-flags">
+                                    <label className="unit-flag-label">
+                                      <input
+                                        type="checkbox"
+                                        checked={unitEditDraft.isForbidden}
+                                        onChange={(e) => setUnitEditDraft((d) => ({ ...d, isForbidden: e.target.checked }))}
+                                      />
+                                      방문금지
+                                    </label>
+                                    <label className="unit-flag-label">
+                                      <input
+                                        type="checkbox"
+                                        checked={unitEditDraft.isRegularVisit}
+                                        onChange={(e) => setUnitEditDraft((d) => ({ ...d, isRegularVisit: e.target.checked }))}
+                                      />
+                                      정기방문
+                                    </label>
+                                    <label className="unit-flag-label">
+                                      <input
+                                        type="checkbox"
+                                        checked={unitEditDraft.isChinese}
+                                        onChange={(e) => setUnitEditDraft((d) => ({ ...d, isChinese: e.target.checked }))}
+                                      />
+                                      중국인
+                                    </label>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="unit-number">{unit.number}{/^\d+$/.test(unit.number) ? '호' : ''}</span>
+                                  <span className={`unit-status unit-status-${unit.status}`}>{unit.status}</span>
+                                  <div className="unit-flags-display">
+                                    {unit.isForbidden && <span className="unit-flag-chip forbidden">방문금지</span>}
+                                    {unit.isRegularVisit && <span className="unit-flag-chip regular">정기</span>}
+                                    {unit.isChinese && <span className="unit-flag-chip chinese">中</span>}
+                                  </div>
+                                  <span className="unit-memo">{unit.memo || '-'}</span>
+                                  <span className="unit-row-actions">
+                                    <button
+                                      onClick={() => {
+                                        setEditingUnitId(unit.id)
+                                        setUnitEditDraft({
+                                          number: unit.number,
+                                          status: unit.status,
+                                          memo: unit.memo ?? '',
+                                          isChinese: unit.isChinese ?? false,
+                                          isRegularVisit: unit.isRegularVisit ?? false,
+                                          isForbidden: unit.isForbidden ?? false,
+                                        })
+                                      }}
+                                      type="button"
+                                    >수정</button>
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`${unit.number}${/^\d+$/.test(unit.number) ? '호' : ''}를 삭제할까요?`)) onDeleteUnit(building.id, unit.id)
+                                      }}
+                                      type="button"
+                                    >삭제</button>
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          )
+                        })}
+                        {/* 새 세대 추가 행 */}
+                        <AddUnitRow
+                          buildingId={building.id}
+                          existingNumbers={new Set(building.units.map((u) => u.number))}
+                          onAdd={onAddUnit}
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
               )
@@ -1413,6 +1807,7 @@ export function DesktopTerritory({
               </div>
             )}
           </div>
+          </>
         ) : (
           <div className="point-management-table" role="table" aria-label="중국인 포인트 목록">
             <div className="point-management-head" role="row">
@@ -1443,8 +1838,6 @@ export function DesktopTerritory({
                     <option value="만남">만남</option>
                     <option value="부재">부재</option>
                     <option value="한국인">한국인</option>
-                    <option value="확인필요">확인필요</option>
-                    <option value="거절">거절</option>
                   </select>
                   <button
                     className={isConfirmedChinese ? 'point-toggle active' : 'point-toggle'}
@@ -1487,7 +1880,8 @@ export function DesktopTerritory({
             )}
           </div>
         )}
-      </div>
+        </div>{/* /desk-card */}
+      </div>{/* /territory-main */}
 
       {activeTab === '카드 관리' && detailPaneOpen && (
       <aside className="territory-side">
@@ -1609,5 +2003,182 @@ export function DesktopTerritory({
       </aside>
       )}
     </section>
+  )
+}
+
+function AddUnitRow({
+  buildingId,
+  existingNumbers,
+  onAdd,
+}: {
+  buildingId: number
+  existingNumbers: Set<string>
+  onAdd: (buildingId: number, unitNumber: string) => void
+}) {
+  const [value, setValue] = useState('')
+  const [showBulk, setShowBulk] = useState(false)
+  const [startFloor, setStartFloor] = useState(1)
+  const [endFloor, setEndFloor] = useState(3)
+  const [unitsPerFloor, setUnitsPerFloor] = useState(5)
+  const [startUnit, setStartUnit] = useState(1)
+  const [hasBasement, setHasBasement] = useState(false)
+  const [basementFloors, setBasementFloors] = useState(1)
+  const [adding, setAdding] = useState(false)
+
+  const handleAdd = () => {
+    if (!value.trim()) return
+    onAdd(buildingId, value.trim())
+    setValue('')
+  }
+
+  // 미리보기 생성 (지하 + 지상)
+  const preview = (() => {
+    const list: string[] = []
+    const upf = Math.max(1, unitsPerFloor)
+    const su = Math.max(1, startUnit)
+    // 지하 (B층 → B101, B102...)
+    if (hasBasement) {
+      const bf = Math.max(1, basementFloors)
+      for (let f = bf; f >= 1; f--) {
+        for (let u = su; u < su + upf; u++) {
+          list.push(`B${f}${String(u).padStart(2, '0')}`)
+        }
+      }
+    }
+    // 지상
+    const sf = Math.max(1, startFloor)
+    const ef = Math.max(sf, endFloor)
+    for (let f = sf; f <= ef; f++) {
+      for (let u = su; u < su + upf; u++) {
+        list.push(`${f}${String(u).padStart(2, '0')}`)
+      }
+    }
+    return list
+  })()
+
+  const newOnes = preview.filter((n) => !existingNumbers.has(n))
+  const skipped = preview.length - newOnes.length
+
+  const handleBulkAdd = async () => {
+    if (newOnes.length === 0) return
+    setAdding(true)
+    for (const num of newOnes) {
+      await new Promise<void>((resolve) => {
+        onAdd(buildingId, num)
+        setTimeout(resolve, 30)
+      })
+    }
+    setAdding(false)
+    setShowBulk(false)
+  }
+
+  return (
+    <div className="unit-add-section">
+      {/* 단일 추가 행 */}
+      <div className="building-unit-row building-unit-add-row">
+        <input
+          className="unit-number-input"
+          placeholder="호수 입력"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleAdd() }}
+        />
+        <span className="unit-row-actions">
+          <button onClick={handleAdd} type="button">+ 추가</button>
+          <button
+            className={`unit-bulk-toggle${showBulk ? ' active' : ''}`}
+            onClick={() => setShowBulk((v) => !v)}
+            type="button"
+          >
+            일괄 추가 {showBulk ? '▴' : '▾'}
+          </button>
+        </span>
+      </div>
+
+      {/* 일괄 추가 패널 */}
+      {showBulk && (
+        <div className="unit-bulk-panel">
+          {/* 지상층 설정 */}
+          <div className="unit-bulk-section-label">지상</div>
+          <div className="unit-bulk-fields">
+            <label className="unit-bulk-field">
+              <span>시작층</span>
+              <input type="number" min={1} value={startFloor}
+                onChange={(e) => setStartFloor(Number(e.target.value))} />
+            </label>
+            <span className="unit-bulk-sep">~</span>
+            <label className="unit-bulk-field">
+              <span>끝층</span>
+              <input type="number" min={startFloor} value={endFloor}
+                onChange={(e) => setEndFloor(Number(e.target.value))} />
+            </label>
+            <label className="unit-bulk-field">
+              <span>층당 호수</span>
+              <input type="number" min={1} value={unitsPerFloor}
+                onChange={(e) => setUnitsPerFloor(Number(e.target.value))} />
+            </label>
+            <label className="unit-bulk-field">
+              <span>시작 호번호</span>
+              <input type="number" min={1} value={startUnit}
+                onChange={(e) => setStartUnit(Number(e.target.value))} />
+            </label>
+          </div>
+
+          {/* 지하 설정 */}
+          <div className="unit-bulk-basement-row">
+            <label className="unit-bulk-checkbox-label">
+              <input
+                type="checkbox"
+                checked={hasBasement}
+                onChange={(e) => setHasBasement(e.target.checked)}
+              />
+              지하 포함
+            </label>
+            {hasBasement && (
+              <>
+                <label className="unit-bulk-field">
+                  <span>지하 층수</span>
+                  <input type="number" min={1} value={basementFloors}
+                    onChange={(e) => setBasementFloors(Number(e.target.value))} />
+                </label>
+                <span className="unit-bulk-basement-hint">
+                  B{basementFloors}층 ~ B1층 · 층당 {unitsPerFloor}개
+                  → B{basementFloors}{String(startUnit).padStart(2,'0')} ~ B1{String(startUnit + unitsPerFloor - 1).padStart(2,'0')}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* 미리보기 */}
+          <div className="unit-bulk-preview">
+            <div className="unit-bulk-preview-label">
+              미리보기 &nbsp;
+              <strong>총 {newOnes.length}개 추가</strong>
+              {skipped > 0 && (
+                <span className="unit-bulk-skip"> · {skipped}개 이미 있어 자동 스킵</span>
+              )}
+            </div>
+            <div className="unit-bulk-preview-grid">
+              {preview.map((n) => (
+                <span key={n} className={`unit-bulk-chip${n.startsWith('B') ? ' basement' : ''}${existingNumbers.has(n) ? ' skip' : ''}`}>
+                  {n}호
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="unit-bulk-footer">
+            <button
+              className="unit-bulk-add-btn"
+              disabled={newOnes.length === 0 || adding}
+              onClick={handleBulkAdd}
+              type="button"
+            >
+              {adding ? '추가 중...' : `${newOnes.length}개 추가하기`}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

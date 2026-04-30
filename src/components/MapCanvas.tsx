@@ -1103,9 +1103,16 @@ function NaverMapCanvas({
         display: 'flex',
         flexDirection: 'column',
         gap: '10px',
-        zIndex: 1000
+        zIndex: isMobile ? 40 : 1000
       }}>
-        <button className="toolbar-btn" onClick={toggleSatellite} title="위성 지도로 변환">🛰️</button>
+        <button className="toolbar-btn" onClick={toggleSatellite} title="위성 지도로 변환" type="button" aria-label="위성 지도 전환">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M4.979 9.685C2.993 8.891 2 8.494 2 8s.993-.89 2.979-1.685l2.808-1.123C9.773 4.397 10.767 4 12 4s2.227.397 4.213 1.192l2.808 1.123C21.007 7.109 22 7.506 22 8s-.993.89-2.979 1.685l-2.808 1.124C14.227 11.603 13.233 12 12 12s-2.227-.397-4.213-1.191z"/>
+            <path fill="currentColor" fillRule="evenodd" d="M2 8c0 .494.993.89 2.979 1.685l2.808 1.124C9.773 11.603 10.767 12 12 12s2.227-.397 4.213-1.191l2.808-1.124C21.007 8.891 22 8.494 22 8s-.993-.89-2.979-1.685l-2.808-1.123C14.227 4.397 13.233 4 12 4s-2.227.397-4.213 1.192L4.98 6.315C2.993 7.109 2 7.506 2 8" clipRule="evenodd"/>
+            <path fill="currentColor" d="m5.766 10l-.787.315C2.993 11.109 2 11.507 2 12s.993.89 2.979 1.685l2.808 1.124C9.773 15.603 10.767 16 12 16s2.227-.397 4.213-1.191l2.808-1.124C21.007 12.891 22 12.493 22 12s-.993-.89-2.979-1.685L18.234 10l-2.021.809C14.227 11.603 13.233 12 12 12s-2.227-.397-4.213-1.191z" opacity="0.7"/>
+            <path fill="currentColor" d="m5.766 14l-.787.315C2.993 15.109 2 15.507 2 16s.993.89 2.979 1.685l2.808 1.124C9.773 19.603 10.767 20 12 20s2.227-.397 4.213-1.192l2.808-1.123C21.007 16.891 22 16.494 22 16c0-.493-.993-.89-2.979-1.685L18.234 14l-2.021.809C14.227 15.603 13.233 16 12 16s-2.227-.397-4.213-1.191z" opacity="0.4"/>
+          </svg>
+        </button>
         <button 
           className={`toolbar-btn${addingBuilding || editingBuildingLocation ? ' active' : ''}`} 
           onClick={() => {
@@ -1113,13 +1120,30 @@ function NaverMapCanvas({
             else onToggleAddingBuilding?.(!addingBuilding)
           }}
           title="지도 작업"
+          type="button"
+          aria-label="지도 작업"
         >
-          ➕
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" fillRule="evenodd" d="M2.52 7.823C2 8.77 2 9.915 2 12.203v1.522c0 3.9 0 5.851 1.172 7.063S6.229 22 10 22h4c3.771 0 5.657 0 6.828-1.212S22 17.626 22 13.725v-1.521c0-2.289 0-3.433-.52-4.381c-.518-.949-1.467-1.537-3.364-2.715l-2-1.241C14.111 2.622 13.108 2 12 2s-2.11.622-4.116 1.867l-2 1.241C3.987 6.286 3.038 6.874 2.519 7.823M12.75 11a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V17a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25z" clipRule="evenodd"/>
+          </svg>
         </button>
-        <button className="toolbar-btn" onClick={handleGPS} title="현재 위치">🧭</button>
+        <button className="toolbar-btn" onClick={handleGPS} title="현재 위치" type="button" aria-label="현재 위치">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+          </svg>
+        </button>
         <div style={{ height: '4px' }} />
-        <button className="toolbar-btn" onClick={() => handleZoom(1)} title="확대">🔍+</button>
-        <button className="toolbar-btn" onClick={() => handleZoom(-1)} title="축소">🔍-</button>
+        <button className="toolbar-btn" onClick={() => handleZoom(1)} title="확대" type="button" aria-label="확대">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+        <button className="toolbar-btn" onClick={() => handleZoom(-1)} title="축소" type="button" aria-label="축소">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
       </div>
 
       <style>{`
@@ -1160,6 +1184,7 @@ function NaverMapCanvas({
           .map-toolbar-overlay {
             top: 80px !important;
             right: 12px !important;
+            z-index: 40 !important;
           }
           .map-toolbar-overlay .toolbar-btn {
             width: 40px;

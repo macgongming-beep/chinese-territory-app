@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { CalendarEvent, SpecialPeriod, TerritoryCard } from '../types'
 import { PERIOD_COLORS } from '../types'
-import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 
 function getCalendarDays(year: number, month: number): (number | null)[] {
   const firstDay = new Date(year, month - 1, 1).getDay()
@@ -30,6 +29,43 @@ function getWeeklyDates(startDate: string, endDate: string): string[] {
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
+function eventTimeClass(time: string) {
+  const h = parseInt(time.split(':')[0], 10)
+  if (h < 12) return 'event-pill--am'
+  if (h < 17) return 'event-pill--pm'
+  return 'event-pill--eve'
+}
+
+type CalendarIconName = 'clock' | 'pin' | 'user'
+
+function CalendarIcon({ name }: { name: CalendarIconName }) {
+  if (name === 'clock') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 8v4l3 2" />
+      </svg>
+    )
+  }
+
+  if (name === 'pin') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11Z" />
+        <circle cx="12" cy="10" r="2" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <circle cx="12" cy="8" r="3.2" />
+      <path d="M5.8 19c.8-3.4 3-5.2 6.2-5.2s5.4 1.8 6.2 5.2" />
+    </svg>
+  )
+}
+
+
 type EventInput = { time: string; title: string; place: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }
 type EditDraft = EventInput
 
@@ -40,11 +76,14 @@ type ScopeModal =
 export function DesktopCalendar({
   currentVisitor,
   leaderNames = [],
-  cards,
+  cards: _cards,
   events,
+  role = 'user',
+  allUserNames = [],
   onApplyToEvent,
-  onAssignToEvent,
-  onAssignCardToEventParticipant,
+  onAssignToEvent: _onAssignToEvent,
+  onAssignCardToEventParticipant: _onAssignCardToEventParticipant,
+  onAddParticipant,
   onCreateEvent,
   onCreateRepeatEvents,
   onDeleteEvent,
@@ -61,9 +100,12 @@ export function DesktopCalendar({
   leaderNames?: string[]
   cards: TerritoryCard[]
   events: CalendarEvent[]
+  role?: import('../types').Role
+  allUserNames?: string[]
   onApplyToEvent: (eventId: number) => void
   onAssignToEvent: (eventId: number, userName: string) => void
   onAssignCardToEventParticipant: (eventId: number, userName: string, cardId: number | null) => void
+  onAddParticipant?: (eventId: number, userName: string) => void
   onCreateEvent: (input: EventInput & { date: string }) => void
   onCreateRepeatEvents: (dates: string[], input: EventInput) => void
   onDeleteEvent: (eventId: number) => void
@@ -99,6 +141,9 @@ export function DesktopCalendar({
   const [periodStart, setPeriodStart] = useState('')
   const [periodEnd, setPeriodEnd] = useState('')
   const [periodColor, setPeriodColor] = useState(PERIOD_COLORS[0].value)
+  const [addParticipantEventId, setAddParticipantEventId] = useState<number | null>(null)
+  const [addParticipantQuery, setAddParticipantQuery] = useState('')
+  const addParticipantRef = useRef<HTMLDivElement>(null)
 
   const calendarDays = getCalendarDays(year, month)
   const selectedDateStr = toDateStr(year, month, selectedDay)
@@ -268,27 +313,30 @@ export function DesktopCalendar({
 
       <section className="desktop-content calendar-layout">
         <div className="calendar-pane">
-          <div className="calendar-toolbar">
-            <div>
-              <p>운영 캘린더</p>
-              <h1>{year}년 {month}월</h1>
+          <div className="cal-page-head">
+            <div className="cal-page-head__title-group">
+              <p className="cal-page-head__eyebrow">운영 캘린더</p>
+              <h1 className="cal-page-head__title">{year}년 {month}월</h1>
             </div>
-            <div className="toolbar-actions">
-              <button type="button">신청내역</button>
-              <button type="button">일괄 업로드</button>
-              <button onClick={prevMonth} type="button">←</button>
-              <button onClick={goToday} type="button">오늘</button>
-              <button onClick={nextMonth} type="button">→</button>
+            <div className="cal-page-head__actions">
+              <button className="cal-today-btn" type="button">신청내역</button>
+              <button className="cal-today-btn" type="button">일괄 업로드</button>
+              <button className="cal-nav-btn" onClick={prevMonth} type="button">‹</button>
+              <button className="cal-today-btn" onClick={goToday} type="button">오늘</button>
+              <button className="cal-nav-btn" onClick={nextMonth} type="button">›</button>
+              {(role === 'admin' || role === 'leader') && (
+                <button className="cal-add-event-btn" onClick={openCreate} type="button">+ 일정 추가</button>
+              )}
             </div>
           </div>
 
           {/* ── Special period management ── */}
-          <div style={{ padding: '6px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minHeight: '40px' }}>
+          <div style={{ padding: '2px 16px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minHeight: '22px' }}>
             {specialPeriods.map((p) => (
-              <span key={p.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px 2px 4px', borderRadius: '999px', background: p.color + '20', border: `1px solid ${p.color}60`, fontSize: '12px', fontWeight: 600, color: p.color }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: p.color, flexShrink: 0 }} />
+              <span key={p.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '1px 8px 1px 6px', borderRadius: 'var(--radius-sm)', background: p.color + '18', border: `1px solid ${p.color}50`, borderLeft: `3px solid ${p.color}`, fontSize: '11px', fontWeight: 600, color: p.color, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: p.color, flexShrink: 0 }} />
                 {p.label} · {p.startDate.slice(5)} ~ {p.endDate.slice(5)}
-                <button onClick={() => onDeleteSpecialPeriod(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: p.color, fontWeight: 700, fontSize: '13px', lineHeight: 1, padding: '0 1px' }} type="button">×</button>
+                <button onClick={() => onDeleteSpecialPeriod(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: p.color, fontWeight: 700, fontSize: '13px', lineHeight: 1, padding: '0 1px', opacity: 0.6 }} type="button">×</button>
               </span>
             ))}
             {!showPeriodForm && (
@@ -304,10 +352,8 @@ export function DesktopCalendar({
                 <input type="date" value={periodEnd} min={periodStart} onChange={(e) => setPeriodEnd(e.target.value)} style={{ padding: '3px 6px', borderRadius: 'var(--r-sm)', border: '1px solid #d1d5db', fontSize: '12px' }} />
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                   {PERIOD_COLORS.map((c) => (
-                    <button key={c.value} onClick={() => setPeriodColor(c.value)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'grid', placeItems: 'center', opacity: periodColor === c.value ? 1 : 0.45, transition: 'opacity 0.15s' }} type="button" title={c.label}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill={c.value}>
-                        <path d="M4 12a8 8 0 1 1 16 0a8 8 0 0 1-16 0" />
-                      </svg>
+                    <button key={c.value} onClick={() => setPeriodColor(c.value)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} type="button" title={c.label}>
+                      <span style={{ display: 'block', width: '18px', height: '18px', borderRadius: 'var(--radius-sm)', background: c.value, opacity: periodColor === c.value ? 1 : 0.35, transition: 'opacity 0.15s', outline: periodColor === c.value ? `2px solid ${c.value}` : 'none', outlineOffset: '2px' }} />
                     </button>
                   ))}
                 </div>
@@ -326,6 +372,7 @@ export function DesktopCalendar({
               const dayEvents = dayStr ? events.filter((e) => e.date === dayStr) : []
               const activePeriod = dayStr ? specialPeriods.find((p) => dayStr >= p.startDate && dayStr <= p.endDate) : null
               const isPeriodStart = activePeriod && dayStr === activePeriod.startDate
+              const isPeriodEnd = activePeriod && dayStr === activePeriod.endDate
               return (
                 <button
                   className={['day-cell', day === selectedDay ? 'selected' : '', !day ? 'muted' : ''].join(' ')}
@@ -334,16 +381,22 @@ export function DesktopCalendar({
                   onClick={() => { if (day) { setSelectedDay(day); setShowCreateForm(false) } }}
                   type="button"
                 >
-                  {activePeriod && <span className="period-band" style={{ background: activePeriod.color }} />}
                   <div className="day-head">
-                    <span className="day-number">
-                      {day ?? ''}
-                    </span>
-                    {isPeriodStart && <small className="period-start-label" style={{ background: activePeriod.color }}>{activePeriod.label}</small>}
+                    <span className="day-number">{day ?? ''}</span>
+                    {isPeriodStart && <small className="period-start-label" style={{ background: activePeriod.color + '22', color: activePeriod.color }}>{activePeriod.label}</small>}
                   </div>
+                  {activePeriod && (
+                    <div
+                      className="period-full-bar"
+                      style={{
+                        background: activePeriod.color,
+                        borderRadius: `${isPeriodStart ? '2px' : '0'} ${isPeriodEnd ? '2px' : '0'} ${isPeriodEnd ? '2px' : '0'} ${isPeriodStart ? '2px' : '0'}`,
+                      }}
+                    />
+                  )}
                   <div className="day-events">
                     {dayEvents.slice(0, 3).map((event) => (
-                      <small className={`event-pill${event.hasMeeting ? ' has-meeting' : ''}`} key={event.id}>
+                      <small className={`event-pill ${eventTimeClass(event.time)}${event.hasMeeting ? ' has-meeting' : ''}`} key={event.id}>
                         {event.time} {event.title}
                       </small>
                     ))}
@@ -364,18 +417,22 @@ export function DesktopCalendar({
           <div className="detail-body">
             {selectedEvents.length === 0 && (
               <div className="cal-empty-state">
-                <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
+                <div className="cal-empty-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                </div>
                 <h3>{month}월 {selectedDay}일 일정이 없습니다</h3>
                 <p>새로운 일정을 추가해보세요</p>
+                {(role === 'admin' || role === 'leader') && (
+                  <button className="cal-empty-add-btn" onClick={openCreate} type="button">+ 일정 추가</button>
+                )}
               </div>
             )}
 
             <div className="detail-stack">
               {selectedEvents.map((event) => {
                 const isApplied = event.applicants.includes(currentVisitor)
-                const isAssigned = event.assigned.includes(currentVisitor)
                 const isEditing = editingEventId === event.id
 
                 if (isEditing && editDraft) {
@@ -430,41 +487,74 @@ export function DesktopCalendar({
                     </div>
 
                     <div className="event-meta-row">
-                      <span>⏰ {event.time}</span>
-                      {event.place && <span>📍 {event.place}</span>}
-                      {event.leader && <span>👤 {event.leader}</span>}
+                      <span><CalendarIcon name="clock" /> {event.time}</span>
+                      {event.place && <span><CalendarIcon name="pin" /> {event.place}</span>}
+                      {event.leader && <span><CalendarIcon name="user" /> {event.leader}</span>}
                     </div>
 
                     {event.allowApplications && (
                       <div className="assignment-box">
                         <div className="box-heading">
                           <strong>신청자 {event.applicants.length > 0 && <em>{event.applicants.length}명</em>}</strong>
-                          <div>
-                            <button className={`apply-btn${isApplied ? ' applied' : ''}`} onClick={() => onApplyToEvent(event.id)} type="button">
-                              {isApplied ? '신청취소' : '신청'}
-                            </button>
-                            <button className={`assign-btn${isAssigned ? ' assigned' : ''}`} onClick={() => onAssignToEvent(event.id, currentVisitor)} type="button">
-                              임명
-                            </button>
-                          </div>
+                          <button className={`apply-btn${isApplied ? ' applied' : ''}`} onClick={() => onApplyToEvent(event.id)} type="button">
+                            {isApplied ? '신청취소' : '신청'}
+                          </button>
                         </div>
                         <div className="person-chips">
-                          {event.applicants.map((person) => {
-                            const cardAssignment = event.cardAssignments.find((assignment) => assignment.userName === person)
-                            return (
-                              <span className={event.assigned.includes(person) ? 'assigned event-person-chip' : 'event-person-chip'} key={person}>
-                                <strong className="event-person-name">{person}</strong>
-                                <EventCardAssignSearch
-                                  assignedCardId={cardAssignment?.assignedCardId ?? null}
-                                  cards={cards}
-                                  eventId={event.id}
-                                  onAssign={onAssignCardToEventParticipant}
-                                  person={person}
-                                />
-                                <button className="chip-remove" onClick={() => onRemoveParticipant(event.id, person)} type="button">×</button>
-                              </span>
-                            )
-                          })}
+                          {event.applicants.map((person) => (
+                            <span className={event.assigned.includes(person) ? 'assigned event-person-chip' : 'event-person-chip'} key={person}>
+                              <strong className="event-person-name">{person}</strong>
+                              <button className="chip-remove" onClick={() => onRemoveParticipant(event.id, person)} type="button">×</button>
+                            </span>
+                          ))}
+                          {(role === 'leader' || role === 'admin') && onAddParticipant && (
+                            <div className="cal-add-participant-wrap" ref={addParticipantEventId === event.id ? addParticipantRef : undefined}>
+                              <button
+                                className="cal-add-participant-chip-btn"
+                                onClick={() => {
+                                  setAddParticipantEventId(addParticipantEventId === event.id ? null : event.id)
+                                  setAddParticipantQuery('')
+                                }}
+                                type="button"
+                              >
+                                + 추가
+                              </button>
+                              {addParticipantEventId === event.id && (
+                                <div className="cal-add-participant-dropdown">
+                                  <input
+                                    autoFocus
+                                    className="cal-add-participant-input"
+                                    onBlur={() => window.setTimeout(() => setAddParticipantEventId(null), 150)}
+                                    onChange={(e) => setAddParticipantQuery(e.target.value)}
+                                    placeholder="이름 검색..."
+                                    type="text"
+                                    value={addParticipantQuery}
+                                  />
+                                  <div className="cal-add-participant-list">
+                                    {allUserNames
+                                      .filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery))
+                                      .map((name) => (
+                                        <button
+                                          className="cal-add-participant-item"
+                                          key={name}
+                                          onMouseDown={() => {
+                                            onAddParticipant(event.id, name)
+                                            setAddParticipantEventId(null)
+                                            setAddParticipantQuery('')
+                                          }}
+                                          type="button"
+                                        >
+                                          {name}
+                                        </button>
+                                      ))}
+                                    {allUserNames.filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery)).length === 0 && (
+                                      <span className="cal-add-participant-empty">추가할 회원이 없습니다</span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -484,107 +574,6 @@ export function DesktopCalendar({
         </aside>
       </section>
     </>
-  )
-}
-
-function EventCardAssignSearch({
-  assignedCardId,
-  cards,
-  eventId,
-  onAssign,
-  person,
-}: {
-  assignedCardId: number | null
-  cards: TerritoryCard[]
-  eventId: number
-  onAssign: (eventId: number, userName: string, cardId: number | null) => void
-  person: string
-}) {
-  const assignedCard = assignedCardId ? cards.find((card) => card.id === assignedCardId) : undefined
-  const [query, setQuery] = useState(assignedCard?.name ?? '')
-  const [isOpen, setIsOpen] = useState(false)
-
-  useEffect(() => {
-    setQuery(assignedCard?.name ?? '')
-  }, [assignedCard?.name])
-
-  const filteredCards = useMemo(() => {
-    const normalizedQuery = normalizeCardSearch(query)
-    if (!normalizedQuery) return []
-    return sortTerritoryCards(cards
-      .filter((card) => {
-        const haystack = normalizeCardSearch(`${card.name}${card.region}${card.area}`)
-        return haystack.includes(normalizedQuery)
-      }))
-  }, [cards, query])
-
-  const selectCard = (card: TerritoryCard) => {
-    onAssign(eventId, person, card.id)
-    setQuery(card.name)
-    setIsOpen(false)
-  }
-
-  return (
-    <div className="event-card-assign-search">
-      <div className="event-card-assign-input-row">
-        <input
-          aria-label={`${person} 배정 카드 검색`}
-          onBlur={() => window.setTimeout(() => setIsOpen(false), 120)}
-          onChange={(event) => {
-            setQuery(event.target.value)
-            setIsOpen(true)
-          }}
-          onFocus={() => setIsOpen(true)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && filteredCards[0]) {
-              event.preventDefault()
-              selectCard(filteredCards[0])
-            }
-            if (event.key === 'Escape') setIsOpen(false)
-          }}
-          placeholder="카드 검색"
-          value={query}
-        />
-        {assignedCard && (
-          <button
-            aria-label={`${person} 카드 배정 해제`}
-            className="event-card-clear-btn"
-            onClick={() => {
-              onAssign(eventId, person, null)
-              setQuery('')
-              setIsOpen(false)
-            }}
-            type="button"
-          >
-            해제
-          </button>
-        )}
-      </div>
-      {isOpen && query && !assignedCardId && (
-        <div className="event-card-assign-results">
-          {filteredCards.length === 0 && <div className="event-card-empty-result">검색 결과 없음</div>}
-          {filteredCards.length > 0 && <div className="event-card-empty-result">검색 결과 {filteredCards.length}개</div>}
-          {filteredCards.map((card) => (
-            <button key={card.id} onMouseDown={() => selectCard(card)} type="button">
-              <strong>{card.name}</strong>
-              <small>{card.region} · {card.area}</small>
-            </button>
-          ))}
-        </div>
-      )}
-      {isOpen && query && assignedCardId && query !== assignedCard?.name && (
-        <div className="event-card-assign-results">
-          {filteredCards.length === 0 && <div className="event-card-empty-result">검색 결과 없음</div>}
-          {filteredCards.length > 0 && <div className="event-card-empty-result">검색 결과 {filteredCards.length}개</div>}
-          {filteredCards.map((card) => (
-            <button key={card.id} onMouseDown={() => selectCard(card)} type="button">
-              <strong>{card.name}</strong>
-              <small>{card.region} · {card.area}</small>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   )
 }
 

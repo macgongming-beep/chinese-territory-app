@@ -86,6 +86,7 @@ create table public.calendar_events (
   title        text not null,
   type         text not null default '비공식' check (type in ('비공식', '상가', '주택', '정기방문', '혼합')),
   place        text not null default '',
+  meeting_map_url text,
   leader_name  text not null default '',
   card_name    text not null default '',
   has_meeting  boolean not null default false,

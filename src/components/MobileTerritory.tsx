@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Building, CalendarEvent, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit } from '../types'
+import type { AppLanguage } from '../i18n'
+import { t } from '../i18n'
 import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
@@ -27,17 +29,18 @@ function getCurrentTimeSlot(): TimeSlot {
   return '저녁'
 }
 
-function fmtDate(dateStr: string): string {
+function fmtDate(dateStr: string, language: AppLanguage): string {
   const today = new Date(); today.setHours(0,0,0,0)
   const d = new Date(dateStr.slice(0, 10)); d.setHours(0,0,0,0)
   const diff = Math.round((today.getTime() - d.getTime()) / 86400000)
-  if (diff === 0) return '오늘'
-  if (diff === 1) return '어제'
-  if (diff < 30) return `${diff}일 전`
+  if (diff === 0) return t(language, 'territory.today')
+  if (diff === 1) return t(language, 'territory.yesterday')
+  if (diff < 30) return language === 'en' ? `${diff}d ago` : language === 'zh' ? `${diff}天前` : `${diff}일 전`
   return `${d.getMonth()+1}/${d.getDate()}`
 }
 
 export function MobileTerritory({
+  language,
   buildings,
   cards,
   calendarEvents = [],
@@ -57,6 +60,7 @@ export function MobileTerritory({
   onUpdateReturnVisitNickname,
   onUpdateReturnVisitAddress,
 }: {
+  language: AppLanguage
   buildings: Building[]
   cards: TerritoryCard[]
   calendarEvents?: CalendarEvent[]
@@ -89,6 +93,20 @@ export function MobileTerritory({
   const [filter, setFilter] = useState<'전체' | '미배정' | '내 카드'>('전체')
   const [showRegularDetail, setShowRegularDetail] = useState(false)
   const [showNewService, setShowNewService] = useState(false)
+  const [rvCollapsed, setRvCollapsed] = useState(false)
+  const [colorPickId, setColorPickId] = useState<number | null>(null)
+  const [rvColors, setRvColors] = useState<Record<number, string>>(() => {
+    try { return JSON.parse(localStorage.getItem('rvColors') ?? '{}') } catch { return {} }
+  })
+  const setRvColor = (id: number, color: string | null) => {
+    setRvColors((prev) => {
+      const next = { ...prev }
+      if (color) next[id] = color
+      else delete next[id]
+      localStorage.setItem('rvColors', JSON.stringify(next))
+      return next
+    })
+  }
   // 정기방문 카드 메뉴 & 기록 시트
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null)
   const [nicknameEditId, setNicknameEditId] = useState<number | null>(null)
@@ -124,6 +142,22 @@ export function MobileTerritory({
   const [newServiceCardId, setNewServiceCardId] = useState<number | ''>('')
   const [newServiceSearch, setNewServiceSearch] = useState('')
   const [newServiceSlot, setNewServiceSlot] = useState<TimeSlot>(getCurrentTimeSlot)
+  const timeSlotLabel = (slot: TimeSlot) => {
+    if (slot === '오전') return t(language, 'map.morning')
+    if (slot === '오후') return t(language, 'map.afternoon')
+    return t(language, 'map.evening')
+  }
+  const resultLabel = (result: '만남' | '부재' | null) => {
+    if (result === '만남') return t(language, 'map.met')
+    if (result === '부재') return t(language, 'map.absent')
+    return ''
+  }
+  const cardStatusLabel = (status: string) => {
+    if (status === '방문필요') return t(language, 'zone.summaryNeed')
+    if (status === '진행중') return t(language, 'zone.summaryProgress')
+    if (status === '완료') return t(language, 'zone.summaryDone')
+    return status
+  }
 
   const today = useMemo(() => {
     const d = new Date()
@@ -292,16 +326,16 @@ export function MobileTerritory({
         <div className="mobile-territory-head compact">
           <button className="mobile-territory-back" onClick={() => setShowRegularDetail(false)} type="button">‹</button>
           <div>
-            <p>나의 봉사</p>
-            <h2>정기 방문 관리</h2>
+            <p>{t(language, 'territory.title')}</p>
+            <h2>{t(language, 'territory.regularVisitManage')}</h2>
           </div>
         </div>
-        <section className="mobile-regular-section detail" aria-label="정기 방문 상세 관리">
+        <section className="mobile-regular-section detail" aria-label={t(language, 'territory.regularVisitManage')}>
           <div className="mobile-section-title">
-            <h2>정기 방문 ({myRegularVisits.length}건)</h2>
+            <h2>{t(language, 'territory.regularVisit')} ({myRegularVisits.length}{t(language, 'calendar.countSuffix')})</h2>
           </div>
           {myRegularVisits.length === 0 ? (
-            <div className="mobile-territory-empty">등록된 정기 방문이 없습니다.</div>
+            <div className="mobile-territory-empty">{t(language, 'territory.noRegularVisits')}</div>
           ) : (
             <div className="mobile-regular-list">
               {myRegularVisits.map(({ building, card, unit }) => (
@@ -313,10 +347,10 @@ export function MobileTerritory({
                 >
                   <div>
                     <strong>{building.name} {unit.number}</strong>
-                    <span>{card?.name ?? '카드 미지정'} · {building.type}</span>
+                    <span>{card?.name ?? t(language, 'territory.noCard')} · {building.type}</span>
                     {unit.memo && <small>{unit.memo}</small>}
                   </div>
-                  <b>열기</b>
+                  <b>{t(language, 'territory.open')}</b>
                 </button>
               ))}
             </div>
@@ -330,7 +364,7 @@ export function MobileTerritory({
     <div className="mobile-territory-page">
       <div className="mobile-territory-head">
         <div>
-          <h2>{role === 'admin' ? '구역 관리' : '나의 봉사'}</h2>
+          <h2>{role === 'admin' ? t(language, 'territory.adminTitle') : t(language, 'territory.title')}</h2>
         </div>
       </div>
 
@@ -338,10 +372,10 @@ export function MobileTerritory({
         <>
           <section className="mobile-territory-section mobile-today-service-section">
             <div className="mobile-section-title mobile-territory-list-title mobile-execution-title">
-              <h2>오늘의 봉사</h2>
+              <h2>{t(language, 'territory.todayService')}</h2>
             </div>
             {myTodayAssignments.length === 0 ? (
-              <div className="mobile-territory-empty">오늘 참여하는 봉사 일정이 없습니다.</div>
+              <div className="mobile-territory-empty">{t(language, 'territory.noTodayService')}</div>
             ) : (
               <div className="mobile-today-service-list">
                 {myTodayAssignments.map(({ event, cards: assignedCards, teammates }) => {
@@ -351,22 +385,22 @@ export function MobileTerritory({
                       <button className="mobile-today-service-toggle" onClick={() => toggleTodayEvent(event.id)} type="button">
                         <span aria-hidden="true">{isOpen ? '⌄' : '›'}</span>
                         <strong>{event.time} {event.title}</strong>
-                        <b>{assignedCards.length}개</b>
+                        <b>{assignedCards.length}{t(language, 'calendar.countSuffix')}</b>
                       </button>
                       {isOpen && (
                         <div className="mobile-today-service-body">
                           <p>
-                            {event.leader ? `인도자 ${event.leader}` : '인도자 미정'}
-                            {teammates.length > 0 ? ` · 팀원 ${teammates.join(', ')}` : ''}
+                            {event.leader ? `${t(language, 'territory.leader')} ${event.leader}` : t(language, 'territory.leaderTbd')}
+                            {teammates.length > 0 ? ` · ${t(language, 'territory.members')} ${teammates.join(', ')}` : ''}
                           </p>
                           {assignedCards.length === 0 ? (
-                            <div className="mobile-territory-empty compact">배정된 카드가 없습니다.</div>
+                            <div className="mobile-territory-empty compact">{t(language, 'territory.noAssignedCards')}</div>
                           ) : assignedCards.map((card) => (
                             <div className="mobile-today-card-row" key={card.id}>
                               <span>📍</span>
                               <strong>{card.name}</strong>
                               <em>{card.progress}%</em>
-                              <button onClick={() => onOpenMap(card.id)} type="button">지도</button>
+                              <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
                             </div>
                           ))}
                         </div>
@@ -378,12 +412,30 @@ export function MobileTerritory({
             )}
           </section>
 
+          {activeSession && (
+            <section className="mobile-territory-section">
+              <div className="mobile-active-session-card">
+                <span className="mas-dot" />
+                <div className="mas-body">
+                  <strong>{activeCard?.name ?? t(language, 'territory.noCard')}</strong>
+                  <span>{timeSlotLabel(activeSession.timeSlot)} · {t(language, 'map.servicing')}</span>
+                </div>
+                <div className="mas-actions">
+                  {activeCard && (
+                    <button className="mas-map-btn" onClick={() => onOpenMap(activeCard.id)} type="button">{t(language, 'zone.map')}</button>
+                  )}
+                  <button className="mas-end-btn" onClick={() => onEndServiceSession(activeSession.id)} type="button">{t(language, 'territory.end')}</button>
+                </div>
+              </div>
+            </section>
+          )}
+
           <section className="mobile-territory-section">
             <button className="mobile-new-service-card" onClick={() => setShowNewService((open) => !open)} type="button">
               <span aria-hidden="true">+</span>
               <div>
-                <strong>새 봉사</strong>
-                <small>배정 외 카드로 봉사 시작</small>
+                <strong>{t(language, 'territory.newService')}</strong>
+                <small>{t(language, 'territory.newServiceDesc')}</small>
               </div>
               <b aria-hidden="true">›</b>
             </button>
@@ -391,7 +443,7 @@ export function MobileTerritory({
               <div className="mobile-service-launcher compact">
                 <div className="mobile-card-search">
                   <input
-                    placeholder="카드 검색: 고림동, 고림동 1"
+                    placeholder={t(language, 'territory.cardSearchPlaceholder')}
                     value={newServiceSearch}
                     onChange={(event) => {
                       setNewServiceSearch(event.target.value)
@@ -401,7 +453,7 @@ export function MobileTerritory({
                   {newServiceCard && <span>{newServiceCard.name}</span>}
                   {newServiceSearch && !newServiceCard && (
                     <div className="mobile-card-search-results">
-                      {newServiceOptions.length === 0 && <span>검색 결과 없음</span>}
+                      {newServiceOptions.length === 0 && <span>{t(language, 'map.noSearchResults')}</span>}
                       {newServiceOptions.map((card) => (
                         <button
                           key={card.id}
@@ -417,31 +469,35 @@ export function MobileTerritory({
                     </div>
                   )}
                 </div>
-                <div className="mobile-session-slot" role="group" aria-label="봉사 시간대">
+                <div className="mobile-session-slot" role="group" aria-label={t(language, 'map.timeSlot')}>
                   {(['오전', '오후', '저녁'] as TimeSlot[]).map((slot) => (
                     <button className={newServiceSlot === slot ? 'active' : ''} key={slot} onClick={() => setNewServiceSlot(slot)} type="button">
-                      {slot}
+                      {timeSlotLabel(slot)}
                     </button>
                   ))}
                 </div>
                 <div className="mobile-service-actions">
-                  {activeSession && <button onClick={() => onEndServiceSession(activeSession.id)} type="button">현재 종료</button>}
-                  <button disabled={!newServiceCardId} onClick={startNewService} type="button">시작</button>
+                  <button disabled={!newServiceCardId} onClick={startNewService} type="button">{t(language, 'territory.start')}</button>
                 </div>
               </div>
             )}
           </section>
 
-          <section className="mobile-territory-section mobile-regular-section" aria-label="정기 방문">
+          <section className="mobile-territory-section mobile-regular-section" aria-label={t(language, 'territory.regularVisit')}>
             <div className="mobile-section-title">
-              <h2>정기 방문 <span className="rv-count">{myReturnVisits.length}건</span></h2>
-              <button className="rv-add-btn" onClick={() => { setShowAddSheet(true); setAddNickname(''); setAddAddress(''); setAddMemo(''); setAddLinked(null); setAddUnitPickBuilding(null) }} type="button">+ 추가</button>
+              <h2>
+                <button className="rv-collapse-btn" onClick={() => setRvCollapsed((v) => !v)} type="button">
+                  <span className="rv-collapse-chevron">{rvCollapsed ? '›' : '⌄'}</span>
+                  {t(language, 'territory.regularVisit')} <span className="rv-count">{myReturnVisits.length}{t(language, 'calendar.countSuffix')}</span>
+                </button>
+              </h2>
+              <button className="rv-add-btn" onClick={() => { setShowAddSheet(true); setAddNickname(''); setAddAddress(''); setAddMemo(''); setAddLinked(null); setAddUnitPickBuilding(null) }} type="button">+ {t(language, 'common.add')}</button>
             </div>
 
-            {myReturnVisits.length === 0 ? (
+            {!rvCollapsed && (myReturnVisits.length === 0 ? (
               <div className="mobile-regular-empty-card">
-                <strong>등록된 정기 방문이 없습니다.</strong>
-                <span>지도에서 세대 정기방문을 체크하면 여기에 나타납니다.</span>
+                <strong>{t(language, 'territory.noRegularVisits')}</strong>
+                <span>{t(language, 'territory.regularEmptyDesc')}</span>
               </div>
             ) : (
               <div className="rv-list">
@@ -451,70 +507,117 @@ export function MobileTerritory({
                   const isMenuOpen = menuOpenId === rv.id
                   const isNicknameEdit = nicknameEditId === rv.id
                   const isAddressEdit = addressEditId === rv.id
+                  const isColorPick = colorPickId === rv.id
+                  const cardColor = rvColors[rv.id]
+                  const colorStyle: React.CSSProperties = cardColor
+                    ? { borderLeft: `3px solid ${cardColor}`, background: `${cardColor}14` }
+                    : {}
+
                   return (
-                    <div key={rv.id} className="rv-card" onClick={() => { if (isMenuOpen) setMenuOpenId(null) }}>
-                      {/* 상단: 이름 · 상태 · ⋮ */}
-                      <div className="rv-card-header">
-                        <div className="rv-card-title">
-                          <strong className="rv-name">{label}</strong>
-                          {rv.lastResult && (
-                            <span className={`rv-status-dot rv-status-${rv.lastResult}`} />
-                          )}
-                          {rv.lastVisitedAt && (
-                            <span className="rv-last-visit">{fmtDate(rv.lastVisitedAt)}</span>
-                          )}
+                    <div
+                      key={rv.id}
+                      className="rv-card"
+                      style={colorStyle}
+                      onClick={() => { if (isMenuOpen) setMenuOpenId(null); if (isColorPick) setColorPickId(null) }}
+                    >
+                      {/* 메인 행: 정보 + 버튼 */}
+                      <div className="rv-card-main">
+                        <div className="rv-card-info">
+                          <div className="rv-card-title">
+                            <strong className="rv-name">{label}</strong>
+                            {rv.lastResult && (
+                              <span className={`rv-status-dot rv-status-${rv.lastResult}`} />
+                            )}
+                            {rv.lastVisitedAt && (
+                              <span className="rv-last-visit">{fmtDate(rv.lastVisitedAt, language)}</span>
+                            )}
+                          </div>
+                          {rv.address && <span className="rv-address">{rv.address}</span>}
                         </div>
-                        <div className="rv-menu-wrap">
+
+                        <div className="rv-row-actions">
                           <button
-                            className="rv-menu-btn"
-                            onClick={(e) => { e.stopPropagation(); setMenuOpenId(isMenuOpen ? null : rv.id) }}
+                            className="rv-btn rv-btn-log"
+                            onClick={(e) => { e.stopPropagation(); setLogTarget(rv); setLogResult(null); setLogMemo('') }}
                             type="button"
-                            aria-label="더보기"
-                          >⋮</button>
-                          {isMenuOpen && (
-                            <div className="rv-menu-dropdown" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                className="rv-menu-item"
-                                onClick={() => {
-                                  setNicknameEditId(rv.id)
-                                  setNicknameEditValue(rv.nickname || rv.displayName)
-                                  setMenuOpenId(null)
-                                }}
-                                type="button"
-                              >별칭 수정</button>
-                              <button
-                                className="rv-menu-item"
-                                onClick={() => {
-                                  setAddressEditId(rv.id)
-                                  setAddressEditValue(rv.address)
-                                  setMenuOpenId(null)
-                                }}
-                                type="button"
-                              >주소 수정</button>
-                              <button
-                                className="rv-menu-item rv-menu-danger"
-                                disabled={deletingId === rv.id}
-                                onClick={() => {
-                                  if (!onDeleteReturnVisit) return
-                                  setMenuOpenId(null)
-                                  setConfirmDialog({
-                                    message: '정기방문을 삭제할까요?',
-                                    onConfirm: async () => {
-                                      setDeletingId(rv.id)
-                                      await onDeleteReturnVisit(rv.id)
-                                      setDeletingId(null)
-                                    },
-                                  })
-                                }}
-                                type="button"
-                              >삭제</button>
-                            </div>
-                          )}
+                          >{t(language, 'territory.log')}</button>
+                          {building ? (
+                            <button
+                              className="rv-btn rv-btn-map"
+                              onClick={(e) => { e.stopPropagation(); onOpenMap(building.cardId) }}
+                              type="button"
+                            >{t(language, 'zone.map')}</button>
+                          ) : rv.address ? (
+                            <button
+                              className="rv-btn rv-btn-map"
+                              onClick={(e) => { e.stopPropagation(); navigate(`/map?addr=${encodeURIComponent(rv.address)}&pinLabel=${encodeURIComponent(rv.nickname || rv.displayName)}`) }}
+                              type="button"
+                            >{t(language, 'zone.map')}</button>
+                          ) : null}
+                          <div className="rv-menu-wrap">
+                            <button
+                              className="rv-menu-btn"
+                              onClick={(e) => { e.stopPropagation(); setMenuOpenId(isMenuOpen ? null : rv.id); setColorPickId(null) }}
+                              type="button"
+                              aria-label={t(language, 'territory.more')}
+                            >⋮</button>
+                            {isMenuOpen && (
+                              <div className="rv-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  className="rv-menu-item"
+                                  onClick={() => { setColorPickId(rv.id); setMenuOpenId(null) }}
+                                  type="button"
+                                >{t(language, 'territory.color')}</button>
+                                <button
+                                  className="rv-menu-item"
+                                  onClick={() => { setNicknameEditId(rv.id); setNicknameEditValue(rv.nickname || rv.displayName); setMenuOpenId(null) }}
+                                  type="button"
+                                >{t(language, 'territory.editNickname')}</button>
+                                <button
+                                  className="rv-menu-item"
+                                  onClick={() => { setAddressEditId(rv.id); setAddressEditValue(rv.address); setMenuOpenId(null) }}
+                                  type="button"
+                                >{t(language, 'territory.editAddress')}</button>
+                                <button
+                                  className="rv-menu-item rv-menu-danger"
+                                  disabled={deletingId === rv.id}
+                                  onClick={() => {
+                                    if (!onDeleteReturnVisit) return
+                                    setMenuOpenId(null)
+                                    setConfirmDialog({
+                                      message: t(language, 'territory.deleteRegularConfirm'),
+                                      onConfirm: async () => {
+                                        setDeletingId(rv.id)
+                                        await onDeleteReturnVisit(rv.id)
+                                        setDeletingId(null)
+                                      },
+                                    })
+                                  }}
+                                  type="button"
+                                >{t(language, 'common.delete')}</button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      {/* 주소 */}
-                      <span className="rv-address">{rv.address}</span>
+                      {/* 색상 피커 */}
+                      {isColorPick && (
+                        <div className="rv-color-picker" onClick={(e) => e.stopPropagation()}>
+                          {['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#8b5cf6','#ec4899','#6b7280'].map((c) => (
+                            <button
+                              key={c}
+                              className={`rv-color-dot${cardColor === c ? ' selected' : ''}`}
+                              style={{ background: c }}
+                              onClick={() => { setRvColor(rv.id, cardColor === c ? null : c); setColorPickId(null) }}
+                              type="button"
+                            />
+                          ))}
+                          {cardColor && (
+                            <button className="rv-color-reset" onClick={() => { setRvColor(rv.id, null); setColorPickId(null) }} type="button">{t(language, 'territory.default')}</button>
+                          )}
+                        </div>
+                      )}
 
                       {/* 별칭 인라인 편집 */}
                       {isNicknameEdit && (
@@ -537,12 +640,8 @@ export function MobileTerritory({
                               setNicknameEditId(null)
                             }}
                             type="button"
-                          >{nicknameSaving ? '…' : '저장'}</button>
-                          <button
-                            className="rv-nickname-cancel-btn"
-                            onClick={() => setNicknameEditId(null)}
-                            type="button"
-                          >취소</button>
+                          >{nicknameSaving ? '…' : t(language, 'common.save')}</button>
+                          <button className="rv-nickname-cancel-btn" onClick={() => setNicknameEditId(null)} type="button">{t(language, 'common.cancel')}</button>
                         </div>
                       )}
 
@@ -563,12 +662,12 @@ export function MobileTerritory({
                                   }, 800)
                                 }
                               }}
-                              placeholder="예: 언동로 213"
+                              placeholder={t(language, 'territory.addressPlaceholderShort')}
                               style={{ paddingRight: addrEditGeocoding ? 28 : undefined, width: '100%', boxSizing: 'border-box' }}
                               autoFocus
                             />
                             {addrEditGeocoding && (
-                              <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#94a3b8' }}>검색 중…</span>
+                              <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#94a3b8' }}>{t(language, 'map.searchingAddress')}</span>
                             )}
                           </div>
                           <button
@@ -582,44 +681,15 @@ export function MobileTerritory({
                               setAddressEditId(null)
                             }}
                             type="button"
-                          >{addressSaving ? '…' : '저장'}</button>
-                          <button
-                            className="rv-nickname-cancel-btn"
-                            onClick={() => setAddressEditId(null)}
-                            type="button"
-                          >취소</button>
+                          >{addressSaving ? '…' : t(language, 'common.save')}</button>
+                          <button className="rv-nickname-cancel-btn" onClick={() => setAddressEditId(null)} type="button">{t(language, 'common.cancel')}</button>
                         </div>
                       )}
-
-                      {/* 구분선 */}
-                      <div className="rv-divider" />
-
-                      {/* 하단 액션 버튼 */}
-                      <div className="rv-card-actions">
-                        <button
-                          className="rv-btn rv-btn-log"
-                          onClick={() => { setLogTarget(rv); setLogResult(null); setLogMemo('') }}
-                          type="button"
-                        >기록</button>
-                        {building ? (
-                          <button
-                            className="rv-btn rv-btn-map"
-                            onClick={() => onOpenMap(building.cardId)}
-                            type="button"
-                          >지도</button>
-                        ) : rv.address ? (
-                          <button
-                            className="rv-btn rv-btn-map"
-                            onClick={() => navigate(`/map?addr=${encodeURIComponent(rv.address)}&pinLabel=${encodeURIComponent(rv.nickname || rv.displayName)}`)}
-                            type="button"
-                          >지도</button>
-                        ) : null}
-                      </div>
                     </div>
                   )
                 })}
               </div>
-            )}
+            ))}
           </section>
 
         {/* ── 수동 추가 시트 ── */}
@@ -627,15 +697,15 @@ export function MobileTerritory({
           <div className="rv-log-backdrop" onClick={() => setShowAddSheet(false)}>
             <div className="rv-log-sheet" onClick={(e) => e.stopPropagation()}>
               <div className="rv-log-header">
-                <strong>정기 방문 추가</strong>
+                <strong>{t(language, 'territory.addRegularVisit')}</strong>
               </div>
 
               {/* 별칭 */}
               <div className="rv-add-field">
-                <label className="rv-add-label">별칭 <span className="rv-add-required">필수</span></label>
+                <label className="rv-add-label">{t(language, 'territory.nickname')} <span className="rv-add-required">{t(language, 'territory.required')}</span></label>
                 <input
                   className="rv-add-input"
-                  placeholder="예: 고림동 할머니"
+                  placeholder={t(language, 'territory.nicknamePlaceholder')}
                   value={addNickname}
                   onChange={(e) => setAddNickname(e.target.value)}
                   autoFocus
@@ -644,21 +714,21 @@ export function MobileTerritory({
 
               {/* 주소 */}
               <div className="rv-add-field">
-                <label className="rv-add-label">주소 <span className="rv-add-optional">선택</span></label>
+                <label className="rv-add-label">{t(language, 'map.address')} <span className="rv-add-optional">{t(language, 'territory.optional')}</span></label>
                 {addLinked ? (
                   <div className="rv-add-linked">
                     <span className="rv-add-linked-text">
                       <b>{addLinked.building.name} {addLinked.unit.number}호</b>
                       <em>{addLinked.building.address}</em>
                     </span>
-                    <button className="rv-add-unlink" type="button" onClick={() => { setAddLinked(null); setAddAddress('') }}>해제</button>
+                    <button className="rv-add-unlink" type="button" onClick={() => { setAddLinked(null); setAddAddress('') }}>{t(language, 'territory.unlink')}</button>
                   </div>
                 ) : (
                   <>
                     <div style={{ position: 'relative' }}>
                       <input
                         className="rv-add-input"
-                        placeholder="예: 언동로 213"
+                        placeholder={t(language, 'territory.addressPlaceholderShort')}
                         value={addAddress}
                         onChange={(e) => {
                           const val = e.target.value
@@ -675,13 +745,13 @@ export function MobileTerritory({
                         style={{ paddingRight: addAddressGeocoding ? 28 : undefined }}
                       />
                       {addAddressGeocoding && (
-                        <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#94a3b8' }}>검색 중…</span>
+                        <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#94a3b8' }}>{t(language, 'map.searchingAddress')}</span>
                       )}
                     </div>
                     {/* 주소 매칭 결과 */}
                     {addressMatches.length > 0 && (
                       <div className="rv-add-matches">
-                        <p className="rv-add-matches-title">구역 카드에서 일치하는 건물</p>
+                        <p className="rv-add-matches-title">{t(language, 'territory.matchingBuildings')}</p>
                         {addressMatches.map((b) => (
                           <div key={b.id} className="rv-add-match-item">
                             <div className="rv-add-match-info">
@@ -699,13 +769,13 @@ export function MobileTerritory({
                                   setAddUnitPickBuilding(addUnitPickBuilding?.id === b.id ? null : b)
                                 }
                               }}
-                            >연결</button>
+                            >{t(language, 'territory.connect')}</button>
                           </div>
                         ))}
                         {/* 세대 선택 */}
                         {addUnitPickBuilding && (
                           <div className="rv-add-unit-picker">
-                            <p className="rv-add-matches-title">세대 선택</p>
+                            <p className="rv-add-matches-title">{t(language, 'territory.selectUnit')}</p>
                             {addUnitPickBuilding.units.map((u) => (
                               <button
                                 key={u.id}
@@ -724,17 +794,17 @@ export function MobileTerritory({
 
               {/* 메모 */}
               <div className="rv-add-field">
-                <label className="rv-add-label">메모 <span className="rv-add-optional">선택</span></label>
+                <label className="rv-add-label">{t(language, 'map.memo')} <span className="rv-add-optional">{t(language, 'territory.optional')}</span></label>
                 <input
                   className="rv-add-input"
-                  placeholder="예: 매주 화요일 방문"
+                  placeholder={t(language, 'territory.memoPlaceholder')}
                   value={addMemo}
                   onChange={(e) => setAddMemo(e.target.value)}
                 />
               </div>
 
               <div className="rv-log-actions">
-                <button className="rv-log-cancel" type="button" onClick={() => setShowAddSheet(false)}>취소</button>
+                <button className="rv-log-cancel" type="button" onClick={() => setShowAddSheet(false)}>{t(language, 'common.cancel')}</button>
                 <button
                   className="rv-log-save"
                   disabled={!addNickname.trim() || addSaving}
@@ -752,7 +822,7 @@ export function MobileTerritory({
                     setAddSaving(false)
                     setShowAddSheet(false)
                   }}
-                >{addSaving ? '저장 중…' : '저장'}</button>
+                >{addSaving ? t(language, 'territory.saving') : t(language, 'common.save')}</button>
               </div>
             </div>
           </div>
@@ -792,8 +862,8 @@ export function MobileTerritory({
                           onTouchMove={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current) }}
                           onContextMenu={(e) => { e.preventDefault(); setLogActionId(l.id) }}
                         >
-                          <span className="rv-h-date">{dateStr} {slot}</span>
-                          {l.result && <b className={l.result === '만남' ? 'rv-h-meet' : 'rv-h-absent'}> · {l.result}</b>}
+                          <span className="rv-h-date">{dateStr} {timeSlotLabel(slot as TimeSlot)}</span>
+                          {l.result && <b className={l.result === '만남' ? 'rv-h-meet' : 'rv-h-absent'}> · {resultLabel(l.result)}</b>}
                           {l.memo && <em className="rv-h-memo"> {l.memo}</em>}
                         </div>
                       )
@@ -810,7 +880,7 @@ export function MobileTerritory({
                       <div className="rv-action-sheet" onClick={(e) => e.stopPropagation()}>
                         {!logEditMode ? (
                           <>
-                            <p className="rv-action-title">기록 관리</p>
+                            <p className="rv-action-title">{t(language, 'territory.manageRecord')}</p>
                             <button
                               className="rv-action-btn"
                               type="button"
@@ -819,55 +889,55 @@ export function MobileTerritory({
                                 setLogEditMemo(targetLog.memo)
                                 setLogEditMode(true)
                               }}
-                            >내용 수정</button>
+                            >{t(language, 'territory.editContent')}</button>
                             <button
                               className="rv-action-btn rv-action-danger"
                               type="button"
                               onClick={() => {
                                 if (!onDeleteReturnVisitLog) return
                                 setConfirmDialog({
-                                  message: '이 기록을 삭제할까요?',
+                                  message: t(language, 'territory.deleteRecordConfirm'),
                                   onConfirm: async () => {
                                     await onDeleteReturnVisitLog(logActionId)
                                     setLogActionId(null)
                                   },
                                 })
                               }}
-                            >삭제</button>
+                            >{t(language, 'common.delete')}</button>
                             <button
                               className="rv-action-cancel"
                               type="button"
                               onClick={() => setLogActionId(null)}
-                            >취소</button>
+                            >{t(language, 'common.cancel')}</button>
                           </>
                         ) : (
                           <>
-                            <p className="rv-action-title">기록 수정</p>
+                            <p className="rv-action-title">{t(language, 'territory.editRecord')}</p>
                             <div className="rv-log-result-chips" style={{ marginBottom: 8 }}>
                               <button
                                 className={`rv-chip${logEditResult === '만남' ? ' rv-chip-meet' : ''}`}
                                 onClick={() => setLogEditResult(logEditResult === '만남' ? null : '만남')}
                                 type="button"
-                              >만남</button>
+                              >{t(language, 'map.met')}</button>
                               <button
                                 className={`rv-chip${logEditResult === '부재' ? ' rv-chip-absent' : ''}`}
                                 onClick={() => setLogEditResult(logEditResult === '부재' ? null : '부재')}
                                 type="button"
-                              >부재</button>
+                              >{t(language, 'map.absent')}</button>
                             </div>
                             <textarea
                               className="rv-log-memo"
                               rows={2}
                               value={logEditMemo}
                               onChange={(e) => setLogEditMemo(e.target.value)}
-                              placeholder="메모 (선택)"
+                              placeholder={`${t(language, 'map.memo')} (${t(language, 'territory.optional')})`}
                             />
                             <div className="rv-log-actions">
                               <button
                                 className="rv-log-cancel"
                                 type="button"
                                 onClick={() => setLogEditMode(false)}
-                              >취소</button>
+                              >{t(language, 'common.cancel')}</button>
                               <button
                                 className="rv-log-save"
                                 disabled={logEditSaving || (!logEditResult && !logEditMemo.trim())}
@@ -880,7 +950,7 @@ export function MobileTerritory({
                                   setLogActionId(null)
                                   setLogEditMode(false)
                                 }}
-                              >{logEditSaving ? '저장 중…' : '저장'}</button>
+                              >{logEditSaving ? t(language, 'territory.saving') : t(language, 'common.save')}</button>
                             </div>
                           </>
                         )}
@@ -897,19 +967,19 @@ export function MobileTerritory({
                       className={`rv-chip${logResult === '만남' ? ' rv-chip-meet' : ''}`}
                       onClick={() => setLogResult(logResult === '만남' ? null : '만남')}
                       type="button"
-                    >만남</button>
+                    >{t(language, 'map.met')}</button>
                     <button
                       className={`rv-chip${logResult === '부재' ? ' rv-chip-absent' : ''}`}
                       onClick={() => setLogResult(logResult === '부재' ? null : '부재')}
                       type="button"
-                    >부재</button>
+                    >{t(language, 'map.absent')}</button>
                   </div>
                 </div>
 
                 {/* 메모 */}
                 <textarea
                   className="rv-log-memo"
-                  placeholder="메모 (선택)"
+                  placeholder={`${t(language, 'map.memo')} (${t(language, 'territory.optional')})`}
                   value={logMemo}
                   onChange={(e) => setLogMemo(e.target.value)}
                   rows={2}
@@ -921,7 +991,7 @@ export function MobileTerritory({
                     className="rv-log-cancel"
                     onClick={() => setLogTarget(null)}
                     type="button"
-                  >취소</button>
+                  >{t(language, 'common.cancel')}</button>
                   <button
                     className="rv-log-save"
                     disabled={(!logResult && !logMemo.trim()) || logSaving}
@@ -934,7 +1004,7 @@ export function MobileTerritory({
                       setLogMemo('')
                     }}
                     type="button"
-                  >{logSaving ? '저장 중…' : '저장'}</button>
+                  >{logSaving ? t(language, 'territory.saving') : t(language, 'common.save')}</button>
                 </div>
               </div>
             </div>
@@ -956,12 +1026,12 @@ export function MobileTerritory({
                   onClick={() => setConfirmDialog(null)}
                   style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 600, fontSize: 14, cursor: 'pointer', color: '#475569' }}
                   type="button"
-                >취소</button>
+                >{t(language, 'common.cancel')}</button>
                 <button
                   onClick={() => { const fn = confirmDialog.onConfirm; setConfirmDialog(null); fn() }}
                   style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: '#ef4444', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
                   type="button"
-                >삭제</button>
+                >{t(language, 'common.delete')}</button>
               </div>
             </div>
           </div>
@@ -971,7 +1041,7 @@ export function MobileTerritory({
 
       {role === 'admin' && (
         <>
-          <div className="mobile-territory-filter" aria-label="카드 필터">
+          <div className="mobile-territory-filter" aria-label={t(language, 'zone.cardCount')}>
             {(['전체', '미배정', '내 카드'] as const).map((f) => (
               <button
                 className={filter === f ? 'active' : ''}
@@ -979,33 +1049,33 @@ export function MobileTerritory({
                 onClick={() => setFilter(f)}
                 type="button"
               >
-                {f}
+                {f === '전체' ? t(language, 'map.all') : f === '미배정' ? t(language, 'zone.unassigned') : t(language, 'territory.myCards')}
               </button>
             ))}
           </div>
 
           {visibleCards.length > 0 && (
             <div className="mobile-section-title mobile-territory-list-title">
-              <h2>{filter === '전체' ? '전체 카드 목록' : '내 카드'}</h2>
+              <h2>{filter === '전체' ? t(language, 'territory.allCardsList') : t(language, 'territory.myCards')}</h2>
             </div>
           )}
 
           {visibleCards.length === 0 && (
             <div className="mobile-territory-empty" style={{ margin: '0 20px' }}>
-              카드가 없습니다.
+              {t(language, 'zone.noCards')}
             </div>
           )}
 
           {visibleCards.map((card) => {
             const isActiveSession = activeSessionCardIds.has(card.id)
-            const statusLabel = isActiveSession ? '봉사 중' : card.status
+            const statusLabel = isActiveSession ? t(language, 'map.servicing') : cardStatusLabel(card.status)
             const statusClass = isActiveSession ? '진행중' : card.status
             return (
               <div className="mobile-territory-card" key={card.id}>
                 <div className="mobile-territory-info">
                   <h3 className="mobile-territory-name">{card.name}</h3>
                   <p className="mobile-territory-sub">
-                    {card.area} · 세대 {card.units} · 사용자 {card.assignedUsers.length}명
+                    {card.area} · {t(language, 'zone.householdCount')} {card.units} · {t(language, 'territory.users')} {card.assignedUsers.length}{t(language, 'calendar.personCount')}
                   </p>
                   <div className="mobile-territory-progress">
                     <div className="mobile-territory-bar">
@@ -1023,7 +1093,7 @@ export function MobileTerritory({
                     onClick={() => onOpenMap(card.id)}
                     type="button"
                   >
-                    열기
+                    {t(language, 'territory.open')}
                   </button>
                 </div>
               </div>

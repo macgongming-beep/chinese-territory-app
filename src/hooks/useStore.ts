@@ -77,6 +77,7 @@ type RawCalendarEvent = {
   title: string
   type: string
   place: string
+  meeting_map_url?: string | null
   leader_name: string
   card_name: string
   has_meeting: boolean
@@ -113,6 +114,8 @@ type RawVisitHistory = {
   memo: string | null
   visited_at: string
   created_at: string
+  special_period_id?: number | null
+  invitation_left?: boolean | null
 }
 
 type RawServiceSession = {
@@ -215,6 +218,7 @@ function toCalendarEvent(raw: RawCalendarEvent, cardAssignments: EventCardAssign
     title: raw.title,
     type: raw.type as ScheduleType,
     place: raw.place,
+    mapLink: raw.meeting_map_url ?? undefined,
     leader: raw.leader_name,
     card: raw.card_name,
     hasMeeting: raw.has_meeting,
@@ -281,6 +285,8 @@ function toVisitHistory(raw: RawVisitHistory): VisitHistory {
     memo: raw.memo ?? undefined,
     visitedAt: raw.visited_at,
     createdAt: raw.created_at,
+    specialPeriodId: raw.special_period_id ?? null,
+    invitationLeft: raw.invitation_left ?? false,
   }
 }
 
@@ -988,12 +994,21 @@ export function useStore() {
     await fetchAll()
   }
 
+  // 특정 날짜에 활성화된 특별봉사 시즌 id 반환 (없으면 null)
+  const getActiveSpecialPeriodIdForDate = (dateStr: string): number | null => {
+    const found = specialPeriods.find(
+      (p) => dateStr >= p.startDate && dateStr <= p.endDate,
+    )
+    return found?.id ?? null
+  }
+
   const updateUnitStatus = async (
     _buildingId: number,
     unitId: number,
     status: UnitStatus,
     memo?: string,
     timeSlot: TimeSlot = getCurrentTimeSlot(),
+    invitationLeft: boolean = false,
   ) => {
     const recordSession = getRecordServiceSession(_buildingId)
     const effectiveTimeSlot = recordSession?.timeSlot ?? timeSlot
@@ -1020,10 +1035,13 @@ export function useStore() {
     }
 
     const existingAttempt = existingAttemptResult.data?.[0]
+    const activePeriodId = getActiveSpecialPeriodIdForDate(visitedAt)
     const historyPayload = {
       result: status,
       memo: memo?.trim() || null,
       ...(recordSession ? { service_session_id: recordSession.id } : {}),
+      special_period_id: activePeriodId,
+      invitation_left: invitationLeft,
     }
     const historyResult = existingAttempt
       ? await supabase.from('visit_histories').update(historyPayload).eq('id', existingAttempt.id)
@@ -1035,6 +1053,8 @@ export function useStore() {
           ...(recordSession ? { service_session_id: recordSession.id } : {}),
           memo: memo?.trim() || null,
           visited_at: visitedAt,
+          special_period_id: activePeriodId,
+          invitation_left: invitationLeft,
         })
 
     if (historyResult.error) {
@@ -1044,7 +1064,68 @@ export function useStore() {
     await fetchAll()
   }
 
-  const quickLogVisit = async (_buildingId: number, unitId: number, result: UnitStatus) => {
+  // 초대장 단독 토글: result/unit.status 영향 X, 오직 invitation_left 플래그만 토글
+  const toggleInvitationLeft = async (_buildingId: number, unitId: number) => {
+    const todayStr = getLocalDateString()
+    const recordSession = getRecordServiceSession(_buildingId)
+    const slot = recordSession?.timeSlot ?? getCurrentTimeSlot()
+    const visitor = getCurrentVisitor()
+
+    // 같은 날/시간대/방문자 기록 조회
+    const existingResult = await supabase
+      .from('visit_histories')
+      .select('id, invitation_left')
+      .eq('unit_id', unitId)
+      .eq('visitor_name', visitor)
+      .eq('visited_at', todayStr)
+      .eq('time_slot', slot)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (existingResult.error) {
+      reportMutationError('기존 방문 기록 확인에 실패했습니다.', existingResult.error)
+      return
+    }
+
+    const existing = existingResult.data?.[0]
+
+    if (existing) {
+      // 기존 기록의 invitation_left만 토글 (result/unit.status는 그대로)
+      const next = !existing.invitation_left
+      const updateResult = await supabase
+        .from('visit_histories')
+        .update({ invitation_left: next })
+        .eq('id', existing.id)
+      if (updateResult.error) {
+        reportMutationError('초대장 표시를 업데이트하지 못했습니다.', updateResult.error)
+        return
+      }
+    } else {
+      // 기록이 없으면 새로 생성 (result='미방문', invitation_left=true)
+      // 단, unit.status는 변경하지 않음 (기존 status 유지)
+      const activePeriodId = getActiveSpecialPeriodIdForDate(todayStr)
+      const insertResult = await supabase
+        .from('visit_histories')
+        .insert({
+          unit_id: unitId,
+          visitor_name: visitor,
+          result: '미방문',
+          visited_at: todayStr,
+          time_slot: slot,
+          ...(recordSession ? { service_session_id: recordSession.id } : {}),
+          special_period_id: activePeriodId,
+          invitation_left: true,
+        })
+      if (insertResult.error) {
+        reportMutationError('초대장 기록을 저장하지 못했습니다.', insertResult.error)
+        return
+      }
+    }
+
+    await fetchAll()
+  }
+
+  const quickLogVisit = async (_buildingId: number, unitId: number, result: UnitStatus, invitationLeft: boolean = false) => {
     const todayStr = getLocalDateString()
     const recordSession = getRecordServiceSession(_buildingId)
     const slot = recordSession?.timeSlot ?? getCurrentTimeSlot()
@@ -1055,7 +1136,7 @@ export function useStore() {
       .from('units')
       .update({ status: result })
       .eq('id', unitId)
-    
+
     if (unitUpdate.error) {
       reportMutationError('세대 상태를 업데이트하지 못했습니다.', unitUpdate.error)
       return
@@ -1086,15 +1167,17 @@ export function useStore() {
         .update({
           result: result,
           ...(recordSession ? { service_session_id: recordSession.id } : {}),
+          ...(invitationLeft ? { invitation_left: true } : {}),
         })
         .eq('id', existing.id)
-      
+
       if (updateResult.error) {
         reportMutationError('방문 기록을 업데이트하지 못했습니다.', updateResult.error)
         return
       }
       historyStatus = '업데이트됨'
     } else {
+      const activePeriodId = getActiveSpecialPeriodIdForDate(todayStr)
       const insertResult = await supabase
         .from('visit_histories')
         .insert({
@@ -1104,8 +1187,10 @@ export function useStore() {
           visited_at: todayStr,
           time_slot: slot,
           ...(recordSession ? { service_session_id: recordSession.id } : {}),
+          special_period_id: activePeriodId,
+          invitation_left: invitationLeft,
         })
-      
+
       if (insertResult.error) {
         reportMutationError('방문 기록을 저장하지 못했습니다.', insertResult.error)
         return
@@ -1212,9 +1297,11 @@ export function useStore() {
       timeSlot: TimeSlot
       memo: string
       visitedAt: string
+      invitationLeft?: boolean
     },
   ) => {
     const recordSession = getRecordServiceSession(_buildingId, input.visitedAt)
+    const activePeriodId = getActiveSpecialPeriodIdForDate(input.visitedAt)
     const insertResult = await supabase.from('visit_histories').insert({
       unit_id: unitId,
       visitor_name: getCurrentVisitor(),
@@ -1223,6 +1310,8 @@ export function useStore() {
       ...(recordSession ? { service_session_id: recordSession.id, time_slot: recordSession.timeSlot } : {}),
       memo: input.memo.trim() || null,
       visited_at: input.visitedAt,
+      special_period_id: activePeriodId,
+      invitation_left: input.invitationLeft ?? false,
     })
 
     if (insertResult.error) {
@@ -1304,14 +1393,21 @@ export function useStore() {
     lat: number
     lng: number
   }) => {
-    if (!input.name.trim() || !input.address.trim()) {
-      showToast('건물명과 주소를 입력해 주세요.', 'error')
+    if (!input.address.trim()) {
+      showToast('주소를 입력해 주세요.', 'error')
       return
     }
+    // 이름이 없으면 주소에서 자동 추출 (예: "언동로 213")
+    const autoName = input.name.trim() || (() => {
+      const m = input.address.match(/([가-힣]+(?:로|길)\s*[\d\-]+)/)
+      if (m) return m[1].replace(/\s+/, ' ').trim()
+      const parts = input.address.trim().split(/\s+/)
+      return parts.slice(-2).join(' ')
+    })()
 
     const result = await supabase.from('buildings').insert({
       card_id: input.cardId,
-      name: input.name.trim(),
+      name: autoName,
       address: input.address.trim(),
       type: input.type,
       lat: input.lat,
@@ -1322,7 +1418,7 @@ export function useStore() {
       return
     }
     await fetchAll()
-    showToast(`"${input.name.trim()}" 건물이 추가됐습니다`)
+    showToast(`"${autoName}" 건물이 추가됐습니다`)
   }
 
   const importBuildings = async (inputs: Array<{
@@ -1484,6 +1580,90 @@ export function useStore() {
     showToast(`건물 ${ids.length}개가 삭제됐습니다`)
   }
 
+  /**
+   * 같은 카드 내 중복 주소 건물들을 합칩니다.
+   * - 주소가 동일한 건물들 중 id가 가장 작은 건물(기준)에 나머지 건물의 호수를 모두 이전
+   * - 호수 번호가 겹칠 경우 기준 건물의 호수를 유지 (중복 삽입 스킵)
+   * - 나머지 건물 삭제
+   * scopeCardId가 없으면 전체 buildings 대상
+   */
+  const mergeDuplicateBuildings = async (
+    scopeCardId?: number,
+    nameOverrides?: Record<number, string>, // primaryId → 선택된 건물 이름
+  ) => {
+    const scope = scopeCardId
+      ? buildings.filter((b) => b.cardId === scopeCardId)
+      : buildings
+
+    // 주소 기준 그룹핑 (공백 제거 + 소문자 정규화: "진덕로19-3" == "진덕로 19-3")
+    const normalizeAddr = (addr: string) =>
+      addr.trim().toLowerCase().replace(/\s+/g, '').replace(/[-‐]/g, '-')
+
+    const groups = new Map<string, typeof scope>()
+    for (const b of scope) {
+      const key = `${b.cardId}::${normalizeAddr(b.address)}`
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(b)
+    }
+
+    const duplicateGroups = Array.from(groups.values()).filter((g) => g.length > 1)
+    if (duplicateGroups.length === 0) {
+      showToast('중복 주소 건물이 없습니다.', 'info')
+      return
+    }
+
+    let mergedBuildings = 0
+    let movedUnits = 0
+
+    for (const group of duplicateGroups) {
+      // id 오름차순 정렬 → 첫 번째가 기준 건물
+      const sorted = [...group].sort((a, b) => a.id - b.id)
+      const [primary, ...rest] = sorted
+
+      // 이름 오버라이드가 있으면 기준 건물 이름 업데이트
+      const chosenName = nameOverrides?.[primary.id]
+      if (chosenName && chosenName !== primary.name) {
+        const nameRes = await supabase
+          .from('buildings')
+          .update({ name: chosenName })
+          .eq('id', primary.id)
+        if (nameRes.error) {
+          reportMutationError('건물 이름 변경 중 오류가 발생했습니다.', nameRes.error)
+          return
+        }
+      }
+
+      const existingNumbers = new Set(primary.units.map((u) => u.number))
+
+      for (const duplicate of rest) {
+        for (const unit of duplicate.units) {
+          if (existingNumbers.has(unit.number)) continue // 이미 있는 호수는 스킵
+          // 호수를 기준 건물로 이전
+          const res = await supabase
+            .from('units')
+            .update({ building_id: primary.id })
+            .eq('id', unit.id)
+          if (res.error) {
+            reportMutationError('호수 이전 중 오류가 발생했습니다.', res.error)
+            return
+          }
+          existingNumbers.add(unit.number)
+          movedUnits++
+        }
+        // 중복 건물 삭제
+        const delRes = await supabase.from('buildings').delete().eq('id', duplicate.id)
+        if (delRes.error) {
+          reportMutationError('중복 건물 삭제 중 오류가 발생했습니다.', delRes.error)
+          return
+        }
+        mergedBuildings++
+      }
+    }
+
+    await fetchAll()
+    showToast(`중복 건물 ${mergedBuildings}개 합병 완료 (호수 ${movedUnits}개 이전)`)
+  }
+
   const deleteCards = async (cardIds: number[]) => {
     const ids = Array.from(new Set(cardIds)).filter(Number.isFinite)
     if (ids.length === 0) {
@@ -1616,12 +1796,13 @@ export function useStore() {
     time: string
     title: string
     place: string
+    mapLink?: string
     leader: string
     memo: string
     hasMeeting: boolean
     allowApplications: boolean
   }) => {
-    const result = await supabase.from('calendar_events').insert({
+    const payload: Record<string, unknown> = {
       event_date: input.date,
       time: input.time,
       title: input.title,
@@ -1630,7 +1811,9 @@ export function useStore() {
       memo: input.memo,
       has_meeting: input.hasMeeting,
       allow_applications: input.allowApplications,
-    })
+    }
+    if (input.mapLink?.trim()) payload.meeting_map_url = input.mapLink.trim()
+    const result = await supabase.from('calendar_events').insert(payload)
     if (result.error) {
       reportMutationError('일정을 등록하지 못했습니다.', result.error)
       return
@@ -1641,7 +1824,7 @@ export function useStore() {
 
   const createRepeatCalendarEvents = async (
     dates: string[],
-    input: { time: string; title: string; place: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean },
+    input: { time: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean },
   ) => {
     const seriesId = crypto.randomUUID()
     const result = await supabase.from('calendar_events').insert(
@@ -1650,6 +1833,7 @@ export function useStore() {
         time: input.time,
         title: input.title,
         place: input.place,
+        ...(input.mapLink?.trim() ? { meeting_map_url: input.mapLink.trim() } : {}),
         leader_name: input.leader,
         memo: input.memo,
         has_meeting: input.hasMeeting,
@@ -1668,18 +1852,20 @@ export function useStore() {
   const updateCalendarEventSeries = async (
     seriesId: string,
     fromDate: string,
-    input: { time: string; title: string; place: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean },
+    input: { time: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean },
   ) => {
-    const result = await supabase.from('calendar_events')
-      .update({
+    const payload = {
         time: input.time,
         title: input.title,
         place: input.place,
+        ...(input.mapLink?.trim() ? { meeting_map_url: input.mapLink.trim() } : {}),
         leader_name: input.leader,
         memo: input.memo,
         has_meeting: input.hasMeeting,
         allow_applications: input.allowApplications,
-      })
+      }
+    const result = await supabase.from('calendar_events')
+      .update(payload)
       .eq('series_id', seriesId)
       .gte('event_date', fromDate)
     if (result.error) {
@@ -1692,17 +1878,19 @@ export function useStore() {
 
   const updateCalendarEvent = async (
     eventId: number,
-    input: { time: string; title: string; place: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean },
+    input: { time: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean },
   ) => {
-    const result = await supabase.from('calendar_events').update({
+    const payload = {
       time: input.time,
       title: input.title,
       place: input.place,
+      ...(input.mapLink?.trim() ? { meeting_map_url: input.mapLink.trim() } : {}),
       leader_name: input.leader,
       memo: input.memo,
       has_meeting: input.hasMeeting,
       allow_applications: input.allowApplications,
-    }).eq('id', eventId)
+    }
+    const result = await supabase.from('calendar_events').update(payload).eq('id', eventId)
     if (result.error) {
       reportMutationError('일정을 수정하지 못했습니다.', result.error)
       return
@@ -1788,6 +1976,22 @@ export function useStore() {
     await fetchAll()
   }
 
+  const addParticipantToEvent = async (eventId: number, userName: string) => {
+    const event = calendarEvents.find((e) => e.id === eventId)
+    if (!event) return
+    if (event.applicants.includes(userName)) return
+    const result = await supabase.from('event_participants').upsert(
+      { event_id: eventId, user_name: userName, role: '신청' },
+      { onConflict: 'event_id,user_name' },
+    )
+    if (result.error) {
+      reportMutationError('참가자를 추가하지 못했습니다.', result.error)
+      return
+    }
+    await fetchAll()
+    showToast(`${userName}님을 신청자로 추가했습니다`)
+  }
+
   const toggleRegularVisit = async (buildingId: number, unitId: number, visitorName?: string) => {
     const building = buildings.find((b) => b.id === buildingId)
     const unit = building?.units.find((u) => u.id === unitId)
@@ -1823,7 +2027,7 @@ export function useStore() {
           nameWithoutRegion = cardName.slice(region.length).trim()
         }
         const dong = nameWithoutRegion.split(' ')[0] || building.name
-        const displayName = `${dong} ${unit.number}호`
+        const displayName = `${dong} ${unit.number}`
         await supabase.from('return_visits').insert({
           unit_id: unitId,
           building_id: buildingId,
@@ -2078,6 +2282,7 @@ export function useStore() {
     assignCardsToEventParticipantsBulk,
     updateUnitStatus,
     quickLogVisit,
+    toggleInvitationLeft,
     updateUnitFlags,
     undoLatestVisit,
     addVisitHistory,
@@ -2118,11 +2323,14 @@ export function useStore() {
     applyToEvent,
     assignToEvent,
     removeParticipantFromEvent,
+    addParticipantToEvent,
+    mergeDuplicateBuildings,
     createNotice,
     deleteNotice,
     specialPeriods,
     createSpecialPeriod,
     deleteSpecialPeriod,
+    getActiveSpecialPeriodIdForDate,
     reviewTasks,
     createReviewTask,
     completeReviewTask,

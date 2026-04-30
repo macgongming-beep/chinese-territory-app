@@ -1,12 +1,18 @@
 import { useState } from 'react'
+import type { AppLanguage } from '../i18n'
+import { languageLabels, t } from '../i18n'
 import './Login.css'
 
 type LoginProps = {
+  language: AppLanguage
+  onChangeLanguage: (language: AppLanguage) => void
   onLogin: (loginId: string, pin: string, rememberMe: boolean) => Promise<boolean>
   onSignup: (loginId: string, nickname: string, pin: string) => Promise<boolean>
 }
 
-export function Login({ onLogin, onSignup }: LoginProps) {
+const LANGUAGES: AppLanguage[] = ['ko', 'zh', 'en']
+
+export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginProps) {
   const [isSignup, setIsSignup] = useState(false)
   const [loginId, setLoginId] = useState('')
   const [nickname, setNickname] = useState('')
@@ -43,19 +49,31 @@ export function Login({ onLogin, onSignup }: LoginProps) {
               <circle cx="14" cy="13.5" r="2.6" fill="white" />
             </svg>
           </div>
-          <h1>{isSignup ? '회원가입' : 'CHS-Yongin'}</h1>
-          <p>{isSignup ? '아이디, 닉네임, 비밀번호를 입력해주세요.' : '용인 중국어 봉사 앱'}</p>
+          <h1>{isSignup ? t(language, 'login.signupTitle') : t(language, 'login.appName')}</h1>
+          <p>{isSignup ? t(language, 'login.signupSubtitle') : t(language, 'login.subtitle')}</p>
+          <div className="login-language-switcher" aria-label={t(language, 'settings.language')}>
+            {LANGUAGES.map((item) => (
+              <button
+                className={language === item ? 'active' : ''}
+                key={item}
+                onClick={() => onChangeLanguage(item)}
+                type="button"
+              >
+                {languageLabels[item]}
+              </button>
+            ))}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label htmlFor="login-id">아이디</label>
+            <label htmlFor="login-id">{t(language, 'login.id')}</label>
             <input
               id="login-id"
               type="text"
               value={loginId}
               onChange={(e) => setLoginId(e.target.value)}
-              placeholder="예: yongin001"
+              placeholder={t(language, 'login.idPlaceholder')}
               required
               disabled={isSubmitting}
               enterKeyHint="next"
@@ -65,13 +83,13 @@ export function Login({ onLogin, onSignup }: LoginProps) {
 
           {isSignup && (
             <div className="form-group">
-              <label htmlFor="nickname">닉네임 (표시 이름)</label>
+              <label htmlFor="nickname">{t(language, 'login.nickname')}</label>
               <input
                 id="nickname"
                 type="text"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                placeholder="예: 홍길동"
+                placeholder={t(language, 'login.nicknamePlaceholder')}
                 required
                 disabled={isSubmitting}
                 enterKeyHint="next"
@@ -81,13 +99,13 @@ export function Login({ onLogin, onSignup }: LoginProps) {
           )}
 
           <div className="form-group">
-            <label htmlFor="pin">비밀번호</label>
+            <label htmlFor="pin">{t(language, 'login.password')}</label>
             <input
               id="pin"
               type="password"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              placeholder={isSignup ? "기억하기 쉬운 비밀번호" : "비밀번호 입력"}
+              placeholder={isSignup ? t(language, 'login.newPasswordPlaceholder') : t(language, 'login.passwordPlaceholder')}
               required
               disabled={isSubmitting}
               enterKeyHint={isSignup ? "done" : "go"}
@@ -104,7 +122,7 @@ export function Login({ onLogin, onSignup }: LoginProps) {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   disabled={isSubmitting}
                 />
-                자동 로그인 (로그인 유지)
+                {t(language, 'login.rememberMe')}
               </label>
             </div>
           )}
@@ -114,15 +132,15 @@ export function Login({ onLogin, onSignup }: LoginProps) {
             className="login-submit-btn"
             disabled={isSubmitting || !loginId.trim() || !pin.trim() || (isSignup && !nickname.trim())}
           >
-            {isSubmitting ? '처리 중...' : isSignup ? '가입하기' : '로그인'}
+            {isSubmitting ? t(language, 'common.processing') : isSignup ? t(language, 'login.signup') : t(language, 'login.login')}
           </button>
         </form>
 
         <div className="login-footer">
           {isSignup ? (
-            <p>이미 계정이 있으신가요? <button type="button" onClick={() => setIsSignup(false)} className="text-btn">로그인</button></p>
+            <p>{t(language, 'login.hasAccount')} <button type="button" onClick={() => setIsSignup(false)} className="text-btn">{t(language, 'login.login')}</button></p>
           ) : (
-            <p>계정이 없으신가요? <button type="button" onClick={() => setIsSignup(true)} className="text-btn">회원가입</button></p>
+            <p>{t(language, 'login.noAccount')} <button type="button" onClick={() => setIsSignup(true)} className="text-btn">{t(language, 'login.signupTitle')}</button></p>
           )}
         </div>
       </div>

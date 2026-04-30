@@ -7,6 +7,7 @@ export type AuthUser = {
   id: number
   loginId: string
   name: string
+  phone?: string | null
   role: Role
 }
 
@@ -14,21 +15,29 @@ export type AppUserRecord = {
   id: number
   loginId: string
   name: string
+  phone?: string | null
   role: Role
   created_at: string
+  lastLoginAt?: string | null
 }
 
-const ROLE_VALUES: Role[] = ['admin', 'leader', 'user']
+const ROLE_VALUES: Role[] = ['admin', 'leader', 'user', 'developer']
 
 function isRole(value: unknown): value is Role {
   return typeof value === 'string' && ROLE_VALUES.includes(value as Role)
 }
 
-function toAuthUser(data: { id: number; name: string; login_id?: string | null; role: string }): AuthUser {
+/** 관리자 수준 이상 권한 여부 (developer 포함) */
+function isAdminLike(role: Role | undefined) {
+  return role === 'admin' || role === 'developer'
+}
+
+function toAuthUser(data: { id: number; name: string; phone?: string | null; login_id?: string | null; role: string }): AuthUser {
   return {
     id: data.id,
     loginId: data.login_id ?? data.name,
     name: data.name,
+    phone: data.phone ?? null,
     role: isRole(data.role) ? data.role : 'user',
   }
 }
@@ -53,11 +62,11 @@ export function useAuth() {
         if (parsed?.id) {
           const { data, error } = await supabase
             .from('app_users')
-            .select('id, name, login_id, role')
+            .select('id, name, phone, login_id, role')
             .eq('id', parsed.id)
             .maybeSingle()
 
-          if (error) throw error
+          if (error && !error.message?.includes('phone')) throw error
           if (data && !cancelled) {
             const freshUser = toAuthUser(data)
             setUser(freshUser)
@@ -73,6 +82,7 @@ export function useAuth() {
             id: parsed.id,
             loginId: parsed.loginId ?? parsed.name,
             name: parsed.name,
+            phone: parsed.phone ?? null,
             role: isRole(parsed.role) ? parsed.role : 'user',
           }
           setUser(restoredUser)
@@ -94,24 +104,35 @@ export function useAuth() {
   const login = async (loginId: string, pin: string, rememberMe: boolean) => {
     try {
       const normalizedLoginId = loginId.trim()
-      let byLoginId: { id: number; name: string; login_id: string | null; role: string; pin: string } | null = null
+      let byLoginId: { id: number; name: string; phone?: string | null; login_id: string | null; role: string; pin: string } | null = null
       let byLoginIdError: any = null
 
       const byLoginIdResult = await supabase
         .from('app_users')
-        .select('id, name, login_id, role, pin')
+        .select('id, name, phone, login_id, role, pin')
         .eq('login_id', normalizedLoginId)
         .maybeSingle()
       byLoginId = byLoginIdResult.data as any
       byLoginIdError = byLoginIdResult.error
 
+      if (byLoginIdError?.message?.includes('phone')) {
+        const fallback = await supabase
+          .from('app_users')
+          .select('id, name, login_id, role, pin')
+          .eq('login_id', normalizedLoginId)
+          .maybeSingle()
+        byLoginId = fallback.data as any
+        byLoginIdError = fallback.error
+      }
+
       // 하위 호환: login_id 도입 전 데이터
       let data = byLoginId
       const noLoginIdColumn = byLoginIdError?.message?.includes('login_id')
+      const noPhoneColumn = byLoginIdResult.error?.message?.includes('phone')
       if (!data) {
         const { data: byName, error: byNameError } = await supabase
           .from('app_users')
-          .select(noLoginIdColumn ? 'id, name, role, pin' : 'id, name, login_id, role, pin')
+          .select(noLoginIdColumn ? 'id, name, role, pin' : (noPhoneColumn ? 'id, name, login_id, role, pin' : 'id, name, phone, login_id, role, pin'))
           .eq('name', normalizedLoginId)
           .maybeSingle()
         if (byNameError) throw byNameError
@@ -143,6 +164,13 @@ export function useAuth() {
         localStorage.removeItem('auth_session')
       }
 
+      // 로그인 시각 기록 (초단위)
+      const nowIso = new Date().toISOString()
+      supabase.from('app_users').update({ last_login_at: nowIso }).eq('id', authUser.id)
+        .then(({ error }) => { if (error) console.error('[login] last_login_at update failed:', error) })
+      supabase.from('login_logs').insert({ user_id: authUser.id, logged_in_at: nowIso })
+        .then(({ error }) => { if (error) console.error('[login] login_logs insert failed:', error) })
+
       showToast('로그인 성공!', 'success')
       return true
     } catch (err) {
@@ -157,10 +185,6 @@ export function useAuth() {
       const normalizedLoginId = loginId.trim()
       const normalizedName = name.trim()
 
-      if (normalizedLoginId === normalizedName) {
-        showToast('아이디와 닉네임은 다르게 입력해 주세요.', 'error')
-        return false
-      }
 
       const { data: existingLoginId, error: loginIdCheckError } = await supabase
         .from('app_users')
@@ -243,38 +267,93 @@ export function useAuth() {
     return true
   }
 
+  const updateMyProfile = async (input: { name: string; phone?: string | null }) => {
+    if (!user) return false
+    const trimmedName = input.name.trim()
+    const trimmedPhone = input.phone?.trim() ?? ''
+
+    if (!trimmedName) {
+      showToast('닉네임을 입력해 주세요.', 'error')
+      return false
+    }
+
+    const { data: duplicatedName, error: nameCheckError } = await supabase
+      .from('app_users')
+      .select('id')
+      .eq('name', trimmedName)
+      .neq('id', user.id)
+      .maybeSingle()
+
+    if (nameCheckError) {
+      showToast('닉네임 중복 확인 중 오류가 발생했습니다.', 'error')
+      return false
+    }
+    if (duplicatedName) {
+      showToast('이미 사용 중인 닉네임입니다.', 'error')
+      return false
+    }
+
+    const { error } = await supabase
+      .from('app_users')
+      .update({ name: trimmedName, phone: trimmedPhone || null })
+      .eq('id', user.id)
+
+    if (error) {
+      if ((error as any)?.message?.includes('phone')) {
+        showToast('DB에 phone 컬럼이 없습니다. 전화번호 마이그레이션을 먼저 실행해 주세요.', 'error')
+        return false
+      }
+      showToast('개인 정보 변경에 실패했습니다.', 'error')
+      return false
+    }
+
+    const nextUser: AuthUser = { ...user, name: trimmedName, phone: trimmedPhone || null }
+    setUser(nextUser)
+    localStorage.setItem('currentVisitor', nextUser.name)
+    localStorage.setItem('auth_session', JSON.stringify(nextUser))
+    showToast('개인 정보가 변경되었습니다.', 'success')
+    await fetchAllUsers()
+    return true
+  }
+
   // --- 관리자 전용 기능 ---
 
   const fetchAllUsers = async () => {
     if (!user) return
     const { data, error } = await supabase
       .from('app_users')
-      .select('id, name, login_id, role, created_at')
+      .select('id, name, phone, login_id, role, created_at, last_login_at')
       .order('created_at', { ascending: false })
 
     if (!error && data) {
-      setAllUsers((data as Array<{ id: number; name: string; login_id: string | null; role: Role; created_at: string }>).map((item) => ({
+      const rows = data as Array<{ id: number; name: string; phone?: string | null; login_id: string | null; role: Role; created_at: string; last_login_at?: string | null }>
+      setAllUsers(rows.map((item) => ({
         id: item.id,
         loginId: item.login_id ?? item.name,
         name: item.name,
-        role: item.role,
+        phone: item.phone ?? null,
+        // developer는 자신에게만 보임 — 다른 admin에게는 'admin'으로 표시
+        role: (item.role === 'developer' && user.role !== 'developer') ? 'admin' : item.role,
         created_at: item.created_at,
+        lastLoginAt: item.last_login_at ?? null,
       })))
       return
     }
 
-    if (error?.message?.includes('login_id')) {
+    if (error?.message?.includes('login_id') || error?.message?.includes('phone')) {
       const fallback = await supabase
         .from('app_users')
-        .select('id, name, role, created_at')
+        .select(error.message.includes('login_id') ? 'id, name, role, created_at' : 'id, name, login_id, role, created_at, last_login_at')
         .order('created_at', { ascending: false })
       if (!fallback.error && fallback.data) {
-        setAllUsers((fallback.data as Array<{ id: number; name: string; role: Role; created_at: string }>).map((item) => ({
+        setAllUsers((fallback.data as unknown as Array<{ id: number; name: string; login_id?: string | null; role: Role; created_at: string; last_login_at?: string | null }>).map((item) => ({
           id: item.id,
-          loginId: item.name,
+          loginId: item.login_id ?? item.name,
           name: item.name,
           role: item.role,
           created_at: item.created_at,
+          lastLoginAt: item.last_login_at ?? null,
+          phone: null,
         })))
       }
     }
@@ -287,7 +366,7 @@ export function useAuth() {
   }, [user?.id])
 
   const resetUserPin = async (userId: number, newPin: string = '0000') => {
-    if (user?.role !== 'admin') return false
+    if (!isAdminLike(user?.role)) return false
     const { error } = await supabase
       .from('app_users')
       .update({ pin: newPin })
@@ -302,7 +381,7 @@ export function useAuth() {
   }
 
   const updateUserRole = async (userId: number, newRole: Role) => {
-    if (user?.role !== 'admin') return false
+    if (!isAdminLike(user?.role)) return false
     const { error } = await supabase
       .from('app_users')
       .update({ role: newRole })
@@ -318,7 +397,7 @@ export function useAuth() {
   }
 
   const deleteUser = async (userId: number) => {
-    if (user?.role !== 'admin') return false
+    if (!isAdminLike(user?.role)) return false
     if (user.id === userId) {
       showToast('현재 로그인한 관리자 계정은 제거할 수 없습니다.', 'error')
       return false
@@ -340,7 +419,7 @@ export function useAuth() {
   }
 
   const createUser = async (loginId: string, name: string, pin: string, role: Role = 'user') => {
-    if (user?.role !== 'admin') return false
+    if (!isAdminLike(user?.role)) return false
     const trimmedLoginId = loginId.trim()
     const trimmedName = name.trim()
     const trimmedPin = pin.trim()
@@ -348,10 +427,7 @@ export function useAuth() {
       showToast('아이디, 닉네임, 비밀번호를 모두 입력해 주세요.', 'error')
       return false
     }
-    if (trimmedLoginId === trimmedName) {
-      showToast('아이디와 닉네임은 다르게 입력해 주세요.', 'error')
-      return false
-    }
+
 
     const { data: existingLoginId, error: loginIdCheckError } = await supabase
       .from('app_users')
@@ -402,7 +478,7 @@ export function useAuth() {
   }
 
   const updateUserIdentity = async (userId: number, loginId: string, name: string) => {
-    if (user?.role !== 'admin') return false
+    if (!isAdminLike(user?.role)) return false
     const trimmedLoginId = loginId.trim()
     const trimmedName = name.trim()
 
@@ -410,10 +486,7 @@ export function useAuth() {
       showToast('아이디와 닉네임을 모두 입력해 주세요.', 'error')
       return false
     }
-    if (trimmedLoginId === trimmedName) {
-      showToast('아이디와 닉네임은 다르게 입력해 주세요.', 'error')
-      return false
-    }
+
 
     const target = allUsers.find((item) => item.id === userId)
     if (!target) {
@@ -459,6 +532,32 @@ export function useAuth() {
     return true
   }
 
+  /** 내 로그인 기록 — 본인만 조회 가능 */
+  const fetchMyLoginLogs = async (limit = 20) => {
+    if (!user) return []
+    const { data, error } = await supabase
+      .from('login_logs')
+      .select('id, logged_in_at')
+      .eq('user_id', user.id)
+      .order('logged_in_at', { ascending: false })
+      .limit(limit)
+    if (error) { console.error('fetchMyLoginLogs:', error); return [] }
+    return (data ?? []) as { id: number; logged_in_at: string }[]
+  }
+
+  /** 특정 사용자의 로그인 기록 — developer만 조회 가능 */
+  const fetchUserLoginLogs = async (userId: number, limit = 30) => {
+    if (user?.role !== 'developer') return []
+    const { data, error } = await supabase
+      .from('login_logs')
+      .select('id, logged_in_at')
+      .eq('user_id', userId)
+      .order('logged_in_at', { ascending: false })
+      .limit(limit)
+    if (error) { console.error('fetchUserLoginLogs:', error); return [] }
+    return (data ?? []) as { id: number; logged_in_at: string }[]
+  }
+
   return {
     user,
     loading,
@@ -466,6 +565,7 @@ export function useAuth() {
     signup,
     logout,
     changePin,
+    updateMyProfile,
     allUsers,
     fetchAllUsers,
     resetUserPin,
@@ -473,5 +573,7 @@ export function useAuth() {
     deleteUser,
     createUser,
     updateUserIdentity,
+    fetchMyLoginLogs,
+    fetchUserLoginLogs,
   }
 }

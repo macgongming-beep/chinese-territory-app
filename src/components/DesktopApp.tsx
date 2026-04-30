@@ -5,8 +5,10 @@ import { DesktopCalendar } from './DesktopCalendar'
 import { DesktopHome } from './DesktopHome'
 import { DesktopNotices } from './DesktopNotices'
 import { DesktopSettings } from './DesktopSettings'
+import { DesktopStats } from './DesktopStats'
 import { DesktopTerritory } from './DesktopTerritory'
 import { DesktopMap } from './DesktopMap'
+import { DesktopAdminAssignment } from './DesktopAdminAssignment'
 import { DesktopLeaderAssignment } from './DesktopLeaderAssignment'
 import { DesktopUsers } from './DesktopUsers'
 import type { Building, CalendarEvent, CardBoundary, DesktopPage, GeoPoint, Notice, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
@@ -21,6 +23,7 @@ const pageToPath: Record<DesktopPage, string> = {
   '지도': '/map',
   '배정': '/assignment',
   '사용자': '/users',
+  '통계': '/stats',
   '설정': '/settings'
 }
 
@@ -33,6 +36,7 @@ const pathToPage: Record<string, DesktopPage> = {
   '/map': '지도',
   '/assignment': '배정',
   '/users': '사용자',
+  '/stats': '통계',
   '/settings': '설정'
 }
 
@@ -42,6 +46,7 @@ export function DesktopApp({
   cardBoundaries,
   cards,
   currentVisitor,
+  currentUserId,
   actualRole,
   viewMode,
   notices,
@@ -70,6 +75,7 @@ export function DesktopApp({
   onDeleteBuilding,
   onDeleteBuildings,
   onDeleteCards,
+  onMergeDuplicateBuildings,
   onDeleteCardBoundary,
   onMoveBuildingToCard,
   onReassignBuildingsToCards,
@@ -78,6 +84,8 @@ export function DesktopApp({
   specialPeriods,
   onDeleteUnit,
   onRemoveParticipantFromEvent,
+  onAddParticipantToEvent,
+  allUsers,
   onToggleRegularVisit,
   onSetRegularVisitor,
   onToggleChinese,
@@ -88,12 +96,11 @@ export function DesktopApp({
   onDeleteVisitHistory,
   onUpdateUnitStatus,
   onQuickLogVisit,
+  onToggleInvitationLeft,
   onUpdateUnitFlags,
   onUpdateBuilding,
   onSaveCardBoundary,
   visitHistories,
-  forceMobileView,
-  onSetForceMobileView,
   onChangeViewMode,
   onLogout,
   leaderNames,
@@ -109,6 +116,7 @@ export function DesktopApp({
   cardBoundaries: CardBoundary[]
   cards: TerritoryCard[]
   currentVisitor: string
+  currentUserId: number
   actualRole: Role
   viewMode: Role
   leaderNames: string[]
@@ -178,6 +186,7 @@ export function DesktopApp({
   onDeleteBuilding: (buildingId: number) => void
   onDeleteBuildings: (buildingIds: number[]) => void
   onDeleteCards: (cardIds: number[]) => void
+  onMergeDuplicateBuildings: (scopeCardId?: number) => Promise<void>
   onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string) => void
   onMoveBuildingToCard: (buildingId: number, cardId: number) => void
   onReassignBuildingsToCards: (updates: Array<{ buildingId: number; cardId: number }>) => Promise<{ updated: number; failed: number }>
@@ -187,6 +196,8 @@ export function DesktopApp({
   specialPeriods: SpecialPeriod[]
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onRemoveParticipantFromEvent: (eventId: number, userName: string) => void
+  onAddParticipantToEvent: (eventId: number, userName: string) => void
+  allUsers: Array<{ id: number; name: string; role: string }>
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
@@ -204,12 +215,11 @@ export function DesktopApp({
   ) => void
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
   onUpdateUnitStatus: (buildingId: number, unitId: number, status: UnitStatus, memo?: string) => void
-  onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus) => void
+  onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus, invitationLeft?: boolean) => void
+  onToggleInvitationLeft: (buildingId: number, unitId: number) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
   onSaveCardBoundary: (cardId: number, points: GeoPoint[]) => Promise<void> | void
   visitHistories: VisitHistory[]
-  forceMobileView: boolean
-  onSetForceMobileView: (value: boolean) => void
   onChangeViewMode: (role: Role) => void
   onLogout: () => void
   reviewTasks: ReviewTask[]
@@ -245,7 +255,7 @@ export function DesktopApp({
     ? ['홈', '캘린더', '나의봉사', '지도', '설정']
     : viewMode === 'leader'
       ? ['홈', '캘린더', '나의봉사', '배정', '구역', '설정']
-      : ['홈', '공지', '캘린더', '구역', '지도', '배정', '사용자', '설정']
+      : ['홈', '공지', '캘린더', '구역', '지도', '배정', '사용자', '통계', '설정']
 
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
   const focusedMapBuildingId = searchParams.get('buildingId') ? Number(searchParams.get('buildingId')) : null
@@ -319,9 +329,8 @@ export function DesktopApp({
           ))}
         </nav>
         <div className="nav-user" ref={roleDropdownRef}>
-          <div className="nav-avatar">{currentVisitor.slice(0, 1) || '사'}</div>
-          <div className="nav-user-text">
-            <strong>{currentVisitor}</strong>
+          <div className="nav-user-info">
+            <strong className="nav-user-name">{currentVisitor}</strong>
             {actualRole === 'admin' ? (
               <div className="nav-role-dropdown-wrap">
                 <button
@@ -329,7 +338,7 @@ export function DesktopApp({
                   onClick={() => setRoleDropdownOpen((o) => !o)}
                   type="button"
                 >
-                  현재 역할: {viewMode === 'user' ? '봉사자' : roleLabels[viewMode]}
+                  {viewMode === 'user' ? '봉사자' : roleLabels[viewMode]} 뷰
                   <span className="nav-role-chevron">{roleDropdownOpen ? '▴' : '▾'}</span>
                 </button>
                 {roleDropdownOpen && (
@@ -348,8 +357,11 @@ export function DesktopApp({
                 )}
               </div>
             ) : (
-              <span>{roleLabels[actualRole]}</span>
+              <span className="nav-user-role">{roleLabels[actualRole]}</span>
             )}
+          </div>
+          <div className={`nav-avatar${actualRole === 'admin' ? ' nav-avatar--admin' : ''}`}>
+            {currentVisitor.slice(0, 1) || '사'}
           </div>
         </div>
       </header>
@@ -375,6 +387,8 @@ export function DesktopApp({
             onUncompleteReviewTask={onUncompleteReviewTask}
             onUpdateReviewTask={onUpdateReviewTask}
             onDeleteReviewTask={onDeleteReviewTask}
+            specialPeriods={specialPeriods}
+            onOpenSettings={() => navigate('/settings')}
           />
         } />
         <Route path="/calendar" element={
@@ -382,6 +396,8 @@ export function DesktopApp({
             currentVisitor={currentVisitor}
             leaderNames={leaderNames}
             events={calendarEvents}
+            role={viewMode}
+            allUserNames={allUsers.map((u) => u.name)}
             onApplyToEvent={onApplyToEvent}
             onAssignToEvent={onAssignToEvent}
             onAssignCardToEventParticipant={onAssignCardToEventParticipant}
@@ -397,6 +413,7 @@ export function DesktopApp({
             onDeleteSpecialPeriod={onDeleteSpecialPeriod}
             specialPeriods={specialPeriods}
             onRemoveParticipant={onRemoveParticipantFromEvent}
+            onAddParticipant={onAddParticipantToEvent}
           />
         } />
         {/* /territory → 나의봉사 (개인 봉사 현황) */}
@@ -412,6 +429,9 @@ export function DesktopApp({
             onImportBuildings={onImportBuildings}
             onDeleteBuildings={onDeleteBuildings}
             onDeleteCards={onDeleteCards}
+            onMergeDuplicateBuildings={onMergeDuplicateBuildings}
+            onAddUnit={onAddUnit}
+            onDeleteUnit={onDeleteUnit}
             onMoveBuildingToCard={onMoveBuildingToCard}
             onReassignBuildingsToCards={onReassignBuildingsToCards}
             onUpdateBuilding={onUpdateBuilding}
@@ -423,6 +443,7 @@ export function DesktopApp({
             onOpenCardMap={openCardOnMap}
             onOpenBuildingMap={openBuildingOnMap}
             visitHistories={visitHistories}
+            onCreateBuilding={onCreateBuilding}
           />
         } />
 
@@ -496,6 +517,7 @@ export function DesktopApp({
                 onDeleteVisitHistory={onDeleteVisitHistory}
                 onUpdateUnitStatus={onUpdateUnitStatus}
                 onQuickLogVisit={onQuickLogVisit}
+                onToggleInvitationLeft={onToggleInvitationLeft}
                 onUpdateUnitFlags={onUpdateUnitFlags}
                 visitHistories={visitHistories}
               />
@@ -511,6 +533,9 @@ export function DesktopApp({
                 onImportBuildings={onImportBuildings}
                 onDeleteBuildings={onDeleteBuildings}
                 onDeleteCards={onDeleteCards}
+                onMergeDuplicateBuildings={onMergeDuplicateBuildings}
+                onAddUnit={onAddUnit}
+                onDeleteUnit={onDeleteUnit}
                 onMoveBuildingToCard={onMoveBuildingToCard}
                 onReassignBuildingsToCards={onReassignBuildingsToCards}
                 onUpdateBuilding={onUpdateBuilding}
@@ -522,6 +547,7 @@ export function DesktopApp({
                 onOpenCardMap={openCardOnMap}
                 onOpenBuildingMap={openBuildingOnMap}
                 visitHistories={visitHistories}
+                onCreateBuilding={onCreateBuilding}
               />
             )}
           </div>
@@ -552,21 +578,32 @@ export function DesktopApp({
             onDeleteVisitHistory={onDeleteVisitHistory}
             onUpdateUnitStatus={onUpdateUnitStatus}
             onQuickLogVisit={onQuickLogVisit}
+            onToggleInvitationLeft={onToggleInvitationLeft}
             onUpdateUnitFlags={onUpdateUnitFlags}
             visitHistories={visitHistories}
+            specialPeriods={specialPeriods}
           />
         } />
         <Route path="/assignment" element={
-          <DesktopLeaderAssignment
-            cards={cards}
-            calendarEvents={calendarEvents}
-            currentVisitor={currentVisitor}
-            role={viewMode}
-            leaderNames={leaderNames}
-            onSetCardLeaders={onSetCardLeaders}
-            onSetMultipleCardLeaders={onSetMultipleCardLeaders}
-            onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
-          />
+          viewMode === 'admin' ? (
+            <DesktopAdminAssignment
+              cards={cards}
+              currentVisitor={currentVisitor}
+              leaderNames={leaderNames}
+              onSetCardLeaders={onSetCardLeaders}
+            />
+          ) : (
+            <DesktopLeaderAssignment
+              cards={cards}
+              calendarEvents={calendarEvents}
+              currentVisitor={currentVisitor}
+              role={viewMode}
+              leaderNames={leaderNames}
+              onSetCardLeaders={onSetCardLeaders}
+              onSetMultipleCardLeaders={onSetMultipleCardLeaders}
+              onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
+            />
+          )
         } />
         <Route path="/users" element={
           <DesktopUsers
@@ -581,13 +618,25 @@ export function DesktopApp({
             onDeleteNotice={onDeleteNotice}
           />
         } />
+        <Route path="/stats" element={
+          <DesktopStats
+            cards={cards}
+            buildings={buildings}
+            visitHistories={visitHistories}
+            serviceSessions={serviceSessions}
+            specialPeriods={specialPeriods}
+            actualRole={actualRole}
+          />
+        } />
         <Route path="/settings" element={
           <DesktopSettings
             currentVisitor={currentVisitor}
+            currentUserId={currentUserId}
             actualRole={actualRole}
-            forceMobileView={forceMobileView}
-            onSetForceMobileView={onSetForceMobileView}
             onLogout={onLogout}
+            specialPeriods={specialPeriods}
+            onCreateSpecialPeriod={async (input) => onCreateSpecialPeriod(input)}
+            onDeleteSpecialPeriod={async (id) => onDeleteSpecialPeriod(id)}
           />
         } />
         <Route path="*" element={<Navigate to="/" replace />} />

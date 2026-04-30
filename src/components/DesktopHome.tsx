@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CalendarEvent, Notice, ReviewTask, Role, ServiceSession, TerritoryCard, TimeSlot } from '../types'
+import type { CalendarEvent, Notice, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot } from '../types'
 import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
+import { SpecialPeriodBanner } from './SpecialPeriodBanner'
 
 const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -8,6 +9,55 @@ const PRIORITY_COLOR: Record<Notice['priority'], { bg: string; color: string }> 
   긴급: { bg: 'var(--danger-100)', color: '#b91c1c' },
   일반: { bg: '#eff6ff', color: 'var(--brand-700)' },
   정보: { bg: 'var(--accent-100)', color: 'var(--accent-700)' },
+}
+
+type InlineIconName = 'clock' | 'pin' | 'user' | 'map' | 'repeat'
+
+function InlineIcon({ name }: { name: InlineIconName }) {
+  if (name === 'clock') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 8v4l3 2" />
+      </svg>
+    )
+  }
+
+  if (name === 'pin') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11Z" />
+        <circle cx="12" cy="10" r="2" />
+      </svg>
+    )
+  }
+
+  if (name === 'user') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="3.2" />
+        <path d="M5.8 19c.8-3.4 3-5.2 6.2-5.2s5.4 1.8 6.2 5.2" />
+      </svg>
+    )
+  }
+
+  if (name === 'map') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="m4 6 5-2 6 2 5-2v14l-5 2-6-2-5 2V6Z" />
+        <path d="M9 4v14M15 6v14" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M17 3v5h-5" />
+      <path d="M7 21v-5h5" />
+      <path d="M18.5 9A7 7 0 0 0 6.9 5.2L5 7" />
+      <path d="M5.5 15A7 7 0 0 0 17.1 18.8L19 17" />
+    </svg>
+  )
 }
 
 type ServiceStartInput = {
@@ -27,7 +77,7 @@ function todayStr() {
 
 function formatHeader() {
   const d = new Date()
-  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${WEEKDAY_KO[d.getDay()]}요일`
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAY_KO[d.getDay()]})`
 }
 
 function getTimeSlotFromTime(time: string): TimeSlot {
@@ -66,6 +116,8 @@ export function DesktopHome({
   onUncompleteReviewTask,
   onUpdateReviewTask,
   onDeleteReviewTask,
+  specialPeriods,
+  onOpenSettings,
 }: {
   calendarEvents: CalendarEvent[]
   cards: TerritoryCard[]
@@ -93,6 +145,8 @@ export function DesktopHome({
   onUncompleteReviewTask: (id: number) => Promise<void>
   onUpdateReviewTask: (id: number, title: string, content: string) => Promise<void>
   onDeleteReviewTask: (id: number) => Promise<void>
+  specialPeriods?: SpecialPeriod[]
+  onOpenSettings?: () => void
 }) {
   const today = todayStr()
 
@@ -103,8 +157,6 @@ export function DesktopHome({
   const [reviewSubmitting, setReviewSubmitting] = useState(false)
   const [reviewMenuId, setReviewMenuId] = useState<number | null>(null)
   const [showDoneHistory, setShowDoneHistory] = useState(false)
-  const [sectionMenuOpen, setSectionMenuOpen] = useState(false)
-  const sectionMenuRef = useRef<HTMLDivElement>(null)
   const reviewMenuRef = useRef<HTMLDivElement>(null)
 
   // 완료 후 7일 이내 항목만 표시
@@ -120,9 +172,6 @@ export function DesktopHome({
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (sectionMenuRef.current && !sectionMenuRef.current.contains(e.target as Node)) {
-        setSectionMenuOpen(false)
-      }
       if (reviewMenuRef.current && !reviewMenuRef.current.contains(e.target as Node)) {
         setReviewMenuId(null)
       }
@@ -177,10 +226,7 @@ export function DesktopHome({
   const myLeadingEvents = calendarEvents.filter(
     (e) => e.date === today && e.leader === currentVisitor,
   )
-  const assignedCards = cards.filter((card) => card.assignedLeader)
   const pendingCards = cards.filter((card) => card.status === '미배정')
-  const inProgressCards = cards.filter((card) => card.status === '진행중')
-  const completedCards = cards.filter((card) => card.progress >= 100)
   const totalUnits = cards.reduce((sum, card) => sum + card.units, 0)
   const completedUnits = cards.reduce((sum, card) => sum + card.completed, 0)
   const todaySessions = useMemo(() =>
@@ -251,7 +297,6 @@ export function DesktopHome({
   }
 
   const userCards = myCards.length > 0 ? myCards : cards.slice(0, 3)
-  const visibleLeaderCards = leaderCards.length > 0 ? leaderCards : cards.filter((card) => card.assignedLeader).slice(0, 4)
 
   const modeCopy: Record<Role, { label: string; title: string; description: string }> = {
     user: {
@@ -269,28 +314,12 @@ export function DesktopHome({
       title: '전체 구역 운영 현황을 관리합니다',
       description: '봉사 세션, 카드 진행, 검토 필요 항목과 통계를 확인합니다.',
     },
+    developer: {
+      label: '개발자 홈',
+      title: '전체 구역 운영 현황을 관리합니다',
+      description: '봉사 세션, 카드 진행, 검토 필요 항목과 통계를 확인합니다.',
+    },
   }
-
-  const quickStats = role === 'admin'
-    ? [
-        { label: '전체 카드', value: cards.length },
-        { label: '인도자 배정', value: assignedCards.length },
-        { label: '진행중 카드', value: inProgressCards.length },
-        { label: '완료 카드', value: completedCards.length },
-      ]
-    : role === 'leader'
-      ? [
-          { label: '담당 카드', value: visibleLeaderCards.length },
-          { label: '오늘 일정', value: todayEvents.length },
-          { label: '신청자', value: todayEvents.reduce((sum, event) => sum + event.applicants.length, 0) },
-          { label: '검토 필요', value: 0 },
-        ]
-      : [
-          { label: '오늘 일정', value: todayEvents.length },
-          { label: '내 카드', value: myCards.length },
-          { label: '신청 완료', value: calendarEvents.filter((event) => event.applicants.includes(currentVisitor)).length },
-          { label: '정기방문', value: cards.reduce((sum, card) => sum + card.regularVisits, 0) },
-        ]
 
   if (role === 'leader') {
     const usedCardCount = new Set(
@@ -305,6 +334,9 @@ export function DesktopHome({
         <div className="home-date-header leader-date-header">
           <span>{formatHeader()}</span>
         </div>
+        {specialPeriods && (
+          <SpecialPeriodBanner specialPeriods={specialPeriods} variant="card" onClick={onOpenSettings} />
+        )}
 
         <div className="leader-home-grid">
           <HomeTodayEvents
@@ -403,20 +435,26 @@ export function DesktopHome({
         />
       )}
 
-      <section className={`home-role-hero home-role-hero-${role}`}>
-        <div>
-          <span>{modeCopy[role].label}</span>
-          <h1>{modeCopy[role].title}</h1>
-          <p>{modeCopy[role].description}</p>
-        </div>
-        <button
-          className="home-primary-action"
-          onClick={role === 'admin' ? onOpenTerritory : () => setShowServiceStart((open) => !open)}
-          type="button"
-        >
-          {role === 'admin' ? '운영 현황 보기' : activeMySession ? `${activeMySession.timeSlot} 봉사 중` : '봉사 시작'}
-        </button>
-      </section>
+      {role !== 'admin' && specialPeriods && (
+        <SpecialPeriodBanner specialPeriods={specialPeriods} variant="card" onClick={onOpenSettings} />
+      )}
+
+      {role !== 'admin' && (
+        <section className={`home-role-hero home-role-hero-${role}`}>
+          <div>
+            <span>{modeCopy[role].label}</span>
+            <h1>{modeCopy[role].title}</h1>
+            <p>{modeCopy[role].description}</p>
+          </div>
+          <button
+            className="home-primary-action"
+            onClick={() => setShowServiceStart((open) => !open)}
+            type="button"
+          >
+            {activeMySession ? `${activeMySession.timeSlot} 봉사 중` : '봉사 시작'}
+          </button>
+        </section>
+      )}
 
       {role !== 'admin' && showServiceStart && (
         <section className="home-service-launcher">
@@ -537,88 +575,86 @@ export function DesktopHome({
         </section>
       )}
 
-      <div className="home-stat-grid" aria-label={`${modeCopy[role].label} 요약`}>
-        {quickStats.map((stat) => (
-          <div className="home-stat-card" key={stat.label}>
-            <strong>{stat.value}</strong>
-            <span>{stat.label}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="home-date-header">
-        <span>{formatHeader()}</span>
-      </div>
-
       {role === 'admin' && (
-        <div className="home-grid">
-          <section className="home-section">
-            <div className="home-section-title">
-              <span className="home-section-icon">●</span>
-              <h2>오늘 운영 요약</h2>
-              <button className="home-more-btn" onClick={onOpenTerritory} type="button">
-                구역 보기 →
-              </button>
+        <>
+          {/* ── Page Head ── */}
+          <div className="home-page-head">
+            <div>
+              <p className="home-page-eyebrow">대시보드</p>
+              <h1 className="home-page-title">{formatHeader()}</h1>
             </div>
-              <div className="home-ops-grid">
-                <div><strong>{todayEvents.length}</strong><span>오늘 일정</span></div>
-                <div><strong>{todaySessions.length}</strong><span>봉사 세션</span></div>
-                <div><strong>{completedUnits}/{totalUnits}</strong><span>완료 세대</span></div>
-                <div><strong>{pendingCards.length}</strong><span>미배정 카드</span></div>
-              </div>
-          </section>
+            {specialPeriods && specialPeriods.length > 0 && (
+              <SpecialPeriodBanner specialPeriods={specialPeriods} variant="inline" onClick={onOpenSettings} />
+            )}
+          </div>
 
-          <section className="home-section">
-            <div className="home-section-title">
-              <span className="home-section-icon">●</span>
-              <h2>검토 필요</h2>
-              <div className="review-section-actions">
-                <button className="review-action-btn" onClick={openAddModal} title="항목 추가" type="button">＋</button>
-                <div className="review-section-menu-wrap" ref={sectionMenuRef}>
-                  <button className="review-action-btn" onClick={() => setSectionMenuOpen((o) => !o)} title="더보기" type="button">⋯</button>
-                  {sectionMenuOpen && (
-                    <div className="review-dropdown-menu">
-                      <button type="button" onClick={() => { setShowDoneHistory(true); setSectionMenuOpen(false) }}>완료 내역 보기</button>
-                    </div>
-                  )}
+          {/* ── Content Grid 1행 ── */}
+          <div className="desk-grid-12">
+            {/* 오늘 운영 요약 */}
+            <div className="desk-card" style={{ gridColumn: 'span 6' }}>
+              <div className="desk-card__head">
+                <h2 className="desk-card__title">
+                  <span className="desk-card__title-dot" />
+                  오늘 운영 요약
+                </h2>
+                <button className="desk-card__link-btn" onClick={onOpenTerritory} type="button">구역 보기 ›</button>
+              </div>
+              <div className="home-ops-grid">
+                <div className="home-ops-stat">
+                  <strong className="tnum">{todayEvents.length}</strong>
+                  <span>오늘 일정</span>
+                </div>
+                <div className="home-ops-stat">
+                  <strong className="tnum">{todaySessions.length}</strong>
+                  <span>봉사 세션</span>
+                </div>
+                <div className="home-ops-stat">
+                  <strong className="tnum">{completedUnits}<small>/{totalUnits}</small></strong>
+                  <span>완료 세대</span>
+                </div>
+                <div className="home-ops-stat">
+                  <strong className="tnum">{pendingCards.length}</strong>
+                  <span>미배정 카드</span>
                 </div>
               </div>
             </div>
-            <div className="home-review-list">
-              {visibleTasks.length === 0 && (
-                <p className="review-empty">검토 항목이 없습니다</p>
-              )}
-              {visibleTasks.map((task) => (
-                <div className={`home-review-row ${task.status === 'done' ? 'done' : ''}`} key={task.id}>
-                  <div className="review-row-main">
-                    <strong>{task.title}</strong>
-                    {task.content && <span>{task.content}</span>}
-                    {task.status === 'done' && task.completedAt && (
-                      <em className="review-done-date">완료일: {task.completedAt.slice(0, 10)}</em>
-                    )}
-                  </div>
-                  <div className="review-row-actions">
-                    {task.status === 'pending' ? (
-                      <button
-                        className="review-check-btn"
-                        onClick={() => onCompleteReviewTask(task.id)}
-                        title="완료 처리"
-                        type="button"
-                      >✓</button>
-                    ) : (
-                      <button
-                        className="review-done-badge-btn"
-                        onClick={() => onUncompleteReviewTask(task.id)}
-                        title="완료 취소"
-                        type="button"
-                      >완료됨</button>
-                    )}
+
+            {/* 검토 필요 */}
+            <div className="desk-card" style={{ gridColumn: 'span 6' }}>
+              <div className="desk-card__head">
+                <h2 className="desk-card__title">
+                  <span className="desk-card__title-dot" style={{ background: 'var(--warning-500)' }} />
+                  검토 필요
+                  {visibleTasks.filter(t => t.status === 'pending').length > 0 && (
+                    <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 'var(--radius-full)', background: 'var(--warning-100)', color: 'var(--warning-700)', fontSize: 11, fontWeight: 700 }}>
+                      {visibleTasks.filter(t => t.status === 'pending').length}
+                    </span>
+                  )}
+                </h2>
+                <button className="desk-card__link-btn" onClick={openAddModal} type="button">+ 추가</button>
+              </div>
+              <div className="home-review-list">
+                {visibleTasks.length === 0 && <p className="review-empty">검토 항목이 없습니다</p>}
+                {visibleTasks.map((task) => (
+                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    {/* 카드 박스 */}
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: task.status === 'done' ? 'var(--gray-50)' : 'var(--bg-card)' }}>
+                      <span style={{ padding: '2px 7px', borderRadius: 'var(--radius-sm)', background: task.status === 'done' ? 'var(--gray-100)' : 'var(--warning-100)', color: task.status === 'done' ? 'var(--gray-500)' : 'var(--warning-700)', fontSize: 11, fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        {task.status === 'done' ? '완료' : '검토'}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <strong style={{ display: 'block', fontSize: 13, fontWeight: 600, color: task.status === 'done' ? 'var(--gray-400)' : 'var(--gray-900)', textDecoration: task.status === 'done' ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</strong>
+                        {task.content && <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>{task.content}</span>}
+                      </div>
+                      {task.status === 'pending' ? (
+                        <button onClick={() => onCompleteReviewTask(task.id)} style={{ padding: '3px 10px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary-50)', color: 'var(--primary-700)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }} type="button">처리</button>
+                      ) : (
+                        <button onClick={() => onUncompleteReviewTask(task.id)} style={{ padding: '3px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)', background: 'none', color: 'var(--gray-500)', fontSize: 12, cursor: 'pointer', flexShrink: 0 }} type="button">취소</button>
+                      )}
+                    </div>
+                    {/* 카드 밖 ⋯ 메뉴 */}
                     <div className="review-item-menu-wrap" ref={reviewMenuId === task.id ? reviewMenuRef : undefined}>
-                      <button
-                        className="review-action-btn sm"
-                        onClick={() => setReviewMenuId((id) => id === task.id ? null : task.id)}
-                        type="button"
-                      >⋯</button>
+                      <button className="review-action-btn sm" onClick={() => setReviewMenuId((id) => id === task.id ? null : task.id)} type="button">⋯</button>
                       {reviewMenuId === task.id && (
                         <div className="review-dropdown-menu">
                           <button type="button" onClick={() => openEditModal(task)}>수정</button>
@@ -627,114 +663,127 @@ export function DesktopHome({
                       )}
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </section>
+          </div>
 
-          {/* 완료 내역 모달 */}
+          {/* ── Content Grid 2행 ── */}
+          <div className="desk-grid-12">
+            {/* 카드 진행 */}
+            <div className="desk-card" style={{ gridColumn: 'span 7' }}>
+              <div className="desk-card__head">
+                <h2 className="desk-card__title">
+                  <span className="desk-card__title-dot" />
+                  카드 진행
+                </h2>
+                <button className="desk-card__link-btn" onClick={onOpenTerritory} type="button">전체보기 ›</button>
+              </div>
+              <div className="home-progress-list">
+                {cards.slice(0, 5).map((card) => {
+                  const pct = card.progress
+                  const barColor = pct >= 100 ? 'var(--success-500)' : pct > 0 ? 'var(--warning-500)' : 'var(--gray-300)'
+                  return (
+                    <div className="home-progress-row" key={card.id}>
+                      <div className="home-progress-row__info">
+                        <strong>{card.name}</strong>
+                        <span>{card.assignedLeader ?? '인도자 미배정'} · 세대 {card.units}</span>
+                      </div>
+                      <div style={{ height: 6, background: 'var(--gray-100)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 'var(--radius-full)', transition: 'width 0.3s' }} />
+                      </div>
+                      <span className="home-progress-row__pct tnum">{pct}%</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* 공지 */}
+            <div className="desk-card" style={{ gridColumn: 'span 5' }}>
+              <div className="desk-card__head">
+                <h2 className="desk-card__title">
+                  <span className="desk-card__title-dot" />
+                  공지
+                </h2>
+                <button className="desk-card__link-btn" onClick={onOpenNotices} type="button">더보기 ›</button>
+              </div>
+              <div className="home-notice-list">
+                {notices.length === 0 && <p style={{ fontSize: 13, color: 'var(--gray-400)', padding: '12px 0' }}>등록된 공지가 없습니다</p>}
+                {notices.slice(0, 4).map((notice, i) => {
+                  const badge =
+                    notice.priority === '긴급'
+                      ? { label: '긴급', bg: 'var(--danger-100)', color: 'var(--danger-700)' }
+                      : notice.priority === '정보'
+                        ? { label: '공지', bg: 'var(--primary-100)', color: 'var(--primary-700)' }
+                        : { label: '일반', bg: 'var(--gray-100)', color: 'var(--gray-600)' }
+                  return (
+                    <div key={notice.id} className={`home-notice-row${i === 0 ? ' is-selected' : ''}`} onClick={onOpenNotices} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onOpenNotices()}>
+                      <span style={{ padding: '2px 7px', borderRadius: 'var(--radius-sm)', background: badge.bg, color: badge.color, fontSize: 11, fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        {badge.label}
+                      </span>
+                      <div className="home-notice-row__body">
+                        <strong className="home-notice-row__title">{notice.title}</strong>
+                        <span className="home-notice-row__meta">{notice.author} · {notice.createdAt.slice(0, 10)}</span>
+                      </div>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, color: 'var(--gray-400)' }}>
+                        <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* ── 모달들 ── */}
           {showDoneHistory && (
             <div className="cal-modal-backdrop" onClick={() => setShowDoneHistory(false)}>
               <div className="cal-modal" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
                 <div className="cal-modal-head">
-                  <div className="cal-modal-title">
-                    <h2>완료 내역</h2>
-                  </div>
+                  <div className="cal-modal-title"><h2>완료 내역</h2></div>
                   <button className="cal-modal-close" type="button" onClick={() => setShowDoneHistory(false)}>✕</button>
                 </div>
                 <div className="cal-modal-body" style={{ maxHeight: 400, overflowY: 'auto' }}>
-                  {allDoneTasks.length === 0 && (
-                    <p style={{ color: 'var(--ink-400)', textAlign: 'center', padding: '24px 0', fontSize: 14 }}>완료된 항목이 없습니다</p>
-                  )}
+                  {allDoneTasks.length === 0 && <p style={{ color: 'var(--gray-400)', textAlign: 'center', padding: '24px 0', fontSize: 14 }}>완료된 항목이 없습니다</p>}
                   {[...allDoneTasks].sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '')).map((task) => (
-                    <div key={task.id} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '12px 0', borderBottom: '1px solid var(--surface-200)' }}>
-                      <strong style={{ fontSize: 14, color: 'var(--ink-900)' }}>{task.title}</strong>
-                      {task.content && <p style={{ fontSize: 13, color: 'var(--ink-500)', margin: 0 }}>{task.content}</p>}
-                      {task.completedAt && <em style={{ fontSize: 12, color: 'var(--ink-400)', fontStyle: 'normal' }}>완료일: {task.completedAt.slice(0, 10)}</em>}
+                    <div key={task.id} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '12px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <strong style={{ fontSize: 14, color: 'var(--gray-900)' }}>{task.title}</strong>
+                      {task.content && <p style={{ fontSize: 13, color: 'var(--gray-500)', margin: 0 }}>{task.content}</p>}
+                      {task.completedAt && <em style={{ fontSize: 12, color: 'var(--gray-400)', fontStyle: 'normal' }}>완료일: {task.completedAt.slice(0, 10)}</em>}
                     </div>
                   ))}
                 </div>
               </div>
             </div>
           )}
-
-          {/* 항목 추가/수정 모달 */}
           {reviewModal && (
             <div className="cal-modal-backdrop" onClick={closeReviewModal}>
               <div className="cal-modal" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
                 <div className="cal-modal-head">
-                  <div className="cal-modal-title">
-                    <h2>{reviewModal.mode === 'add' ? '검토 항목 추가' : '항목 수정'}</h2>
-                  </div>
+                  <div className="cal-modal-title"><h2>{reviewModal.mode === 'add' ? '검토 항목 추가' : '항목 수정'}</h2></div>
                   <button className="cal-modal-close" type="button" onClick={closeReviewModal}>✕</button>
                 </div>
                 <div className="cal-modal-body">
                   <div className="cal-field">
                     <label>제목 <span style={{ color: 'var(--danger-500)' }}>*</span></label>
-                    <input
-                      autoFocus
-                      className="cal-input"
-                      placeholder="검토할 항목을 입력하세요"
-                      value={reviewTitle}
-                      onChange={(e) => setReviewTitle(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) handleReviewSubmit() }}
-                    />
+                    <input autoFocus className="cal-input" placeholder="검토할 항목을 입력하세요" value={reviewTitle} onChange={(e) => setReviewTitle(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) handleReviewSubmit() }} />
                   </div>
                   <div className="cal-field">
-                    <label>내용 <span style={{ color: 'var(--ink-400)', fontWeight: 400 }}>(선택)</span></label>
-                    <textarea
-                      className="cal-input"
-                      placeholder="추가 설명을 입력하세요"
-                      rows={3}
-                      style={{ resize: 'vertical', minHeight: 72 }}
-                      value={reviewContent}
-                      onChange={(e) => setReviewContent(e.target.value)}
-                    />
+                    <label>내용 <span style={{ color: 'var(--gray-400)', fontWeight: 400 }}>(선택)</span></label>
+                    <textarea className="cal-input" placeholder="추가 설명을 입력하세요" rows={3} style={{ resize: 'vertical', minHeight: 72 }} value={reviewContent} onChange={(e) => setReviewContent(e.target.value)} />
                   </div>
                 </div>
                 <div className="cal-modal-foot">
                   <button className="cal-cancel-btn" type="button" onClick={closeReviewModal}>취소</button>
-                  <button
-                    className="cal-save-btn"
-                    disabled={!reviewTitle.trim() || reviewSubmitting}
-                    type="button"
-                    onClick={handleReviewSubmit}
-                  >
+                  <button className="cal-save-btn" disabled={!reviewTitle.trim() || reviewSubmitting} type="button" onClick={handleReviewSubmit}>
                     {reviewSubmitting ? '처리 중...' : reviewModal.mode === 'add' ? '추가' : '저장'}
                   </button>
                 </div>
               </div>
             </div>
           )}
-
-          <section className="home-section">
-            <div className="home-section-title">
-              <span className="home-section-icon">●</span>
-              <h2>카드 진행</h2>
-              <button className="home-more-btn" onClick={onOpenTerritory} type="button">
-                전체보기 →
-              </button>
-            </div>
-            <div className="home-my-list">
-              {cards.slice(0, 4).map((card) => (
-                <div className="home-my-card" key={card.id}>
-                  <div className="home-my-card-info">
-                    <strong>{card.name}</strong>
-                    <span>{card.assignedLeader ?? '인도자 미배정'} · 건물 {card.buildings} · 세대 {card.units}</span>
-                  </div>
-                  <div className="home-my-card-progress">
-                    <div className="home-progress-bar">
-                      <span style={{ width: `${card.progress}%` }} />
-                    </div>
-                    <small>{card.progress}%</small>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <HomeNoticeSection notices={notices} onOpenNotices={onOpenNotices} />
-        </div>
+        </>
       )}
 
       {role === 'user' && (
@@ -753,7 +802,7 @@ export function DesktopHome({
         {/* 나의 구역 */}
         <section className="home-section">
           <div className="home-section-title">
-            <span className="home-section-icon">📍</span>
+            <span className="home-section-icon home-section-icon--soft"><InlineIcon name="map" /></span>
             <h2>나의 구역</h2>
             <button className="home-more-btn" onClick={onOpenTerritory} type="button">
               전체보기 →
@@ -785,7 +834,7 @@ export function DesktopHome({
         {/* 나의 인도 */}
         <section className="home-section">
           <div className="home-section-title">
-            <span className="home-section-icon">🔄</span>
+            <span className="home-section-icon home-section-icon--soft"><InlineIcon name="repeat" /></span>
             <h2>나의 인도</h2>
           </div>
           <div className="home-my-list">
@@ -798,7 +847,10 @@ export function DesktopHome({
               <div className="home-my-card" key={event.id}>
                 <div className="home-my-card-info">
                   <strong>{event.title}</strong>
-                  <span>⏰ {event.time} {event.place && `· ${event.place}`}</span>
+                  <span className="home-compact-meta">
+                    <span><InlineIcon name="clock" /> {event.time}</span>
+                    {event.place && <span><InlineIcon name="pin" /> {event.place}</span>}
+                  </span>
                 </div>
                 <span className="home-lead-badge">인도자</span>
               </div>
@@ -919,8 +971,9 @@ function HomeTodayEvents({
                   {!event.allowApplications && <span className="home-event-badge muted">신청 받지 않음</span>}
                 </div>
                 <div className="home-event-meta">
-                  {event.place && <span>장소 {event.place}</span>}
-                  {event.leader && <span>인도자 {event.leader}</span>}
+                  <span><InlineIcon name="clock" /> {event.time}</span>
+                  {event.place && <span><InlineIcon name="pin" /> {event.place}</span>}
+                  {event.leader && <span><InlineIcon name="user" /> {event.leader}</span>}
                 </div>
                 {event.memo && <p className="home-event-memo">{event.memo}</p>}
                 <div className="home-event-footer">

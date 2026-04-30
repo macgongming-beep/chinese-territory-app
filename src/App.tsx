@@ -3,6 +3,8 @@ import { Toast } from './components/Toast'
 import { useStore } from './hooks/useStore'
 import { useAuth } from './hooks/useAuth'
 import type { Role } from './types'
+import type { AppLanguage } from './i18n'
+import { isAppLanguage } from './i18n'
 import './App.css'
 
 const DesktopApp = lazy(() =>
@@ -27,16 +29,26 @@ function getViewModeStorageKey(userId: number) {
   return `chsViewMode:${userId}`
 }
 
+function getLanguageStorageKey(userId: number) {
+  return `chsLanguage:${userId}`
+}
+
+function getInitialLanguage(): AppLanguage {
+  if (typeof window === 'undefined') return 'ko'
+  const storedLanguage = window.localStorage.getItem('chsLanguage:guest')
+  return isAppLanguage(storedLanguage) ? storedLanguage : 'ko'
+}
+
 function isRole(value: unknown): value is Role {
   return typeof value === 'string' && ROLE_VALUES.includes(value as Role)
 }
 
 function App() {
-  const { user, login, signup, logout, loading: authLoading, allUsers } = useAuth()
+  const { user, login, signup, logout, changePin, updateMyProfile, loading: authLoading, allUsers } = useAuth()
   const actualRole: Role = user?.role ?? 'user'
   const [mobileViewMode, setMobileViewMode] = useState<Role>(actualRole)
+  const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage)
   const [isDesktop, setIsDesktop] = useState<boolean>(getInitialDesktopMode)
-  const [forceMobileView, setForceMobileView] = useState<boolean>(false)
 
   const {
     cards,
@@ -55,6 +67,7 @@ function App() {
     endServiceSession,
     updateUnitStatus,
     quickLogVisit,
+    toggleInvitationLeft,
     updateUnitFlags,
     undoLatestVisit,
     addVisitHistory,
@@ -95,6 +108,8 @@ function App() {
     applyToEvent,
     assignToEvent,
     removeParticipantFromEvent,
+    addParticipantToEvent,
+    mergeDuplicateBuildings,
     assignCardToEventParticipant,
     assignCardsToEventParticipantsBulk,
     createNotice,
@@ -136,10 +151,25 @@ function App() {
     setMobileViewMode(isRole(storedViewMode) ? storedViewMode : 'admin')
   }, [actualRole, user])
 
+  useEffect(() => {
+    if (!user) return
+    const storedLanguage = window.localStorage.getItem(getLanguageStorageKey(user.id))
+    setLanguage(isAppLanguage(storedLanguage) ? storedLanguage : 'ko')
+  }, [user])
+
   const handleChangeViewMode = (role: Role) => {
     setMobileViewMode(role)
     if (user && actualRole === 'admin') {
       window.localStorage.setItem(getViewModeStorageKey(user.id), role)
+    }
+  }
+
+  const handleChangeLanguage = (nextLanguage: AppLanguage) => {
+    setLanguage(nextLanguage)
+    if (user) {
+      window.localStorage.setItem(getLanguageStorageKey(user.id), nextLanguage)
+    } else {
+      window.localStorage.setItem('chsLanguage:guest', nextLanguage)
     }
   }
 
@@ -164,7 +194,12 @@ function App() {
             </div>
           }
         >
-          <Login onLogin={login} onSignup={signup} />
+          <Login
+            language={language}
+            onChangeLanguage={handleChangeLanguage}
+            onLogin={login}
+            onSignup={signup}
+          />
         </Suspense>
       </>
     )
@@ -189,16 +224,15 @@ function App() {
           </div>
         }
       >
-        {isDesktop && !forceMobileView ? (
+        {isDesktop ? (
           <DesktopApp
-            forceMobileView={forceMobileView}
-            onSetForceMobileView={setForceMobileView}
             leaderNames={leaderNames}
             buildings={buildings}
             calendarEvents={calendarEvents}
             cards={cards}
             cardBoundaries={cardBoundaries}
             currentVisitor={user.name}
+            currentUserId={user.id}
             actualRole={actualRole}
             viewMode={mobileViewMode}
             notices={notices}
@@ -225,6 +259,7 @@ function App() {
             onDeleteBuilding={deleteBuilding}
             onDeleteBuildings={deleteBuildings}
             onDeleteCards={deleteCards}
+            onMergeDuplicateBuildings={mergeDuplicateBuildings}
             onUpdateBuilding={updateBuilding}
             onMoveBuildingToCard={moveBuildingToCard}
             onReassignBuildingsToCards={reassignBuildingsToCards}
@@ -233,7 +268,9 @@ function App() {
             onDeleteCardBoundary={deleteCardBoundary}
             onDeleteNotice={deleteNotice}
             onDeleteUnit={deleteUnitFromBuilding}
+            allUsers={allUsers}
             onRemoveParticipantFromEvent={removeParticipantFromEvent}
+            onAddParticipantToEvent={addParticipantToEvent}
             onToggleRegularVisit={toggleRegularVisit}
             onSetRegularVisitor={setRegularVisitor}
             onToggleChinese={toggleChinese}
@@ -246,6 +283,7 @@ function App() {
             onDeleteVisitHistory={deleteVisitHistory}
             onUpdateUnitStatus={updateUnitStatus}
             onQuickLogVisit={quickLogVisit}
+            onToggleInvitationLeft={toggleInvitationLeft}
             onUpdateUnitFlags={updateUnitFlags}
             onSaveCardBoundary={saveCardBoundary}
             visitHistories={visitHistories}
@@ -267,12 +305,20 @@ function App() {
               cardBoundaries={cardBoundaries}
               cards={cards}
               currentVisitor={user.name}
+              currentUser={user}
+              language={language}
               actualRole={actualRole}
               viewMode={mobileViewMode}
               notices={notices}
               serviceSessions={serviceSessions}
               onChangeViewMode={handleChangeViewMode}
+              onChangeLanguage={handleChangeLanguage}
+              onSetCardLeaders={setCardLeaders}
+              allUsers={allUsers}
+              onChangePin={changePin}
+              onUpdateMyProfile={updateMyProfile}
               onApplyToEvent={applyToEvent}
+              onAddParticipantToEvent={addParticipantToEvent}
               onCreateCalendarEvent={createCalendarEvent}
               onDeleteCalendarEvent={deleteCalendarEvent}
               onUpdateCalendarEvent={updateCalendarEvent}
@@ -305,10 +351,12 @@ function App() {
               onUpdateUnitStatus={updateUnitStatus}
               onQuickLogVisit={quickLogVisit}
               onUpdateUnitFlags={updateUnitFlags}
+              onToggleInvitationLeft={toggleInvitationLeft}
               onLogout={logout}
               visitHistories={visitHistories}
-              forceMobileView={forceMobileView}
-              onSetForceMobileView={setForceMobileView}
+              specialPeriods={specialPeriods}
+              onCreateSpecialPeriod={createSpecialPeriod}
+              onDeleteSpecialPeriod={deleteSpecialPeriod}
             />
           </div>
         )}

@@ -1,20 +1,15 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { MapCanvas } from './MapCanvas'
-import type { Building, BuildingStatus, CardBoundary, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, BuildingStatus, CardBoundary, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { AppLanguage } from '../i18n'
+import { t } from '../i18n'
 import { getBuildingStatus, findCardForCoordinates } from '../utils/mapUtils'
 import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 import { showToast } from '../lib/toast'
 
-type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
 type NavLevel = 'area' | 'region' | 'card' | 'map'
-
-const strategyFilters: { value: StrategyFilter; label: string }[] = [
-  { value: '전체', label: '전체' },
-  { value: '중국인', label: '중국인' },
-  { value: '부재', label: '부재' },
-  { value: '만남', label: '만남' },
-]
+type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
 
 function getLocalDateString() {
   const date = new Date()
@@ -24,6 +19,7 @@ function getLocalDateString() {
 }
 
 export function MobileMap({
+  language,
   buildings,
   cardBoundaries,
   cards,
@@ -44,8 +40,11 @@ export function MobileMap({
   onDeleteVisitHistory,
   onQuickLogVisit,
   onUpdateUnitFlags,
+  onToggleInvitationLeft,
   visitHistories,
+  specialPeriods,
 }: {
+  language: AppLanguage
   buildings: Building[]
   cardBoundaries: CardBoundary[]
   cards: TerritoryCard[]
@@ -62,11 +61,13 @@ export function MobileMap({
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
   onUndoLatestVisit: (buildingId: number, unitId: number) => void
-  onUpdateVisitHistory: (historyId: number, unitId: number, input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string }) => void
+  onUpdateVisitHistory: (historyId: number, unitId: number, input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean }) => void
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
   onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
+  onToggleInvitationLeft?: (buildingId: number, unitId: number) => void
   visitHistories: VisitHistory[]
+  specialPeriods?: SpecialPeriod[]
 }) {
   // URL 파라미터 (가상 핀용)
   const [searchParams] = useSearchParams()
@@ -85,19 +86,19 @@ export function MobileMap({
       setVirtualGeocoding(true)
       naver.maps.Service.geocode({ query: addrParam }, (status: any, response: any) => {
         setVirtualGeocoding(false)
-        if (status === naver.maps.Service.Status.ERROR) { showToast('주소를 찾을 수 없습니다'); return }
+        if (status === naver.maps.Service.Status.ERROR) { showToast(t(language, 'map.addressNotFound')); return }
         const result = response?.v2?.addresses?.[0]
         if (result) {
           setVirtualPinLat(parseFloat(result.y))
           setVirtualPinLng(parseFloat(result.x))
         } else {
-          showToast('주소를 찾을 수 없습니다')
+          showToast(t(language, 'map.addressNotFound'))
         }
       })
     }
     tryGeocode()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addrParam])
+  }, [addrParam, language])
 
   // 내비게이션 상태 머신
   const [navLevel, setNavLevel] = useState<NavLevel>(
@@ -112,15 +113,23 @@ export function MobileMap({
   const [cardSearch, setCardSearch] = useState('')
 
   // 필터
-  const [strategyFilter, setStrategyFilter] = useState<StrategyFilter>('전체')
-  const [statusFilter, setStatusFilter] = useState<BuildingStatus | '전체'>('전체')
+  const [strategyFilter] = useState<StrategyFilter>('전체')
+  const [statusFilter] = useState<BuildingStatus | '전체'>('전체')
 
   // 지도/패널 상태
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null)
   const [expandedBuildingIds, setExpandedBuildingIds] = useState<Set<number>>(new Set())
+  const [collapsedStatusGroups, setCollapsedStatusGroups] = useState<Set<BuildingStatus>>(new Set(['방문완료']))
+  const [hiddenMapStatuses, setHiddenMapStatuses] = useState<Set<BuildingStatus>>(new Set())
   const [expandedUnitId, setExpandedUnitId] = useState<number | null>(null)
   const [editingHistoryId, setEditingHistoryId] = useState<number | null>(null)
   const [historyToEdit, setHistoryToEdit] = useState<VisitHistory | null>(null)
+
+  // 특정 날짜에 활성화된 특별봉사 시즌 (없으면 null)
+  const getActivePeriodForDate = (dateStr: string): SpecialPeriod | null => {
+    if (!specialPeriods) return null
+    return specialPeriods.find((p) => dateStr >= p.startDate && dateStr <= p.endDate) ?? null
+  }
   const [unitMemos, setUnitMemos] = useState<Record<number, string>>({})
   const [_absentTimestamps, _setAbsentTimestamps] = useState<Record<number, number>>({})
   const [newUnitNumber, setNewUnitNumber] = useState('101호')
@@ -148,6 +157,7 @@ export function MobileMap({
   const [editingPinMode, setEditingPinMode] = useState(false)
   const [drawingBoundaryMode, setDrawingBoundaryMode] = useState(false)
   const today = getLocalDateString()
+  const activePeriod = getActivePeriodForDate(today)
   const activeServiceSession = serviceSessions.find((session) =>
     session.userName === currentVisitor &&
     session.serviceDate === today &&
@@ -176,7 +186,7 @@ export function MobileMap({
 
   const requireRecordAccess = () => {
     if (canRecordVisits) return true
-    showToast('봉사 시작 후 방문 기록을 입력할 수 있습니다.', 'info')
+    showToast(t(language, 'map.viewOnlyDesc'), 'info')
     return false
   }
  
@@ -189,6 +199,8 @@ export function MobileMap({
   const [isDragging, setIsDragging] = useState(false)
   const dragStartY = useRef<number>(0)
   const dragStartHeight = useRef<number>(0)
+  const dragMoved = useRef(false)
+  const lastSheetTapAt = useRef(0)
 
   useEffect(() => {
     document.body.classList.add('mobile-map-scroll-lock')
@@ -197,38 +209,54 @@ export function MobileMap({
     }
   }, [])
  
-  const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault()
+  const startSheetDrag = (clientY: number) => {
     setIsDragging(true)
-    dragStartY.current = e.touches[0].clientY
+    dragMoved.current = false
+    dragStartY.current = clientY
     dragStartHeight.current = sheetHeight
   }
- 
-  const handleTouchMove = (e: React.TouchEvent) => {
+
+  const moveSheetDrag = (clientY: number) => {
     if (!isDragging) return
-    e.preventDefault()
-    const deltaY = dragStartY.current - e.touches[0].clientY
+    const deltaY = dragStartY.current - clientY
+    if (Math.abs(deltaY) > 6) dragMoved.current = true
     const newHeight = Math.max(MIN_HEIGHT, Math.min(FULL_HEIGHT, dragStartHeight.current + deltaY))
     setSheetHeight(newHeight)
   }
- 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+
+  const handlePointerStart = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault()
-    setIsDragging(false)
-    // 전구간 자유 높이 지원 (단, 극단적인 위치만 최소/최대로 보정)
-    if (sheetHeight < MIN_HEIGHT + 20) {
-      setSheetHeight(MIN_HEIGHT)
-    } else if (sheetHeight > FULL_HEIGHT - 20) {
-      setSheetHeight(FULL_HEIGHT)
-    }
+    e.currentTarget.setPointerCapture(e.pointerId)
+    startSheetDrag(e.clientY)
   }
- 
-  const toggleSheet = () => {
-    if (sheetHeight > MIN_HEIGHT + 10) {
-      setSheetHeight(MIN_HEIGHT)
-    } else {
-      setSheetHeight(HALF_HEIGHT)
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging) return
+    e.preventDefault()
+    moveSheetDrag(e.clientY)
+  }
+
+  const handlePointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
     }
+    setIsDragging(false)
+  }
+
+  const toggleSheetSnap = () => {
+    setSheetHeight((height) => (height > MIN_HEIGHT + 30 ? MIN_HEIGHT : HALF_HEIGHT))
+  }
+
+  const handleSheetHandleClick = () => {
+    if (dragMoved.current) return
+    const now = Date.now()
+    if (now - lastSheetTapAt.current < 320) {
+      toggleSheetSnap()
+      lastSheetTapAt.current = 0
+      return
+    }
+    lastSheetTapAt.current = now
   }
 
   // 카드(구역) 선택 변경 시 바텀 시트 자동 최소화
@@ -325,9 +353,52 @@ export function MobileMap({
       { 방문필요: 0, 방문완료: 0, 방문금지: 0, 정기방문: 0 }
     ), [filteredBuildings])
 
+  const mapBuildings = useMemo(
+    () => filteredBuildings.filter((building) => !hiddenMapStatuses.has(getBuildingStatus(building))),
+    [filteredBuildings, hiddenMapStatuses],
+  )
+
+  const buildingGroups = useMemo(() => {
+    const order: BuildingStatus[] = ['방문금지', '방문필요', '정기방문', '방문완료']
+    return order.map((status) => ({
+      status,
+      buildings: filteredBuildings.filter((building) => getBuildingStatus(building) === status),
+    }))
+  }, [filteredBuildings])
+
   const unitTotal = useMemo(() => filteredBuildings.reduce((t, b) => t + b.units.length, 0), [filteredBuildings])
   const visitedTotal = useMemo(() => filteredBuildings.reduce((t, b) => t + b.units.filter(u => u.status !== '미방문').length, 0), [filteredBuildings])
   const completionRate = unitTotal === 0 ? 0 : Math.round((visitedTotal / unitTotal) * 100)
+
+  const toggleStatusGroup = (status: BuildingStatus) => {
+    setCollapsedStatusGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(status)) next.delete(status)
+      else next.add(status)
+      return next
+    })
+  }
+
+  const toggleStatusFromMap = (status: BuildingStatus) => {
+    if (status !== '방문완료' && status !== '정기방문') {
+      toggleStatusGroup(status)
+      return
+    }
+
+    const nextHidden = !hiddenMapStatuses.has(status)
+    setHiddenMapStatuses((prev) => {
+      const next = new Set(prev)
+      if (nextHidden) next.add(status)
+      else next.delete(status)
+      return next
+    })
+    setCollapsedStatusGroups((prev) => {
+      const next = new Set(prev)
+      if (nextHidden) next.add(status)
+      else next.delete(status)
+      return next
+    })
+  }
 
   const mapBoundaries = useMemo(() =>
     selectedCardId != null
@@ -343,17 +414,17 @@ export function MobileMap({
       ? [selectedArea, selectedRegion].filter(Boolean).join(' › ')
       : ''
   const drillTitle =
-    navLevel === 'area' ? '지역 선택'
-      : navLevel === 'region' ? '동 선택'
-        : navLevel === 'card' ? '카드 선택'
+    navLevel === 'area' ? t(language, 'map.areaSelect')
+      : navLevel === 'region' ? t(language, 'map.dongSelect')
+        : navLevel === 'card' ? t(language, 'map.cardSelect')
           : ''
   const mapScopeTitle = selectedCardId
-    ? selectedCard?.name ?? '선택한 카드'
+    ? selectedCard?.name ?? t(language, 'map.selectedCard')
     : selectedRegion
       ? `${selectedRegion} 전체`
       : selectedArea
         ? `${selectedArea} 전체`
-        : '전체 구역'
+        : t(language, 'map.allTerritory')
   const showScopeAllButton = !isUserMap && (navLevel === 'area' || navLevel === 'region' || navLevel === 'card')
   const mapSelectedCardId = selectedCardId ?? '전체'
 
@@ -380,7 +451,7 @@ export function MobileMap({
     addingGuard.current = true
 
     setExpandedBuildingIds(new Set())
-    setAddLat(lat); setAddLng(lng); setAddName('새 건물'); setAddAddress(''); setAddType('주택')
+    setAddLat(lat); setAddLng(lng); setAddName(t(language, 'map.addBuilding')); setAddAddress(''); setAddType('주택')
     const matched = findCardForCoordinates(lat, lng, cardBoundaries)
     setAddCardId(matched ?? selectedCardId ?? cards[0]?.id ?? 1)
 
@@ -425,7 +496,7 @@ export function MobileMap({
     if (!addName.trim() || addLat == null || addLng == null) return
     onCreateBuilding({ cardId: addCardId, name: addName.trim(), address: addAddress.trim(), type: addType, lat: addLat, lng: addLng })
     closeAddModal()
-    showToast('건물이 추가됐습니다', 'success')
+    showToast(t(language, 'map.buildingAdded'), 'success')
   }
 
   const openAddBuildingMode = () => {
@@ -433,7 +504,7 @@ export function MobileMap({
     setEditingPinMode(false)
     setAddingBuildingMode(true)
     setSheetHeight(MIN_HEIGHT)
-    showToast('지도에서 건물을 추가할 위치를 눌러주세요', 'info')
+    showToast(t(language, 'map.tapToAddBuilding'), 'info')
   }
 
   const toggleEditPinMode = () => {
@@ -442,28 +513,42 @@ export function MobileMap({
     setAddingBuildingMode(false)
     setEditingPinMode(next)
     setSheetHeight(MIN_HEIGHT)
-    showToast(next ? '핀 위치 수정 모드입니다. 옮길 핀을 드래그하세요' : '핀 위치 수정 모드를 종료했습니다', 'info')
+    showToast(next ? t(language, 'map.pinEditStart') : t(language, 'map.pinEditEnd'), 'info')
   }
 
   const editingBuilding = editingBuildingId != null ? buildings.find(b => b.id === editingBuildingId) ?? null : null
+  const visitResultLabel = (result: UnitStatus) => {
+    if (result === '만남') return t(language, 'map.met')
+    if (result === '부재') return t(language, 'map.absent')
+    if (result === '한국인') return t(language, 'map.korean')
+    if (result === '거절') return t(language, 'map.refused')
+    return result
+  }
+  const timeSlotLabel = (slot: TimeSlot | string) => {
+    if (slot === '오전') return t(language, 'map.morning')
+    if (slot === '오후') return t(language, 'map.afternoon')
+    if (slot === '저녁') return t(language, 'map.evening')
+    return slot
+  }
+  const buildingTypeLabel = (type: Building['type']) => type === '상가' ? t(language, 'map.shop') : t(language, 'map.house')
   const mapHeaderTitle = activeServiceSession
     ? isViewingActiveCard
-      ? `${activeSessionCard?.name ?? '카드 미지정'} 봉사 중`
+      ? `${activeSessionCard?.name ?? t(language, 'map.unknownCard')} ${t(language, 'map.servicing')}`
       : selectedCard
-        ? `${selectedCard.name} 탐색 중`
-        : '전체 지도 탐색 중'
-    : '봉사 중인 카드 없음'
+        ? `${selectedCard.name} ${t(language, 'map.exploring')}`
+        : t(language, 'map.exploringAll')
+    : t(language, 'map.noActiveCard')
   const mapHeaderSubtitle = activeServiceSession
     ? isViewingActiveCard
-      ? `${activeServiceSession.timeSlot} · 이 카드에서 기록 가능`
-      : '다른 카드를 보고 있습니다'
-    : '봉사 시작 후 기록 가능'
+      ? `${activeServiceSession.timeSlot} · ${t(language, 'map.recordable')}`
+      : t(language, 'map.viewingOtherCard')
+    : t(language, 'map.recordAfterStart')
 
   return (
     <main className="mobile-map-shell">
       {/* 통합 헤더 */}
       <header className="mobile-map-header">
-        <button onClick={handleBack} type="button" className="mm-back-btn" aria-label="뒤로">‹</button>
+        <button onClick={handleBack} type="button" className="mm-back-btn" aria-label="Back">‹</button>
         <div className="mobile-map-header-content">
           <div className="mobile-map-title-row">
             <div className="mobile-map-title-copy">
@@ -482,7 +567,7 @@ export function MobileMap({
                 onClick={openCurrentScopeMap}
                 type="button"
               >
-                전체보기
+                {t(language, 'map.allView')}
               </button>
             )}
             {navLevel === 'map' && (
@@ -504,7 +589,7 @@ export function MobileMap({
                   }}
                   type="button"
                 >
-                  내 봉사 카드
+                  {t(language, 'map.myServiceCard')}
                 </button>
               )}
               <button
@@ -512,7 +597,7 @@ export function MobileMap({
                 onClick={() => setShowCardFinder((open) => !open)}
                 type="button"
               >
-                다른 카드 보기
+                {t(language, 'map.otherCard')}
               </button>
               <button
                 className={!selectedCardId ? 'active' : ''}
@@ -523,7 +608,7 @@ export function MobileMap({
                 }}
                 type="button"
               >
-                전체
+                {t(language, 'map.all')}
               </button>
             </div>
           )}
@@ -542,7 +627,7 @@ export function MobileMap({
             >
               <div className="mm-drill-item-body">
                 <div className="mm-drill-item-title">{area}</div>
-                <div className="mm-drill-item-sub">카드 {areaCardCount(area)}개</div>
+                <div className="mm-drill-item-sub">{t(language, 'zone.cardCount')} {areaCardCount(area)}{t(language, 'calendar.countSuffix')}</div>
               </div>
               <span className="mm-drill-chevron">›</span>
             </button>
@@ -562,7 +647,7 @@ export function MobileMap({
             >
               <div className="mm-drill-item-body">
                 <div className="mm-drill-item-title">{region}</div>
-                <div className="mm-drill-item-sub">카드 {regionCardCount(region)}개</div>
+                <div className="mm-drill-item-sub">{t(language, 'zone.cardCount')} {regionCardCount(region)}{t(language, 'calendar.countSuffix')}</div>
               </div>
               <span className="mm-drill-chevron">›</span>
             </button>
@@ -583,7 +668,7 @@ export function MobileMap({
               <div className="mm-drill-item-body">
                 <div className="mm-drill-item-title">{card.name}</div>
                 <div className="mm-drill-item-sub">
-                  세대 {card.units}개 · 완료 {card.progress}% · {card.status}
+                  {t(language, 'zone.householdCount')} {card.units}{t(language, 'calendar.countSuffix')} · {t(language, 'zone.summaryDone')} {card.progress}% · {card.status}
                 </div>
               </div>
               <span className="mm-drill-chevron">›</span>
@@ -599,7 +684,7 @@ export function MobileMap({
             <div className="mobile-map-card-finder">
               <input
                 autoFocus
-                placeholder="카드 검색: 김량장동 4"
+                placeholder={t(language, 'map.searchPlaceholder')}
                 value={cardSearch}
                 onChange={(event) => setCardSearch(event.target.value)}
                 onKeyDown={(event) => {
@@ -613,8 +698,8 @@ export function MobileMap({
               />
               {cardSearch && (
                 <div className="mobile-map-card-results">
-                  {filteredCardOptions.length === 0 && <span>검색 결과 없음</span>}
-                  {filteredCardOptions.length > 0 && <span>검색 결과 {filteredCardOptions.length}개</span>}
+                  {filteredCardOptions.length === 0 && <span>{t(language, 'map.noSearchResults')}</span>}
+                  {filteredCardOptions.length > 0 && <span>{t(language, 'map.searchResults')} {filteredCardOptions.length}{t(language, 'calendar.countSuffix')}</span>}
                   {filteredCardOptions.map((card) => (
                     <button
                       key={card.id}
@@ -634,37 +719,15 @@ export function MobileMap({
             </div>
           )}
 
-          <div className="mobile-map-filter-strip">
-            {strategyFilters.map(f => (
-              <button
-                key={f.value}
-                onClick={() => setStrategyFilter(f.value)}
-                className={strategyFilter === f.value ? 'active' : ''}
-                type="button"
-              >{f.label}</button>
-            ))}
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value as BuildingStatus | '전체')}
-              className={statusFilter !== '전체' ? 'active' : ''}
-            >
-              <option value="전체">상태 전체</option>
-              <option value="방문필요">방문필요</option>
-              <option value="방문완료">방문완료</option>
-              <option value="방문금지">방문금지</option>
-              <option value="정기방문">정기방문</option>
-            </select>
-          </div>
-
           {/* 지도 */}
           <div className="mobile-map-container" style={{ position: 'relative' }}>
             {virtualGeocoding && (
               <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 50, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 20, pointerEvents: 'none' }}>
-                주소 검색 중…
+                {t(language, 'map.searchingAddress')}
               </div>
             )}
             <MapCanvas
-              buildings={filteredBuildings}
+              buildings={mapBuildings}
               cardBoundaries={mapBoundaries}
               cards={cards}
               selectedCardId={mapSelectedCardId}
@@ -725,7 +788,7 @@ export function MobileMap({
                 const b = buildings.find(item => item.id === id)
                 if (b) {
                   onUpdateBuilding(id, b.name, b.address, lat, lng)
-                  showToast(`${b.name || b.address} 핀 위치가 저장됐습니다`, 'success')
+                  showToast(`${b.name || b.address} ${t(language, 'map.pinSaved')}`, 'success')
                 }
               }}
               isMobile={true}
@@ -737,11 +800,34 @@ export function MobileMap({
               drawingBoundary={drawingBoundaryMode}
               onToggleDrawingBoundary={setDrawingBoundaryMode}
             />
+            <div className="mobile-map-legend-card" aria-label={t(language, 'map.status')}>
+              {([
+                { status: '방문필요', label: t(language, 'zone.summaryNeed') },
+                { status: '방문완료', label: t(language, 'zone.summaryDone') },
+                { status: '방문금지', label: t(language, 'map.forbidden') },
+                { status: '정기방문', label: t(language, 'map.regularVisit') },
+              ] as Array<{ status: BuildingStatus; label: string }>).map(({ status, label }) => {
+                const collapsed = collapsedStatusGroups.has(status)
+                const hidden = hiddenMapStatuses.has(status)
+                return (
+                  <button
+                    className={`mobile-map-legend-toggle${collapsed ? ' collapsed' : ''}${hidden ? ' map-hidden' : ''}`}
+                    key={status}
+                    onClick={() => toggleStatusFromMap(status)}
+                    type="button"
+                  >
+                    <i className={`map-dot status-${status}`} />
+                    <span>{label}</span>
+                    <strong className="tnum">{statusCounts[status]}</strong>
+                  </button>
+                )
+              })}
+            </div>
             {showMapActionMenu && (
               <div className="mobile-map-action-popover">
-                <button onClick={openAddBuildingMode} type="button">건물 추가</button>
+                <button onClick={openAddBuildingMode} type="button">{t(language, 'map.addBuilding')}</button>
                 <button onClick={toggleEditPinMode} type="button">
-                  {editingPinMode ? '핀 수정 종료' : '핀 위치 수정'}
+                  {editingPinMode ? t(language, 'map.finishEditPin') : t(language, 'map.editPin')}
                 </button>
               </div>
             )}
@@ -749,7 +835,7 @@ export function MobileMap({
 
           {(addingBuildingMode || editingPinMode) && (
             <div className={`mobile-map-mode-banner${editingPinMode ? ' edit-pin' : ''}`}>
-              <strong>{editingPinMode ? '핀 위치 수정' : '건물 추가'}</strong>
+              <strong>{editingPinMode ? t(language, 'map.editPin') : t(language, 'map.addBuilding')}</strong>
               <button
                 onClick={() => {
                   setAddingBuildingMode(false)
@@ -757,21 +843,10 @@ export function MobileMap({
                 }}
                 type="button"
               >
-                종료
+                {t(language, 'map.finish')}
               </button>
             </div>
           )}
-
-          {/* 통계 */}
-          <div className="mobile-map-status-strip">
-            {Object.entries(statusCounts).map(([status, count]) => (
-              <div key={status}>
-                <i className={`map-dot status-${status}`} />
-                <strong>{count}</strong>
-                <span>{status}</span>
-              </div>
-            ))}
-          </div>
 
           {/* 건물 아코디언 (바텀시트) */}
           <section
@@ -783,34 +858,52 @@ export function MobileMap({
           >
             <div
               className="sheet-handle"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              onClick={toggleSheet}
-              style={{ cursor: 'pointer', padding: '10px 0' }}
+              onPointerDown={handlePointerStart}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerEnd}
+              onPointerCancel={handlePointerEnd}
+              onClick={handleSheetHandleClick}
+              style={{ cursor: 'grab' }}
             />
-            <div className="mobile-sheet-summary" onClick={toggleSheet}>
-              <span>건물 {filteredBuildings.length}개</span>
-              <em>{completionRate}% · {visitedTotal}/{unitTotal} 세대</em>
+            <div
+              className="mobile-sheet-summary"
+              onPointerDown={handlePointerStart}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerEnd}
+              onPointerCancel={handlePointerEnd}
+              onClick={handleSheetHandleClick}
+            >
+              <span>{t(language, 'map.building')} {filteredBuildings.length}{t(language, 'calendar.countSuffix')}</span>
+              <em>{completionRate}% · {visitedTotal}/{unitTotal} {t(language, 'map.unit')}</em>
             </div>
 
             {!canRecordVisits && (
               <div className="record-lock-banner mobile">
-                <strong>보기 전용 상태</strong>
-                <span>봉사 시작 후 방문 기록을 입력할 수 있습니다.</span>
+                <strong>{t(language, 'map.viewOnly')}</strong>
+                <span>{t(language, 'map.viewOnlyDesc')}</span>
               </div>
             )}
 
             <div className="mobile-sheet-scroll">
               {filteredBuildings.length === 0 && (
                 <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>
-                  <p>표시할 건물이 없습니다</p>
+                  <p>{t(language, 'map.noBuildings')}</p>
                 </div>
               )}
 
-              {filteredBuildings.map((building) => {
+              {buildingGroups.map(({ status, buildings: groupedBuildings }) => {
+                if (groupedBuildings.length === 0) return null
+                const isGroupCollapsed = collapsedStatusGroups.has(status)
+                return (
+                  <section className={`mobile-building-status-group mobile-status-${status}${isGroupCollapsed ? ' collapsed' : ''}`} key={status}>
+                    <button
+                      aria-label={`${status} ${isGroupCollapsed ? 'open' : 'close'}`}
+                      className="mobile-building-status-head"
+                      onClick={() => toggleStatusGroup(status)}
+                      type="button"
+                    />
+                    {!isGroupCollapsed && groupedBuildings.map((building) => {
                 const isExpanded = expandedBuildingIds.has(building.id)
-                const buildingStatus = getBuildingStatus(building)
                 const handledUnits = building.units.filter(u => u.status !== '미방문').length
                 const regularUnitCount = building.units.filter(u => u.isRegularVisit).length
                 const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / building.units.length) * 100)
@@ -846,7 +939,6 @@ export function MobileMap({
                             {card && selectedCardId === null && <span className="bld-sub-name" style={{ color: '#94a3b8' }}>{card.name}</span>}
                           </div>
                           <div className="bld-head-right">
-                            <i className={`map-dot status-${buildingStatus}`} />
                             <small>{handledUnits}/{building.units.length} · {completion}%</small>
                             {regularUnitCount > 0 && <b className="bld-regular-badge">정{regularUnitCount}</b>}
                           </div>
@@ -860,24 +952,25 @@ export function MobileMap({
                     ) : (
                       <div className="building-edit-mode">
                         <div className="edit-input-group">
-                          <input className="modern-edit-address" onChange={e => setEditAddress(e.target.value)} placeholder="주소" value={editAddress} />
-                          <input className="modern-edit-name" onChange={e => setEditName(e.target.value)} placeholder="건물명 (선택)" value={editName} />
+                          <input className="modern-edit-address" onChange={e => setEditAddress(e.target.value)} placeholder={t(language, 'map.address')} value={editAddress} />
+                          <input className="modern-edit-name" onChange={e => setEditName(e.target.value)} placeholder={t(language, 'map.buildingNameOptional')} value={editName} />
                         </div>
                         <div className="edit-action-group">
-                          <button className="edit-save-btn" onClick={() => { onUpdateBuilding(building.id, editName.trim(), editAddress.trim()); setEditingBuildingId(null) }}>저장</button>
-                          <button className="edit-cancel-btn" onClick={() => setEditingBuildingId(null)}>취소</button>
-                          <button className="edit-delete-btn" onClick={() => setShowDeleteConfirm(true)}>삭제</button>
+                          <button className="edit-save-btn" onClick={() => { onUpdateBuilding(building.id, editName.trim(), editAddress.trim()); setEditingBuildingId(null) }}>{t(language, 'common.save')}</button>
+                          <button className="edit-cancel-btn" onClick={() => setEditingBuildingId(null)}>{t(language, 'common.cancel')}</button>
+                          <button className="edit-delete-btn" onClick={() => setShowDeleteConfirm(true)}>{t(language, 'common.delete')}</button>
                         </div>
                       </div>
                     )}
 
                     {isExpanded && !isEditing && (
                       <div className="bld-body">
-                        <div className="unit-col-header">
-                          <span>세대 정보</span>
-                          <span>만남</span>
-                          <span>부재</span>
-                          <span>한국</span>
+                        <div className={`unit-col-header${activePeriod ? ' with-invitation' : ''}`}>
+                          <span>{t(language, 'map.unitInfo')}</span>
+                          {activePeriod && <span>{t(language, 'map.invitation')}</span>}
+                          <span>{t(language, 'map.met')}</span>
+                          <span>{t(language, 'map.absent')}</span>
+                          <span>{t(language, 'map.korean')}</span>
                         </div>
 
                         {(strategyFilter === '전체'
@@ -890,18 +983,29 @@ export function MobileMap({
 
                           return (
                             <div className={`unit-grid-row${isUnitExpanded ? ' ugr-expanded' : ''}${unit.isRegularVisit ? ' ugr-regular' : ''}`} key={unit.id}>
-                              <div className="unit-grid-main">
+                              <div className={`unit-grid-main${activePeriod ? ' with-invitation' : ''}`}>
                                 <button className="unit-name-btn" onClick={() => setExpandedUnitId(isUnitExpanded ? null : unit.id)} type="button">
                                   <span className="unit-chevron">{isUnitExpanded ? '▾' : '▸'}</span>
                                   <span className="unit-number-text">{unit.number}</span>
                                   {unit.isChinese && <span className="unit-chinese-badge">中</span>}
-                                  {unit.isRegularVisit && <span className="unit-regular-badge">재방</span>}
+                                  {unit.isRegularVisit && <span className="unit-regular-badge">{t(language, 'map.regularShort')}</span>}
                                   {latestHistory && (
                                     <span className="unit-recent-visit">
                                       [{latestHistory.visitedAt.slice(5).replace('-', '/')} {latestHistory.timeSlot}]
                                     </span>
                                   )}
                                 </button>
+                                {activePeriod && (
+                                  <button
+                                    className={`unit-check-btn unit-check-btn-invitation${latestHistory?.invitationLeft ? ' ucb-invitation' : ''}${!canRecordVisits ? ' locked' : ''}`}
+                                    onClick={() => {
+                                      if (!requireRecordAccess()) return
+                                      onToggleInvitationLeft?.(building.id, unit.id)
+                                    }}
+                                    title={t(language, 'map.invitationLeft')}
+                                    type="button"
+                                  >{latestHistory?.invitationLeft ? '✓' : ''}</button>
+                                )}
                                 <button className={`unit-check-btn${unit.status === '만남' ? ' ucb-meet' : ''}${!canRecordVisits ? ' locked' : ''}`}
                                   onClick={() => {
                                     if (!requireRecordAccess()) return
@@ -927,7 +1031,7 @@ export function MobileMap({
                                 <div className="unit-grid-detail">
                                   <div className="ugd-row">
                                     <span className="ugd-icon">📜</span>
-                                    <span className="ugd-label">방문 기록</span>
+                                    <span className="ugd-label">{t(language, 'map.visitHistory')}</span>
                                     <div className="ugd-history-stack">
                                       {unitHistories.slice(0, 5).map((history) => {
                                         const isMenuOpen = editingHistoryId === history.id
@@ -946,25 +1050,25 @@ export function MobileMap({
                                                   if (!requireRecordAccess()) return
                                                   setHistoryToEdit(history)
                                                   setEditingHistoryId(null)
-                                                }} type="button">✎ 수정</button>
+                                                }} type="button">✎ {t(language, 'map.edit')}</button>
                                                 <button onClick={() => {
                                                   if (!requireRecordAccess()) return
-                                                  if (confirm('이 방문 기록을 삭제할까요?')) {
+                                                  if (confirm(t(language, 'map.deleteHistoryConfirm'))) {
                                                     onDeleteVisitHistory(history.id, unit.id)
                                                   }
                                                   setEditingHistoryId(null)
-                                                }} className="delete" type="button">✕ 삭제</button>
+                                                }} className="delete" type="button">✕ {t(language, 'common.delete')}</button>
                                               </div>
                                             )}
                                           </div>
                                         )
                                       })}
-                                      {unitHistories.length === 0 && <span className="ugd-value">기록 없음</span>}
+                                      {unitHistories.length === 0 && <span className="ugd-value">{t(language, 'map.noRecords')}</span>}
                                     </div>
                                   </div>
                                   <div className="ugd-row">
                                     <span className="ugd-icon">📊</span>
-                                    <span className="ugd-label">누적 부재</span>
+                                    <span className="ugd-label">{t(language, 'map.cumulativeAbsent')}</span>
                                     <span className="ugd-value">
                                       {(() => {
                                         const counts = unitHistories.filter(h => h.result === '부재').reduce((acc, h) => {
@@ -972,16 +1076,16 @@ export function MobileMap({
                                           return acc;
                                         }, {} as Record<string, number>);
                                         const parts = [];
-                                        if (counts['오전']) parts.push(`오전 ${counts['오전']}`);
-                                        if (counts['오후']) parts.push(`오후 ${counts['오후']}`);
-                                        if (counts['저녁']) parts.push(`저녁 ${counts['저녁']}`);
-                                        return parts.length > 0 ? parts.join(', ') : '기록 없음';
+                                        if (counts['오전']) parts.push(`${t(language, 'map.morning')} ${counts['오전']}`);
+                                        if (counts['오후']) parts.push(`${t(language, 'map.afternoon')} ${counts['오후']}`);
+                                        if (counts['저녁']) parts.push(`${t(language, 'map.evening')} ${counts['저녁']}`);
+                                        return parts.length > 0 ? parts.join(', ') : t(language, 'map.noRecords');
                                       })()}
                                     </span>
                                   </div>
                                   <div className="ugd-memo-section">
                                     <div className="ugd-memo-head">
-                                      <span>💬 메모</span>
+                                      <span>{t(language, 'map.memo')}</span>
                                       <div className="ugd-memo-checks">
                                         <label className="ugd-chinese-label" style={{ color: unit.isForbidden ? 'var(--danger-600)' : 'inherit' }}>
                                           <button className={`unit-check-btn ugd-check${unit.isForbidden ? ' ucb-forbidden' : ''}${!canRecordVisits ? ' locked' : ''}`}
@@ -990,7 +1094,7 @@ export function MobileMap({
                                               onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden })
                                             }} type="button">
                                             {unit.isForbidden ? '✓' : ''}</button>
-                                          방문금지
+                                          {t(language, 'map.forbidden')}
                                         </label>
                                         <label className="ugd-chinese-label">
                                           <button className={`unit-check-btn ugd-check${unit.isRegularVisit ? ' ucb-regular' : ''}${!canRecordVisits ? ' locked' : ''}`}
@@ -999,7 +1103,7 @@ export function MobileMap({
                                               onToggleRegularVisit(building.id, unit.id)
                                             }} type="button">
                                             {unit.isRegularVisit ? '✓' : ''}</button>
-                                          정기방문
+                                          {t(language, 'map.regularVisit')}
                                         </label>
                                         <label className="ugd-chinese-label">
                                           <button className={`unit-check-btn ugd-check${unit.isChinese ? ' ucb-chinese' : ''}${!canRecordVisits ? ' locked' : ''}`}
@@ -1008,11 +1112,11 @@ export function MobileMap({
                                               onToggleChinese(building.id, unit.id)
                                             }} type="button">
                                             {unit.isChinese ? '✓' : ''}</button>
-                                          중국인
+                                          {t(language, 'map.chinese')}
                                         </label>
                                       </div>
                                     </div>
-                                    <textarea className="ugd-memo-textarea" placeholder="메모를 입력하세요..."
+                                    <textarea className="ugd-memo-textarea" placeholder={t(language, 'map.memoPlaceholder')}
                                       value={unitMemos[unit.id] ?? (unit.memo || '')}
                                       onChange={e => setUnitMemos(prev => ({ ...prev, [unit.id]: e.target.value }))}
                                       disabled={!canRecordVisits}
@@ -1021,7 +1125,7 @@ export function MobileMap({
                                         onUpdateUnitFlags(unit.id, { memo: e.target.value })
                                       }} />
                                   </div>
-                                    <button onClick={() => { if (confirm(`"${unit.number}" 세대를 삭제할까요?`)) { onDeleteUnit(building.id, unit.id); setExpandedUnitId(null) } }} style={{ marginLeft: 'auto', padding: '4px 10px', fontSize: '11px', minHeight: 'auto', borderRadius: 'var(--r-sm)', background: 'var(--danger-100)', color: 'var(--danger-600)', border: 'none', cursor: 'pointer' }} type="button">세대 삭제</button>
+                                    <button onClick={() => { if (confirm(`"${unit.number}" ${t(language, 'map.deleteUnitConfirm')}`)) { onDeleteUnit(building.id, unit.id); setExpandedUnitId(null) } }} style={{ marginLeft: 'auto', padding: '4px 10px', fontSize: '11px', minHeight: 'auto', borderRadius: 'var(--r-sm)', background: 'var(--danger-100)', color: 'var(--danger-600)', border: 'none', cursor: 'pointer' }} type="button">{t(language, 'map.deleteUnit')}</button>
                                 </div>
                               )}
                             </div>
@@ -1030,19 +1134,22 @@ export function MobileMap({
 
                         {addingUnitToBuildingId === building.id ? (
                           <div style={{ padding: '8px 10px', borderTop: '1px dashed #cbd5e1', display: 'flex', gap: '6px' }}>
-                            <input autoFocus placeholder="호수 (예: 101호)" value={newUnitNumber} onChange={e => setNewUnitNumber(e.target.value)}
+                            <input autoFocus placeholder={t(language, 'map.unitNumberPlaceholder')} value={newUnitNumber} onChange={e => setNewUnitNumber(e.target.value)}
                               onKeyDown={e => { if (e.key === 'Enter' && newUnitNumber.trim()) { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') } }}
                               style={{ flex: 1, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 'var(--r-sm)', fontSize: '13px' }} />
                             <button disabled={!newUnitNumber.trim()} onClick={() => { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') }}
-                              style={{ padding: '6px 12px', background: 'var(--accent-700)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 700, cursor: 'pointer', fontSize: '13px' }}>추가</button>
+                              style={{ padding: '6px 12px', background: 'var(--accent-700)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 700, cursor: 'pointer', fontSize: '13px' }}>{t(language, 'common.add')}</button>
                             <button onClick={() => setAddingUnitToBuildingId(null)} style={{ padding: '6px 8px', background: '#f1f5f9', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', color: 'var(--ink-500)', fontSize: '13px' }}>✕</button>
                           </div>
                         ) : (
-                          <button className="bld-add-unit-btn" onClick={() => setAddingUnitToBuildingId(building.id)} type="button">+ 세대 추가</button>
+                          <button className="bld-add-unit-btn" onClick={() => setAddingUnitToBuildingId(building.id)} type="button">{t(language, 'map.addUnit')}</button>
                         )}
                       </div>
                     )}
                   </article>
+                )
+              })}
+                  </section>
                 )
               })}
             </div>
@@ -1060,36 +1167,36 @@ export function MobileMap({
               }}
             >
               <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', padding: '24px 20px 36px' }} onClick={e => e.stopPropagation()}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700 }}>건물 추가</h3>
-                {addLat && <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#94a3b8' }}>{addLat.toFixed(5)}, {addLng?.toFixed(5)} {geocoding ? '· 주소 조회 중...' : ''}</p>}
+                <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700 }}>{t(language, 'map.addBuilding')}</h3>
+                {addLat && <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#94a3b8' }}>{addLat.toFixed(5)}, {addLng?.toFixed(5)} {geocoding ? `· ${t(language, 'map.searchingAddress')}` : ''}</p>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>카드</label>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>{t(language, 'zone.cardCount')}</label>
                     <select value={addCardId} onChange={e => setAddCardId(Number(e.target.value))} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: 'var(--r-md)', fontSize: '14px' }}>
                       {cards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>건물명 *</label>
-                    <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="예: 삼가동 우성빌라 A동"
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>{t(language, 'map.buildingNameRequired')}</label>
+                    <input value={addName} onChange={e => setAddName(e.target.value)} placeholder={t(language, 'map.buildingNamePlaceholder')}
                       style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: 'var(--r-md)', fontSize: '14px', boxSizing: 'border-box' }} />
                   </div>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>주소</label>
-                    <input value={addAddress} onChange={e => setAddAddress(e.target.value)} placeholder="경기 용인시..."
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>{t(language, 'map.address')}</label>
+                    <input value={addAddress} onChange={e => setAddAddress(e.target.value)} placeholder={t(language, 'map.addressPlaceholder')}
                       style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: 'var(--r-md)', fontSize: '14px', boxSizing: 'border-box' }} />
                   </div>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>유형</label>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>{t(language, 'map.type')}</label>
                     <select value={addType} onChange={e => setAddType(e.target.value as Building['type'])} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: 'var(--r-md)', fontSize: '14px' }}>
-                      <option value="주택">주택</option>
-                      <option value="상가">상가</option>
+                      <option value="주택">{buildingTypeLabel('주택')}</option>
+                      <option value="상가">{buildingTypeLabel('상가')}</option>
                     </select>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-                  <button onClick={closeAddModal} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>취소</button>
-                  <button onClick={handleConfirmAdd} disabled={!addName.trim()} style={{ flex: 2, padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: addName.trim() ? 'var(--accent-700)' : '#e2e8f0', color: addName.trim() ? '#fff' : '#94a3b8', fontWeight: 700, cursor: addName.trim() ? 'pointer' : 'not-allowed', fontSize: '15px' }}>추가</button>
+                  <button onClick={closeAddModal} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'common.cancel')}</button>
+                  <button onClick={handleConfirmAdd} disabled={!addName.trim()} style={{ flex: 2, padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: addName.trim() ? 'var(--accent-700)' : '#e2e8f0', color: addName.trim() ? '#fff' : '#94a3b8', fontWeight: 700, cursor: addName.trim() ? 'pointer' : 'not-allowed', fontSize: '15px' }}>{t(language, 'common.add')}</button>
                 </div>
               </div>
             </div>
@@ -1101,30 +1208,30 @@ export function MobileMap({
               <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', padding: '24px 20px 36px' }} onClick={e => e.stopPropagation()}>
                 {!showDeleteConfirm ? (
                   <>
-                    <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700 }}>건물 수정</h3>
+                    <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700 }}>{t(language, 'map.editBuilding')}</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div>
-                        <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>건물명</label>
+                        <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>{t(language, 'map.buildingName')}</label>
                         <input value={editName} onChange={e => setEditName(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: 'var(--r-md)', fontSize: '14px', boxSizing: 'border-box' }} />
                       </div>
                       <div>
-                        <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>주소</label>
+                        <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>{t(language, 'map.address')}</label>
                         <input value={editAddress} onChange={e => setEditAddress(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: 'var(--r-md)', fontSize: '14px', boxSizing: 'border-box' }} />
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-                      <button onClick={() => setShowDeleteConfirm(true)} style={{ padding: '12px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--danger-100)', color: 'var(--danger-600)', fontWeight: 700, cursor: 'pointer', fontSize: '14px' }}>삭제</button>
-                      <button onClick={() => { setEditingBuildingId(null); setShowDeleteConfirm(false) }} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>취소</button>
-                      <button onClick={() => { onUpdateBuilding(editingBuilding.id, editName.trim(), editAddress.trim()); setEditingBuildingId(null) }} style={{ flex: 2, padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--accent-700)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>저장</button>
+                      <button onClick={() => setShowDeleteConfirm(true)} style={{ padding: '12px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--danger-100)', color: 'var(--danger-600)', fontWeight: 700, cursor: 'pointer', fontSize: '14px' }}>{t(language, 'common.delete')}</button>
+                      <button onClick={() => { setEditingBuildingId(null); setShowDeleteConfirm(false) }} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'common.cancel')}</button>
+                      <button onClick={() => { onUpdateBuilding(editingBuilding.id, editName.trim(), editAddress.trim()); setEditingBuildingId(null) }} style={{ flex: 2, padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--accent-700)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'common.save')}</button>
                     </div>
                   </>
                 ) : (
                   <>
-                    <h3 style={{ margin: '0 0 12px', fontSize: '18px', fontWeight: 700, color: 'var(--danger-600)' }}>건물 삭제</h3>
-                    <p style={{ margin: '0 0 20px', fontSize: '15px', color: '#4b5563', lineHeight: 1.5 }}>정말 삭제할까요? 모든 세대와 방문 이력이 영구 삭제됩니다.</p>
+                    <h3 style={{ margin: '0 0 12px', fontSize: '18px', fontWeight: 700, color: 'var(--danger-600)' }}>{t(language, 'map.deleteBuilding')}</h3>
+                    <p style={{ margin: '0 0 20px', fontSize: '15px', color: '#4b5563', lineHeight: 1.5 }}>{t(language, 'map.deleteBuildingDesc')}</p>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>취소</button>
-                      <button onClick={() => { onDeleteBuilding(editingBuilding.id); setEditingBuildingId(null); setShowDeleteConfirm(false) }} style={{ flex: 2, padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--danger-600)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>삭제하기</button>
+                      <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'common.cancel')}</button>
+                      <button onClick={() => { onDeleteBuilding(editingBuilding.id); setEditingBuildingId(null); setShowDeleteConfirm(false) }} style={{ flex: 2, padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--danger-600)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'map.deleteNow')}</button>
                     </div>
                   </>
                 )}
@@ -1136,32 +1243,32 @@ export function MobileMap({
       {historyToEdit && (
         <div className="admin-modal-overlay">
           <div className="admin-modal-body" style={{ width: '90%', maxWidth: '340px' }}>
-            <h3>방문 기록 수정</h3>
+            <h3>{t(language, 'map.editHistory')}</h3>
             <div className="admin-modal-form">
-              <label>상태</label>
+              <label>{t(language, 'map.status')}</label>
               <select 
                 value={historyToEdit.result} 
                 onChange={e => setHistoryToEdit({ ...historyToEdit, result: e.target.value as any })}
                 style={{ width: '100%', padding: '10px', marginBottom: '16px', borderRadius: 'var(--r-md)', border: '1px solid #ddd' }}
               >
-                <option value="만남">만남</option>
-                <option value="부재">부재</option>
-                <option value="한국인">한국인</option>
-                <option value="거절">거절</option>
+                <option value="만남">{visitResultLabel('만남')}</option>
+                <option value="부재">{visitResultLabel('부재')}</option>
+                <option value="한국인">{visitResultLabel('한국인')}</option>
+                <option value="거절">{visitResultLabel('거절')}</option>
               </select>
               
-              <label>시간대</label>
+              <label>{t(language, 'map.timeSlot')}</label>
               <select 
                 value={historyToEdit.timeSlot} 
                 onChange={e => setHistoryToEdit({ ...historyToEdit, timeSlot: e.target.value as any })}
                 style={{ width: '100%', padding: '10px', marginBottom: '16px', borderRadius: 'var(--r-md)', border: '1px solid #ddd' }}
               >
-                <option value="오전">오전</option>
-                <option value="오후">오후</option>
-                <option value="저녁">저녁</option>
+                <option value="오전">{timeSlotLabel('오전')}</option>
+                <option value="오후">{timeSlotLabel('오후')}</option>
+                <option value="저녁">{timeSlotLabel('저녁')}</option>
               </select>
 
-              <label>날짜 (YYYY-MM-DD)</label>
+              <label>{t(language, 'map.dateIso')}</label>
               <input 
                 type="text"
                 value={historyToEdit.visitedAt}
@@ -1169,27 +1276,52 @@ export function MobileMap({
                 style={{ width: '100%', padding: '10px', marginBottom: '16px', borderRadius: 'var(--r-md)', border: '1px solid #ddd' }}
               />
 
-              <label>메모</label>
-              <textarea 
-                value={historyToEdit.memo || ''} 
+              <label>{t(language, 'map.memo')}</label>
+              <textarea
+                value={historyToEdit.memo || ''}
                 onChange={e => setHistoryToEdit({ ...historyToEdit, memo: e.target.value })}
                 style={{ width: '100%', padding: '10px', height: '80px', marginBottom: '16px', borderRadius: 'var(--r-md)', border: '1px solid #ddd' }}
               />
+
+              {/* 특별봉사 활성 시즌일 때만 표시 */}
+              {getActivePeriodForDate(historyToEdit.visitedAt) && (
+                <div style={{
+                  marginBottom: '12px',
+                  padding: '10px 12px',
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: '8px',
+                }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e', marginBottom: '6px' }}>
+                    🟠 {getActivePeriodForDate(historyToEdit.visitedAt)?.label}
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
+                    <input
+                      type="checkbox"
+                      checked={historyToEdit.invitationLeft ?? false}
+                      onChange={(e) => setHistoryToEdit({ ...historyToEdit, invitationLeft: e.target.checked })}
+                      style={{ width: '17px', height: '17px', accentColor: '#f59e0b', cursor: 'pointer' }}
+                    />
+                    {t(language, 'map.invitationLeft')}
+                  </label>
+                </div>
+              )}
             </div>
             <div className="admin-modal-footer">
-              <button 
+              <button
                 onClick={() => setHistoryToEdit(null)}
                 style={{ background: '#f1f5f9', color: 'var(--ink-500)', padding: '10px 16px', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer' }}
-              >취소</button>
+              >{t(language, 'common.cancel')}</button>
               <button onClick={() => {
                 onUpdateVisitHistory(historyToEdit.id, historyToEdit.unitId, {
                   result: historyToEdit.result,
                   timeSlot: historyToEdit.timeSlot,
                   memo: historyToEdit.memo || '',
-                  visitedAt: historyToEdit.visitedAt
+                  visitedAt: historyToEdit.visitedAt,
+                  invitationLeft: historyToEdit.invitationLeft ?? false,
                 })
                 setHistoryToEdit(null)
-              }} style={{ background: 'var(--accent-700)', color: '#fff', padding: '10px 16px', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', fontWeight: 700 }}>저장</button>
+              }} style={{ background: 'var(--accent-700)', color: '#fff', padding: '10px 16px', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', fontWeight: 700 }}>{t(language, 'common.save')}</button>
             </div>
           </div>
         </div>

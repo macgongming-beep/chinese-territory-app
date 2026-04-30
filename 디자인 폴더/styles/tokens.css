@@ -1,0 +1,119 @@
+/* ============================================================
+   구역관리 — 디자인 토큰
+   ============================================================ */
+
+:root {
+  /* ─── Color: Gray Scale ─── */
+  --gray-50:  #F9FAFB;
+  --gray-100: #F3F4F6;
+  --gray-200: #E9EBEF;
+  --gray-300: #D8DBE0;
+  --gray-400: #9CA3AF;
+  --gray-500: #6B7280;
+  --gray-600: #4B5563;
+  --gray-700: #374151;
+  --gray-800: #1F2937;
+  --gray-900: #111827;
+
+  /* ─── Color: Primary (calm cobalt) ─── */
+  --primary-50:  #EFF4FE;
+  --primary-100: #DCE6FC;
+  --primary-200: #BBCDF8;
+  --primary-500: #2D6CDF;
+  --primary-600: #1E5BD0;
+  --primary-700: #1848A8;
+
+  /* ─── Color: Status ─── */
+  --success-50:  #ECFDF5;
+  --success-500: #10B981;
+  --success-600: #059669;
+  --success-700: #047857;
+
+  --warning-50:  #FFFBEB;
+  --warning-100: #FEF3C7;
+  --warning-500: #F59E0B;
+  --warning-600: #D97706;
+  --warning-700: #B45309;
+
+  --danger-50:   #FEF2F2;
+  --danger-500:  #EF4444;
+  --danger-600:  #DC2626;
+  --danger-700:  #B91C1C;
+
+  --info-50:  #EFF6FF;
+  --info-500: #3B82F6;
+  --info-600: #2563EB;
+
+  /* ─── Surfaces ─── */
+  --bg-app:    #F6F7F9;
+  --bg-card:   #FFFFFF;
+  --bg-muted:  #F3F4F6;
+  --bg-subtle: #FAFBFC;
+
+  /* ─── Borders ─── */
+  --border-subtle:  #F0F1F4;
+  --border-default: #E9EBEF;
+  --border-strong:  #D8DBE0;
+
+  /* ─── Spacing (4pt grid) ─── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ─── Radius ─── */
+  --radius-sm: 6px;   /* chip, badge */
+  --radius-md: 8px;   /* input, small button */
+  --radius-lg: 12px;  /* card */
+  --radius-xl: 16px;  /* large container */
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  /* ─── Shadows ─── */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+
+  /* ─── Type ─── */
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+               'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --font-num: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 14px;
+  --text-md:   15px;
+  --text-lg:   17px;
+  --text-xl:   20px;
+  --text-2xl:  24px;
+  --text-3xl:  28px;
+  --text-4xl:  32px;
+}
+
+/* ============================================================
+   Reset + global type
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--gray-800);
+  background: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+}
+button { font-family: inherit; cursor: pointer; }
+input, textarea, select { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 2px; border-radius: 4px; }
+
+/* numerics align nicely in tables / KPIs */
+.tnum { font-variant-numeric: tabular-nums; }

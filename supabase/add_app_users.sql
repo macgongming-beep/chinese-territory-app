@@ -7,6 +7,7 @@ create table if not exists public.app_users (
   id serial primary key,
   login_id text unique,
   name text unique not null,
+  phone text,
   role text not null default 'user' check (role in ('user', 'leader', 'admin')),
   pin text not null, -- 비밀번호 (길이 자유, 4자리도 가능)
   created_at timestamptz default now()
@@ -14,6 +15,9 @@ create table if not exists public.app_users (
 
 alter table public.app_users
   add column if not exists login_id text;
+
+alter table public.app_users
+  add column if not exists phone text;
 
 update public.app_users
 set login_id = name
