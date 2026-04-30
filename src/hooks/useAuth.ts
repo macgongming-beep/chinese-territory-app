@@ -104,72 +104,40 @@ export function useAuth() {
   const login = async (loginId: string, pin: string, rememberMe: boolean) => {
     try {
       const normalizedLoginId = loginId.trim()
-      let byLoginId: { id: number; name: string; phone?: string | null; login_id: string | null; role: string; pin: string } | null = null
-      let byLoginIdError: any = null
 
-      const byLoginIdResult = await supabase
-        .from('app_users')
-        .select('id, name, phone, login_id, role, pin')
-        .eq('login_id', normalizedLoginId)
-        .maybeSingle()
-      byLoginId = byLoginIdResult.data as any
-      byLoginIdError = byLoginIdResult.error
+      // 서버에서 bcrypt 검증 + last_login_at 갱신 + login_logs 기록 모두 수행
+      const { data, error } = await supabase.rpc('auth_login', {
+        p_login_id: normalizedLoginId,
+        p_pin: pin,
+      })
 
-      if (byLoginIdError?.message?.includes('phone')) {
-        const fallback = await supabase
-          .from('app_users')
-          .select('id, name, login_id, role, pin')
-          .eq('login_id', normalizedLoginId)
-          .maybeSingle()
-        byLoginId = fallback.data as any
-        byLoginIdError = fallback.error
-      }
-
-      // 하위 호환: login_id 도입 전 데이터
-      let data = byLoginId
-      const noLoginIdColumn = byLoginIdError?.message?.includes('login_id')
-      const noPhoneColumn = byLoginIdResult.error?.message?.includes('phone')
-      if (!data) {
-        const { data: byName, error: byNameError } = await supabase
-          .from('app_users')
-          .select(noLoginIdColumn ? 'id, name, role, pin' : (noPhoneColumn ? 'id, name, login_id, role, pin' : 'id, name, phone, login_id, role, pin'))
-          .eq('name', normalizedLoginId)
-          .maybeSingle()
-        if (byNameError) throw byNameError
-        const byNameAny = byName as any
-        data = noLoginIdColumn
-          ? (byNameAny ? { id: byNameAny.id, name: byNameAny.name, login_id: byNameAny.name, role: byNameAny.role, pin: byNameAny.pin } : null)
-          : byNameAny
-      }
-      if (byLoginIdError && !noLoginIdColumn) throw byLoginIdError
-
-      if (!data) {
-        showToast('등록되지 않은 아이디입니다.', 'error')
+      if (error) {
+        console.error('[login] auth_login RPC failed:', error)
+        showToast('로그인 중 오류가 발생했습니다.', 'error')
         return false
       }
 
-      if (data.pin !== pin) {
-        showToast('비밀번호가 일치하지 않습니다.', 'error')
+      // RPC는 빈 배열이면 인증 실패 (사용자 없음 OR 비밀번호 불일치)
+      const row = (data as Array<{ id: number; name: string; login_id: string; role: string }>)?.[0]
+      if (!row) {
+        showToast('아이디 또는 비밀번호가 일치하지 않습니다.', 'error')
         return false
       }
 
-      const authUser = toAuthUser(data)
+      const authUser = toAuthUser({
+        id: row.id,
+        name: row.name,
+        login_id: row.login_id,
+        role: row.role,
+      })
       setUser(authUser)
 
       localStorage.setItem('currentVisitor', authUser.name)
-
       if (rememberMe) {
         localStorage.setItem('auth_session', JSON.stringify(authUser))
       } else {
         localStorage.removeItem('auth_session')
       }
-
-      // 로그인 시각 기록 (초단위)
-      const nowIso = new Date().toISOString()
-      supabase.from('app_users').update({ last_login_at: nowIso }).eq('id', authUser.id)
-        .then(({ error }) => { if (error) console.error('[login] last_login_at update failed:', error) })
-      supabase.from('login_logs').insert({ user_id: authUser.id, logged_in_at: nowIso })
-        .then(({ error }) => { if (error) console.error('[login] login_logs insert failed:', error) })
 
       showToast('로그인 성공!', 'success')
       return true
