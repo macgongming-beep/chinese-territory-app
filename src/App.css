@@ -8279,6 +8279,12 @@ button:focus-visible {
     background: #d97706;
   }
 
+  .dup-address-merge-btn:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+
   /* 중복 주소 합치기 이름 선택 모달 */
   .merge-name-modal {
     max-width: 480px;
@@ -8294,15 +8300,61 @@ button:focus-visible {
   .merge-name-modal-body {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 16px 24px 8px;
+    gap: 12px;
+    padding: 12px 24px 8px;
     max-height: 60vh;
     overflow-y: auto;
+  }
+
+  .merge-name-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 24px;
+    border-top: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .merge-name-select-all,
+  .merge-name-group-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .merge-name-select-all input,
+  .merge-name-group-check input {
+    width: 16px;
+    height: 16px;
+    accent-color: #f59e0b;
   }
 
   .merge-name-group {
     display: flex;
     flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #f1f5f9;
+    border-radius: 10px;
+    background: #ffffff;
+    transition: opacity .12s, background .12s;
+  }
+
+  .merge-name-group.is-unselected {
+    background: #f8fafc;
+    opacity: .62;
+  }
+
+  .merge-name-group-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
     gap: 10px;
   }
 
@@ -8313,6 +8365,15 @@ button:focus-visible {
     background: #fef9c3;
     border-radius: 6px;
     padding: 6px 12px;
+  }
+
+  .merge-name-count {
+    flex-shrink: 0;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.6;
+    white-space: nowrap;
   }
 
   .merge-name-chips {
@@ -8339,6 +8400,11 @@ button:focus-visible {
     border-color: #93c5fd;
   }
 
+  .merge-name-chip:disabled {
+    cursor: not-allowed;
+    opacity: .65;
+  }
+
   .merge-name-chip.active {
     background: #eff6ff;
     border-color: #3b82f6;
@@ -8363,6 +8429,12 @@ button:focus-visible {
     outline: none;
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px #bfdbfe;
+  }
+
+  .merge-name-custom-input:disabled {
+    background: #f8fafc;
+    color: #94a3b8;
+    cursor: not-allowed;
   }
 
   .merge-name-modal-footer {

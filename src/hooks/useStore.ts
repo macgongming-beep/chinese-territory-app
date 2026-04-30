@@ -1590,6 +1590,7 @@ export function useStore() {
   const mergeDuplicateBuildings = async (
     scopeCardId?: number,
     nameOverrides?: Record<number, string>, // primaryId → 선택된 건물 이름
+    selectedPrimaryIds?: number[],
   ) => {
     const scope = scopeCardId
       ? buildings.filter((b) => b.cardId === scopeCardId)
@@ -1606,7 +1607,13 @@ export function useStore() {
       groups.get(key)!.push(b)
     }
 
-    const duplicateGroups = Array.from(groups.values()).filter((g) => g.length > 1)
+    const selectedPrimaryIdSet = selectedPrimaryIds ? new Set(selectedPrimaryIds) : null
+    const duplicateGroups = Array.from(groups.values()).filter((g) => {
+      if (g.length <= 1) return false
+      if (!selectedPrimaryIdSet) return true
+      const primaryId = [...g].sort((a, b) => a.id - b.id)[0].id
+      return selectedPrimaryIdSet.has(primaryId)
+    })
     if (duplicateGroups.length === 0) {
       showToast('중복 주소 건물이 없습니다.', 'info')
       return

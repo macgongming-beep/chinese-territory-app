@@ -183,7 +183,7 @@ export function DesktopTerritory({
   onSetMultipleCardLeaders: (cardIds: number[], leaderNames: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
   onDeleteBuildings: (buildingIds: number[]) => void
   onDeleteCards: (cardIds: number[]) => void
-  onMergeDuplicateBuildings: (scopeCardId?: number, nameOverrides?: Record<number, string>) => Promise<void>
+  onMergeDuplicateBuildings: (scopeCardId?: number, nameOverrides?: Record<number, string>, selectedPrimaryIds?: number[]) => Promise<void>
   onImportBuildings: (inputs: CsvBuildingImport[]) => Promise<{ inserted: number; skipped: number }>
   onMoveBuildingToCard: (buildingId: number, cardId: number) => void
   onReassignBuildingsToCards: (updates: Array<{ buildingId: number; cardId: number }>) => Promise<{ updated: number; failed: number }>
@@ -243,8 +243,9 @@ export function DesktopTerritory({
   })
   const [showCsvModal, setShowCsvModal] = useState(false)
   // 중복 주소 합치기 이름 선택 모달
-  const [mergeModalGroups, setMergeModalGroups] = useState<Array<{ primaryId: number; address: string; names: string[] }> | null>(null)
+  const [mergeModalGroups, setMergeModalGroups] = useState<Array<{ primaryId: number; address: string; cardName: string; buildingCount: number; unitCount: number; names: string[] }> | null>(null)
   const [mergeNameChoices, setMergeNameChoices] = useState<Record<number, string>>({})
+  const [mergeSelectedPrimaryIds, setMergeSelectedPrimaryIds] = useState<Set<number>>(new Set())
   // 건물 추가 모달
   const [addBuildingOpen, setAddBuildingOpen] = useState(false)
   const [addBuildingForm, setAddBuildingForm] = useState<{ name: string; address: string; type: Building['type']; cardId: number | 'auto' }>({ name: '', address: '', type: '주택', cardId: 'auto' })
@@ -1089,7 +1090,7 @@ export function DesktopTerritory({
             <div className="cal-modal-head">
               <div className="cal-modal-title">
                 <h2>합칠 건물 이름 선택</h2>
-                <p className="merge-name-modal-sub">각 주소별로 남길 건물 이름을 선택해주세요.</p>
+                <p className="merge-name-modal-sub">합칠 주소 그룹을 선택하고, 각 주소별로 남길 건물 이름을 선택해주세요.</p>
               </div>
               <button className="cal-modal-close" onClick={() => setMergeModalGroups(null)} type="button">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -1097,15 +1098,48 @@ export function DesktopTerritory({
                 </svg>
               </button>
             </div>
+            <div className="merge-name-toolbar">
+              <label className="merge-name-select-all">
+                <input
+                  checked={mergeModalGroups.length > 0 && mergeSelectedPrimaryIds.size === mergeModalGroups.length}
+                  onChange={(event) => {
+                    setMergeSelectedPrimaryIds(event.target.checked
+                      ? new Set(mergeModalGroups.map((group) => group.primaryId))
+                      : new Set())
+                  }}
+                  type="checkbox"
+                />
+                전체 선택
+              </label>
+              <span>선택 {mergeSelectedPrimaryIds.size} / {mergeModalGroups.length}그룹</span>
+            </div>
             <div className="merge-name-modal-body">
               {mergeModalGroups.map((group) => (
-                <div className="merge-name-group" key={group.primaryId}>
-                  <div className="merge-name-address">{group.address}</div>
+                <div className={`merge-name-group${mergeSelectedPrimaryIds.has(group.primaryId) ? '' : ' is-unselected'}`} key={group.primaryId}>
+                  <div className="merge-name-group-head">
+                    <label className="merge-name-group-check">
+                      <input
+                        checked={mergeSelectedPrimaryIds.has(group.primaryId)}
+                        onChange={(event) => {
+                          setMergeSelectedPrimaryIds((prev) => {
+                            const next = new Set(prev)
+                            if (event.target.checked) next.add(group.primaryId)
+                            else next.delete(group.primaryId)
+                            return next
+                          })
+                        }}
+                        type="checkbox"
+                      />
+                      <span className="merge-name-address">{group.address}</span>
+                    </label>
+                    <span className="merge-name-count">{group.cardName} · 건물 {group.buildingCount}개 · 세대 {group.unitCount}개</span>
+                  </div>
                   <div className="merge-name-chips">
                     {group.names.map((name) => (
                       <button
                         key={name}
                         type="button"
+                        disabled={!mergeSelectedPrimaryIds.has(group.primaryId)}
                         className={`merge-name-chip${mergeNameChoices[group.primaryId] === name ? ' active' : ''}`}
                         onClick={() => setMergeNameChoices((prev) => ({ ...prev, [group.primaryId]: name }))}
                       >
@@ -1115,6 +1149,7 @@ export function DesktopTerritory({
                   </div>
                   <input
                     className="merge-name-custom-input"
+                    disabled={!mergeSelectedPrimaryIds.has(group.primaryId)}
                     placeholder="직접 입력 (또는 위에서 선택)"
                     value={mergeNameChoices[group.primaryId] ?? ''}
                     onChange={(e) => setMergeNameChoices((prev) => ({ ...prev, [group.primaryId]: e.target.value }))}
@@ -1126,18 +1161,21 @@ export function DesktopTerritory({
               <button className="cal-cancel-btn" onClick={() => setMergeModalGroups(null)} type="button">취소</button>
               <button
                 className="dup-address-merge-btn"
+                disabled={mergeSelectedPrimaryIds.size === 0}
                 type="button"
                 onClick={async () => {
                   // 빈 입력은 첫 번째 이름으로 fallback
                   const finalChoices: Record<number, string> = {}
-                  mergeModalGroups.forEach((g) => {
+                  const selectedPrimaryIds = Array.from(mergeSelectedPrimaryIds)
+                  mergeModalGroups.filter((g) => mergeSelectedPrimaryIds.has(g.primaryId)).forEach((g) => {
                     finalChoices[g.primaryId] = mergeNameChoices[g.primaryId]?.trim() || g.names[0]
                   })
                   setMergeModalGroups(null)
-                  await onMergeDuplicateBuildings(undefined, finalChoices)
+                  setMergeSelectedPrimaryIds(new Set())
+                  await onMergeDuplicateBuildings(undefined, finalChoices, selectedPrimaryIds)
                 }}
               >
-                합치기
+                선택한 주소 합치기
               </button>
             </div>
           </div>
@@ -1559,11 +1597,15 @@ export function DesktopTerritory({
                     return {
                       primaryId: sorted[0].id,
                       address: sorted[0].address,
+                      cardName: cardMap.get(sorted[0].cardId)?.name ?? '카드 없음',
+                      buildingCount: sorted.length,
+                      unitCount: sorted.reduce((sum, building) => sum + building.units.length, 0),
                       names: sorted.map((b) => b.name),
                     }
                   })
                   setMergeModalGroups(groups)
                   setMergeNameChoices({})
+                  setMergeSelectedPrimaryIds(new Set(groups.map((group) => group.primaryId)))
                 }}
                 type="button"
               >
