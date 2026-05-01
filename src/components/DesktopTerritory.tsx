@@ -4,150 +4,19 @@ import { territoryAreasByRegion, territoryRegions } from '../data/territoryStruc
 import { showToast } from '../lib/toast'
 import { findCardForCoordinates, formatDisplayAddress, isValidMapCoordinate, normalizeMapCoordinates, parseCoordinate } from '../utils/mapUtils'
 import type { Building, CardBoundary, Role, TerritoryCard, TerritoryRegion, Unit, UnitStatus, VisitHistory } from '../types'
-
-type CsvBuildingImport = {
-  cardId: number
-  name: string
-  address: string
-  type: Building['type']
-  lat: number
-  lng: number
-  units: CsvUnitImport[]
-}
-
-type CsvUnitImport = {
-  number: string
-  status: UnitStatus
-  isChinese: boolean
-  isRegularVisit: boolean
-  regularVisitor?: string
-  memo?: string
-}
-
-type CsvPreviewRow = CsvBuildingImport & {
-  rowNumber: number
-  cardName: string
-}
-
-type CsvSkippedRow = {
-  rowNumber: number
-  reason: string
-  hint: string
-  address?: string
-}
-
-function normalizeCsvKey(value: string) {
-  return value.trim().toLowerCase().replace(/[\s_-]/g, '')
-}
-
-function parseCsv(text: string) {
-  const rows: string[][] = []
-  let current = ''
-  let row: string[] = []
-  let inQuotes = false
-
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i]
-    const next = text[i + 1]
-
-    if (char === '"' && inQuotes && next === '"') {
-      current += '"'
-      i += 1
-      continue
-    }
-    if (char === '"') {
-      inQuotes = !inQuotes
-      continue
-    }
-    if (char === ',' && !inQuotes) {
-      row.push(current.trim())
-      current = ''
-      continue
-    }
-    if ((char === '\n' || char === '\r') && !inQuotes) {
-      if (char === '\r' && next === '\n') i += 1
-      row.push(current.trim())
-      if (row.some(Boolean)) rows.push(row)
-      row = []
-      current = ''
-      continue
-    }
-    current += char
-  }
-
-  row.push(current.trim())
-  if (row.some(Boolean)) rows.push(row)
-  return rows
-}
-
-function splitUnitNumbers(value: string) {
-  return Array.from(
-    new Set(
-      value
-        .split(/[|;/,\n]+/)
-        .map((unit) => unit.trim())
-        .filter(Boolean),
-    ),
-  )
-}
-
-function normalizeUnitStatus(value: string): UnitStatus {
-  const text = value.trim()
-  if (text.includes('만남') || text.includes('초대장')) return '만남'
-  if (text.includes('부재') || text.includes('삭제')) return '부재'
-  if (text.includes('한국')) return '한국인'
-  if (text.includes('거절')) return '거절'
-  if (text.includes('확인') || text.includes('재확인')) return '확인필요'
-  return '미방문'
-}
-
-function looksTruthy(value: string) {
-  return /^(true|yes|y|1|중국인|중국|정기|재방|있음|ㅇ|예)$/i.test(value.trim())
-}
-
-function createCsvUnits(unitValue: string, input: {
-  status: UnitStatus
-  isChinese: boolean
-  regularVisitor: string
-  memo: string
-}): CsvUnitImport[] {
-  const unitNumbers = splitUnitNumbers(unitValue)
-  const numbers = unitNumbers.length > 0 ? unitNumbers : ['1층']
-  return numbers.map((number) => ({
-    number,
-    status: input.status,
-    isChinese: input.isChinese || Boolean(input.regularVisitor) || input.status === '만남' || input.status === '부재',
-    isRegularVisit: Boolean(input.regularVisitor),
-    regularVisitor: input.regularVisitor || undefined,
-    memo: input.memo || undefined,
-  }))
-}
-
-function csvCell(value: string | number) {
-  const text = String(value)
-  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
-}
-
-function downloadCsvExample() {
-  const headers = ['카드명', '지역', '동', '카드번호', '주소', '건물명', '유형', '호수', '상태', '중국인', '정기방문자', '메모', '위도', '경도', '원본역번']
-  const data = [
-    ['처인구 고림동 1', '처인구', '고림동', '1', '경기도 용인시 처인구 경안천로 232', '감자탕형제들', '상가', '1층', '부재', '중국인', '', '중국인 없음', '', '', '1'],
-    ['처인구 고림동 1', '처인구', '고림동', '1', '경기도 용인시 처인구 고진로 45', '동아빌라 301호', '주택', '301호', '만남', '중국인', '박진호', '정기방문 등록', '', '', '5'],
-    ['', '처인구', '김량장동', '1', '경기도 용인시 처인구 금령로 108-1', '김밥천국', '상가', '1층', '미방문', '', '', '', '', '', '17'],
-  ]
-  const csvContent = [headers, ...data].map((row) => row.map(csvCell).join(',')).join('\n')
-  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.setAttribute('href', url)
-  link.setAttribute('download', 'building_import_example.csv')
-  link.style.visibility = 'hidden'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-}
-
+import {
+  type CsvBuildingImport,
+  type CsvPreviewRow,
+  type CsvSkippedRow,
+  normalizeCsvKey,
+  parseCsv,
+  normalizeUnitStatus,
+  looksTruthy,
+  createCsvUnits,
+  downloadCsvExample,
+} from '../utils/csvBuildingImport'
+import { AddUnitRow } from './AddUnitRow'
+import { CardCreateModal } from './DesktopTerritoryCardModal'
 export function DesktopTerritory({
   buildings,
   cardBoundaries,
@@ -215,11 +84,6 @@ export function DesktopTerritory({
   const [activeTab, setActiveTab] = useState<'카드 관리' | '건물 관리'>('카드 관리')
   const [buildingSubTab, setBuildingSubTab] = useState<'건물 목록' | '중국인 포인트'>('건물 목록')
   const [showCardModal, setShowCardModal] = useState(false)
-  const [newCardArea, setNewCardArea] = useState('고림동')
-  const [newCardRegion, setNewCardRegion] = useState('처인구')
-  const [newCardIndex, setNewCardIndex] = useState(3)
-  const [newCardPinCount, setNewCardPinCount] = useState(5)
-  const [creatingCard, setCreatingCard] = useState(false)
   const [pendingBoundaryCard, setPendingBoundaryCard] = useState<{ id: number; name: string } | null>(null)
   const [regionFilter, setRegionFilter] = useState<TerritoryRegion | '전체'>('전체')
   const [areaFilter, setAreaFilter] = useState('전체')
@@ -301,16 +165,6 @@ export function DesktopTerritory({
     return getAreaCardCount(area)
   }
 
-  const getNextCardIndex = (region: string, area: string) => {
-    const indexes = cards
-      .filter((card) => card.region === region && card.area === area)
-      .map((card) => {
-        const match = card.name.match(/(\d+)$/)
-        return match ? Number(match[1]) : 0
-      })
-      .filter((index) => Number.isFinite(index))
-    return Math.max(0, ...indexes) + 1
-  }
 
   const getCardLeaderList = (card: TerritoryCard) =>
     (card.assignedLeaders && card.assignedLeaders.length > 0)
@@ -540,8 +394,6 @@ export function DesktopTerritory({
   const assignedCards = cards.filter((card) => getCardLeaderList(card).length > 0).length
   const totalUnits = cards.reduce((sum, card) => sum + card.units, 0)
   const completedUnits = cards.reduce((sum, card) => sum + card.completed, 0)
-  const newCardName = `${newCardRegion} ${newCardArea} ${newCardIndex}`
-  const duplicateCard = cards.find((card) => card.name === newCardName)
 
   const getGeocodeCandidates = (address: string) => {
     const normalized = address.replace(/\s+/g, ' ').trim()
@@ -821,144 +673,21 @@ export function DesktopTerritory({
     setCheckedBuildingIds(new Set())
   }
 
-  useEffect(() => {
-    if (regionFilter === '전체') return
-    setNewCardRegion(regionFilter)
-    if (areaFilter !== '전체') {
-      setNewCardArea(areaFilter)
-      return
-    }
-    setNewCardArea(territoryAreasByRegion[regionFilter][0] ?? '')
-  }, [areaFilter, regionFilter])
 
-  useEffect(() => {
-    if (!newCardRegion || !newCardArea) return
-    setNewCardIndex(getNextCardIndex(newCardRegion, newCardArea))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cards, newCardArea, newCardRegion])
-
-  const handleCreateCard = async () => {
-    if (duplicateCard || creatingCard) return
-    setCreatingCard(true)
-    const newCardId = await onCreateCard({
-      area: newCardArea,
-      region: newCardRegion,
-      index: newCardIndex,
-      pinCount: newCardPinCount,
-    })
-    setCreatingCard(false)
-    if (!newCardId) return
-    setSelectedCardId(newCardId)
-    setShowCardModal(false)
-    setPendingBoundaryCard({ id: newCardId, name: newCardName })
-    setNewCardIndex(newCardIndex + 1)
-  }
-
-  const openModal = () => {
-    setNewCardIndex(getNextCardIndex(newCardRegion, newCardArea))
-    setShowCardModal(true)
-  }
 
   return (
     <section className={activeTab === '건물 관리' || !detailPaneOpen ? 'territory-layout building-management-only' : 'territory-layout'}>
       {/* ── 카드 추가 모달 ── */}
       {showCardModal && (
-        <div className="cal-modal-backdrop" onClick={() => setShowCardModal(false)}>
-          <div className="cal-modal" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="cal-modal-head">
-              <div className="cal-modal-title">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" />
-                </svg>
-                <h2>새 구역 카드 추가</h2>
-              </div>
-              <button className="cal-modal-close" onClick={() => setShowCardModal(false)} type="button">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="cal-modal-body">
-              <div className="cal-field-row">
-                <div className="cal-field">
-                  <label>지역</label>
-                  <select
-                    className="cal-input"
-                    value={newCardRegion}
-                    onChange={(e) => {
-                      const nextRegion = e.target.value as keyof typeof territoryAreasByRegion
-                      setNewCardRegion(nextRegion)
-                      setNewCardArea(territoryAreasByRegion[nextRegion][0] ?? '')
-                    }}
-                  >
-                    {territoryRegions.map((region) => (
-                      <option key={region} value={region}>{region}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="cal-field">
-                  <label>동</label>
-                  <select
-                    className="cal-input"
-                    value={newCardArea}
-                    onChange={(e) => setNewCardArea(e.target.value)}
-                  >
-                    {(territoryAreasByRegion[newCardRegion as keyof typeof territoryAreasByRegion] ?? []).map((area) => (
-                      <option key={area} value={area}>{area}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="cal-field-row">
-                <div className="cal-field">
-                  <label>번호</label>
-                  <input
-                    className="cal-input"
-                    min="1"
-                    type="number"
-                    value={newCardIndex}
-                    onChange={(e) => setNewCardIndex(Number(e.target.value))}
-                  />
-                </div>
-                <div className="cal-field">
-                  <label>핀 수</label>
-                  <input
-                    className="cal-input"
-                    max="6"
-                    min="4"
-                    type="number"
-                    value={newCardPinCount}
-                    onChange={(e) => setNewCardPinCount(Number(e.target.value))}
-                  />
-                </div>
-              </div>
-
-              <div style={{ padding: '12px 14px', borderRadius: 'var(--r-md)', background: '#f3f4f6' }}>
-                <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 700 }}>생성될 카드 이름</span>
-                <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700, color: 'var(--ink-900)' }}>{newCardName}</p>
-              </div>
-
-              {duplicateCard && (
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--danger-600)', fontWeight: 700 }}>
-                  이미 같은 이름의 카드가 있습니다. 번호를 바꿔주세요.
-                </p>
-              )}
-            </div>
-
-            <div className="cal-modal-foot">
-              <button className="cal-cancel-btn" onClick={() => setShowCardModal(false)} type="button">취소</button>
-              <button
-                className="cal-save-btn"
-                disabled={creatingCard || Boolean(duplicateCard)}
-                onClick={handleCreateCard}
-                type="button"
-              >
-                {creatingCard ? '생성 중...' : '카드 생성'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <CardCreateModal
+          cards={cards}
+          onClose={() => setShowCardModal(false)}
+          onCreateCard={onCreateCard}
+          onCreated={(id, name) => {
+            setSelectedCardId(id)
+            setPendingBoundaryCard({ id, name })
+          }}
+        />
       )}
 
       {/* ── 구역선 그리기 제안 모달 ── */}
@@ -1299,7 +1028,7 @@ export function DesktopTerritory({
                     <button className="tbl-ghost-btn" disabled={checkedCardIds.size === 0} onClick={handleDeleteCheckedCards} type="button">
                       선택 삭제{checkedCardIds.size > 0 ? ` ${checkedCardIds.size}` : ''}
                     </button>
-                    <button className="tbl-primary-btn" onClick={openModal} type="button">+ 카드 추가</button>
+                    <button className="tbl-primary-btn" onClick={() => setShowCardModal(true)} type="button">+ 카드 추가</button>
                   </>
                 )}
               </>
@@ -2048,179 +1777,3 @@ export function DesktopTerritory({
   )
 }
 
-function AddUnitRow({
-  buildingId,
-  existingNumbers,
-  onAdd,
-}: {
-  buildingId: number
-  existingNumbers: Set<string>
-  onAdd: (buildingId: number, unitNumber: string) => void
-}) {
-  const [value, setValue] = useState('')
-  const [showBulk, setShowBulk] = useState(false)
-  const [startFloor, setStartFloor] = useState(1)
-  const [endFloor, setEndFloor] = useState(3)
-  const [unitsPerFloor, setUnitsPerFloor] = useState(5)
-  const [startUnit, setStartUnit] = useState(1)
-  const [hasBasement, setHasBasement] = useState(false)
-  const [basementFloors, setBasementFloors] = useState(1)
-  const [adding, setAdding] = useState(false)
-
-  const handleAdd = () => {
-    if (!value.trim()) return
-    onAdd(buildingId, value.trim())
-    setValue('')
-  }
-
-  // 미리보기 생성 (지하 + 지상)
-  const preview = (() => {
-    const list: string[] = []
-    const upf = Math.max(1, unitsPerFloor)
-    const su = Math.max(1, startUnit)
-    // 지하 (B층 → B101, B102...)
-    if (hasBasement) {
-      const bf = Math.max(1, basementFloors)
-      for (let f = bf; f >= 1; f--) {
-        for (let u = su; u < su + upf; u++) {
-          list.push(`B${f}${String(u).padStart(2, '0')}`)
-        }
-      }
-    }
-    // 지상
-    const sf = Math.max(1, startFloor)
-    const ef = Math.max(sf, endFloor)
-    for (let f = sf; f <= ef; f++) {
-      for (let u = su; u < su + upf; u++) {
-        list.push(`${f}${String(u).padStart(2, '0')}`)
-      }
-    }
-    return list
-  })()
-
-  const newOnes = preview.filter((n) => !existingNumbers.has(n))
-  const skipped = preview.length - newOnes.length
-
-  const handleBulkAdd = async () => {
-    if (newOnes.length === 0) return
-    setAdding(true)
-    for (const num of newOnes) {
-      await new Promise<void>((resolve) => {
-        onAdd(buildingId, num)
-        setTimeout(resolve, 30)
-      })
-    }
-    setAdding(false)
-    setShowBulk(false)
-  }
-
-  return (
-    <div className="unit-add-section">
-      {/* 단일 추가 행 */}
-      <div className="building-unit-row building-unit-add-row">
-        <input
-          className="unit-number-input"
-          placeholder="호수 입력"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleAdd() }}
-        />
-        <span className="unit-row-actions">
-          <button onClick={handleAdd} type="button">+ 추가</button>
-          <button
-            className={`unit-bulk-toggle${showBulk ? ' active' : ''}`}
-            onClick={() => setShowBulk((v) => !v)}
-            type="button"
-          >
-            일괄 추가 {showBulk ? '▴' : '▾'}
-          </button>
-        </span>
-      </div>
-
-      {/* 일괄 추가 패널 */}
-      {showBulk && (
-        <div className="unit-bulk-panel">
-          {/* 지상층 설정 */}
-          <div className="unit-bulk-section-label">지상</div>
-          <div className="unit-bulk-fields">
-            <label className="unit-bulk-field">
-              <span>시작층</span>
-              <input type="number" min={1} value={startFloor}
-                onChange={(e) => setStartFloor(Number(e.target.value))} />
-            </label>
-            <span className="unit-bulk-sep">~</span>
-            <label className="unit-bulk-field">
-              <span>끝층</span>
-              <input type="number" min={startFloor} value={endFloor}
-                onChange={(e) => setEndFloor(Number(e.target.value))} />
-            </label>
-            <label className="unit-bulk-field">
-              <span>층당 호수</span>
-              <input type="number" min={1} value={unitsPerFloor}
-                onChange={(e) => setUnitsPerFloor(Number(e.target.value))} />
-            </label>
-            <label className="unit-bulk-field">
-              <span>시작 호번호</span>
-              <input type="number" min={1} value={startUnit}
-                onChange={(e) => setStartUnit(Number(e.target.value))} />
-            </label>
-          </div>
-
-          {/* 지하 설정 */}
-          <div className="unit-bulk-basement-row">
-            <label className="unit-bulk-checkbox-label">
-              <input
-                type="checkbox"
-                checked={hasBasement}
-                onChange={(e) => setHasBasement(e.target.checked)}
-              />
-              지하 포함
-            </label>
-            {hasBasement && (
-              <>
-                <label className="unit-bulk-field">
-                  <span>지하 층수</span>
-                  <input type="number" min={1} value={basementFloors}
-                    onChange={(e) => setBasementFloors(Number(e.target.value))} />
-                </label>
-                <span className="unit-bulk-basement-hint">
-                  B{basementFloors}층 ~ B1층 · 층당 {unitsPerFloor}개
-                  → B{basementFloors}{String(startUnit).padStart(2,'0')} ~ B1{String(startUnit + unitsPerFloor - 1).padStart(2,'0')}
-                </span>
-              </>
-            )}
-          </div>
-
-          {/* 미리보기 */}
-          <div className="unit-bulk-preview">
-            <div className="unit-bulk-preview-label">
-              미리보기 &nbsp;
-              <strong>총 {newOnes.length}개 추가</strong>
-              {skipped > 0 && (
-                <span className="unit-bulk-skip"> · {skipped}개 이미 있어 자동 스킵</span>
-              )}
-            </div>
-            <div className="unit-bulk-preview-grid">
-              {preview.map((n) => (
-                <span key={n} className={`unit-bulk-chip${n.startsWith('B') ? ' basement' : ''}${existingNumbers.has(n) ? ' skip' : ''}`}>
-                  {n}호
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="unit-bulk-footer">
-            <button
-              className="unit-bulk-add-btn"
-              disabled={newOnes.length === 0 || adding}
-              onClick={handleBulkAdd}
-              type="button"
-            >
-              {adding ? '추가 중...' : `${newOnes.length}개 추가하기`}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
