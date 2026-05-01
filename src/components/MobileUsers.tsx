@@ -62,6 +62,7 @@ export function MobileUsers() {
   const users = useMemo(() => {
     return allUsers
       .filter((item) => currentUser?.role === 'developer' || item.role !== 'developer')
+      .filter((item) => (item.approvalStatus ?? 'approved') === 'approved')
       .sort((a, b) => {
         const byRole = roleOrder[a.role] - roleOrder[b.role]
         if (byRole !== 0) return byRole

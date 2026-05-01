@@ -7,6 +7,7 @@ import { MobileMap } from './MobileMap'
 import { MobileNotices } from './MobileNotices'
 import { MobileTerritory } from './MobileTerritory'
 import { MobileUsers } from './MobileUsers'
+import { MobileSignupRequests } from './MobileSignupRequests'
 import { MobileProfileSettings } from './MobileProfileSettings'
 import type { Building, CalendarEvent, CardBoundary, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { AuthUser } from '../hooks/useAuth'
@@ -32,6 +33,7 @@ const pathToTab: Record<string, MobileTab> = {
   '/notices': '설정',
   '/profile': '설정',
   '/special-periods': '설정',
+  '/signup-requests': '설정',
   '/calendar': '캘린더',
   '/territory': '나의봉사',
   '/zone': '구역',
@@ -128,7 +130,7 @@ function NavIcon({ name }: { name: IconName }) {
   )
 }
 
-function SettingsIcon({ name }: { name: 'notice' | 'users' | 'season' | 'logout' }) {
+function SettingsIcon({ name }: { name: 'notice' | 'users' | 'signup' | 'season' | 'logout' }) {
   if (name === 'users') {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -143,6 +145,16 @@ function SettingsIcon({ name }: { name: 'notice' | 'users' | 'season' | 'logout'
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 16.9l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z" />
+      </svg>
+    )
+  }
+  if (name === 'signup') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+        <path d="M3 21v-1a6 6 0 0 1 12 0v1" />
+        <path d="m17 9 2 2 4-4" />
+        <path d="M18 15v5" />
       </svg>
     )
   }
@@ -776,7 +788,7 @@ export function MobileHome({
   onChangeLanguage: (language: AppLanguage) => void
   onSetCardLeaders: (cardId: number, leaderNames: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
   onAddUnit: (buildingId: number, unitNumber: string) => void
-  allUsers?: Array<{ id: number; name: string; phone?: string | null; role: string }>
+  allUsers?: Array<{ id: number; name: string; phone?: string | null; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked' }>
   onChangePin: (newPin: string) => Promise<boolean>
   onUpdateMyProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
   onApplyToEvent: (eventId: number) => void
@@ -879,6 +891,10 @@ export function MobileHome({
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
   const modeTitle = role === 'admin' ? t(language, 'home.adminHome') : role === 'leader' ? t(language, 'home.leaderHome') : t(language, 'home.userHome')
   const roleLabel = role === 'admin' ? t(language, 'role.admin') : role === 'leader' ? t(language, 'role.leader') : t(language, 'role.user')
+  const pendingSignupCount = useMemo(
+    () => allUsers.filter((item) => item.approvalStatus === 'pending').length,
+    [allUsers],
+  )
   const tabLabel = (tab: MobileTab) => {
     if (tab === '홈') return t(language, 'nav.home')
     if (tab === '캘린더') return t(language, 'nav.calendar')
@@ -1244,6 +1260,11 @@ export function MobileHome({
               <MobileUsers />
             } />
 
+            {/* 가입 신청 관리 */}
+            <Route path="/signup-requests" element={
+              role === 'admin' ? <MobileSignupRequests /> : <Navigate to="/settings" replace />
+            } />
+
             {/* 특별 봉사 시즌 관리 */}
             <Route path="/special-periods" element={
               role === 'admin' ? (
@@ -1338,6 +1359,21 @@ export function MobileHome({
                           <strong>{t(language, 'settings.users')}</strong>
                           <small>{t(language, 'settings.usersDesc')}</small>
                         </span>
+                        <span className="mobile-settings-chevron" aria-hidden="true">›</span>
+                      </button>
+                      <button onClick={() => navigate('/signup-requests')} type="button">
+                        <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
+                          <SettingsIcon name="signup" />
+                        </span>
+                        <span className="mobile-settings-row-text">
+                          <strong>가입 신청</strong>
+                          <small>승인 대기 중인 사용자 확인</small>
+                        </span>
+                        {pendingSignupCount > 0 && (
+                          <span className="mobile-settings-badge" aria-label={`승인 대기 ${pendingSignupCount}명`}>
+                            {pendingSignupCount}
+                          </span>
+                        )}
                         <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                       </button>
                       <button onClick={() => navigate('/special-periods')} type="button">

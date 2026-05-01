@@ -196,6 +196,7 @@ export function DesktopUsers({
      developer 계정은 본인(developer)만 볼 수 있음 */
   const users = useMemo<UserProfile[]>(() => {
     return allUsers
+      .filter((u) => (u.approvalStatus ?? 'approved') === 'approved')
       .map((u) => ({
         name:         u.name,
         role:         u.role,

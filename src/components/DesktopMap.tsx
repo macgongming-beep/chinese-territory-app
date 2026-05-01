@@ -857,7 +857,14 @@ export function DesktopMap({
             <span className="map-toolbar-label">건물</span>
             <div className="map-toolbar-seg">
               {(['전체', '상가', '주택'] as Array<Building['type'] | '전체'>).map((t) => (
-                <button key={t} className={statusFilter === t ? 'active' : ''} onClick={() => setStatusFilter(t as BuildingStatus | '전체')} type="button">{t}</button>
+                <button
+                  key={t}
+                  className={targetTypeFilter === t ? 'active' : ''}
+                  onClick={() => setTargetTypeFilter(t)}
+                  type="button"
+                >
+                  {t}
+                </button>
               ))}
             </div>
           </div>

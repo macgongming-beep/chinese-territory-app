@@ -35,6 +35,14 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
 
     if (!success) {
       setIsSubmitting(false)
+      return
+    }
+
+    if (isSignup) {
+      setIsSubmitting(false)
+      setIsSignup(false)
+      setNickname('')
+      setPin('')
     }
   }
 

@@ -1,0 +1,169 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+import type { Role } from '../types'
+import { roleLabels } from '../types'
+
+type ApprovalTab = 'pending' | 'approved' | 'blocked'
+
+const tabLabels: Record<ApprovalTab, string> = {
+  pending: '승인대기',
+  approved: '승인됨',
+  blocked: '차단됨',
+}
+
+function roleLabel(role: Role) {
+  if (role === 'developer') return '개발자'
+  if (role === 'user') return '봉사자'
+  return roleLabels[role]
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`
+}
+
+export function MobileSignupRequests() {
+  const navigate = useNavigate()
+  const {
+    user: currentUser,
+    allUsers,
+    fetchAllUsers,
+    updateUserApprovalStatus,
+    deleteUser,
+  } = useAuth()
+  const [activeTab, setActiveTab] = useState<ApprovalTab>('pending')
+
+  const isAdminLike = currentUser?.role === 'admin' || currentUser?.role === 'developer'
+
+  useEffect(() => {
+    if (isAdminLike) void fetchAllUsers()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdminLike, currentUser?.role])
+
+  const counts = useMemo(() => {
+    return allUsers.reduce<Record<ApprovalTab, number>>((acc, item) => {
+      const status = item.approvalStatus ?? 'approved'
+      acc[status] += 1
+      return acc
+    }, { pending: 0, approved: 0, blocked: 0 })
+  }, [allUsers])
+
+  const users = useMemo(() => {
+    return allUsers
+      .filter((item) => (item.approvalStatus ?? 'approved') === activeTab)
+      .sort((a, b) => {
+        const dateA = a.created_at ?? ''
+        const dateB = b.created_at ?? ''
+        return activeTab === 'pending'
+          ? dateA.localeCompare(dateB)
+          : b.name.localeCompare(a.name, 'ko')
+      })
+  }, [activeTab, allUsers])
+
+  if (!isAdminLike) {
+    return (
+      <div className="mobile-signup-requests-page">
+        <header className="mobile-subpage-head">
+          <button onClick={() => navigate('/settings')} type="button">‹</button>
+          <h1>가입 신청</h1>
+        </header>
+        <section className="signup-request-empty-card">관리자만 사용할 수 있습니다.</section>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mobile-signup-requests-page">
+      <header className="mobile-subpage-head">
+        <button onClick={() => navigate('/settings')} type="button">‹</button>
+        <h1>가입 신청</h1>
+      </header>
+
+      <nav className="signup-request-tabs" aria-label="가입 신청 상태">
+        {(['pending', 'approved', 'blocked'] as ApprovalTab[]).map((tab) => (
+          <button
+            className={activeTab === tab ? 'active' : ''}
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            type="button"
+          >
+            <span>{tabLabels[tab]}</span>
+            <strong>{counts[tab]}</strong>
+          </button>
+        ))}
+      </nav>
+
+      {users.length === 0 ? (
+        <section className="signup-request-empty-card">
+          <span aria-hidden="true">✓</span>
+          <strong>모두 처리되었습니다</strong>
+          <p>{tabLabels[activeTab]} 사용자가 없습니다.</p>
+          <button onClick={() => fetchAllUsers()} type="button">새로고침</button>
+        </section>
+      ) : (
+        <section className="signup-request-list">
+          {users.map((item) => (
+            <article className="signup-request-card" key={item.id}>
+              <div className="signup-request-card-head">
+                <div>
+                  <strong>{item.name}</strong>
+                  <span>{item.loginId}</span>
+                </div>
+                <em>{roleLabel(item.role)}</em>
+              </div>
+              <p className="signup-request-meta">
+                신청일 {formatDate(item.created_at)}
+                {item.lastLoginAt ? ` · 마지막 로그인 ${formatDate(item.lastLoginAt)}` : ''}
+              </p>
+              <div className="signup-request-actions">
+                {activeTab !== 'approved' && (
+                  <button
+                    className="approve"
+                    onClick={() => updateUserApprovalStatus(item.id, 'approved')}
+                    type="button"
+                  >
+                    승인
+                  </button>
+                )}
+                {activeTab !== 'blocked' && currentUser?.id !== item.id && (
+                  <button
+                    className="block"
+                    onClick={() => updateUserApprovalStatus(item.id, 'blocked')}
+                    type="button"
+                  >
+                    차단
+                  </button>
+                )}
+                {activeTab !== 'pending' && (
+                  <button
+                    className="pending"
+                    onClick={() => updateUserApprovalStatus(item.id, 'pending')}
+                    type="button"
+                  >
+                    대기
+                  </button>
+                )}
+                {currentUser?.id !== item.id && (
+                  <button
+                    className="delete"
+                    onClick={() => {
+                      if (!confirm(`${item.name} 계정을 삭제할까요?`)) return
+                      void deleteUser(item.id)
+                    }}
+                    type="button"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
+    </div>
+  )
+}

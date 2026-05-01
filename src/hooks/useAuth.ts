@@ -17,6 +17,7 @@ export type AppUserRecord = {
   name: string
   phone?: string | null
   role: Role
+  approvalStatus?: 'pending' | 'approved' | 'blocked'
   created_at: string
   lastLoginAt?: string | null
 }
@@ -122,9 +123,19 @@ export function useAuth() {
       }
 
       // RPC는 빈 배열이면 인증 실패 (사용자 없음 OR 비밀번호 불일치)
-      const row = (data as Array<{ id: number; name: string; login_id: string; role: string }>)?.[0]
+      const row = (data as Array<{ id: number; name: string; login_id: string; role: string; approval_status?: string | null }>)?.[0]
       if (!row) {
         showToast('아이디 또는 비밀번호가 일치하지 않습니다.', 'error')
+        return false
+      }
+
+      if (row.approval_status === 'pending') {
+        showToast('가입 신청이 승인 대기 중입니다.', 'info')
+        return false
+      }
+
+      if (row.approval_status === 'blocked') {
+        showToast('가입 신청이 차단되었습니다. 관리자에게 문의해 주세요.', 'error')
         return false
       }
 
@@ -184,7 +195,7 @@ export function useAuth() {
 
       const { data, error } = await supabase
         .from('app_users')
-        .insert({ login_id: normalizedLoginId, name: normalizedName, role: 'user', pin })
+        .insert({ login_id: normalizedLoginId, name: normalizedName, role: 'user', pin, approval_status: 'pending' })
         .select('id, name, login_id, role')
         .single()
 
@@ -193,21 +204,15 @@ export function useAuth() {
           showToast('DB에 login_id 컬럼이 없습니다. SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
           return false
         }
-        showToast('회원가입에 실패했습니다.', 'error')
+        if ((error as any)?.message?.includes('approval_status')) {
+          showToast('가입 승인 SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
+          return false
+        }
+        showToast('가입 신청에 실패했습니다.', 'error')
         return false
       }
 
-      const authUser: AuthUser = {
-        id: data.id,
-        loginId: data.login_id ?? normalizedLoginId,
-        name: data.name,
-        role: data.role as Role,
-      }
-      setUser(authUser)
-      localStorage.setItem('currentVisitor', authUser.name)
-      localStorage.setItem('auth_session', JSON.stringify(authUser)) // 회원가입 시 자동로그인
-
-      showToast('회원가입 완료! 환영합니다.', 'success')
+      showToast('가입 신청이 접수되었습니다. 관리자 승인 후 로그인할 수 있습니다.', 'success')
       return true
     } catch (err) {
       console.error(err)
@@ -290,15 +295,20 @@ export function useAuth() {
 
   // --- 관리자 전용 기능 ---
 
+  const notifyUsersChanged = () => {
+    if (typeof window === 'undefined') return
+    window.dispatchEvent(new Event('app-users-changed'))
+  }
+
   const fetchAllUsers = async () => {
     if (!user) return
     const { data, error } = await supabase
       .from('app_users')
-      .select('id, name, phone, login_id, role, created_at, last_login_at')
+      .select('id, name, phone, login_id, role, approval_status, created_at, last_login_at')
       .order('created_at', { ascending: false })
 
     if (!error && data) {
-      const rows = data as Array<{ id: number; name: string; phone?: string | null; login_id: string | null; role: Role; created_at: string; last_login_at?: string | null }>
+      const rows = data as Array<{ id: number; name: string; phone?: string | null; login_id: string | null; role: Role; approval_status?: AppUserRecord['approvalStatus'] | null; created_at: string; last_login_at?: string | null }>
       setAllUsers(rows
         .filter((item) => user.role === 'developer' || !isDeveloperAccount(item))
         .map((item) => ({
@@ -307,13 +317,19 @@ export function useAuth() {
           name: item.name,
           phone: item.phone ?? null,
           role: isDeveloperAccount(item) ? 'developer' : item.role,
+          approvalStatus: item.approval_status ?? 'approved',
           created_at: item.created_at,
           lastLoginAt: item.last_login_at ?? null,
         })))
       return
     }
 
-    if (error?.message?.includes('login_id') || error?.message?.includes('phone')) {
+    if (
+      error?.message?.includes('login_id') ||
+      error?.message?.includes('phone') ||
+      error?.message?.includes('approval_status') ||
+      error?.message?.includes('permission denied')
+    ) {
       const fallback = await supabase
         .from('app_users')
         .select(error.message.includes('login_id') ? 'id, name, role, created_at' : 'id, name, login_id, role, created_at, last_login_at')
@@ -326,6 +342,7 @@ export function useAuth() {
             loginId: item.login_id ?? item.name,
             name: item.name,
             role: isDeveloperAccount(item) ? 'developer' : item.role,
+            approvalStatus: 'approved',
             created_at: item.created_at,
             lastLoginAt: item.last_login_at ?? null,
             phone: null,
@@ -339,6 +356,16 @@ export function useAuth() {
     void fetchAllUsers()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
+
+  useEffect(() => {
+    if (!user) return
+    const onUsersChanged = () => {
+      void fetchAllUsers()
+    }
+    window.addEventListener('app-users-changed', onUsersChanged)
+    return () => window.removeEventListener('app-users-changed', onUsersChanged)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, user?.role])
 
   const resetUserPin = async (userId: number, newPin: string = '0000') => {
     if (!isAdminLike(user?.role)) return false
@@ -368,6 +395,7 @@ export function useAuth() {
     }
     showToast('권한이 변경되었습니다.', 'success')
     await fetchAllUsers()
+    notifyUsersChanged()
     return true
   }
 
@@ -390,6 +418,7 @@ export function useAuth() {
 
     showToast('사용자가 제거되었습니다.', 'success')
     await fetchAllUsers()
+    notifyUsersChanged()
     return true
   }
 
@@ -436,12 +465,23 @@ export function useAuth() {
 
     const { error } = await supabase
       .from('app_users')
-      .insert({ login_id: trimmedLoginId, name: trimmedName, pin: trimmedPin, role })
+      .insert({ login_id: trimmedLoginId, name: trimmedName, pin: trimmedPin, role, approval_status: 'approved' })
 
     if (error) {
       if ((error as any)?.message?.includes('login_id')) {
         showToast('DB에 login_id 컬럼이 없습니다. SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
         return false
+      }
+      if ((error as any)?.message?.includes('approval_status')) {
+        const fallback = await supabase
+          .from('app_users')
+          .insert({ login_id: trimmedLoginId, name: trimmedName, pin: trimmedPin, role })
+        if (!fallback.error) {
+          showToast('사용자가 추가되었습니다.', 'success')
+          await fetchAllUsers()
+          notifyUsersChanged()
+          return true
+        }
       }
       showToast('사용자 추가에 실패했습니다.', 'error')
       return false
@@ -449,6 +489,41 @@ export function useAuth() {
 
     showToast('사용자가 추가되었습니다.', 'success')
     await fetchAllUsers()
+    notifyUsersChanged()
+    return true
+  }
+
+  const updateUserApprovalStatus = async (userId: number, approvalStatus: AppUserRecord['approvalStatus']) => {
+    if (!isAdminLike(user?.role) || !approvalStatus) return false
+    if (user.id === userId && approvalStatus !== 'approved') {
+      showToast('현재 로그인한 계정은 차단할 수 없습니다.', 'error')
+      return false
+    }
+
+    const { error } = await supabase
+      .from('app_users')
+      .update({ approval_status: approvalStatus })
+      .eq('id', userId)
+
+    if (error) {
+      if ((error as any)?.message?.includes('approval_status')) {
+        showToast('가입 승인 SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
+        return false
+      }
+      showToast('가입 신청 상태 변경에 실패했습니다.', 'error')
+      return false
+    }
+
+    showToast(
+      approvalStatus === 'approved'
+        ? '가입 신청을 승인했습니다.'
+        : approvalStatus === 'blocked'
+          ? '가입 신청을 차단했습니다.'
+          : '가입 신청을 승인 대기로 변경했습니다.',
+      'success',
+    )
+    await fetchAllUsers()
+    notifyUsersChanged()
     return true
   }
 
@@ -504,6 +579,7 @@ export function useAuth() {
 
     showToast('아이디/닉네임이 변경되었습니다.', 'success')
     await fetchAllUsers()
+    notifyUsersChanged()
     return true
   }
 
@@ -546,6 +622,7 @@ export function useAuth() {
     deleteUser,
     createUser,
     updateUserIdentity,
+    updateUserApprovalStatus,
     fetchMyLoginLogs,
     fetchUserLoginLogs,
   }
