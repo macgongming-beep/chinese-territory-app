@@ -63,21 +63,12 @@ export function DesktopStats({
   specialPeriods: SpecialPeriod[]
   actualRole: Role
 }) {
-  const isAdmin = actualRole === 'admin'
+  const isDeveloper = actualRole === 'developer'
   const [scope, setScope]               = useState<ScopeFilter>('all')
   const [trendMode, setTrendMode]       = useState<TrendMode>('monthly')
-  const [showVisitorNames, setShowVisitorNames] = useState(false)
   const [cardTableOpen, setCardTableOpen]       = useState(false)
   const [selectedRegion, setSelectedRegion]     = useState<string | null>(null)
   const [selectedArea, setSelectedArea]         = useState<string | null>(null)
-  const titleClickCount = React.useRef(0)
-  const titleClickTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  const handleTitleClick = () => {
-    titleClickCount.current += 1
-    if (titleClickTimer.current) clearTimeout(titleClickTimer.current)
-    titleClickTimer.current = setTimeout(() => { titleClickCount.current = 0 }, 800)
-    if (titleClickCount.current >= 3) { titleClickCount.current = 0; setShowVisitorNames(v => !v) }
-  }
 
   // ── 필터 ────────────────────────────────────────────────────
   const filteredHistories = useMemo(() => {
@@ -204,9 +195,66 @@ export function DesktopStats({
     return true
   }), [cardStats, selectedRegion, selectedArea])
 
-  // ── 10. 봉사자별 통계 (관리자 숨김) ─────────────────────────
+  // ── 10. 요일별 통계 ─────────────────────────────────────────
+  const dayOfWeekStats = useMemo(() => {
+    const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+    const IS_WEEKEND  = [true, false, false, false, false, false, true]
+    const map = Array.from({ length: 7 }, () => ({ total: 0, meetings: 0, absences: 0 }))
+    for (const h of filteredHistories) {
+      const dow = new Date(h.visitedAt).getDay()
+      map[dow].total++
+      if (h.result === '만남') map[dow].meetings++
+      if (h.result === '부재') map[dow].absences++
+    }
+    // 월~일 순 (1,2,3,4,5,6,0)
+    const ordered = [1, 2, 3, 4, 5, 6, 0].map((dow) => ({
+      label: DAY_LABELS[dow],
+      isWeekend: IS_WEEKEND[dow],
+      ...map[dow],
+      meetingRate: map[dow].total > 0 ? map[dow].meetings / map[dow].total * 100 : 0,
+      absenceRate: map[dow].total > 0 ? map[dow].absences / map[dow].total * 100 : 0,
+    }))
+    const weekdays = ordered.filter((d) => !d.isWeekend)
+    const weekends = ordered.filter((d) => d.isWeekend)
+    const wdTotal = weekdays.reduce((s, d) => s + d.total, 0)
+    const wdMeetings = weekdays.reduce((s, d) => s + d.meetings, 0)
+    const weTotal = weekends.reduce((s, d) => s + d.total, 0)
+    const weMeetings = weekends.reduce((s, d) => s + d.meetings, 0)
+    return {
+      days: ordered,
+      weekday: { total: wdTotal, meetings: wdMeetings, rate: wdTotal > 0 ? wdMeetings / wdTotal * 100 : 0 },
+      weekend: { total: weTotal, meetings: weMeetings, rate: weTotal > 0 ? weMeetings / weTotal * 100 : 0 },
+    }
+  }, [filteredHistories])
+
+  // ── 11. 미방문 세대 현황 ────────────────────────────────────
+  const unvisitedStats = useMemo(() => {
+    const allIds = new Set<number>()
+    const chineseIds = new Set<number>()
+    for (const b of buildings) {
+      for (const u of b.units) {
+        allIds.add(u.id)
+        if (u.isChinese) chineseIds.add(u.id)
+      }
+    }
+    const visitedIds = new Set(visitHistories.map((h) => h.unitId).filter((id) => allIds.has(id)))
+    const total      = allIds.size
+    const visited    = visitedIds.size
+    const unvisited  = total - visited
+    const chVisited  = [...chineseIds].filter((id) => visitedIds.has(id)).length
+    const chUnvisited = chineseIds.size - chVisited
+    return {
+      total, visited, unvisited,
+      visitedRate: total > 0 ? visited / total * 100 : 0,
+      unvisitedRate: total > 0 ? unvisited / total * 100 : 0,
+      chTotal: chineseIds.size, chVisited, chUnvisited,
+      chVisitedRate: chineseIds.size > 0 ? chVisited / chineseIds.size * 100 : 0,
+    }
+  }, [buildings, visitHistories])
+
+  // ── 12. 봉사자별 통계 (개발자만) ────────────────────────────
   const visitorStats = useMemo(() => {
-    if (!isAdmin) return []
+    if (!isDeveloper) return []
     const map = new Map<string, { total: number; meetings: number; absences: number; invitations: number }>()
     for (const h of filteredHistories) {
       if (!map.has(h.visitor)) map.set(h.visitor, { total: 0, meetings: 0, absences: 0, invitations: 0 })
@@ -219,10 +267,10 @@ export function DesktopStats({
     return Array.from(map.entries())
       .map(([visitor, s]) => ({ visitor, ...s, meetingRate: s.total > 0 ? s.meetings / s.total * 100 : 0 }))
       .sort((a, b) => b.total - a.total)
-  }, [filteredHistories, isAdmin])
+  }, [filteredHistories, isDeveloper])
 
   const sessionTimeStats = useMemo(() => {
-    if (!isAdmin) return []
+    if (!isDeveloper) return []
     const map = new Map<string, { sessions: number; minutes: number }>()
     for (const s of serviceSessions) {
       if (!s.endedAt || !s.startedAt) continue
@@ -233,7 +281,7 @@ export function DesktopStats({
     return Array.from(map.entries())
       .map(([visitor, s]) => ({ visitor, sessions: s.sessions, hours: Math.round(s.minutes / 60 * 10) / 10 }))
       .sort((a, b) => b.hours - a.hours)
-  }, [serviceSessions, isAdmin])
+  }, [serviceSessions, isDeveloper])
 
   // ── 스타일 상수 ──────────────────────────────────────────────
   const card: React.CSSProperties = { background: '#fff', borderRadius: 12, padding: '20px', marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }
@@ -246,10 +294,7 @@ export function DesktopStats({
     <section className="desktop-content" style={{ padding: '32px', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
         <p style={{ fontSize: 13, color: 'var(--ink-500)', margin: '0 0 4px' }}>분석</p>
-        <h1
-          style={{ fontSize: 24, fontWeight: 700, margin: 0, cursor: 'default', userSelect: 'none' }}
-          onClick={handleTitleClick}
-        >통계 대시보드</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>통계 대시보드</h1>
       </div>
 
       {/* ── 분석 범위 ── */}
@@ -300,6 +345,49 @@ export function DesktopStats({
         </div>
       </div>
 
+      {/* ── 미방문 세대 현황 ── */}
+      <div style={card}>
+        <h2 style={ttl}>🚪 미방문 세대 현황</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          {/* 전체 */}
+          <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: 10 }}>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, marginBottom: 4 }}>전체 세대</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <span style={{ fontSize: 26, fontWeight: 800, color: '#dc2626' }}>{unvisitedStats.unvisited.toLocaleString()}</span>
+              <span style={{ fontSize: 13, color: '#94a3b8' }}>/ {unvisitedStats.total.toLocaleString()}세대</span>
+            </div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>
+              미방문 {unvisitedStats.unvisitedRate.toFixed(1)}% · 방문완료 {unvisitedStats.visitedRate.toFixed(1)}%
+            </div>
+            <div style={{ marginTop: 8, height: 7, background: '#fee2e2', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ width: `${unvisitedStats.visitedRate}%`, height: '100%', background: '#22c55e', borderRadius: 4, transition: 'width .4s' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3, fontSize: 10, color: '#94a3b8' }}>
+              <span>방문완료 {unvisitedStats.visited}</span><span>미방문 {unvisitedStats.unvisited}</span>
+            </div>
+          </div>
+          {/* 중국인 */}
+          {unvisitedStats.chTotal > 0 && (
+            <div style={{ padding: '14px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
+              <div style={{ fontSize: 11, color: '#92400e', fontWeight: 700, marginBottom: 4 }}>중국인 세대</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 26, fontWeight: 800, color: '#b45309' }}>{unvisitedStats.chUnvisited.toLocaleString()}</span>
+                <span style={{ fontSize: 13, color: '#d97706' }}>/ {unvisitedStats.chTotal}세대</span>
+              </div>
+              <div style={{ fontSize: 11, color: '#b45309', marginTop: 3 }}>
+                미방문 {unvisitedStats.chTotal > 0 ? ((unvisitedStats.chUnvisited / unvisitedStats.chTotal) * 100).toFixed(1) : 0}%
+              </div>
+              <div style={{ marginTop: 8, height: 7, background: '#fef3c7', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ width: `${unvisitedStats.chVisitedRate}%`, height: '100%', background: '#f59e0b', borderRadius: 4, transition: 'width .4s' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3, fontSize: 10, color: '#b45309' }}>
+                <span>방문완료 {unvisitedStats.chVisited}</span><span>미방문 {unvisitedStats.chUnvisited}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* ── 전체 요약 ── */}
       <div style={card}>
         <h2 style={ttl}>전체 요약</h2>
@@ -346,16 +434,86 @@ export function DesktopStats({
       <div style={card}>
         <h2 style={ttl}>⏰ 시간대별 분석</h2>
         <div style={{ display: 'flex', gap: 12 }}>
-          {slotStats.map(s => (
-            <div key={s.slot} style={{ flex: 1, padding: '14px 16px', background: '#f8fafc', borderRadius: 10 }}>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, marginBottom: 8 }}>{s.slot}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#16a34a' }}>{s.meetingRate.toFixed(1)}%</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>만남 {s.meetings} / {s.total}회</div>
-              <MiniBar pct={s.meetingRate} color="#22c55e" />
-              <div style={{ marginTop: 8, fontSize: 12, color: '#ca8a04', fontWeight: 600 }}>부재 {s.absences}회 ({s.absenceRate.toFixed(0)}%)</div>
-              <MiniBar pct={s.absenceRate} color="#eab308" />
+          {slotStats.map(s => {
+            const best = slotStats.reduce((a, b) => a.meetingRate > b.meetingRate ? a : b)
+            const worst = slotStats.reduce((a, b) => a.absenceRate > b.absenceRate ? a : b)
+            const isBest  = s.slot === best.slot && s.total > 0
+            const isWorst = s.slot === worst.slot && s.total > 0 && s !== best
+            return (
+              <div key={s.slot} style={{
+                flex: 1, padding: '14px 16px', borderRadius: 10,
+                background: isBest ? '#f0fdf4' : isWorst ? '#fff7ed' : '#f8fafc',
+                border: `1px solid ${isBest ? '#bbf7d0' : isWorst ? '#fed7aa' : '#f1f5f9'}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>{s.slot}</div>
+                  {isBest  && <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#dcfce7', padding: '2px 7px', borderRadius: 10 }}>✓ 최고</span>}
+                  {isWorst && <span style={{ fontSize: 10, fontWeight: 700, color: '#ea580c', background: '#ffedd5', padding: '2px 7px', borderRadius: 10 }}>주의</span>}
+                </div>
+                {/* 만남률 */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#16a34a', fontWeight: 700, marginBottom: 3 }}>
+                    <span>만남률</span><span>{s.meetingRate.toFixed(1)}% <span style={{ fontWeight: 400, color: '#86efac' }}>({s.meetings}건)</span></span>
+                  </div>
+                  <div style={{ height: 7, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ width: `${s.meetingRate}%`, height: '100%', background: '#22c55e', borderRadius: 4 }} />
+                  </div>
+                </div>
+                {/* 부재율 */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#dc2626', fontWeight: 700, marginBottom: 3 }}>
+                    <span>부재율</span><span>{s.absenceRate.toFixed(1)}% <span style={{ fontWeight: 400, color: '#fca5a5' }}>({s.absences}건)</span></span>
+                  </div>
+                  <div style={{ height: 7, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ width: `${s.absenceRate}%`, height: '100%', background: '#f87171', borderRadius: 4 }} />
+                  </div>
+                </div>
+                <div style={{ marginTop: 8, fontSize: 10, color: '#94a3b8' }}>총 {s.total}회 방문</div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── 요일별 만남률 ── */}
+      <div style={card}>
+        <h2 style={ttl}>📅 요일별 만남률</h2>
+        {/* 평일/주말 요약 */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+          {[
+            { label: '평일 평균', ...dayOfWeekStats.weekday, color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+            { label: '주말 평균', ...dayOfWeekStats.weekend, color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+          ].map(g => (
+            <div key={g.label} style={{ flex: 1, padding: '12px 14px', background: g.bg, borderRadius: 10, border: `1px solid ${g.border}` }}>
+              <div style={{ fontSize: 11, color: g.color, fontWeight: 700, marginBottom: 4 }}>{g.label}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: g.color }}>{g.rate.toFixed(1)}<span style={{ fontSize: 13 }}>%</span></div>
+              <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>만남 {g.meetings} / {g.total}회</div>
             </div>
           ))}
+        </div>
+        {/* 요일별 바 차트 */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 100 }}>
+          {dayOfWeekStats.days.map((d) => {
+            const maxRate = Math.max(1, ...dayOfWeekStats.days.map(x => x.meetingRate))
+            const barH = d.total > 0 ? Math.max(8, (d.meetingRate / maxRate) * 80) : 4
+            return (
+              <div key={d.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: d.meetingRate >= maxRate * 0.8 ? '#16a34a' : '#94a3b8' }}>
+                  {d.total > 0 ? `${d.meetingRate.toFixed(0)}%` : '-'}
+                </div>
+                <div style={{
+                  width: '100%', borderRadius: '4px 4px 0 0',
+                  height: barH,
+                  background: d.isWeekend
+                    ? (d.meetingRate >= maxRate * 0.8 ? '#7c3aed' : '#c4b5fd')
+                    : (d.meetingRate >= maxRate * 0.8 ? '#16a34a' : '#93c5fd'),
+                  transition: 'height .3s',
+                }} />
+                <div style={{ fontSize: 12, fontWeight: 700, color: d.isWeekend ? '#7c3aed' : '#475569' }}>{d.label}</div>
+                <div style={{ fontSize: 9, color: '#cbd5e1' }}>{d.total > 0 ? `${d.total}회` : '없음'}</div>
+              </div>
+            )
+          })}
         </div>
       </div>
 
@@ -508,8 +666,8 @@ export function DesktopStats({
         )}
       </div>
 
-      {/* ── 봉사자별 (관리자 숨김 — 타이틀 3번 클릭) ── */}
-      {isAdmin && showVisitorNames && visitorStats.length > 0 && (
+      {/* ── 봉사자별 (개발자 전용) ── */}
+      {isDeveloper && visitorStats.length > 0 && (
         <div style={card}>
           <h2 style={ttl}>👤 봉사자별 활동량</h2>
           <div style={{ overflowX: 'auto' }}>
@@ -537,7 +695,7 @@ export function DesktopStats({
           </div>
         </div>
       )}
-      {isAdmin && showVisitorNames && sessionTimeStats.length > 0 && (
+      {isDeveloper && sessionTimeStats.length > 0 && (
         <div style={card}>
           <h2 style={ttl}>⏱️ 봉사자별 누적 시간</h2>
           <div style={{ overflowX: 'auto' }}>
