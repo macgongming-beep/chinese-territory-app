@@ -227,6 +227,47 @@ export function DesktopStats({
     }
   }, [filteredHistories])
 
+  // ── 10-b. 요일×시간대 부재율 매트릭스 ───────────────────────
+  const daySlotMatrix = useMemo(() => {
+    // map[dow][slot] = { total, absences }
+    const map: Record<number, Record<string, { total: number; absences: number; meetings: number }>> = {}
+    for (let d = 0; d < 7; d++) {
+      map[d] = {}
+      for (const slot of TIME_SLOTS) map[d][slot] = { total: 0, absences: 0, meetings: 0 }
+    }
+    for (const h of filteredHistories) {
+      if (!h.timeSlot) continue
+      const dow = new Date(h.visitedAt).getDay()
+      const cell = map[dow][h.timeSlot]
+      if (!cell) continue
+      cell.total++
+      if (h.result === '부재') cell.absences++
+      if (h.result === '만남') cell.meetings++
+    }
+    // 월~일 순 (1,2,3,4,5,6,0)
+    const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+    const IS_WEEKEND  = [true, false, false, false, false, false, true]
+    const days = [1, 2, 3, 4, 5, 6, 0].map((dow) => ({
+      label: DAY_LABELS[dow],
+      isWeekend: IS_WEEKEND[dow],
+      slots: TIME_SLOTS.map((slot) => {
+        const c = map[dow][slot]
+        return {
+          slot,
+          total: c.total,
+          absences: c.absences,
+          meetings: c.meetings,
+          absenceRate: c.total > 0 ? c.absences / c.total * 100 : null,
+          meetingRate: c.total > 0 ? c.meetings / c.total * 100 : null,
+        }
+      }),
+    }))
+    // 전체 최고 부재율 (색상 기준용)
+    const allRates = days.flatMap((d) => d.slots.map((s) => s.absenceRate ?? 0))
+    const maxAbsence = Math.max(1, ...allRates)
+    return { days, maxAbsence }
+  }, [filteredHistories])
+
   // ── 11. 미방문 세대 현황 ────────────────────────────────────
   const unvisitedStats = useMemo(() => {
     const allIds = new Set<number>()
@@ -514,6 +555,58 @@ export function DesktopStats({
               </div>
             )
           })}
+        </div>
+
+        {/* ── 요일×시간대 부재율 히트맵 ── */}
+        <div style={{ marginTop: 20, borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#475569', marginBottom: 10 }}>
+            시간대별 부재율 <span style={{ fontSize: 11, fontWeight: 400, color: '#94a3b8' }}>— 빨갈수록 부재 많음 (피하면 좋은 시간)</span>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 3, fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th style={{ width: 44, textAlign: 'left', fontSize: 11, color: '#94a3b8', fontWeight: 600, paddingBottom: 4 }} />
+                  {daySlotMatrix.days.map((d) => (
+                    <th key={d.label} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: d.isWeekend ? '#7c3aed' : '#475569', paddingBottom: 4 }}>
+                      {d.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {TIME_SLOTS.map((slot) => (
+                  <tr key={slot}>
+                    <td style={{ fontSize: 11, color: '#64748b', fontWeight: 700, paddingRight: 6, whiteSpace: 'nowrap' }}>{slot}</td>
+                    {daySlotMatrix.days.map((d) => {
+                      const cell = d.slots.find((s) => s.slot === slot)!
+                      const rate = cell.absenceRate
+                      const intensity = rate !== null ? rate / daySlotMatrix.maxAbsence : 0
+                      // null = 데이터 없음 → 회색
+                      const bg = rate === null
+                        ? '#f8fafc'
+                        : rate === 0
+                          ? '#f0fdf4'
+                          : `rgba(239,68,68,${Math.max(0.08, intensity * 0.85)})`
+                      const textColor = rate === null ? '#cbd5e1' : intensity > 0.6 ? '#fff' : '#1e293b'
+                      return (
+                        <td key={slot + d.label} style={{ textAlign: 'center', padding: '7px 4px', borderRadius: 6, background: bg, transition: 'background .2s' }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: textColor }}>
+                            {rate === null ? '–' : `${rate.toFixed(0)}%`}
+                          </div>
+                          {cell.total > 0 && (
+                            <div style={{ fontSize: 9, color: intensity > 0.6 ? 'rgba(255,255,255,0.7)' : '#94a3b8', marginTop: 1 }}>
+                              {cell.absences}/{cell.total}
+                            </div>
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
