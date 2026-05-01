@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { showToast } from '../lib/toast'
 import type {
   Building,
   CalendarEvent,
@@ -10,12 +9,9 @@ import type {
   ReturnVisitLog,
   ReviewTask,
   ReviewTaskStatus,
-  Role,
   ServiceSession,
-  ServiceSessionStatus,
   SpecialPeriod,
   TerritoryCard,
-  TimeSlot,
   VisitHistory,
 } from '../types'
 import {
@@ -39,6 +35,8 @@ import {
   makeBuildingMutations,
   makeVisitMutations,
   makeRegularVisitMutations,
+  makeServiceSessionMutations,
+  makeEventAssignmentMutations,
 } from './storeMutations'
 import type {
   RawBuilding,
@@ -54,11 +52,6 @@ import type {
 
 export function getCurrentVisitor(): string {
   return localStorage.getItem('currentVisitor') ?? '김민준'
-}
-
-function reportMutationError(message: string, error: unknown) {
-  console.error(message, error)
-  showToast(message, 'error')
 }
 
 export function getLocalDateString() {
@@ -247,276 +240,11 @@ export function useStore() {
   }, [fetchAll])
 
   // ── Mutations ─────────────────────────────────────────────
-  const getRecordServiceSession = (buildingId?: number, visitedAt: string = getLocalDateString()) => {
-    if (visitedAt !== getLocalDateString()) return undefined
+  const { getRecordServiceSession, startServiceSession, endServiceSession } =
+    makeServiceSessionMutations({ fetchAll, serviceSessions, buildings })
 
-    const visitor = getCurrentVisitor()
-    const buildingCardId = buildingId
-      ? buildings.find((building) => building.id === buildingId)?.cardId
-      : undefined
-    const todaySessions = serviceSessions
-      .filter((session) => session.userName === visitor && session.serviceDate === visitedAt)
-      .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
-
-    if (buildingCardId) {
-      const activeSameCard = todaySessions.find((session) =>
-        session.status === 'active' &&
-        !session.endedAt &&
-        session.primaryCardId === buildingCardId
-      )
-      if (activeSameCard) return activeSameCard
-
-      const endedSameCard = todaySessions.find((session) =>
-        session.status === 'ended' &&
-        session.primaryCardId === buildingCardId
-      )
-      if (endedSameCard) return endedSameCard
-
-      return undefined
-    }
-
-    return todaySessions.find((session) => session.status === 'active' && !session.endedAt)
-  }
-
-  const startServiceSession = async (input: {
-    role: Role
-    timeSlot: TimeSlot
-    primaryCardId?: number | null
-    calendarEventId?: number | null
-    assignedCardId?: number | null
-    assignmentId?: number | null
-    source?: ServiceSession['source']
-    memo?: string
-  }) => {
-    const serviceDate = getLocalDateString()
-    const visitor = getCurrentVisitor()
-    let sameSessionQuery = supabase
-      .from('service_sessions')
-      .select('id')
-      .eq('user_name', visitor)
-      .eq('service_date', serviceDate)
-      .eq('time_slot', input.timeSlot)
-      .eq('status', 'active')
-      .limit(1)
-
-    sameSessionQuery = input.primaryCardId
-      ? sameSessionQuery.eq('primary_card_id', input.primaryCardId)
-      : sameSessionQuery.is('primary_card_id', null)
-
-    const existingResult = await sameSessionQuery
-    if (existingResult.error) {
-      reportMutationError('봉사 시작을 저장하지 못했습니다. service_sessions SQL을 먼저 실행해 주세요.', existingResult.error)
-      return null
-    }
-
-    const existingId = existingResult.data?.[0]?.id
-    const activeSessionsToEnd = serviceSessions.filter((session) =>
-      session.userName === visitor &&
-      session.serviceDate === serviceDate &&
-      session.status === 'active' &&
-      !session.endedAt &&
-      session.id !== existingId
-    )
-
-    if (activeSessionsToEnd.length > 0) {
-      const endResult = await supabase
-        .from('service_sessions')
-        .update({ status: 'ended', ended_at: new Date().toISOString() })
-        .in('id', activeSessionsToEnd.map((session) => session.id))
-
-      if (endResult.error) {
-        reportMutationError('기존 봉사 세션을 종료하지 못했습니다.', endResult.error)
-        return null
-      }
-    }
-
-    const payload = {
-      user_name: visitor,
-      role: input.role,
-      calendar_event_id: input.calendarEventId ?? null,
-      service_date: serviceDate,
-      time_slot: input.timeSlot,
-      primary_card_id: input.primaryCardId ?? null,
-      assigned_card_id: input.assignedCardId ?? null,
-      assignment_id: input.assignmentId ?? null,
-      source: input.source ?? 'manual',
-      memo: input.memo?.trim() || '',
-      status: 'active' as ServiceSessionStatus,
-      ended_at: null,
-    }
-
-    const result = existingId
-      ? await supabase.from('service_sessions').update(payload).eq('id', existingId).select('id').single()
-      : await supabase.from('service_sessions').insert(payload).select('id').single()
-
-    if (result.error) {
-      reportMutationError('봉사 시작을 저장하지 못했습니다.', result.error)
-      return null
-    }
-
-    await fetchAll()
-    showToast(activeSessionsToEnd.length > 0
-      ? `이전 봉사를 종료하고 ${input.timeSlot} 봉사를 시작했습니다`
-      : `${input.timeSlot} 봉사를 시작했습니다`)
-    return result.data?.id ?? existingId ?? null
-  }
-
-  const endServiceSession = async (sessionId: number) => {
-    const result = await supabase
-      .from('service_sessions')
-      .update({ status: 'ended', ended_at: new Date().toISOString() })
-      .eq('id', sessionId)
-
-    if (result.error) {
-      reportMutationError('봉사 세션을 종료하지 못했습니다.', result.error)
-      return
-    }
-
-    await fetchAll()
-    showToast('봉사 세션을 종료했습니다')
-  }
-
-  const assignCardToEventParticipant = async (eventId: number, userName: string, cardId: number | null) => {
-    if (!cardId) {
-      await supabase
-        .from('event_card_assignment_cards')
-        .delete()
-        .eq('event_id', eventId)
-        .eq('user_name', userName)
-      const deleteResult = await supabase
-        .from('event_card_assignments')
-        .delete()
-        .eq('event_id', eventId)
-        .eq('user_name', userName)
-      if (deleteResult.error) {
-        reportMutationError('카드 배정을 해제하지 못했습니다.', deleteResult.error)
-        return
-      }
-      await fetchAll()
-      showToast('카드 배정을 해제했습니다')
-      return
-    }
-
-    const result = await supabase
-      .from('event_card_assignments')
-      .upsert(
-        {
-          event_id: eventId,
-          user_name: userName,
-          assigned_card_id: cardId,
-          assigned_by: getCurrentVisitor(),
-        },
-        { onConflict: 'event_id,user_name' },
-      )
-
-    if (result.error) {
-      reportMutationError('참여자 카드 배정을 저장하지 못했습니다. event_card_assignments SQL을 먼저 실행해 주세요.', result.error)
-      return
-    }
-
-    await supabase
-      .from('event_card_assignment_cards')
-      .delete()
-      .eq('event_id', eventId)
-      .eq('user_name', userName)
-    await supabase
-      .from('event_card_assignment_cards')
-      .insert({
-        event_id: eventId,
-        user_name: userName,
-        card_id: cardId,
-      })
-
-    await fetchAll()
-    showToast('참여자 카드가 배정됐습니다')
-  }
-
-  const assignCardsToEventParticipantsBulk = async (
-    eventId: number,
-    assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
-    options?: { silentSuccess?: boolean },
-  ) => {
-    const silentSuccess = options?.silentSuccess === true
-    const normalizedAssignments = Array.from(
-      new Map(
-        assignments
-          .map((item) => {
-            const rawCardIds = Array.isArray(item.cardIds)
-              ? item.cardIds
-              : item.cardId
-                ? [item.cardId]
-                : []
-            const cardIds = Array.from(new Set(rawCardIds.filter((value): value is number => typeof value === 'number' && value > 0)))
-            return {
-              userName: item.userName.trim(),
-              cardId: cardIds[0] ?? null,
-              cardIds,
-            }
-          })
-          .filter((item) => item.userName.length > 0)
-          .map((item) => [item.userName, item]),
-      ).values(),
-    )
-
-    await supabase
-      .from('event_card_assignment_cards')
-      .delete()
-      .eq('event_id', eventId)
-
-    const deleteResult = await supabase
-      .from('event_card_assignments')
-      .delete()
-      .eq('event_id', eventId)
-
-    if (deleteResult.error) {
-      reportMutationError('기존 참여자 카드 배정을 정리하지 못했습니다.', deleteResult.error)
-      return
-    }
-
-    const rows = normalizedAssignments
-      .filter((item) => item.cardId)
-      .map((item) => ({
-        event_id: eventId,
-        user_name: item.userName,
-        assigned_card_id: item.cardId as number,
-        assigned_by: getCurrentVisitor(),
-      }))
-
-    if (rows.length > 0) {
-      const insertResult = await supabase
-        .from('event_card_assignments')
-        .insert(rows)
-
-      if (insertResult.error) {
-        reportMutationError('참여자 카드 일괄 배정을 저장하지 못했습니다. event_card_assignments SQL을 먼저 실행해 주세요.', insertResult.error)
-        return
-      }
-    }
-
-    const multiCardRows = normalizedAssignments.flatMap((item) =>
-      item.cardIds.map((cardId) => ({
-        event_id: eventId,
-        user_name: item.userName,
-        card_id: cardId,
-      })),
-    )
-
-    if (multiCardRows.length > 0) {
-      const multiCardResult = await supabase
-        .from('event_card_assignment_cards')
-        .insert(multiCardRows)
-
-      if (multiCardResult.error) {
-        console.warn('여러 카드 배정 저장에 실패했습니다. event_card_assignment_cards SQL이 필요할 수 있습니다.', multiCardResult.error)
-        showToast('대표 카드 배정은 저장됐지만, 여러 카드 동기화는 SQL 실행 후 완전하게 사용됩니다.')
-      }
-    }
-
-    await fetchAll()
-    if (!silentSuccess) {
-      showToast(`참여자 카드 배정 ${normalizedAssignments.length}건을 저장했습니다`)
-    }
-  }
+  const { assignCardToEventParticipant, assignCardsToEventParticipantsBulk } =
+    makeEventAssignmentMutations({ fetchAll })
 
   const {
     assignLeaderToCard,
