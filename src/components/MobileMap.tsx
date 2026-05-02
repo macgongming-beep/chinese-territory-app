@@ -7,6 +7,7 @@ import { t } from '../i18n'
 import { getBuildingStatus, findCardForCoordinates } from '../utils/mapUtils'
 import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 import { showToast } from '../lib/toast'
+import { UnitSlotGrid } from './UnitSlotGrid'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
@@ -1028,105 +1029,26 @@ export function MobileMap({
                               </div>
 
                               {isUnitExpanded && (
-                                <div className="unit-grid-detail">
-                                  <div className="ugd-row">
-                                    <span className="ugd-icon">📜</span>
-                                    <span className="ugd-label">{t(language, 'map.visitHistory')}</span>
-                                    <div className="ugd-history-stack">
-                                      {unitHistories.slice(0, 5).map((history) => {
-                                        const isMenuOpen = editingHistoryId === history.id
-                                        return (
-                                          <div className="history-item-container" key={history.id}>
-                                            <button 
-                                              className={`history-pill result-${history.result}`}
-                                              onClick={() => setEditingHistoryId(isMenuOpen ? null : history.id)}
-                                              type="button"
-                                            >
-                                              {history.visitedAt.slice(5).replace('-', '/')}({history.result[0]})
-                                            </button>
-                                            {isMenuOpen && (
-                                              <div className="history-admin-menu">
-                                                <button onClick={() => {
-                                                  if (!requireRecordAccess()) return
-                                                  setHistoryToEdit(history)
-                                                  setEditingHistoryId(null)
-                                                }} type="button">✎ {t(language, 'map.edit')}</button>
-                                                <button onClick={() => {
-                                                  if (!requireRecordAccess()) return
-                                                  if (confirm(t(language, 'map.deleteHistoryConfirm'))) {
-                                                    onDeleteVisitHistory(history.id, unit.id)
-                                                  }
-                                                  setEditingHistoryId(null)
-                                                }} className="delete" type="button">✕ {t(language, 'common.delete')}</button>
-                                              </div>
-                                            )}
-                                          </div>
-                                        )
-                                      })}
-                                      {unitHistories.length === 0 && <span className="ugd-value">{t(language, 'map.noRecords')}</span>}
-                                    </div>
-                                  </div>
-                                  <div className="ugd-row">
-                                    <span className="ugd-icon">📊</span>
-                                    <span className="ugd-label">{t(language, 'map.cumulativeAbsent')}</span>
-                                    <span className="ugd-value">
-                                      {(() => {
-                                        const counts = unitHistories.filter(h => h.result === '부재').reduce((acc, h) => {
-                                          acc[h.timeSlot] = (acc[h.timeSlot] || 0) + 1;
-                                          return acc;
-                                        }, {} as Record<string, number>);
-                                        const parts = [];
-                                        if (counts['오전']) parts.push(`${t(language, 'map.morning')} ${counts['오전']}`);
-                                        if (counts['오후']) parts.push(`${t(language, 'map.afternoon')} ${counts['오후']}`);
-                                        if (counts['저녁']) parts.push(`${t(language, 'map.evening')} ${counts['저녁']}`);
-                                        return parts.length > 0 ? parts.join(', ') : t(language, 'map.noRecords');
-                                      })()}
-                                    </span>
-                                  </div>
-                                  <div className="ugd-memo-section">
-                                    <div className="ugd-memo-head">
-                                      <span>{t(language, 'map.memo')}</span>
-                                      <div className="ugd-memo-checks">
-                                        <label className="ugd-chinese-label" style={{ color: unit.isForbidden ? 'var(--danger-600)' : 'inherit' }}>
-                                          <button className={`unit-check-btn ugd-check${unit.isForbidden ? ' ucb-forbidden' : ''}${!canRecordVisits ? ' locked' : ''}`}
-                                            onClick={() => {
-                                              if (!requireRecordAccess()) return
-                                              onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden })
-                                            }} type="button">
-                                            {unit.isForbidden ? '✓' : ''}</button>
-                                          {t(language, 'map.forbidden')}
-                                        </label>
-                                        <label className="ugd-chinese-label">
-                                          <button className={`unit-check-btn ugd-check${unit.isRegularVisit ? ' ucb-regular' : ''}${!canRecordVisits ? ' locked' : ''}`}
-                                            onClick={() => {
-                                              if (!requireRecordAccess()) return
-                                              onToggleRegularVisit(building.id, unit.id)
-                                            }} type="button">
-                                            {unit.isRegularVisit ? '✓' : ''}</button>
-                                          {t(language, 'map.regularVisit')}
-                                        </label>
-                                        <label className="ugd-chinese-label">
-                                          <button className={`unit-check-btn ugd-check${unit.isChinese ? ' ucb-chinese' : ''}${!canRecordVisits ? ' locked' : ''}`}
-                                            onClick={() => {
-                                              if (!requireRecordAccess()) return
-                                              onToggleChinese(building.id, unit.id)
-                                            }} type="button">
-                                            {unit.isChinese ? '✓' : ''}</button>
-                                          {t(language, 'map.chinese')}
-                                        </label>
-                                      </div>
-                                    </div>
-                                    <textarea className="ugd-memo-textarea" placeholder={t(language, 'map.memoPlaceholder')}
-                                      value={unitMemos[unit.id] ?? (unit.memo || '')}
-                                      onChange={e => setUnitMemos(prev => ({ ...prev, [unit.id]: e.target.value }))}
-                                      disabled={!canRecordVisits}
-                                      onBlur={e => {
-                                        if (!canRecordVisits) return
-                                        onUpdateUnitFlags(unit.id, { memo: e.target.value })
-                                      }} />
-                                  </div>
-                                    <button onClick={() => { if (confirm(`"${unit.number}" ${t(language, 'map.deleteUnitConfirm')}`)) { onDeleteUnit(building.id, unit.id); setExpandedUnitId(null) } }} style={{ marginLeft: 'auto', padding: '4px 10px', fontSize: '11px', minHeight: 'auto', borderRadius: 'var(--r-sm)', background: 'var(--danger-100)', color: 'var(--danger-600)', border: 'none', cursor: 'pointer' }} type="button">{t(language, 'map.deleteUnit')}</button>
-                                </div>
+                                <UnitDetail
+                                  unit={unit}
+                                  unitHistories={unitHistories}
+                                  buildingId={building.id}
+                                  canRecordVisits={canRecordVisits}
+                                  language={language}
+                                  editingHistoryId={editingHistoryId}
+                                  setEditingHistoryId={setEditingHistoryId}
+                                  setHistoryToEdit={setHistoryToEdit}
+                                  unitMemos={unitMemos}
+                                  setUnitMemos={setUnitMemos}
+                                  requireRecordAccess={requireRecordAccess}
+                                  onUpdateUnitFlags={onUpdateUnitFlags}
+                                  onToggleRegularVisit={onToggleRegularVisit}
+                                  onToggleChinese={onToggleChinese}
+                                  onDeleteUnit={onDeleteUnit}
+                                  onDeleteVisitHistory={onDeleteVisitHistory}
+                                  onQuickLogVisit={onQuickLogVisit}
+                                  onSetExpandedUnitId={(id) => setExpandedUnitId(id)}
+                                />
                               )}
                             </div>
                           )
@@ -1327,5 +1249,220 @@ export function MobileMap({
         </div>
       )}
     </main>
+  )
+}
+
+// ── 호수 상세 패널 ────────────────────────────────────────────
+function UnitDetail({
+  unit,
+  unitHistories,
+  buildingId,
+  canRecordVisits,
+  language,
+  editingHistoryId,
+  setEditingHistoryId,
+  setHistoryToEdit,
+  unitMemos,
+  setUnitMemos,
+  requireRecordAccess,
+  onUpdateUnitFlags,
+  onToggleRegularVisit,
+  onToggleChinese,
+  onDeleteUnit,
+  onDeleteVisitHistory,
+  onQuickLogVisit,
+  onSetExpandedUnitId,
+}: {
+  unit: Unit
+  unitHistories: VisitHistory[]
+  buildingId: number
+  canRecordVisits: boolean
+  language: AppLanguage
+  editingHistoryId: number | null
+  setEditingHistoryId: (id: number | null) => void
+  setHistoryToEdit: (h: VisitHistory) => void
+  unitMemos: Record<number, string>
+  setUnitMemos: React.Dispatch<React.SetStateAction<Record<number, string>>>
+  requireRecordAccess: () => boolean
+  onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
+  onToggleRegularVisit: (buildingId: number, unitId: number) => void
+  onToggleChinese: (buildingId: number, unitId: number) => void
+  onDeleteUnit: (buildingId: number, unitId: number) => void
+  onDeleteVisitHistory: (historyId: number, unitId: number) => void
+  onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus) => void
+  onSetExpandedUnitId: (id: number | null) => void
+}) {
+  const [historyExpanded, setHistoryExpanded] = useState(false)
+  const [memoFocused, setMemoFocused] = useState(false)
+  const [showDeleteMenu, setShowDeleteMenu] = useState(false)
+
+  const showGrid = unit.isChinese === true
+  const latestHistory = unitHistories[0] ?? null
+
+  return (
+    <div className="unit-grid-detail">
+
+      {/* ── 6칸 슬롯 그리드 (중국인 세대만) ── */}
+      {showGrid && (
+        <div style={{ padding: '10px 12px 0' }}>
+          <UnitSlotGrid
+            histories={unitHistories}
+            canRecord={canRecordVisits}
+            onRecordVisit={async (result, _timeSlot, _isWeekend) => {
+              if (!requireRecordAccess()) return
+              onQuickLogVisit(buildingId, unit.id, result)
+            }}
+          />
+        </div>
+      )}
+
+      {/* ── 최근 방문 기록 ── */}
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9' }}>
+        {latestHistory ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span style={{ color: '#64748b' }}>
+                  {latestHistory.visitedAt.slice(5).replace('-', '/')} {latestHistory.timeSlot}
+                </span>
+                <span style={{
+                  fontWeight: 700,
+                  color: latestHistory.result === '만남' ? '#16a34a' : latestHistory.result === '부재' ? '#dc2626' : '#6366f1',
+                }}>{latestHistory.result}</span>
+                {latestHistory.visitor && <span style={{ color: '#94a3b8' }}>· {latestHistory.visitor}</span>}
+              </div>
+              {unitHistories.length > 1 && (
+                <button
+                  onClick={() => setHistoryExpanded((v) => !v)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#94a3b8', padding: '2px 4px' }}
+                  type="button"
+                >
+                  {historyExpanded ? '닫기 ▴' : `+${unitHistories.length - 1}건 ▾`}
+                </button>
+              )}
+            </div>
+
+            {/* 펼친 이력 */}
+            {historyExpanded && (
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {unitHistories.map((history) => {
+                  const isMenuOpen = editingHistoryId === history.id
+                  return (
+                    <div key={history.id} className="history-item-container">
+                      <button
+                        className={`history-pill result-${history.result}`}
+                        onClick={() => setEditingHistoryId(isMenuOpen ? null : history.id)}
+                        type="button"
+                      >
+                        {history.visitedAt.slice(5).replace('-', '/')}({history.result[0]}) {history.timeSlot}
+                      </button>
+                      {isMenuOpen && (
+                        <div className="history-admin-menu">
+                          <button onClick={() => {
+                            if (!requireRecordAccess()) return
+                            setHistoryToEdit(history)
+                            setEditingHistoryId(null)
+                          }} type="button">✎ {t(language, 'map.edit')}</button>
+                          <button onClick={() => {
+                            if (!requireRecordAccess()) return
+                            if (confirm(t(language, 'map.deleteHistoryConfirm'))) {
+                              onDeleteVisitHistory(history.id, unit.id)
+                            }
+                            setEditingHistoryId(null)
+                          }} className="delete" type="button">✕ {t(language, 'common.delete')}</button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#cbd5e1' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            {t(language, 'map.noRecords')}
+          </div>
+        )}
+      </div>
+
+      {/* ── 토글 + ⋮ 메뉴 ── */}
+      <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9' }}>
+        <div className="ugd-memo-checks" style={{ gap: 12 }}>
+          <label className="ugd-chinese-label" style={{ color: unit.isForbidden ? 'var(--danger-600)' : 'inherit' }}>
+            <button
+              className={`unit-check-btn ugd-check${unit.isForbidden ? ' ucb-forbidden' : ''}${!canRecordVisits ? ' locked' : ''}`}
+              onClick={() => { if (!requireRecordAccess()) return; onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden }) }}
+              type="button"
+            >{unit.isForbidden ? '✓' : ''}</button>
+            방문금지
+          </label>
+          <label className="ugd-chinese-label">
+            <button
+              className={`unit-check-btn ugd-check${unit.isRegularVisit ? ' ucb-regular' : ''}${!canRecordVisits ? ' locked' : ''}`}
+              onClick={() => { if (!requireRecordAccess()) return; onToggleRegularVisit(buildingId, unit.id) }}
+              type="button"
+            >{unit.isRegularVisit ? '✓' : ''}</button>
+            정기방문
+          </label>
+          <label className="ugd-chinese-label">
+            <button
+              className={`unit-check-btn ugd-check${unit.isChinese ? ' ucb-chinese' : ''}${!canRecordVisits ? ' locked' : ''}`}
+              onClick={() => { if (!requireRecordAccess()) return; onToggleChinese(buildingId, unit.id) }}
+              type="button"
+            >{unit.isChinese ? '✓' : ''}</button>
+            중국인
+          </label>
+        </div>
+
+        {/* ⋮ 더보기 (세대 삭제) */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowDeleteMenu((v) => !v)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px 6px', fontSize: 18, lineHeight: 1 }}
+            type="button"
+          >⋮</button>
+          {showDeleteMenu && (
+            <div style={{
+              position: 'absolute', right: 0, top: '100%', zIndex: 100,
+              background: '#fff', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+              border: '1px solid #f1f5f9', overflow: 'hidden', minWidth: 120,
+            }}>
+              <button
+                onClick={() => {
+                  setShowDeleteMenu(false)
+                  if (confirm(`"${unit.number}" ${t(language, 'map.deleteUnitConfirm')}`)) {
+                    onDeleteUnit(buildingId, unit.id)
+                    onSetExpandedUnitId(null)
+                  }
+                }}
+                style={{ display: 'block', width: '100%', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--danger-600)', textAlign: 'left' }}
+                type="button"
+              >세대 삭제</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── 메모 (1줄, 포커스 시 확장) ── */}
+      <div style={{ padding: '8px 12px' }}>
+        <textarea
+          className="ugd-memo-textarea"
+          placeholder={t(language, 'map.memoPlaceholder')}
+          rows={memoFocused ? 3 : 1}
+          value={unitMemos[unit.id] ?? (unit.memo || '')}
+          onChange={(e) => setUnitMemos((prev) => ({ ...prev, [unit.id]: e.target.value }))}
+          disabled={!canRecordVisits}
+          onFocus={() => setMemoFocused(true)}
+          onBlur={(e) => {
+            setMemoFocused(false)
+            if (!canRecordVisits) return
+            onUpdateUnitFlags(unit.id, { memo: e.target.value })
+          }}
+          style={{ resize: 'none', transition: 'height .2s' }}
+        />
+      </div>
+    </div>
   )
 }
