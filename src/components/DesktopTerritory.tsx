@@ -43,6 +43,7 @@ export function DesktopTerritory({
   onOpenBuildingMap,
   visitHistories,
   onCreateBuilding,
+  onSwitchToMap,
 }: {
   buildings: Building[]
   cardBoundaries: CardBoundary[]
@@ -74,6 +75,7 @@ export function DesktopTerritory({
     pinCount: number
   }) => Promise<number | null> | number | null
   onCreateBuilding?: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => Promise<void> | void
+  onSwitchToMap?: () => void
 }) {
   const { allUsers, fetchAllUsers } = useAuth()
   const isAdmin = role === 'admin'
@@ -1053,13 +1055,31 @@ export function DesktopTerritory({
           </div>
         </div>
 
-        {/* ── Segment Tab ── */}
-        <div className="tbl-seg-tab">
-          {(['카드 관리', '건물 관리'] as const).map((tab) => (
-            <button className={activeTab === tab ? 'active' : ''} key={tab} onClick={() => setActiveTab(tab)} type="button">
-              {tab}
+        {/* ── Segment Tab + 지도 전환 ── */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div className="tbl-seg-tab" style={{ marginBottom: 0 }}>
+            {(['카드 관리', '건물 관리'] as const).map((tab) => (
+              <button className={activeTab === tab ? 'active' : ''} key={tab} onClick={() => setActiveTab(tab)} type="button">
+                {tab}
+              </button>
+            ))}
+          </div>
+          {onSwitchToMap && (
+            <button
+              onClick={onSwitchToMap}
+              type="button"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '5px 12px', borderRadius: 8,
+                border: '1px solid #e2e8f0', background: '#f8fafc',
+                fontSize: 12, fontWeight: 600, color: '#475569',
+                cursor: 'pointer', transition: 'all .15s',
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 21 15 18 9 21 3 18 3 6"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="6" x2="15" y2="18"/></svg>
+              지도
             </button>
-          ))}
+          )}
         </div>
 
         {/* ── KPI (카드 관리만) ── */}

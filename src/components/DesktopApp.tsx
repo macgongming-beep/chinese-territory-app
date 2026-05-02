@@ -474,47 +474,6 @@ export function DesktopApp({
         {/* /zone → 구역 관리 (인도자·관리자용, 목록↔지도 토글) */}
         <Route path="/zone" element={
           <div style={{ position: 'relative' }}>
-            {/* 인도자: 목록 ↔ 지도 토글 */}
-            {viewMode === 'leader' && (
-              <div style={{
-                position: 'absolute',
-                top: '14px',
-                right: '32px',
-                zIndex: 20,
-                display: 'inline-flex',
-                background: 'rgba(241,245,249,0.96)',
-                backdropFilter: 'blur(8px)',
-                borderRadius: '8px',
-                padding: '3px',
-                gap: '2px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.10)',
-              }}>
-                <button
-                  onClick={() => navigate('/zone')}
-                  type="button"
-                  style={{
-                    padding: '5px 14px', borderRadius: '6px', border: 'none',
-                    fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                    background: !showZoneMapView ? '#fff' : 'transparent',
-                    color: !showZoneMapView ? 'var(--ink-900)' : 'var(--ink-500)',
-                    boxShadow: !showZoneMapView ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
-                    transition: 'all 0.15s',
-                  }}
-                >구역목록</button>
-                <button
-                  onClick={() => navigate('/zone?view=map')}
-                  type="button"
-                  style={{
-                    padding: '5px 14px', borderRadius: '6px', border: 'none',
-                    fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                    background: showZoneMapView ? '#fff' : 'transparent',
-                    color: showZoneMapView ? 'var(--ink-900)' : 'var(--ink-500)',
-                    boxShadow: showZoneMapView ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
-                    transition: 'all 0.15s',
-                  }}
-                >지도</button>
-              </div>
-            )}
             {showZoneMapView ? (
               <DesktopMap
                 buildings={buildings}
@@ -544,6 +503,7 @@ export function DesktopApp({
                 onToggleInvitationLeft={onToggleInvitationLeft}
                 onUpdateUnitFlags={onUpdateUnitFlags}
                 visitHistories={visitHistories}
+                onSwitchToList={() => navigate('/zone')}
               />
             ) : (
               <DesktopTerritory
@@ -572,6 +532,7 @@ export function DesktopApp({
                 onOpenBuildingMap={openBuildingOnMap}
                 visitHistories={visitHistories}
                 onCreateBuilding={onCreateBuilding}
+                onSwitchToMap={() => navigate('/zone?view=map')}
               />
             )}
           </div>

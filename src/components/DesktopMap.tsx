@@ -71,6 +71,7 @@ export function DesktopMap({
   onUpdateUnitFlags,
   visitHistories,
   specialPeriods,
+  onSwitchToList,
 }: {
   buildings: Building[]
   boundaryEditRequest?: number
@@ -121,6 +122,7 @@ export function DesktopMap({
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
   visitHistories: VisitHistory[]
   specialPeriods?: SpecialPeriod[]
+  onSwitchToList?: () => void
 }) {
   const [cardFilter, setCardFilter] = useState<number | '전체'>('전체')
   const [regionFilter, setRegionFilter] = useState<TerritoryRegion | '전체'>('전체')
@@ -905,6 +907,23 @@ export function DesktopMap({
           </div>
           {/* spacer */}
           <div style={{ flex: 1 }} />
+          {/* 목록으로 전환 */}
+          {onSwitchToList && (
+            <button
+              onClick={onSwitchToList}
+              type="button"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '5px 12px', borderRadius: 8,
+                border: '1px solid #e2e8f0', background: '#f8fafc',
+                fontSize: 12, fontWeight: 600, color: '#475569',
+                cursor: 'pointer', transition: 'all .15s',
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              목록
+            </button>
+          )}
           {/* 구역선 버튼 */}
           {isAdmin && (
             <div style={{ display: 'flex', gap: 8 }}>
