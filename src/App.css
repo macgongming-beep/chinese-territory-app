@@ -18428,26 +18428,20 @@ button:focus-visible {
 }
 
 .bld-edit-btn {
-  height: 24px;
-  min-height: 24px;
   display: grid;
   place-items: center;
   background: none;
-  border: 1px solid #e2e8f0;
+  border: none;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: 0;
-  border-radius: 5px;
-  padding: 0 6px;
+  padding: 4px 6px;
   flex-shrink: 0;
   color: #94a3b8;
   line-height: 1;
 }
 
 .bld-edit-btn:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
   color: #475569;
 }
 
@@ -18586,7 +18580,7 @@ button:focus-visible {
 }
 
 .unit-grid-row.ugr-expanded {
-  background: #f0f9ff;
+  background: #fff;
 }
 
 .unit-grid-main {
@@ -18829,9 +18823,9 @@ button:focus-visible {
 }
 
 .unit-grid-detail {
-  padding: 8px 10px 10px;
-  background: #f8fafc;
-  border-top: 1px solid #e8edf3;
+  padding: 0;
+  background: #fff;
+  border-top: 1px solid #f1f5f9;
 }
 
 .ugd-row {
@@ -19545,11 +19539,11 @@ button:focus-visible {
   border: none;
 }
 
-.history-pill.result-부재 { background: #fee2e2; color: #ef4444; }
-.history-pill.result-만남 { background: #dcfce7; color: #166534; }
-.history-pill.result-한국인 { background: #f1f5f9; color: #475569; }
-.history-pill.result-거절 { background: var(--ink-900); color: #ffffff; }
-.history-pill.result-확인필요 { background: #fef3c7; color: #92400e; }
+.history-pill.result-부재 { background: #f8fafc; color: #ef4444; border: 1px solid #fecaca; }
+.history-pill.result-만남 { background: #f8fafc; color: #16a34a; border: 1px solid #bbf7d0; }
+.history-pill.result-한국인 { background: #f8fafc; color: #6366f1; border: 1px solid #e0e7ff; }
+.history-pill.result-거절 { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+.history-pill.result-확인필요 { background: #f8fafc; color: #d97706; border: 1px solid #fde68a; }
 
 .history-admin-menu {
   position: absolute;

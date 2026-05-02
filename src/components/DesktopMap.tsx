@@ -154,10 +154,12 @@ export function DesktopMap({
   const [detailOpen, setDetailOpen] = useState(true)
   const [undoStack, setUndoStack] = useState<GeoPoint[][]>([])
   const [expandedUnitId, setExpandedUnitId] = useState<number | null>(null)
+  const [unitDeleteMenuId, setUnitDeleteMenuId] = useState<number | null>(null)
   const [expandedBuildingIds, setExpandedBuildingIds] = useState<Set<number>>(new Set())
   const [collapsedStatusGroups, setCollapsedStatusGroups] = useState<Set<BuildingStatus>>(new Set(['방문완료']))
   const [hiddenMapStatuses, setHiddenMapStatuses] = useState<Set<BuildingStatus>>(new Set())
   const [unitMemos, setUnitMemos] = useState<Record<number, string>>({})
+  const [unitMemoEdits, setUnitMemoEdits] = useState<Record<number, string | undefined>>({})
   const [_absentTimestamps, _setAbsentTimestamps] = useState<Record<number, number>>({})
   const [coordinateRepairTick, setCoordinateRepairTick] = useState(0)
   const coordinateRepairingIdsRef = useRef<Set<number>>(new Set())
@@ -1436,15 +1438,15 @@ export function DesktopMap({
                                 </div>
                               </div>
 
-                              {/* ── 토글 + 세대 삭제 ── */}
+                              {/* ── 토글 + ⋮ 메뉴 ── */}
                               <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9' }}>
                                 <div className="ugd-memo-checks">
-                                  <label className="ugd-chinese-label" style={{ color: (unit.isForbidden || unit.status === '거절') ? 'var(--danger-600)' : 'inherit' }}>
+                                  <label className="ugd-chinese-label" style={{ color: unit.isForbidden ? 'var(--danger-600)' : 'inherit' }}>
                                     <button
-                                      className={`unit-check-btn ugd-check${(unit.isForbidden || unit.status === '거절') ? ' ucb-forbidden' : ''}${!canRecordVisits ? ' locked' : ''}`}
-                                      onClick={() => { if (!requireRecordAccess()) return; onUpdateUnitFlags(unit.id, { isForbidden: !(unit.isForbidden || unit.status === '거절') }) }}
+                                      className={`unit-check-btn ugd-check${unit.isForbidden ? ' ucb-forbidden' : ''}${!canRecordVisits ? ' locked' : ''}`}
+                                      onClick={() => { if (!requireRecordAccess()) return; onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden }) }}
                                       type="button"
-                                    >{(unit.isForbidden || unit.status === '거절') ? '✓' : ''}</button>
+                                    >{unit.isForbidden ? '✓' : ''}</button>
                                     방문금지
                                   </label>
                                   <label className="ugd-chinese-label">
@@ -1464,30 +1466,80 @@ export function DesktopMap({
                                     중국인
                                   </label>
                                 </div>
-                                <button
-                                  onClick={() => { if (confirm(`"${unit.number}" 세대 정보를 삭제할까요?`)) { onDeleteUnit(building.id, unit.id); setExpandedUnitId(null) } }}
-                                  style={{ padding: '4px 10px', fontSize: '11px', minHeight: 'auto', borderRadius: 'var(--r-sm)', background: 'var(--danger-100)', color: 'var(--danger-600)', border: 'none', cursor: 'pointer' }}
-                                  type="button"
-                                >세대 삭제</button>
+                                <div style={{ position: 'relative' }}>
+                                  <button
+                                    onClick={() => setUnitDeleteMenuId(unitDeleteMenuId === unit.id ? null : unit.id)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px 6px', fontSize: 18, lineHeight: 1 }}
+                                    type="button"
+                                  >⋮</button>
+                                  {unitDeleteMenuId === unit.id && (
+                                    <div style={{
+                                      position: 'absolute', right: 0, top: '100%', zIndex: 100,
+                                      background: '#fff', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                                      border: '1px solid #f1f5f9', overflow: 'hidden', minWidth: 120,
+                                    }}>
+                                      <button
+                                        onClick={() => {
+                                          setUnitDeleteMenuId(null)
+                                          if (confirm(`"${unit.number}" 세대 정보를 삭제할까요?`)) {
+                                            onDeleteUnit(building.id, unit.id)
+                                            setExpandedUnitId(null)
+                                          }
+                                        }}
+                                        style={{ display: 'block', width: '100%', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--danger-600)', textAlign: 'left' }}
+                                        type="button"
+                                      >세대 삭제</button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
 
-                              {/* ── 메모 ── */}
+                              {/* ── 메모 (클릭 편집 → 저장/취소) ── */}
                               <div style={{ padding: '8px 12px' }}>
-                                <textarea
-                                  className="ugd-memo-textarea"
-                                  placeholder="메모를 입력하세요..."
-                                  rows={1}
-                                  value={unitMemos[unit.id] ?? (unit.memo || '')}
-                                  onChange={(e) => setUnitMemos((prev) => ({ ...prev, [unit.id]: e.target.value }))}
-                                  disabled={!canRecordVisits}
-                                  onFocus={(e) => { e.currentTarget.rows = 3 }}
-                                  onBlur={(e) => {
-                                    e.currentTarget.rows = 1
-                                    if (!canRecordVisits) return
-                                    onUpdateUnitFlags(unit.id, { memo: e.target.value })
-                                  }}
-                                  style={{ resize: 'none' }}
-                                />
+                                {unitMemoEdits[unit.id] !== undefined ? (
+                                  <>
+                                    <textarea
+                                      className="ugd-memo-textarea"
+                                      placeholder="메모를 입력하세요..."
+                                      rows={3}
+                                      autoFocus
+                                      value={unitMemoEdits[unit.id] ?? ''}
+                                      onChange={(e) => setUnitMemoEdits((prev) => ({ ...prev, [unit.id]: e.target.value }))}
+                                      style={{ resize: 'none' }}
+                                    />
+                                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                                      <button
+                                        onClick={() => {
+                                          const val = unitMemoEdits[unit.id] ?? ''
+                                          onUpdateUnitFlags(unit.id, { memo: val })
+                                          setUnitMemos((prev) => ({ ...prev, [unit.id]: val }))
+                                          setUnitMemoEdits((prev) => { const next = { ...prev }; delete next[unit.id]; return next })
+                                        }}
+                                        style={{ flex: 1, padding: '6px 0', borderRadius: 8, border: 'none', background: '#1e293b', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                                        type="button"
+                                      >저장</button>
+                                      <button
+                                        onClick={() => setUnitMemoEdits((prev) => { const next = { ...prev }; delete next[unit.id]; return next })}
+                                        style={{ flex: 1, padding: '6px 0', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                                        type="button"
+                                      >취소</button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      if (!canRecordVisits) return
+                                      setUnitMemoEdits((prev) => ({ ...prev, [unit.id]: unitMemos[unit.id] ?? (unit.memo || '') }))
+                                    }}
+                                    style={{
+                                      width: '100%', textAlign: 'left', background: '#f8fafc',
+                                      border: '1px solid #e2e8f0', borderRadius: 8,
+                                      padding: '6px 10px', fontSize: 12, color: (unitMemos[unit.id] ?? unit.memo) ? '#334155' : '#cbd5e1',
+                                      cursor: canRecordVisits ? 'pointer' : 'default', whiteSpace: 'pre-wrap', lineHeight: 1.5,
+                                    }}
+                                    type="button"
+                                  >{(unitMemos[unit.id] ?? unit.memo) || '메모를 입력하세요...'}</button>
+                                )}
                               </div>
                             </div>
                           )}
