@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { MapCanvas } from './MapCanvas'
 import { SpecialPeriodBanner } from './SpecialPeriodBanner'
+import { UnitSlotGrid } from './UnitSlotGrid'
 import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
 import type {
   Building,
@@ -1350,27 +1351,44 @@ export function DesktopMap({
 
                           {isUnitExpanded && (
                             <div className="unit-grid-detail">
-                              <div className="ugd-row">
-                                <span className="ugd-icon">📜</span>
-                                <span className="ugd-label">방문 기록</span>
-                                <button
-                                  className="history-add-btn"
-                                  onClick={() => openHistoryEditorForAdd(building.id, unit.id)}
-                                  type="button"
-                                >
-                                  + 기록
-                                </button>
+
+                              {/* ── 6칸 슬롯 그리드 (중국인 세대만) ── */}
+                              {unit.isChinese && (
+                                <div style={{ padding: '10px 12px 0' }}>
+                                  <UnitSlotGrid
+                                    histories={unitHistories}
+                                    canRecord={canRecordVisits}
+                                    onRecordVisit={async (result) => {
+                                      if (!requireRecordAccess()) return
+                                      onQuickLogVisit(building.id, unit.id, result)
+                                    }}
+                                  />
+                                </div>
+                              )}
+
+                              {/* ── 방문 기록 ── */}
+                              <div style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: unitHistories.length > 0 ? 6 : 0 }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>방문 기록</span>
+                                  <button
+                                    className="history-add-btn"
+                                    onClick={() => openHistoryEditorForAdd(building.id, unit.id)}
+                                    style={{ marginLeft: 'auto' }}
+                                    type="button"
+                                  >+ 기록</button>
+                                </div>
                                 <div className="ugd-history-stack">
                                   {unitHistories.slice(0, 5).map((history) => {
                                     const isMenuOpen = editingHistoryId === history.id
                                     return (
                                       <div className="history-item-container" key={history.id}>
-                                        <button 
+                                        <button
                                           className={`history-pill result-${history.result}`}
                                           onClick={() => setEditingHistoryId(isMenuOpen ? null : history.id)}
                                           type="button"
                                         >
-                                          {history.visitedAt.slice(5).replace('-', '/')}({history.result})
+                                          {history.visitedAt.slice(5).replace('-', '/')} {history.timeSlot}({history.result})
                                         </button>
                                         {isMenuOpen && (
                                           <div className="history-admin-menu">
@@ -1387,61 +1405,63 @@ export function DesktopMap({
                                       </div>
                                     )
                                   })}
-                                  {unitHistories.length === 0 && <span className="ugd-value">기록 없음</span>}
+                                  {unitHistories.length === 0 && <span className="ugd-value" style={{ fontSize: 12, color: '#cbd5e1' }}>기록 없음</span>}
                                 </div>
                               </div>
-                              <div className="ugd-memo-section">
-                                <div className="ugd-memo-head">
-                                  <span>💬 메모</span>
-                                  <div className="ugd-memo-checks">
-                                    <label className="ugd-chinese-label" style={{ color: (unit.isForbidden || unit.status === '거절') ? 'var(--danger-600)' : 'inherit' }}>
-                                      <button
-                                        className={`unit-check-btn ugd-check${(unit.isForbidden || unit.status === '거절') ? ' ucb-forbidden' : ''}${!canRecordVisits ? ' locked' : ''}`}
-                                        onClick={() => {
-                                          if (!requireRecordAccess()) return
-                                          onUpdateUnitFlags(unit.id, { isForbidden: !(unit.isForbidden || unit.status === '거절') })
-                                        }}
-                                        type="button"
-                                      >{(unit.isForbidden || unit.status === '거절') ? '✓' : ''}</button>
-                                      방문금지
-                                    </label>
-                                    <label className="ugd-chinese-label">
-                                      <button
-                                        className={`unit-check-btn ugd-check${unit.isRegularVisit ? ' ucb-regular' : ''}${!canRecordVisits ? ' locked' : ''}`}
-                                        onClick={() => {
-                                          if (!requireRecordAccess()) return
-                                          onToggleRegularVisit(building.id, unit.id)
-                                        }}
-                                        type="button"
-                                      >{unit.isRegularVisit ? '✓' : ''}</button>
-                                      정기방문
-                                    </label>
-                                    <label className="ugd-chinese-label">
-                                      <button
-                                        className={`unit-check-btn ugd-check${unit.isChinese ? ' ucb-chinese' : ''}${!canRecordVisits ? ' locked' : ''}`}
-                                        onClick={() => {
-                                          if (!requireRecordAccess()) return
-                                          onToggleChinese(building.id, unit.id)
-                                        }}
-                                        type="button"
-                                      >{unit.isChinese ? '✓' : ''}</button>
-                                      중국인
-                                    </label>
-                                  </div>
+
+                              {/* ── 토글 + 세대 삭제 ── */}
+                              <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9' }}>
+                                <div className="ugd-memo-checks">
+                                  <label className="ugd-chinese-label" style={{ color: (unit.isForbidden || unit.status === '거절') ? 'var(--danger-600)' : 'inherit' }}>
+                                    <button
+                                      className={`unit-check-btn ugd-check${(unit.isForbidden || unit.status === '거절') ? ' ucb-forbidden' : ''}${!canRecordVisits ? ' locked' : ''}`}
+                                      onClick={() => { if (!requireRecordAccess()) return; onUpdateUnitFlags(unit.id, { isForbidden: !(unit.isForbidden || unit.status === '거절') }) }}
+                                      type="button"
+                                    >{(unit.isForbidden || unit.status === '거절') ? '✓' : ''}</button>
+                                    방문금지
+                                  </label>
+                                  <label className="ugd-chinese-label">
+                                    <button
+                                      className={`unit-check-btn ugd-check${unit.isRegularVisit ? ' ucb-regular' : ''}${!canRecordVisits ? ' locked' : ''}`}
+                                      onClick={() => { if (!requireRecordAccess()) return; onToggleRegularVisit(building.id, unit.id) }}
+                                      type="button"
+                                    >{unit.isRegularVisit ? '✓' : ''}</button>
+                                    정기방문
+                                  </label>
+                                  <label className="ugd-chinese-label">
+                                    <button
+                                      className={`unit-check-btn ugd-check${unit.isChinese ? ' ucb-chinese' : ''}${!canRecordVisits ? ' locked' : ''}`}
+                                      onClick={() => { if (!requireRecordAccess()) return; onToggleChinese(building.id, unit.id) }}
+                                      type="button"
+                                    >{unit.isChinese ? '✓' : ''}</button>
+                                    중국인
+                                  </label>
                                 </div>
+                                <button
+                                  onClick={() => { if (confirm(`"${unit.number}" 세대 정보를 삭제할까요?`)) { onDeleteUnit(building.id, unit.id); setExpandedUnitId(null) } }}
+                                  style={{ padding: '4px 10px', fontSize: '11px', minHeight: 'auto', borderRadius: 'var(--r-sm)', background: 'var(--danger-100)', color: 'var(--danger-600)', border: 'none', cursor: 'pointer' }}
+                                  type="button"
+                                >세대 삭제</button>
+                              </div>
+
+                              {/* ── 메모 ── */}
+                              <div style={{ padding: '8px 12px' }}>
                                 <textarea
                                   className="ugd-memo-textarea"
                                   placeholder="메모를 입력하세요..."
+                                  rows={1}
                                   value={unitMemos[unit.id] ?? (unit.memo || '')}
                                   onChange={(e) => setUnitMemos((prev) => ({ ...prev, [unit.id]: e.target.value }))}
                                   disabled={!canRecordVisits}
+                                  onFocus={(e) => { e.currentTarget.rows = 3 }}
                                   onBlur={(e) => {
+                                    e.currentTarget.rows = 1
                                     if (!canRecordVisits) return
                                     onUpdateUnitFlags(unit.id, { memo: e.target.value })
                                   }}
+                                  style={{ resize: 'none' }}
                                 />
                               </div>
-                                <button onClick={() => { if (confirm(`"${unit.number}" 세대 정보를 삭제할까요?`)) { onDeleteUnit(building.id, unit.id); setExpandedUnitId(null) } }} style={{ marginLeft: 'auto', padding: '4px 10px', fontSize: '11px', minHeight: 'auto', borderRadius: 'var(--r-sm)', background: 'var(--danger-100)', color: 'var(--danger-600)', border: 'none', cursor: 'pointer' }} type="button">세대 삭제</button>
                             </div>
                           )}
                         </div>
