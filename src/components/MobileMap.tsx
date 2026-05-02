@@ -989,6 +989,7 @@ export function MobileMap({
                                   <span className="unit-chevron">{isUnitExpanded ? '▾' : '▸'}</span>
                                   <span className="unit-number-text">{unit.number}</span>
                                   {unit.isChinese && <span className="unit-chinese-badge">中</span>}
+                                  {unit.isForbidden && <span className="unit-forbidden-badge">방문금지</span>}
                                   {unit.isRegularVisit && <span className="unit-regular-badge">{t(language, 'map.regularShort')}</span>}
                                   {latestHistory && (
                                     <span className="unit-recent-visit">
@@ -1293,8 +1294,9 @@ function UnitDetail({
   onSetExpandedUnitId: (id: number | null) => void
 }) {
   const [historyExpanded, setHistoryExpanded] = useState(false)
-  const [memoFocused, setMemoFocused] = useState(false)
   const [showDeleteMenu, setShowDeleteMenu] = useState(false)
+  const [memoEditing, setMemoEditing] = useState(false)
+  const [memoDraft, setMemoDraft] = useState<string | null>(null)
 
   const showGrid = unit.isChinese === true
   const latestHistory = unitHistories[0] ?? null
@@ -1445,23 +1447,56 @@ function UnitDetail({
         </div>
       </div>
 
-      {/* ── 메모 (1줄, 포커스 시 확장) ── */}
+      {/* ── 메모 (1줄 → 편집 시 저장/취소) ── */}
       <div style={{ padding: '8px 12px' }}>
-        <textarea
-          className="ugd-memo-textarea"
-          placeholder={t(language, 'map.memoPlaceholder')}
-          rows={memoFocused ? 3 : 1}
-          value={unitMemos[unit.id] ?? (unit.memo || '')}
-          onChange={(e) => setUnitMemos((prev) => ({ ...prev, [unit.id]: e.target.value }))}
-          disabled={!canRecordVisits}
-          onFocus={() => setMemoFocused(true)}
-          onBlur={(e) => {
-            setMemoFocused(false)
-            if (!canRecordVisits) return
-            onUpdateUnitFlags(unit.id, { memo: e.target.value })
-          }}
-          style={{ resize: 'none', transition: 'height .2s' }}
-        />
+        {memoEditing ? (
+          <>
+            <textarea
+              className="ugd-memo-textarea"
+              placeholder={t(language, 'map.memoPlaceholder')}
+              rows={3}
+              value={memoDraft ?? ''}
+              onChange={(e) => setMemoDraft(e.target.value)}
+              autoFocus
+              style={{ resize: 'none' }}
+            />
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <button
+                onClick={() => {
+                  onUpdateUnitFlags(unit.id, { memo: memoDraft ?? '' })
+                  setUnitMemos((prev) => ({ ...prev, [unit.id]: memoDraft ?? '' }))
+                  setMemoEditing(false)
+                  setMemoDraft(null)
+                }}
+                style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', background: '#1e293b', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                type="button"
+              >저장</button>
+              <button
+                onClick={() => { setMemoEditing(false); setMemoDraft(null) }}
+                style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                type="button"
+              >취소</button>
+            </div>
+          </>
+        ) : (
+          <button
+            onClick={() => {
+              if (!canRecordVisits) return
+              const current = unitMemos[unit.id] ?? (unit.memo || '')
+              setMemoDraft(current)
+              setMemoEditing(true)
+            }}
+            style={{
+              width: '100%', textAlign: 'left', background: '#f8fafc',
+              border: '1px solid #e2e8f0', borderRadius: 8,
+              padding: '7px 10px', fontSize: 12, color: (unitMemos[unit.id] ?? unit.memo) ? '#334155' : '#cbd5e1',
+              cursor: canRecordVisits ? 'pointer' : 'default', whiteSpace: 'pre-wrap', lineHeight: 1.5,
+            }}
+            type="button"
+          >
+            {(unitMemos[unit.id] ?? unit.memo) || t(language, 'map.memoPlaceholder')}
+          </button>
+        )}
       </div>
     </div>
   )

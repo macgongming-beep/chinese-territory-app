@@ -1308,6 +1308,7 @@ export function DesktopMap({
                               <span className="unit-chevron">{isUnitExpanded ? '▾' : '▸'}</span>
                               <span className="unit-number-text">{unit.number}</span>
                               {unit.isChinese && <span className="unit-chinese-badge">中</span>}
+                              {unit.isForbidden && <span className="unit-forbidden-badge">방문금지</span>}
                               {unit.isRegularVisit && <span className="unit-regular-badge">재방</span>}
                               {latestHistory && (
                                 <span className="unit-recent-visit">

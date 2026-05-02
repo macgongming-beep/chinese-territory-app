@@ -178,10 +178,10 @@ export function UnitSlotGrid({
         background: '#fff',
       }}>
         {/* 헤더 행 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 1fr 1fr', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 1fr 1fr', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
           <div />
           {SLOT_LABELS.map((s) => (
-            <div key={s} style={{ padding: '5px 0', textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#94a3b8' }}>{s}</div>
+            <div key={s} style={{ padding: '3px 0', textAlign: 'center', fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>{s}</div>
           ))}
         </div>
 
@@ -190,11 +190,11 @@ export function UnitSlotGrid({
           <div
             key={DAY_LABELS[rowIdx]}
             style={{
-              display: 'grid', gridTemplateColumns: '44px 1fr 1fr 1fr',
+              display: 'grid', gridTemplateColumns: '36px 1fr 1fr 1fr',
               borderBottom: rowIdx < matrix.length - 1 ? '1px solid #f1f5f9' : 'none',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#64748b', background: '#f8fafc', borderRight: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f8fafc', borderRight: '1px solid #f1f5f9' }}>
               {DAY_LABELS[rowIdx]}
             </div>
             {row.map((cell, colIdx) => {
@@ -206,13 +206,13 @@ export function UnitSlotGrid({
                   style={{
                     border: 'none', borderRight: colIdx < row.length - 1 ? '1px solid #f1f5f9' : 'none',
                     background: s.bg, color: s.color,
-                    padding: '8px 4px', cursor: 'pointer',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                    padding: '5px 4px', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
                     transition: 'background .15s',
                   }}
                   type="button"
                 >
-                  <span style={{ fontSize: 14, fontWeight: 800 }}>{cellLabel(cell)}</span>
+                  <span style={{ fontSize: 12, fontWeight: 800 }}>{cellLabel(cell)}</span>
                   {cell.total > 0 && cell.meetings === 0 && (
                     <span style={{ fontSize: 9, color: '#cbd5e1' }}>{cell.total}회</span>
                   )}
