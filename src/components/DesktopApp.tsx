@@ -7,11 +7,12 @@ import { DesktopNotices } from './DesktopNotices'
 import { DesktopSettings } from './DesktopSettings'
 import { DesktopStats } from './DesktopStats'
 import { DesktopTerritory } from './DesktopTerritory'
+import { DesktopMyService } from './DesktopMyService'
 import { DesktopMap } from './DesktopMap'
 import { DesktopAdminAssignment } from './DesktopAdminAssignment'
 import { DesktopLeaderAssignment } from './DesktopLeaderAssignment'
 import { DesktopUsers } from './DesktopUsers'
-import type { Building, CalendarEvent, CardBoundary, DesktopPage, GeoPoint, Notice, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, CalendarEvent, CardBoundary, DesktopPage, GeoPoint, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import { roleLabels } from '../types'
 
 const pageToPath: Record<DesktopPage, string> = {
@@ -86,6 +87,9 @@ export function DesktopApp({
   onRemoveParticipantFromEvent,
   onAddParticipantToEvent,
   allUsers,
+  returnVisits,
+  returnVisitLogs,
+  onAddReturnVisitLog,
   onToggleRegularVisit,
   onSetRegularVisitor,
   onToggleChinese,
@@ -198,6 +202,9 @@ export function DesktopApp({
   onRemoveParticipantFromEvent: (eventId: number, userName: string) => void
   onAddParticipantToEvent: (eventId: number, userName: string) => void
   allUsers: Array<{ id: number; name: string; role: string }>
+  returnVisits?: ReturnVisit[]
+  returnVisitLogs?: ReturnVisitLog[]
+  onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
@@ -418,33 +425,50 @@ export function DesktopApp({
         } />
         {/* /territory → 나의봉사 (개인 봉사 현황) */}
         <Route path="/territory" element={
-          <DesktopTerritory
-            buildings={buildings}
-            cardBoundaries={cardBoundaries}
-            cards={cards}
-            role={viewMode}
-            onSetCardLeaders={onSetCardLeaders}
-            onSetMultipleCardLeaders={onSetMultipleCardLeaders}
-            onCreateCard={onCreateCard}
-            onImportBuildings={onImportBuildings}
-            onDeleteBuildings={onDeleteBuildings}
-            onDeleteCards={onDeleteCards}
-            onMergeDuplicateBuildings={onMergeDuplicateBuildings}
-            onAddUnit={onAddUnit}
-            onDeleteUnit={onDeleteUnit}
-            onMoveBuildingToCard={onMoveBuildingToCard}
-            onReassignBuildingsToCards={onReassignBuildingsToCards}
-            onUpdateBuilding={onUpdateBuilding}
-            onToggleChinese={onToggleChinese}
-            onToggleRegularVisit={onToggleRegularVisit}
-            onSetRegularVisitor={onSetRegularVisitor}
-            onUpdateUnitFlags={onUpdateUnitFlags}
-            onUpdateUnitStatus={onUpdateUnitStatus}
-            onOpenCardMap={openCardOnMap}
-            onOpenBuildingMap={openBuildingOnMap}
-            visitHistories={visitHistories}
-            onCreateBuilding={onCreateBuilding}
-          />
+          viewMode === 'admin' ? (
+            <DesktopTerritory
+              buildings={buildings}
+              cardBoundaries={cardBoundaries}
+              cards={cards}
+              role={viewMode}
+              onSetCardLeaders={onSetCardLeaders}
+              onSetMultipleCardLeaders={onSetMultipleCardLeaders}
+              onCreateCard={onCreateCard}
+              onImportBuildings={onImportBuildings}
+              onDeleteBuildings={onDeleteBuildings}
+              onDeleteCards={onDeleteCards}
+              onMergeDuplicateBuildings={onMergeDuplicateBuildings}
+              onAddUnit={onAddUnit}
+              onDeleteUnit={onDeleteUnit}
+              onMoveBuildingToCard={onMoveBuildingToCard}
+              onReassignBuildingsToCards={onReassignBuildingsToCards}
+              onUpdateBuilding={onUpdateBuilding}
+              onToggleChinese={onToggleChinese}
+              onToggleRegularVisit={onToggleRegularVisit}
+              onSetRegularVisitor={onSetRegularVisitor}
+              onUpdateUnitFlags={onUpdateUnitFlags}
+              onUpdateUnitStatus={onUpdateUnitStatus}
+              onOpenCardMap={openCardOnMap}
+              onOpenBuildingMap={openBuildingOnMap}
+              visitHistories={visitHistories}
+              onCreateBuilding={onCreateBuilding}
+            />
+          ) : (
+            <DesktopMyService
+              buildings={buildings}
+              calendarEvents={calendarEvents}
+              cards={cards}
+              currentVisitor={currentVisitor}
+              role={viewMode}
+              serviceSessions={serviceSessions}
+              returnVisits={returnVisits}
+              returnVisitLogs={returnVisitLogs}
+              onOpenMap={openCardOnMap}
+              onStartServiceSession={(input) => startServiceSessionAndOpenMap({ ...input, role: viewMode })}
+              onEndServiceSession={onEndServiceSession}
+              onAddReturnVisitLog={onAddReturnVisitLog}
+            />
+          )
         } />
 
         {/* /zone → 구역 관리 (인도자·관리자용, 목록↔지도 토글) */}

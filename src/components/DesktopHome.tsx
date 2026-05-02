@@ -77,7 +77,7 @@ function todayStr() {
 
 function formatHeader() {
   const d = new Date()
-  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAY_KO[d.getDay()]})`
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일(${WEEKDAY_KO[d.getDay()]})`
 }
 
 function getTimeSlotFromTime(time: string): TimeSlot {
@@ -308,12 +308,15 @@ export function DesktopHome({
 
     return (
       <div className="home-layout leader-home-layout">
-        <div className="home-date-header leader-date-header">
-          <span>{formatHeader()}</span>
+        <div className="home-page-head service-home-head">
+          <div>
+            <p className="home-page-eyebrow">인도자 홈</p>
+            <h1 className="home-page-title">{formatHeader()}</h1>
+          </div>
+          {specialPeriods && specialPeriods.length > 0 && (
+            <SpecialPeriodBanner specialPeriods={specialPeriods} variant="inline" onClick={onOpenSettings} />
+          )}
         </div>
-        {specialPeriods && (
-          <SpecialPeriodBanner specialPeriods={specialPeriods} variant="card" onClick={onOpenSettings} />
-        )}
 
         <div className="leader-home-grid">
           <HomeTodayEvents
@@ -400,7 +403,7 @@ export function DesktopHome({
   }
 
   return (
-    <div className="home-layout">
+    <div className={`home-layout${role === 'user' ? ' service-home-layout' : ''}`}>
       {pendingStartInput && (
         <SessionSwitchModal
           currentCardName={cards.find((card) => card.id === activeMySession?.primaryCardId)?.name ?? '현재 카드'}
@@ -412,8 +415,16 @@ export function DesktopHome({
         />
       )}
 
-      {role !== 'admin' && specialPeriods && (
-        <SpecialPeriodBanner specialPeriods={specialPeriods} variant="card" onClick={onOpenSettings} />
+      {role === 'user' && (
+        <div className="home-page-head service-home-head">
+          <div>
+            <p className="home-page-eyebrow">봉사자 홈</p>
+            <h1 className="home-page-title">{formatHeader()}</h1>
+          </div>
+          {specialPeriods && specialPeriods.length > 0 && (
+            <SpecialPeriodBanner specialPeriods={specialPeriods} variant="inline" onClick={onOpenSettings} />
+          )}
+        </div>
       )}
 
       {role !== 'admin' && showServiceStart && (

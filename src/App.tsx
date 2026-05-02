@@ -269,6 +269,9 @@ function App() {
             onDeleteNotice={deleteNotice}
             onDeleteUnit={deleteUnitFromBuilding}
             allUsers={allUsers}
+            returnVisits={returnVisits}
+            returnVisitLogs={returnVisitLogs}
+            onAddReturnVisitLog={addReturnVisitLog}
             onRemoveParticipantFromEvent={removeParticipantFromEvent}
             onAddParticipantToEvent={addParticipantToEvent}
             onToggleRegularVisit={toggleRegularVisit}
