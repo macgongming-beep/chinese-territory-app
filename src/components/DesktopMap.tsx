@@ -130,6 +130,7 @@ export function DesktopMap({
   const [historyEditor, setHistoryEditor] = useState<HistoryEditor | null>(null)
   const [statusFilter, setStatusFilter] = useState<BuildingStatus | '전체'>('전체')
   const [chineseOnlyFilter, setChineseOnlyFilter] = useState(false)
+  const [chineseHeavyFilter, setChineseHeavyFilter] = useState(false)
   const [visitResultFilter, setVisitResultFilter] = useState<VisitResultFilter>('전체')
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(buildings[1]?.id ?? buildings[0]?.id ?? null)
   const [newBuildingCardId, setNewBuildingCardId] = useState(cards[0]?.id ?? 1)
@@ -520,7 +521,9 @@ export function DesktopMap({
     [filteredBuildings]
   )
 
-  const panelBuildings = filteredBuildings
+  const panelBuildings = chineseHeavyFilter
+    ? filteredBuildings.filter((b) => b.isChineseHeavy)
+    : filteredBuildings
   const mapBuildings = useMemo(
     () => contextBuildings.filter((building) => !hiddenMapStatuses.has(getBuildingStatus(building))),
     [contextBuildings, hiddenMapStatuses],
@@ -1159,9 +1162,23 @@ export function DesktopMap({
         <div className="map-detail-head">
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gray-900)' }}>
-                건물 목록 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{panelBuildings.length}</span>
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gray-900)' }}>
+                  건물 목록 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{panelBuildings.length}</span>
+                </span>
+                <button
+                  onClick={() => setChineseHeavyFilter((v) => !v)}
+                  style={{
+                    fontSize: 11, fontWeight: 700, padding: '2px 7px',
+                    borderRadius: 4, border: '1px solid',
+                    borderColor: chineseHeavyFilter ? '#fca5a5' : '#e2e8f0',
+                    background: chineseHeavyFilter ? '#fef2f2' : '#f8fafc',
+                    color: chineseHeavyFilter ? '#dc2626' : '#94a3b8',
+                    cursor: 'pointer', transition: 'all .15s',
+                  }}
+                  type="button"
+                >중국인 다수</button>
+              </div>
               <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--success-600)', fontVariantNumeric: 'tabular-nums' }}>{panelCompletionRate}%</span>
             </div>
             <div style={{ height: 4, background: 'var(--gray-100)', borderRadius: 'var(--radius-full)', overflow: 'hidden', margin: '6px 0' }}>
@@ -1236,7 +1253,6 @@ export function DesktopMap({
                         <i className={`map-dot status-${buildingStatus}`} />
                         <small>{handledUnits}/{building.units.length} · {completion}%</small>
                         {regularUnitCount > 0 && <b className="bld-regular-badge">정{regularUnitCount}</b>}
-                        {building.isChineseHeavy && <b className="bld-chinese-heavy-badge">中多</b>}
                       </div>
                     </button>
                     <button
@@ -1250,7 +1266,7 @@ export function DesktopMap({
                       }}
                       title="건물 정보 수정"
                       type="button"
-                    >✏️</button>
+                    >수정</button>
                   </div>
                 ) : (
                   <div className="building-edit-mode">
@@ -1261,6 +1277,15 @@ export function DesktopMap({
                         <option value="주택">주택</option>
                         <option value="상가">상가</option>
                       </select>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: building.isChineseHeavy ? '#dc2626' : '#94a3b8', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <input
+                          type="checkbox"
+                          checked={!!building.isChineseHeavy}
+                          onChange={() => onUpdateBuilding(building.id, building.name, building.address, undefined, undefined, undefined, undefined, !building.isChineseHeavy)}
+                          style={{ accentColor: '#dc2626', width: 13, height: 13 }}
+                        />
+                        중국인 다수
+                      </label>
                     </div>
                     <div className="edit-action-group">
                       <button className="edit-save-btn" onClick={() => { onUpdateBuilding(building.id, editName.trim(), editAddress.trim(), undefined, undefined, editType); setEditingBuildingId(null) }}>저장</button>
@@ -1276,13 +1301,6 @@ export function DesktopMap({
                       <span>{building.type}</span>
                       <span className="bld-meta-sep">·</span>
                       <span>{getCardName(cards, building.cardId)}</span>
-                      <span className="bld-meta-sep">·</span>
-                      <button
-                        className={`bld-chinese-heavy-toggle${building.isChineseHeavy ? ' active' : ''}`}
-                        onClick={() => onUpdateBuilding(building.id, building.name, building.address, undefined, undefined, undefined, undefined, !building.isChineseHeavy)}
-                        title="중국인 밀집 건물 여부"
-                        type="button"
-                      >中多{building.isChineseHeavy ? ' ✓' : ''}</button>
                     </div>
 
                     <div className={`unit-col-header${getActivePeriodForDate(getLocalDateString()) ? ' with-invitation' : ''}`}>
