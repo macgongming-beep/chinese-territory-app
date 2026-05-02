@@ -91,7 +91,7 @@ export function DesktopMap({
     lng: number
   }) => void
   onDeleteBuilding: (buildingId: number) => void
-  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type']) => void
+  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => void
   onDeleteCardBoundary: (cardId: number) => void
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onSaveCardBoundary: (cardId: number, points: GeoPoint[]) => Promise<void> | void
@@ -1236,6 +1236,7 @@ export function DesktopMap({
                         <i className={`map-dot status-${buildingStatus}`} />
                         <small>{handledUnits}/{building.units.length} · {completion}%</small>
                         {regularUnitCount > 0 && <b className="bld-regular-badge">정{regularUnitCount}</b>}
+                        {building.isChineseHeavy && <b className="bld-chinese-heavy-badge">中多</b>}
                       </div>
                     </button>
                     <button
@@ -1275,6 +1276,13 @@ export function DesktopMap({
                       <span>{building.type}</span>
                       <span className="bld-meta-sep">·</span>
                       <span>{getCardName(cards, building.cardId)}</span>
+                      <span className="bld-meta-sep">·</span>
+                      <button
+                        className={`bld-chinese-heavy-toggle${building.isChineseHeavy ? ' active' : ''}`}
+                        onClick={() => onUpdateBuilding(building.id, building.name, building.address, undefined, undefined, undefined, undefined, !building.isChineseHeavy)}
+                        title="중국인 밀집 건물 여부"
+                        type="button"
+                      >中多{building.isChineseHeavy ? ' ✓' : ''}</button>
                     </div>
 
                     <div className={`unit-col-header${getActivePeriodForDate(getLocalDateString()) ? ' with-invitation' : ''}`}>

@@ -89,6 +89,7 @@ export type Building = {
   lng: number
   warning?: boolean
   memo?: string
+  isChineseHeavy?: boolean
   units: Unit[]
 }
 

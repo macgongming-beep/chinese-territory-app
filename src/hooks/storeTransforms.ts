@@ -52,6 +52,7 @@ export type RawBuilding = {
   lng: number
   warning: boolean
   memo: string | null
+  is_chinese_heavy: boolean | null
   units: RawUnit[]
 }
 
@@ -169,6 +170,7 @@ export function toBuilding(raw: RawBuilding): Building {
     lng: Number(raw.lng),
     warning: raw.warning,
     memo: raw.memo ?? undefined,
+    isChineseHeavy: raw.is_chinese_heavy ?? false,
     units: [...raw.units]
       .sort((a, b) => unitNumberCollator.compare(a.number, b.number))
       .map((u) => ({
