@@ -1266,7 +1266,7 @@ export function DesktopMap({
                       }}
                       title="건물 정보 수정"
                       type="button"
-                    >···</button>
+                    >⋮</button>
                   </div>
                 ) : (
                   <div className="building-edit-mode">
