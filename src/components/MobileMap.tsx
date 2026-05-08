@@ -11,6 +11,7 @@ import { UnitSlotGrid } from './UnitSlotGrid'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
+type BuildingTypeFilter = '전체' | Building['type']
 
 function getLocalDateString() {
   const date = new Date()
@@ -28,6 +29,8 @@ export function MobileMap({
   actualRole,
   serviceSessions,
   focusedCardId,
+  focusedCardIds = [],
+  focusedScopeLabel,
   onBack,
   onAddUnit,
   onCreateBuilding,
@@ -53,6 +56,8 @@ export function MobileMap({
   actualRole: Role
   serviceSessions: ServiceSession[]
   focusedCardId?: number | null
+  focusedCardIds?: number[]
+  focusedScopeLabel?: string
   onBack: () => void
   onAddUnit: (buildingId: number, unitNumber: string) => void
   onCreateBuilding: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => void
@@ -103,7 +108,7 @@ export function MobileMap({
 
   // 내비게이션 상태 머신
   const [navLevel, setNavLevel] = useState<NavLevel>(
-    addrParam != null || focusedCardId != null || actualRole === 'user' ? 'map' : 'area'
+    addrParam != null || focusedCardId != null || focusedCardIds.length > 0 || actualRole === 'user' ? 'map' : 'area'
   )
   const [selectedArea, setSelectedArea] = useState<string | null>(null)
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
@@ -116,6 +121,7 @@ export function MobileMap({
   // 필터
   const [strategyFilter] = useState<StrategyFilter>('전체')
   const [statusFilter] = useState<BuildingStatus | '전체'>('전체')
+  const [buildingTypeFilter, setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
 
   // 지도/패널 상태
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null)
@@ -272,7 +278,7 @@ export function MobileMap({
   }, [activeServiceSession?.primaryCardId, focusedCardId, isUserMap])
 
   // focusedCardId로 직접 진입했는지 여부 (뒤로가기 시 외부 네비게이션으로 돌아가기 위함)
-  const enteredDirectly = focusedCardId != null
+  const enteredDirectly = focusedCardId != null || focusedCardIds.length > 0
 
   // 뒤로가기 로직
   function handleBack() {
@@ -313,13 +319,19 @@ export function MobileMap({
     [cards, selectedArea, selectedRegion]
   )
 
+  const focusedCardIdSet = useMemo(
+    () => new Set(focusedCardIds.filter((id) => Number.isFinite(id))),
+    [focusedCardIds],
+  )
+
   const scopedCards = useMemo(() =>
     cards.filter((card) => {
+      if (focusedCardIdSet.size > 0 && selectedCardId == null && !selectedArea && !selectedRegion && !focusedCardIdSet.has(card.id)) return false
       if (selectedArea && card.region !== selectedArea) return false
       if (selectedRegion && card.area !== selectedRegion) return false
       return true
     }),
-    [cards, selectedArea, selectedRegion]
+    [cards, focusedCardIdSet, selectedArea, selectedCardId, selectedRegion]
   )
 
   const scopedCardIds = useMemo(
@@ -328,6 +340,18 @@ export function MobileMap({
   )
 
   const cardMap = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards])
+  const cardBuildingTypeCounts = useMemo(() => {
+    const map = new Map<number, { total: number; house: number; shop: number }>()
+    cards.forEach((card) => map.set(card.id, { total: 0, house: 0, shop: 0 }))
+    buildings.forEach((building) => {
+      const current = map.get(building.cardId) ?? { total: 0, house: 0, shop: 0 }
+      current.total += 1
+      if (building.type === '주택') current.house += 1
+      if (building.type === '상가') current.shop += 1
+      map.set(building.cardId, current)
+    })
+    return map
+  }, [buildings, cards])
 
   const unitMatchesStrategyFilter = (unit: Building['units'][number]) => {
     if (strategyFilter === '전체') return true
@@ -337,15 +361,29 @@ export function MobileMap({
     return true
   }
 
-  const filteredBuildings = useMemo(() =>
+  const baseFilteredBuildings = useMemo(() =>
     buildings.filter((b) => {
       if (selectedCardId != null && b.cardId !== selectedCardId) return false
+      if (selectedCardId == null && focusedCardIdSet.size > 0 && !selectedArea && !selectedRegion && !focusedCardIdSet.has(b.cardId)) return false
       if (selectedCardId == null && (selectedArea || selectedRegion) && !scopedCardIds.has(b.cardId)) return false
       if (statusFilter !== '전체' && getBuildingStatus(b) !== statusFilter) return false
       if (b.units.length > 0 && !b.units.some(unitMatchesStrategyFilter)) return false
       return true
     }),
-    [buildings, selectedCardId, selectedArea, selectedRegion, scopedCardIds, statusFilter, strategyFilter, visitHistories]
+    [buildings, selectedCardId, focusedCardIdSet, selectedArea, selectedRegion, scopedCardIds, statusFilter, strategyFilter, visitHistories]
+  )
+
+  const typeCounts = useMemo(() => ({
+    전체: baseFilteredBuildings.length,
+    주택: baseFilteredBuildings.filter((building) => building.type === '주택').length,
+    상가: baseFilteredBuildings.filter((building) => building.type === '상가').length,
+  }), [baseFilteredBuildings])
+
+  const filteredBuildings = useMemo(() =>
+    buildingTypeFilter === '전체'
+      ? baseFilteredBuildings
+      : baseFilteredBuildings.filter((building) => building.type === buildingTypeFilter),
+    [baseFilteredBuildings, buildingTypeFilter]
   )
 
   const statusCounts = useMemo(() =>
@@ -370,6 +408,14 @@ export function MobileMap({
   const unitTotal = useMemo(() => filteredBuildings.reduce((t, b) => t + b.units.length, 0), [filteredBuildings])
   const visitedTotal = useMemo(() => filteredBuildings.reduce((t, b) => t + b.units.filter(u => u.status !== '미방문').length, 0), [filteredBuildings])
   const completionRate = unitTotal === 0 ? 0 : Math.round((visitedTotal / unitTotal) * 100)
+
+  useEffect(() => {
+    if (selectedBuildingId == null) return
+    if (filteredBuildings.some((building) => building.id === selectedBuildingId)) return
+    setSelectedBuildingId(null)
+    setExpandedBuildingIds(new Set())
+    setExpandedUnitId(null)
+  }, [filteredBuildings, selectedBuildingId])
 
   const toggleStatusGroup = (status: BuildingStatus) => {
     setCollapsedStatusGroups((prev) => {
@@ -404,10 +450,12 @@ export function MobileMap({
   const mapBoundaries = useMemo(() =>
     selectedCardId != null
       ? cardBoundaries.filter(cb => cb.cardId === selectedCardId)
+      : focusedCardIdSet.size > 0 && !selectedArea && !selectedRegion
+        ? cardBoundaries.filter(cb => focusedCardIdSet.has(cb.cardId))
       : (selectedArea || selectedRegion)
         ? cardBoundaries.filter(cb => scopedCardIds.has(cb.cardId))
         : cardBoundaries,
-    [selectedCardId, selectedArea, selectedRegion, cardBoundaries, scopedCardIds])
+    [selectedCardId, focusedCardIdSet, selectedArea, selectedRegion, cardBoundaries, scopedCardIds])
 
   const drillBreadcrumb = navLevel === 'region'
     ? selectedArea
@@ -421,6 +469,8 @@ export function MobileMap({
           : ''
   const mapScopeTitle = selectedCardId
     ? selectedCard?.name ?? t(language, 'map.selectedCard')
+    : focusedCardIdSet.size > 0 && focusedScopeLabel
+      ? focusedScopeLabel
     : selectedRegion
       ? `${selectedRegion} 전체`
       : selectedArea
@@ -560,6 +610,25 @@ export function MobileMap({
                 {navLevel !== 'map' && drillTitle}
                 {navLevel === 'map' && (isUserMap ? mapHeaderTitle : mapScopeTitle)}
               </h1>
+              {navLevel === 'map' && (
+                <div className="mobile-map-type-segment" aria-label="건물 유형 보기">
+                  {([
+                    { value: '전체', label: '전체', count: typeCounts.전체 },
+                    { value: '주택', label: '주택', count: typeCounts.주택 },
+                    { value: '상가', label: '상가', count: typeCounts.상가 },
+                  ] as Array<{ value: BuildingTypeFilter; label: string; count: number }>).map((item) => (
+                    <button
+                      className={buildingTypeFilter === item.value ? 'active' : ''}
+                      key={item.value}
+                      onClick={() => setBuildingTypeFilter(item.value)}
+                      type="button"
+                    >
+                      <span>{item.label}</span>
+                      <strong className="tnum">{item.count}</strong>
+                    </button>
+                  ))}
+                </div>
+              )}
               {navLevel === 'map' && isUserMap && <span>{mapHeaderSubtitle}</span>}
             </div>
             {showScopeAllButton && (
@@ -659,22 +728,25 @@ export function MobileMap({
       {/* Level 3: 카드 선택 */}
       {navLevel === 'card' && (
         <div className="mm-drill-list">
-          {regionCards.map(card => (
-            <button
-              key={card.id}
-              className="mm-drill-item"
-              onClick={() => { setSelectedCardId(card.id); setNavLevel('map') }}
-              type="button"
-            >
-              <div className="mm-drill-item-body">
-                <div className="mm-drill-item-title">{card.name}</div>
-                <div className="mm-drill-item-sub">
-                  {t(language, 'zone.householdCount')} {card.units}{t(language, 'calendar.countSuffix')} · {t(language, 'zone.summaryDone')} {card.progress}% · {card.status}
+          {regionCards.map(card => {
+            const counts = cardBuildingTypeCounts.get(card.id) ?? { total: card.buildings, house: 0, shop: 0 }
+            return (
+              <button
+                key={card.id}
+                className="mm-drill-item"
+                onClick={() => { setSelectedCardId(card.id); setNavLevel('map') }}
+                type="button"
+              >
+                <div className="mm-drill-item-body">
+                  <div className="mm-drill-item-title">{card.name}</div>
+                  <div className="mm-drill-item-sub">
+                    전체 {counts.total} · 주택 {counts.house} · 상가 {counts.shop}
+                  </div>
                 </div>
-              </div>
-              <span className="mm-drill-chevron">›</span>
-            </button>
-          ))}
+                <span className="mm-drill-chevron">›</span>
+              </button>
+            )
+          })}
         </div>
       )}
 

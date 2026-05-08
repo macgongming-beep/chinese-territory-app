@@ -159,6 +159,19 @@ export function MobileTerritory({
     return status
   }
 
+  const cardBuildingTypeCounts = useMemo(() => {
+    const map = new Map<number, { total: number; house: number; shop: number }>()
+    cards.forEach((card) => map.set(card.id, { total: 0, house: 0, shop: 0 }))
+    buildings.forEach((building) => {
+      const current = map.get(building.cardId) ?? { total: 0, house: 0, shop: 0 }
+      current.total += 1
+      if (building.type === '주택') current.house += 1
+      if (building.type === '상가') current.shop += 1
+      map.set(building.cardId, current)
+    })
+    return map
+  }, [buildings, cards])
+
   const today = useMemo(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -1070,12 +1083,13 @@ export function MobileTerritory({
             const isActiveSession = activeSessionCardIds.has(card.id)
             const statusLabel = isActiveSession ? t(language, 'map.servicing') : cardStatusLabel(card.status)
             const statusClass = isActiveSession ? '진행중' : card.status
+            const counts = cardBuildingTypeCounts.get(card.id) ?? { total: card.buildings, house: 0, shop: 0 }
             return (
               <div className="mobile-territory-card" key={card.id}>
                 <div className="mobile-territory-info">
                   <h3 className="mobile-territory-name">{card.name}</h3>
                   <p className="mobile-territory-sub">
-                    {card.area} · {t(language, 'zone.householdCount')} {card.units} · {t(language, 'territory.users')} {card.assignedUsers.length}{t(language, 'calendar.personCount')}
+                    {card.area} · 전체 {counts.total} · 주택 {counts.house} · 상가 {counts.shop}
                   </p>
                   <div className="mobile-territory-progress">
                     <div className="mobile-territory-bar">

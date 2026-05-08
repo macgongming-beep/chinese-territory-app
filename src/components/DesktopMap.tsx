@@ -132,7 +132,6 @@ export function DesktopMap({
   const [historyEditor, setHistoryEditor] = useState<HistoryEditor | null>(null)
   const [statusFilter, setStatusFilter] = useState<BuildingStatus | '전체'>('전체')
   const [chineseOnlyFilter, setChineseOnlyFilter] = useState(false)
-  const [chineseHeavyFilter, setChineseHeavyFilter] = useState(false)
   const [visitResultFilter, setVisitResultFilter] = useState<VisitResultFilter>('전체')
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(buildings[1]?.id ?? buildings[0]?.id ?? null)
   const [newBuildingCardId, setNewBuildingCardId] = useState(cards[0]?.id ?? 1)
@@ -525,9 +524,7 @@ export function DesktopMap({
     [filteredBuildings]
   )
 
-  const panelBuildings = chineseHeavyFilter
-    ? filteredBuildings.filter((b) => b.isChineseHeavy)
-    : filteredBuildings
+  const panelBuildings = filteredBuildings
   const mapBuildings = useMemo(
     () => contextBuildings.filter((building) => !hiddenMapStatuses.has(getBuildingStatus(building))),
     [contextBuildings, hiddenMapStatuses],
@@ -1187,18 +1184,6 @@ export function DesktopMap({
                 <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gray-900)' }}>
                   건물 목록 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{panelBuildings.length}</span>
                 </span>
-                <button
-                  onClick={() => setChineseHeavyFilter((v) => !v)}
-                  style={{
-                    fontSize: 11, fontWeight: 700, padding: '2px 7px',
-                    borderRadius: 4, border: '1px solid',
-                    borderColor: chineseHeavyFilter ? '#fca5a5' : '#e2e8f0',
-                    background: chineseHeavyFilter ? '#fef2f2' : '#f8fafc',
-                    color: chineseHeavyFilter ? '#dc2626' : '#94a3b8',
-                    cursor: 'pointer', transition: 'all .15s',
-                  }}
-                  type="button"
-                >중국인 다수</button>
               </div>
               <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--success-600)', fontVariantNumeric: 'tabular-nums' }}>{panelCompletionRate}%</span>
             </div>
@@ -1298,15 +1283,6 @@ export function DesktopMap({
                         <option value="주택">주택</option>
                         <option value="상가">상가</option>
                       </select>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: building.isChineseHeavy ? '#dc2626' : '#94a3b8', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        <input
-                          type="checkbox"
-                          checked={!!building.isChineseHeavy}
-                          onChange={() => onUpdateBuilding(building.id, building.name, building.address, undefined, undefined, undefined, undefined, !building.isChineseHeavy)}
-                          style={{ accentColor: '#dc2626', width: 13, height: 13 }}
-                        />
-                        중국인 다수
-                      </label>
                     </div>
                     <div className="edit-action-group">
                       <button className="edit-save-btn" onClick={() => { onUpdateBuilding(building.id, editName.trim(), editAddress.trim(), undefined, undefined, editType); setEditingBuildingId(null) }}>저장</button>

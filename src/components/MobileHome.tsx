@@ -191,20 +191,6 @@ function getCardStatus(card: TerritoryCard): '방문필요' | '진행중' | '완
   return '방문필요'
 }
 
-/** 방문일 → 간략 표시: 오늘/어제/N일 전/M/D */
-function formatLastVisit(dateStr: string | undefined): string {
-  if (!dateStr) return '-'
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const d = new Date(dateStr.slice(0, 10))
-  d.setHours(0, 0, 0, 0)
-  const diffDays = Math.round((today.getTime() - d.getTime()) / 86400000)
-  if (diffDays === 0) return '오늘'
-  if (diffDays === 1) return '어제'
-  if (diffDays < 30) return `${diffDays}일 전`
-  return `${d.getMonth() + 1}/${d.getDate()}`
-}
-
 /** 카드명에서 구(region) 접두사 제거: "처인구 고림동 1" → "고림동 1" */
 function stripRegionFromName(name: string, region: string): string {
   if (region && name.startsWith(region)) return name.slice(region.length).trimStart()
@@ -232,17 +218,17 @@ function MobileZoneView({
   language,
   cards,
   buildings = [],
-  visitHistories = [],
   currentVisitor,
   onOpenMap,
+  onOpenAssignedMap,
   onShowMapView,
 }: {
   language: AppLanguage
   cards: TerritoryCard[]
   buildings?: Building[]
-  visitHistories?: VisitHistory[]
   currentVisitor: string
   onOpenMap: (cardId: number) => void
+  onOpenAssignedMap: (cardIds: number[]) => void
   onShowMapView: () => void
 }) {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -299,21 +285,6 @@ function MobileZoneView({
     [cards, currentVisitor]
   )
 
-  const lastVisitByCardId = useMemo(() => {
-    const unitCardMap = new Map<number, number>()
-    for (const b of buildings) {
-      for (const u of b.units) unitCardMap.set(u.id, b.cardId)
-    }
-    const result = new Map<number, string>()
-    for (const h of visitHistories) {
-      const cardId = unitCardMap.get(h.unitId)
-      if (cardId == null) continue
-      const cur = result.get(cardId)
-      if (!cur || h.visitedAt > cur) result.set(cardId, h.visitedAt)
-    }
-    return result
-  }, [buildings, visitHistories])
-
   const mineRegionGroups = useMemo(() => {
     const map = new Map<string, TerritoryCard[]>()
     for (const card of mineCards) {
@@ -337,6 +308,19 @@ function MobileZoneView({
   const mineNeedCount = mineCards.filter((c) => getCardStatus(c) === '방문필요').length
   const mineInProgressCount = mineCards.filter((c) => getCardStatus(c) === '진행중').length
   const mineDoneCount = mineCards.filter((c) => getCardStatus(c) === '완료').length
+
+  const cardBuildingTypeCounts = useMemo(() => {
+    const map = new Map<number, { total: number; house: number; shop: number }>()
+    cards.forEach((card) => map.set(card.id, { total: 0, house: 0, shop: 0 }))
+    buildings.forEach((building) => {
+      const current = map.get(building.cardId) ?? { total: 0, house: 0, shop: 0 }
+      current.total += 1
+      if (building.type === '주택') current.house += 1
+      if (building.type === '상가') current.shop += 1
+      map.set(building.cardId, current)
+    })
+    return map
+  }, [buildings, cards])
 
   const toggleRegion = (region: string) =>
     setCollapsedRegions((prev) => {
@@ -465,11 +449,18 @@ function MobileZoneView({
       {scope === 'mine' && (
         <>
           <div className="mz-kpi-bar" aria-label="구역 요약">
-            <span className="mz-kpi-need"><strong>{mineNeedCount}</strong>{t(language, 'calendar.countSuffix')} {t(language, 'zone.summaryNeed')}</span>
-            <span className="mz-kpi-sep">·</span>
-            <span className="mz-kpi-progress"><strong>{mineInProgressCount}</strong>{t(language, 'calendar.countSuffix')} {t(language, 'zone.summaryProgress')}</span>
-            <span className="mz-kpi-sep">·</span>
-            <span className="mz-kpi-done"><strong>{mineDoneCount}</strong>{t(language, 'calendar.countSuffix')} {t(language, 'zone.summaryDone')}</span>
+            <div className="mz-kpi-text">
+              <span className="mz-kpi-need"><strong>{mineNeedCount}</strong>{t(language, 'calendar.countSuffix')} {t(language, 'zone.summaryNeed')}</span>
+              <span className="mz-kpi-sep">·</span>
+              <span className="mz-kpi-progress"><strong>{mineInProgressCount}</strong>{t(language, 'calendar.countSuffix')} {t(language, 'zone.summaryProgress')}</span>
+              <span className="mz-kpi-sep">·</span>
+              <span className="mz-kpi-done"><strong>{mineDoneCount}</strong>{t(language, 'calendar.countSuffix')} {t(language, 'zone.summaryDone')}</span>
+            </div>
+            {mineCards.length > 0 && (
+              <button className="mz-assigned-map-btn" onClick={() => onOpenAssignedMap(mineCards.map((card) => card.id))} type="button">
+                담당 지도
+              </button>
+            )}
           </div>
 
           {mineCards.length === 0 ? (
@@ -512,7 +503,7 @@ function MobileZoneView({
                               </button>
                               {isExpanded && list.map((card) => {
                                 const displayName = stripRegionFromName(card.name, region)
-                                const lastVisit = formatLastVisit(lastVisitByCardId.get(card.id))
+                                const counts = cardBuildingTypeCounts.get(card.id) ?? { total: card.buildings, house: 0, shop: 0 }
                                 return (
                                   <button
                                     key={card.id}
@@ -531,7 +522,7 @@ function MobileZoneView({
                                       </span>
                                     </div>
                                     <div className="mobile-zone-card-line2">
-                                      <span className="mobile-zone-card-meta">{t(language, 'zone.householdCount')} {card.units} · {lastVisit}</span>
+                                      <span className="mobile-zone-card-meta">전체 {counts.total} · 주택 {counts.house} · 상가 {counts.shop}</span>
                                       <div className="mobile-zone-card-progress">
                                         <div className="mobile-zone-card-bar">
                                           <b style={{ width: `${card.progress}%` }} />
@@ -889,6 +880,15 @@ export function MobileHome({
   const myVisibleCards = role === 'leader' ? leaderCards : myCards
 
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
+  const focusedMapCardIds = useMemo(() => {
+    const raw = searchParams.get('cardIds')
+    if (!raw) return []
+    return raw
+      .split(',')
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value))
+  }, [searchParams])
+  const focusedMapScopeLabel = searchParams.get('scope') === 'mine' ? t(language, 'zone.myTerritories') : undefined
   const modeTitle = role === 'admin' ? t(language, 'home.adminHome') : role === 'leader' ? t(language, 'home.leaderHome') : t(language, 'home.userHome')
   const roleLabel = role === 'admin' ? t(language, 'role.admin') : role === 'leader' ? t(language, 'role.leader') : t(language, 'role.user')
   const pendingSignupCount = useMemo(
@@ -947,6 +947,8 @@ export function MobileHome({
             actualRole={role}
             serviceSessions={serviceSessions}
             focusedCardId={focusedMapCardId}
+            focusedCardIds={focusedMapCardIds}
+            focusedScopeLabel={focusedMapScopeLabel}
             onBack={() => navigate(role === 'user' ? '/territory' : '/zone')}
             onAddUnit={onAddUnit}
             onCreateBuilding={onCreateBuilding}
@@ -1229,9 +1231,9 @@ export function MobileHome({
                 language={language}
                 cards={cards}
                 buildings={buildings}
-                visitHistories={visitHistories}
                 currentVisitor={currentVisitor}
                 onOpenMap={(cardId) => navigate(`/map?cardId=${cardId}`)}
+                onOpenAssignedMap={(cardIds) => navigate(`/map?cardIds=${cardIds.join(',')}&scope=mine`)}
                 onShowMapView={() => navigate('/map')}
               />
             } />

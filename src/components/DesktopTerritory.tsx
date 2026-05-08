@@ -57,7 +57,7 @@ export function DesktopTerritory({
   onImportBuildings: (inputs: CsvBuildingImport[]) => Promise<{ inserted: number; skipped: number }>
   onMoveBuildingToCard: (buildingId: number, cardId: number) => void
   onReassignBuildingsToCards: (updates: Array<{ buildingId: number; cardId: number }>) => Promise<{ updated: number; failed: number }>
-  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string) => void
+  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
@@ -91,10 +91,22 @@ export function DesktopTerritory({
   const [areaFilter, setAreaFilter] = useState('전체')
   const [areaExpanded, setAreaExpanded] = useState(false)
   const AREA_CHIP_LIMIT = 10
-  const [assignmentFilter, setAssignmentFilter] = useState<'전체' | '미배정'>('전체')
+  const [assignmentFilter, setAssignmentFilter] = useState<'전체' | '배정' | '미배정'>('전체')
+  const [leaderFilter, setLeaderFilter] = useState('전체')
+  const [regularVisitFilter, setRegularVisitFilter] = useState<'전체' | '있음' | '없음'>('전체')
+  const [cardChineseHeavyFilter, setCardChineseHeavyFilter] = useState<'전체' | '있음' | '없음'>('전체')
+  const [cardStatusFilter, setCardStatusFilter] = useState<TerritoryCard['status'] | '전체'>('전체')
+  const [cardFilterPanelOpen, setCardFilterPanelOpen] = useState(false)
+  const [buildingFilterPanelOpen, setBuildingFilterPanelOpen] = useState(false)
+  const [pointFilterPanelOpen, setPointFilterPanelOpen] = useState(false)
   const [buildingCardFilter, setBuildingCardFilter] = useState<number | '전체'>('전체')
   const [buildingTypeFilter, setBuildingTypeFilter] = useState<Building['type'] | '전체'>('전체')
   const [pointStatusFilter, setPointStatusFilter] = useState<UnitStatus | '전체'>('전체')
+  const [buildingRegularFilter, setBuildingRegularFilter] = useState<'전체' | '있음' | '없음'>('전체')
+  const [buildingMemoFilter, setBuildingMemoFilter] = useState<'전체' | '있음' | '없음'>('전체')
+  const [buildingChineseHeavyFilter, setBuildingChineseHeavyFilter] = useState<'전체' | '있음' | '없음'>('전체')
+  const [pointRegularFilter, setPointRegularFilter] = useState<'전체' | '있음' | '없음'>('전체')
+  const [pointMemoFilter, setPointMemoFilter] = useState<'전체' | '있음' | '없음'>('전체')
   type BuildingSortKey = '카드' | '건물' | '주소' | '유형'
   const [buildingSort, setBuildingSort] = useState<{ key: BuildingSortKey; dir: 'asc' | 'desc' }>({ key: '카드', dir: 'asc' })
   const [editingBuildingId, setEditingBuildingId] = useState<number | null>(null)
@@ -112,6 +124,13 @@ export function DesktopTerritory({
   const [mergeModalGroups, setMergeModalGroups] = useState<Array<{ primaryId: number; address: string; cardName: string; buildingCount: number; unitCount: number; names: string[] }> | null>(null)
   const [mergeNameChoices, setMergeNameChoices] = useState<Record<number, string>>({})
   const [mergeSelectedPrimaryIds, setMergeSelectedPrimaryIds] = useState<Set<number>>(new Set())
+  const [pendingChineseToggle, setPendingChineseToggle] = useState<{
+    buildingId: number
+    unitId: number
+    cardName: string
+    buildingName: string
+    unitNumber: string
+  } | null>(null)
   // 건물 추가 모달
   const [addBuildingOpen, setAddBuildingOpen] = useState(false)
   const [addBuildingForm, setAddBuildingForm] = useState<{ name: string; address: string; type: Building['type']; cardId: number | 'auto' }>({ name: '', address: '', type: '주택', cardId: 'auto' })
@@ -175,12 +194,49 @@ export function DesktopTerritory({
         ? [card.assignedLeader]
         : []
 
+  const cardHasRegularVisit = (card: TerritoryCard) =>
+    card.regularVisits > 0 ||
+    card.regularVisitPoints.length > 0 ||
+    buildings.some((building) =>
+      building.cardId === card.id &&
+      building.units.some((unit) => unit.isRegularVisit),
+    )
+  const cardChineseHeavyCount = (cardId: number) =>
+    buildings.filter((building) => building.cardId === cardId && building.isChineseHeavy).length
+
+  const leaderFilterOptions = Array.from(
+    new Set(cards.flatMap((card) => getCardLeaderList(card))),
+  ).sort((a, b) => a.localeCompare(b, 'ko'))
+
   const filteredCards = cards.filter((card) => {
     if (regionFilter !== '전체' && card.region !== regionFilter) return false
     if (areaFilter !== '전체' && card.area !== areaFilter) return false
-    if (assignmentFilter === '미배정' && getCardLeaderList(card).length > 0) return false
+    const leaders = getCardLeaderList(card)
+    if (assignmentFilter === '배정' && leaders.length === 0) return false
+    if (assignmentFilter === '미배정' && leaders.length > 0) return false
+    if (leaderFilter !== '전체' && !leaders.includes(leaderFilter)) return false
+    const hasRegularVisit = cardHasRegularVisit(card)
+    if (regularVisitFilter === '있음' && !hasRegularVisit) return false
+    if (regularVisitFilter === '없음' && hasRegularVisit) return false
+    const hasChineseHeavy = cardChineseHeavyCount(card.id) > 0
+    if (cardChineseHeavyFilter === '있음' && !hasChineseHeavy) return false
+    if (cardChineseHeavyFilter === '없음' && hasChineseHeavy) return false
+    if (cardStatusFilter !== '전체' && card.status !== cardStatusFilter) return false
     return true
   })
+
+  const activeAdvancedCardFilterCount =
+    (leaderFilter !== '전체' ? 1 : 0) +
+    (regularVisitFilter !== '전체' ? 1 : 0) +
+    (cardChineseHeavyFilter !== '전체' ? 1 : 0) +
+    (cardStatusFilter !== '전체' ? 1 : 0)
+  const activeAdvancedBuildingFilterCount =
+    (buildingRegularFilter !== '전체' ? 1 : 0) +
+    (buildingMemoFilter !== '전체' ? 1 : 0) +
+    (buildingChineseHeavyFilter !== '전체' ? 1 : 0)
+  const activeAdvancedPointFilterCount =
+    (pointRegularFilter !== '전체' ? 1 : 0) +
+    (pointMemoFilter !== '전체' ? 1 : 0)
 
   const selectedCard =
     filteredCards.find((card) => card.id === selectedCardId) ??
@@ -255,13 +311,28 @@ export function DesktopTerritory({
   }
 
   const cardMap = new Map(cards.map((card) => [card.id, card]))
-  const filteredBuildings = buildings.filter((building) => {
+  const hasText = (value?: string | null) => Boolean(value?.trim())
+  const buildingHasRegularVisit = (building: Building) => building.units.some((unit) => unit.isRegularVisit)
+  const buildingHasMemo = (building: Building) =>
+    hasText(building.memo) || building.units.some((unit) => hasText(unit.memo))
+  const baseFilteredBuildings = buildings.filter((building) => {
     const card = cardMap.get(building.cardId)
     if (!card) return false
     if (regionFilter !== '전체' && card.region !== regionFilter) return false
     if (areaFilter !== '전체' && card.area !== areaFilter) return false
     if (buildingCardFilter !== '전체' && building.cardId !== buildingCardFilter) return false
     if (buildingTypeFilter !== '전체' && building.type !== buildingTypeFilter) return false
+    return true
+  })
+  const filteredBuildings = baseFilteredBuildings.filter((building) => {
+    const hasRegular = buildingHasRegularVisit(building)
+    if (buildingRegularFilter === '있음' && !hasRegular) return false
+    if (buildingRegularFilter === '없음' && hasRegular) return false
+    const hasMemo = buildingHasMemo(building)
+    if (buildingMemoFilter === '있음' && !hasMemo) return false
+    if (buildingMemoFilter === '없음' && hasMemo) return false
+    if (buildingChineseHeavyFilter === '있음' && !building.isChineseHeavy) return false
+    if (buildingChineseHeavyFilter === '없음' && building.isChineseHeavy) return false
     return true
   })
   // 건물 추가 — 카드 자동 매칭 (동 이름 기준)
@@ -355,14 +426,22 @@ export function DesktopTerritory({
     return Array.from(groupMap.values()).filter((g) => g.length > 1)
   })()
   const duplicateBuildingIds = new Set(duplicateAddressGroups.flatMap((g) => g.map((b) => b.id)))
-  const pointRows = filteredBuildings.flatMap((building) =>
+  const pointRows = baseFilteredBuildings.flatMap((building) =>
     building.units
       .filter((unit) => unit.isChinese || unit.isRegularVisit)
       .map((unit) => {
         const histories = visitHistories.filter((history) => history.unitId === unit.id)
         return { building, unit, latestHistory: histories[0] }
       }),
-  ).filter(({ unit }) => pointStatusFilter === '전체' || unit.status === pointStatusFilter)
+  ).filter(({ unit }) => {
+    if (pointStatusFilter !== '전체' && unit.status !== pointStatusFilter) return false
+    if (pointRegularFilter === '있음' && !unit.isRegularVisit) return false
+    if (pointRegularFilter === '없음' && unit.isRegularVisit) return false
+    const hasMemo = hasText(unit.memo)
+    if (pointMemoFilter === '있음' && !hasMemo) return false
+    if (pointMemoFilter === '없음' && hasMemo) return false
+    return true
+  })
   // const chinesePointTotal = pointRows.filter(({ unit }) => unit.isChinese).length
   // const regularPointTotal = pointRows.filter(({ unit }) => unit.isRegularVisit).length
   const startBuildingEdit = (building: Building) => {
@@ -390,6 +469,19 @@ export function DesktopTerritory({
       onMoveBuildingToCard(building.id, nextCardId)
     }
     setEditingBuildingId(null)
+  }
+
+  const toggleChineseHeavyBuilding = (building: Building) => {
+    onUpdateBuilding(
+      building.id,
+      building.name,
+      building.address,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      !building.isChineseHeavy,
+    )
   }
 
   const totalCards = cards.length
@@ -588,6 +680,73 @@ export function DesktopTerritory({
     setCsvSkippedDetails([])
   }
 
+  const exportCsvCell = (value: string | number | boolean | null | undefined) => {
+    const text = value == null ? '' : String(value)
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+  }
+
+  const downloadFilteredBuildingCsv = () => {
+    const isPointList = buildingSubTab === '중국인 포인트'
+    const headers = isPointList
+      ? ['카드명', '지역', '동', '건물명', '주소', '유형', '호수', '상태', '중국인', '정기방문', '정기방문자', '최근 방문', '메모']
+      : ['카드명', '지역', '동', '건물명', '주소', '유형', '세대', '중국인', '중국인 다수', '정기방문', '건물 메모', '세대 메모']
+    const rows = isPointList
+      ? pointRows.map(({ building, unit, latestHistory }) => {
+          const card = cardMap.get(building.cardId)
+          return [
+            card?.name ?? '',
+            card?.region ?? '',
+            card?.area ?? '',
+            building.name,
+            building.address,
+            building.type,
+            unit.number,
+            unit.status,
+            unit.isChinese ? 'Y' : '',
+            unit.isRegularVisit ? 'Y' : '',
+            unit.regularVisitor ?? '',
+            latestHistory ? `${latestHistory.visitedAt.slice(0, 10)} ${latestHistory.timeSlot} ${latestHistory.result}` : '',
+            unit.memo ?? '',
+          ]
+        })
+      : sortedBuildings.map((building) => {
+          const card = cardMap.get(building.cardId)
+          const chineseCount = building.units.filter((unit) => unit.isChinese).length
+          const regularCount = building.units.filter((unit) => unit.isRegularVisit).length
+          const unitMemos = building.units
+            .filter((unit) => hasText(unit.memo))
+            .map((unit) => `${unit.number}: ${unit.memo}`)
+            .join(' / ')
+          return [
+            card?.name ?? '',
+            card?.region ?? '',
+            card?.area ?? '',
+            building.name,
+            building.address,
+            building.type,
+            building.units.length,
+            chineseCount,
+            building.isChineseHeavy ? 'Y' : '',
+            regularCount,
+            building.memo ?? '',
+            unitMemos,
+          ]
+        })
+    const csvContent = [headers, ...rows].map((row) => row.map(exportCsvCell).join(',')).join('\n')
+    const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const suffix = new Date().toISOString().slice(0, 10)
+    link.href = url
+    link.download = isPointList ? `chinese_points_${suffix}.csv` : `buildings_${suffix}.csv`
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    showToast(`${isPointList ? pointRows.length : sortedBuildings.length}개 항목을 내보냈습니다.`, 'success')
+  }
+
   const handleReassignByBoundary = async () => {
     if (reassigningByBoundary) return
     const updates = buildings.flatMap((building) => {
@@ -715,6 +874,38 @@ export function DesktopTerritory({
                 type="button"
               >
                 구역선 그리기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingChineseToggle && (
+        <div className="cal-modal-backdrop" onClick={() => setPendingChineseToggle(null)}>
+          <div className="cal-modal territory-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cal-modal-head">
+              <div className="cal-modal-title">
+                <h2>중국인 거주 표시 해제</h2>
+                <p className="merge-name-modal-sub">해제하면 이 항목은 중국인 포인트 목록에서 사라질 수 있습니다.</p>
+              </div>
+            </div>
+            <div className="cal-modal-body">
+              <div className="territory-confirm-summary">
+                <strong>{pendingChineseToggle.cardName}</strong>
+                <span>{pendingChineseToggle.buildingName} · {pendingChineseToggle.unitNumber}</span>
+              </div>
+            </div>
+            <div className="cal-modal-foot">
+              <button className="cal-cancel-btn" onClick={() => setPendingChineseToggle(null)} type="button">취소</button>
+              <button
+                className="cal-save-btn danger"
+                onClick={() => {
+                  onToggleChinese(pendingChineseToggle.buildingId, pendingChineseToggle.unitId)
+                  setPendingChineseToggle(null)
+                }}
+                type="button"
+              >
+                해제
               </button>
             </div>
           </div>
@@ -1147,9 +1338,9 @@ export function DesktopTerritory({
           </div>
 
           {/* Layer 2: 동 칩 */}
-          <div className="tbl-filter-layer">
+          <div className="tbl-filter-layer tbl-filter-layer--area">
             <span className="tbl-filter-label">동</span>
-            <div className="tbl-chip-row" style={{ flexWrap: 'wrap' }}>
+            <div className="tbl-chip-row">
               <button className={`tbl-chip${areaFilter === '전체' ? ' active' : ''}`} onClick={() => setAreaFilter('전체')} type="button">
                 전체 동<span className="tbl-chip__count">{filteredCards.length}</span>
               </button>
@@ -1174,13 +1365,23 @@ export function DesktopTerritory({
 
           {/* Layer 3: 배정 필터 (카드 관리) */}
           {activeTab === '카드 관리' && (
-            <div className="tbl-filter-layer">
-              <span className="tbl-filter-label">배정</span>
-              <div className="tbl-mini-seg">
-                {(['전체', '미배정'] as const).map((f) => (
-                  <button key={f} className={assignmentFilter === f ? 'active' : ''} onClick={() => setAssignmentFilter(f)} type="button">{f}</button>
-                ))}
+            <div className="tbl-filter-layer tbl-filter-layer--compact">
+              <div className="tbl-filter-group">
+                <span className="tbl-filter-label">배정</span>
+                <div className="tbl-mini-seg">
+                  {(['전체', '배정', '미배정'] as const).map((f) => (
+                    <button key={f} className={assignmentFilter === f ? 'active' : ''} onClick={() => setAssignmentFilter(f)} type="button">{f}</button>
+                  ))}
+                </div>
               </div>
+              <button
+                className={`tbl-filter-toggle${cardFilterPanelOpen ? ' active' : ''}`}
+                onClick={() => setCardFilterPanelOpen((open) => !open)}
+                type="button"
+              >
+                필터
+                {activeAdvancedCardFilterCount > 0 && <span>{activeAdvancedCardFilterCount}</span>}
+              </button>
               <div style={{ flex: 1 }} />
               {isAdmin && (
                 <>
@@ -1201,6 +1402,56 @@ export function DesktopTerritory({
                   </button>
                 </>
               )}
+              {cardFilterPanelOpen && (
+                <div className="tbl-advanced-filter-panel">
+                  <div className="tbl-filter-group">
+                    <span className="tbl-filter-label">인도자</span>
+                    <select className="tbl-filter-select" value={leaderFilter} onChange={(e) => setLeaderFilter(e.target.value)}>
+                      <option value="전체">전체</option>
+                      {leaderFilterOptions.map((leaderName) => (
+                        <option key={leaderName} value={leaderName}>{leaderName}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="tbl-filter-group">
+                    <span className="tbl-filter-label">정기방문</span>
+                    <div className="tbl-mini-seg">
+                      {(['전체', '있음', '없음'] as const).map((f) => (
+                        <button key={f} className={regularVisitFilter === f ? 'active' : ''} onClick={() => setRegularVisitFilter(f)} type="button">{f}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="tbl-filter-group">
+                    <span className="tbl-filter-label">중국인 다수</span>
+                    <div className="tbl-mini-seg">
+                      {(['전체', '있음', '없음'] as const).map((f) => (
+                        <button key={f} className={cardChineseHeavyFilter === f ? 'active' : ''} onClick={() => setCardChineseHeavyFilter(f)} type="button">{f}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="tbl-filter-group">
+                    <span className="tbl-filter-label">상태</span>
+                    <div className="tbl-mini-seg">
+                      {(['전체', '미배정', '진행중', '완료', '보류'] as Array<TerritoryCard['status'] | '전체'>).map((f) => (
+                        <button key={f} className={cardStatusFilter === f ? 'active' : ''} onClick={() => setCardStatusFilter(f)} type="button">{f}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    className="tbl-filter-reset"
+                    disabled={activeAdvancedCardFilterCount === 0}
+                    onClick={() => {
+                      setLeaderFilter('전체')
+                      setRegularVisitFilter('전체')
+                      setCardChineseHeavyFilter('전체')
+                      setCardStatusFilter('전체')
+                    }}
+                    type="button"
+                  >
+                    초기화
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1214,10 +1465,62 @@ export function DesktopTerritory({
                 ))}
               </div>
               <span className="tbl-filter-label">카드</span>
-              <select value={buildingCardFilter} onChange={(e) => setBuildingCardFilter(e.target.value === '전체' ? '전체' : Number(e.target.value))} style={{ fontSize: 12, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '4px 8px', background: 'var(--bg-card)' }}>
+              <select className="tbl-filter-select" value={buildingCardFilter} onChange={(e) => setBuildingCardFilter(e.target.value === '전체' ? '전체' : Number(e.target.value))}>
                 <option value="전체">전체 카드</option>
                 {filteredCards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              <button
+                className={`tbl-filter-toggle${buildingFilterPanelOpen ? ' active' : ''}`}
+                onClick={() => setBuildingFilterPanelOpen((open) => !open)}
+                type="button"
+              >
+                필터
+                {activeAdvancedBuildingFilterCount > 0 && <span>{activeAdvancedBuildingFilterCount}</span>}
+              </button>
+              {buildingFilterPanelOpen && (
+                <div className="tbl-advanced-filter-panel">
+                  <div className="tbl-filter-group">
+                    <span className="tbl-filter-label">정기방문</span>
+                    <div className="tbl-mini-seg">
+                      {(['전체', '있음', '없음'] as const).map((f) => (
+                        <button key={f} className={buildingRegularFilter === f ? 'active' : ''} onClick={() => setBuildingRegularFilter(f)} type="button">{f}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="tbl-filter-group">
+                    <span className="tbl-filter-label">메모</span>
+                    <div className="tbl-mini-seg">
+                      {(['전체', '있음', '없음'] as const).map((f) => (
+                        <button key={f} className={buildingMemoFilter === f ? 'active' : ''} onClick={() => setBuildingMemoFilter(f)} type="button">{f}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="tbl-filter-group">
+                    <span className="tbl-filter-label">중국인 다수</span>
+                    <div className="tbl-mini-seg">
+                      {(['전체', '있음', '없음'] as const).map((f) => (
+                        <button key={f} className={buildingChineseHeavyFilter === f ? 'active' : ''} onClick={() => setBuildingChineseHeavyFilter(f)} type="button">{f}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    className="tbl-filter-reset"
+                    disabled={activeAdvancedBuildingFilterCount === 0}
+                    onClick={() => {
+                      setBuildingRegularFilter('전체')
+                      setBuildingMemoFilter('전체')
+                      setBuildingChineseHeavyFilter('전체')
+                    }}
+                    type="button"
+                  >
+                    초기화
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {activeTab === '건물 관리' && buildingSubTab === '건물 목록' && (
+            <div className="tbl-filter-layer tbl-filter-layer--sort">
               <span className="tbl-filter-label">정렬</span>
               <div className="tbl-mini-seg">
                 {(['카드', '건물', '주소', '유형'] as BuildingSortKey[]).map((key) => (
@@ -1229,24 +1532,70 @@ export function DesktopTerritory({
             </div>
           )}
           {activeTab === '건물 관리' && buildingSubTab === '중국인 포인트' && (
-            <div className="tbl-filter-layer">
+            <div className="tbl-filter-layer" style={{ gap: 12 }}>
               <span className="tbl-filter-label">상태</span>
-              <select value={pointStatusFilter} onChange={(e) => setPointStatusFilter(e.target.value as UnitStatus | '전체')} style={{ fontSize: 12, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '4px 8px', background: 'var(--bg-card)' }}>
+              <select className="tbl-filter-select" value={pointStatusFilter} onChange={(e) => setPointStatusFilter(e.target.value as UnitStatus | '전체')}>
                 <option value="전체">전체 상태</option>
                 <option value="미방문">미방문</option>
                 <option value="만남">만남</option>
                 <option value="부재">부재</option>
                 <option value="한국인">한국인</option>
               </select>
+              <button
+                className={`tbl-filter-toggle${pointFilterPanelOpen ? ' active' : ''}`}
+                onClick={() => setPointFilterPanelOpen((open) => !open)}
+                type="button"
+              >
+                필터
+                {activeAdvancedPointFilterCount > 0 && <span>{activeAdvancedPointFilterCount}</span>}
+              </button>
+              {pointFilterPanelOpen && (
+                <div className="tbl-advanced-filter-panel">
+                  <div className="tbl-filter-group">
+                    <span className="tbl-filter-label">정기방문</span>
+                    <div className="tbl-mini-seg">
+                      {(['전체', '있음', '없음'] as const).map((f) => (
+                        <button key={f} className={pointRegularFilter === f ? 'active' : ''} onClick={() => setPointRegularFilter(f)} type="button">{f}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="tbl-filter-group">
+                    <span className="tbl-filter-label">메모</span>
+                    <div className="tbl-mini-seg">
+                      {(['전체', '있음', '없음'] as const).map((f) => (
+                        <button key={f} className={pointMemoFilter === f ? 'active' : ''} onClick={() => setPointMemoFilter(f)} type="button">{f}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    className="tbl-filter-reset"
+                    disabled={activeAdvancedPointFilterCount === 0}
+                    onClick={() => {
+                      setPointRegularFilter('전체')
+                      setPointMemoFilter('전체')
+                    }}
+                    type="button"
+                  >
+                    초기화
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {/* Layer 4: 결과 카운트 */}
-          <div style={{ padding: '10px 18px', fontSize: 12, color: 'var(--gray-500)', borderBottom: '1px solid var(--border-subtle)' }}>
-            {regionFilter === '전체' ? '전체 지역' : regionFilter}
-            {' · '}{areaFilter === '전체' ? '전체 동' : areaFilter}
-            {' · 표시 '}
-            {activeTab === '카드 관리' ? `${filteredCards.length}개 카드` : buildingSubTab === '건물 목록' ? `${filteredBuildings.length}개 건물` : `${pointRows.length}개 포인트`}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 18px', fontSize: 12, color: 'var(--gray-500)', borderBottom: '1px solid var(--border-subtle)' }}>
+            <span>
+              {regionFilter === '전체' ? '전체 지역' : regionFilter}
+              {' · '}{areaFilter === '전체' ? '전체 동' : areaFilter}
+              {' · 표시 '}
+              {activeTab === '카드 관리' ? `${filteredCards.length}개 카드` : buildingSubTab === '건물 목록' ? `${filteredBuildings.length}개 건물` : `${pointRows.length}개 포인트`}
+            </span>
+            {activeTab === '건물 관리' && (
+              <button className="tbl-ghost-btn sm" onClick={downloadFilteredBuildingCsv} type="button">
+                엑셀 내보내기
+              </button>
+            )}
           </div>
 
           {/* ── 카드 관리 테이블 ── */}
@@ -1254,13 +1603,15 @@ export function DesktopTerritory({
           <table className="tbl">
             <thead>
               <tr>
-                <th style={{ width: 52, paddingLeft: 18 }}>
-                  <input type="checkbox" checked={filteredCards.length > 0 && filteredCards.every((c) => checkedCardIds.has(c.id))} onChange={toggleAllFilteredCards} />
-                </th>
+                {isAdmin && (
+                  <th style={{ width: 52, paddingLeft: 18 }}>
+                    <input type="checkbox" checked={filteredCards.length > 0 && filteredCards.every((c) => checkedCardIds.has(c.id))} onChange={toggleAllFilteredCards} />
+                  </th>
+                )}
                 <th>카드</th>
                 <th style={{ width: 140 }}>진행</th>
                 <th>인도자</th>
-                <th style={{ width: 60, textAlign: 'right' }}>건물</th>
+                <th style={{ width: 150 }}>유형</th>
                 <th style={{ width: 80, textAlign: 'right' }}>중국인</th>
                 <th style={{ width: 90, textAlign: 'right' }}>정기방문</th>
                 <th style={{ width: 80 }}>구역선</th>
@@ -1272,16 +1623,21 @@ export function DesktopTerritory({
               {filteredCards.map((card) => {
                 const cardBuildings = buildings.filter((b) => b.cardId === card.id)
                 const chinesePointCount = cardBuildings.reduce((sum, b) => sum + b.units.filter((u) => u.isChinese).length, 0)
+                const storeCount = cardBuildings.filter((building) => building.type === '상가').length
+                const houseCount = cardBuildings.filter((building) => building.type === '주택').length
+                const chineseHeavyCount = cardChineseHeavyCount(card.id)
                 const hasBoundary = cardBoundaries.some((b) => b.cardId === card.id)
                 const leaders = getCardLeaderList(card)
                 return (
                   <tr key={card.id} onClick={() => setSelectedCardId(card.id)} style={{ cursor: 'pointer' }}>
-                    <td style={{ width: 52, paddingLeft: 18 }} onClick={(e) => e.stopPropagation()}>
-                      <input type="checkbox" checked={checkedCardIds.has(card.id)} onChange={() => toggleCheckedCard(card.id)} />
-                    </td>
+                    {isAdmin && (
+                      <td style={{ width: 52, paddingLeft: 18 }} onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" checked={checkedCardIds.has(card.id)} onChange={() => toggleCheckedCard(card.id)} />
+                      </td>
+                    )}
                     <td>
                       <div className="tbl__title">{card.name}</div>
-                      <div className="tbl__sub">{card.region} {card.area} · 건물 {card.buildings}개 · 세대 {card.units}개</div>
+                      <div className="tbl__sub">{card.region} {card.area}</div>
                     </td>
                     <td style={{ width: 140 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1313,8 +1669,19 @@ export function DesktopTerritory({
                         </span>
                       )}
                     </td>
-                    <td className="tnum" style={{ width: 60, textAlign: 'right', fontSize: 13 }}>{card.buildings}개</td>
-                    <td className="tnum" style={{ width: 80, textAlign: 'right', fontSize: 13 }}>{chinesePointCount}건</td>
+                    <td style={{ width: 150 }}>
+                      <div className="card-building-type-summary">
+                        <span><b>전체</b> <em className="tnum">{card.buildings}</em></span>
+                        <span>주택 <em className="tnum">{houseCount}</em></span>
+                        <span>상가 <em className="tnum">{storeCount}</em></span>
+                      </div>
+                    </td>
+                    <td className="tnum" style={{ width: 80, textAlign: 'right', fontSize: 13 }}>
+                      <div className="card-chinese-summary">
+                        <span>{chinesePointCount}건</span>
+                        {chineseHeavyCount > 0 && <small>다수 {chineseHeavyCount}</small>}
+                      </div>
+                    </td>
                     <td className="tnum" style={{ width: 90, textAlign: 'right', fontSize: 13 }}>{card.regularVisits}건</td>
                     <td style={{ width: 80 }}>
                       <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-sm)', background: hasBoundary ? 'var(--gray-100)' : 'transparent', color: hasBoundary ? 'var(--gray-600)' : 'var(--gray-400)', fontSize: 11, fontWeight: 600 }}>
@@ -1332,14 +1699,16 @@ export function DesktopTerritory({
                     <td style={{ width: 160, textAlign: 'right', paddingRight: 18 }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'inline-flex', gap: 6 }}>
                         <button className="tbl-ghost-btn sm" onClick={() => onOpenCardMap(card.id)} type="button">지도</button>
-                        <button className="tbl-soft-btn sm" onClick={() => onOpenCardMap(card.id, true)} type="button">수정</button>
+                        {isAdmin && (
+                          <button className="tbl-soft-btn sm" onClick={() => onOpenCardMap(card.id, true)} type="button">수정</button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 )
               })}
               {filteredCards.length === 0 && (
-                <tr><td colSpan={10} style={{ textAlign: 'center', padding: '32px 18px', color: 'var(--gray-400)', fontSize: 13 }}>
+                <tr><td colSpan={isAdmin ? 10 : 9} style={{ textAlign: 'center', padding: '32px 18px', color: 'var(--gray-400)', fontSize: 13 }}>
                   {cards.length === 0 ? '카드가 없습니다. 위의 + 카드 추가 버튼으로 첫 카드를 만들어보세요.' : '조건에 맞는 카드가 없습니다.'}
                 </td></tr>
               )}
@@ -1393,6 +1762,7 @@ export function DesktopTerritory({
               <span>유형</span>
               <span>세대</span>
               <span>중국인</span>
+              <span>다수</span>
               <span>정기</span>
               <span>메모</span>
               <span>작업</span>
@@ -1444,6 +1814,13 @@ export function DesktopTerritory({
                         </select>
                         <span>{building.units.length}개</span>
                         <span>{chineseCount}건</span>
+                        <button
+                          className={`building-heavy-toggle${building.isChineseHeavy ? ' active' : ''}`}
+                          onClick={() => toggleChineseHeavyBuilding(building)}
+                          type="button"
+                        >
+                          {building.isChineseHeavy ? '다수' : '-'}
+                        </button>
                         <span>{regularCount}건</span>
                         <input
                           aria-label="메모"
@@ -1469,6 +1846,13 @@ export function DesktopTerritory({
                         <span>{building.type}</span>
                         <span>{building.units.length}개</span>
                         <span>{chineseCount}건</span>
+                        <button
+                          className={`building-heavy-toggle${building.isChineseHeavy ? ' active' : ''}`}
+                          onClick={() => toggleChineseHeavyBuilding(building)}
+                          type="button"
+                        >
+                          {building.isChineseHeavy ? '다수' : '-'}
+                        </button>
                         <span>{regularCount}건</span>
                         <span>{building.memo || '-'}</span>
                         <span className="building-row-actions">
@@ -1618,9 +2002,9 @@ export function DesktopTerritory({
         ) : (
           <div className="point-management-table" role="table" aria-label="중국인 포인트 목록">
             <div className="point-management-head" role="row">
-              <span>포인트</span>
-              <span>건물/주소</span>
               <span>카드</span>
+              <span>건물/주소</span>
+              <span>포인트</span>
               <span>상태</span>
               <span>중국인</span>
               <span>정기</span>
@@ -1633,9 +2017,9 @@ export function DesktopTerritory({
               const isConfirmedChinese = unit.isChinese || unit.isRegularVisit
               return (
                 <div className="point-management-row" key={`${building.id}-${unit.id}`} role="row">
-                  <strong>{unit.number}</strong>
-                  <span title={building.address}>{building.name || formatDisplayAddress(building.address)}</span>
                   <span>{card?.name ?? '카드 없음'}</span>
+                  <span title={building.address}>{building.name || formatDisplayAddress(building.address)}</span>
+                  <strong title={unit.number}>{unit.number}</strong>
                   <select
                     aria-label={`${unit.number} 상태`}
                     value={unit.status}
@@ -1648,7 +2032,19 @@ export function DesktopTerritory({
                   </select>
                   <button
                     className={isConfirmedChinese ? 'point-toggle active' : 'point-toggle'}
-                    onClick={() => onToggleChinese(building.id, unit.id)}
+                    onClick={() => {
+                      if (!isConfirmedChinese) {
+                        onToggleChinese(building.id, unit.id)
+                        return
+                      }
+                      setPendingChineseToggle({
+                        buildingId: building.id,
+                        unitId: unit.id,
+                        cardName: card?.name ?? '카드 없음',
+                        buildingName: building.name || formatDisplayAddress(building.address),
+                        unitNumber: unit.number,
+                      })
+                    }}
                     type="button"
                   >
                     {isConfirmedChinese ? '중국인' : '확인 필요'}
@@ -1822,4 +2218,3 @@ export function DesktopTerritory({
     </section>
   )
 }
-
