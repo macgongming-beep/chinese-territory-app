@@ -47,7 +47,8 @@
 - 텍스트 영구 보존, 사진 6개월 자동 삭제
 
 ### D. 웹 푸시 알림
-- 새 공지 / 새 일정 / 댓글 / 채팅 / 멘션 시 발송
+- 새 공지 / 일정 변경 / 댓글 / 채팅 / 멘션 시 발송
+- **새 일정 등록 시 알림 X** (일정 추가/삭제 잦음)
 - PWA 설치 필수 (iOS), 설치 안내 제공
 - 사용자가 종류별 on/off, 방해금지 시간 설정
 - 알림 묶음 처리 (5분 내 같은 채널)
@@ -148,6 +149,15 @@
 
 ## 4. DB 스키마 변경
 
+### 사용자 식별 원칙 (모든 신규 테이블 공통)
+
+**user_id FK + name snapshot 패턴:**
+- `xxx_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL` (참조)
+- `xxx_name TEXT NOT NULL` (작성 시점 이름 snapshot)
+- 사용자 삭제: id NULL, name은 보존 (메시지/댓글 그대로 표시)
+- 이름 변경: 과거 메시지엔 옛 이름 (snapshot)
+- 동명이인: id로 구분
+
 ### 신규 테이블
 
 ```sql
@@ -156,78 +166,83 @@ CREATE TABLE comments (
   id BIGSERIAL PRIMARY KEY,
   target_type TEXT NOT NULL,    -- 'notice' | 'calendar_event'
   target_id BIGINT NOT NULL,
-  author TEXT NOT NULL,         -- app_users.name
+  author_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
+  author_name TEXT NOT NULL,    -- snapshot
   content TEXT NOT NULL,
-  mentions TEXT[],              -- @멘션된 사용자 이름 배열
+  mention_ids BIGINT[],         -- @멘션된 사용자 ID 배열
+  mention_names TEXT[],         -- snapshot
+  deleted_at TIMESTAMPTZ,       -- soft delete (감사 로그 보존)
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_comments_target ON comments(target_type, target_id);
-CREATE INDEX idx_comments_author ON comments(author);
+CREATE INDEX idx_comments_target ON comments(target_type, target_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_comments_author ON comments(author_id);
 
 -- 채팅 메시지
 CREATE TABLE chat_messages (
   id BIGSERIAL PRIMARY KEY,
   event_id BIGINT NOT NULL REFERENCES calendar_events(id) ON DELETE CASCADE,
-  author TEXT NOT NULL,
+  author_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
+  author_name TEXT NOT NULL,    -- snapshot
   type TEXT NOT NULL DEFAULT 'text',   -- 'text' | 'image' | 'system'
   content TEXT,
   image_url TEXT,
-  mentions TEXT[],
-  deleted_at TIMESTAMPTZ,              -- soft delete
+  image_expired BOOLEAN DEFAULT FALSE,  -- 6개월 만료 시 TRUE
+  mention_ids BIGINT[],
+  mention_names TEXT[],
+  deleted_at TIMESTAMPTZ,       -- soft delete
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_chat_event ON chat_messages(event_id, created_at);
-CREATE INDEX idx_chat_author ON chat_messages(author);
+CREATE INDEX idx_chat_event ON chat_messages(event_id, created_at) WHERE deleted_at IS NULL;
+CREATE INDEX idx_chat_author ON chat_messages(author_id);
 
 -- 채팅 읽음 상태
 CREATE TABLE chat_read_status (
   event_id BIGINT NOT NULL REFERENCES calendar_events(id) ON DELETE CASCADE,
-  user_name TEXT NOT NULL,
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   last_read_at TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (event_id, user_name)
+  PRIMARY KEY (event_id, user_id)
 );
 
 -- 푸시 구독
 CREATE TABLE push_subscriptions (
   id BIGSERIAL PRIMARY KEY,
-  user_name TEXT NOT NULL,
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   endpoint TEXT NOT NULL UNIQUE,
   p256dh TEXT NOT NULL,
   auth TEXT NOT NULL,
-  device_label TEXT,                  -- "iPhone 13" 등
+  device_label TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   last_used_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_push_user ON push_subscriptions(user_name);
+CREATE INDEX idx_push_user ON push_subscriptions(user_id);
 
 -- 알림 (사용자별 알림함)
 CREATE TABLE notifications (
   id BIGSERIAL PRIMARY KEY,
-  user_name TEXT NOT NULL,
-  type TEXT NOT NULL,                 -- 'notice' | 'event' | 'comment' | 'mention' | 'chat'
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,           -- 'notice' | 'event_change' | 'comment' | 'mention' | 'chat'
   title TEXT NOT NULL,
   body TEXT,
-  link TEXT,                          -- 클릭 시 이동할 경로
-  related_id BIGINT,                  -- 관련 entity id
+  link TEXT,
+  related_id BIGINT,
   is_read BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_notif_user ON notifications(user_name, is_read, created_at DESC);
+CREATE INDEX idx_notif_user ON notifications(user_id, is_read, created_at DESC);
 
 -- 알림 설정 (사용자별)
 CREATE TABLE notification_preferences (
-  user_name TEXT PRIMARY KEY,
+  user_id BIGINT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
   push_new_notice BOOLEAN DEFAULT TRUE,
-  push_new_event BOOLEAN DEFAULT TRUE,
-  push_event_change BOOLEAN DEFAULT TRUE,
+  push_event_change BOOLEAN DEFAULT TRUE,  -- 새 일정 X, 변경만
   push_comment BOOLEAN DEFAULT TRUE,
   push_chat BOOLEAN DEFAULT TRUE,
   push_mention BOOLEAN DEFAULT TRUE,
   dnd_enabled BOOLEAN DEFAULT TRUE,
   dnd_start TIME DEFAULT '22:00',
   dnd_end TIME DEFAULT '07:00',
-  dnd_silent BOOLEAN DEFAULT TRUE,    -- TRUE = 무음으로만 / FALSE = 차단
+  dnd_silent BOOLEAN DEFAULT TRUE,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -236,15 +251,32 @@ CREATE TABLE service_logs (
   id BIGSERIAL PRIMARY KEY,
   session_id BIGINT REFERENCES service_sessions(id),
   event_id BIGINT REFERENCES calendar_events(id),
-  actor TEXT NOT NULL,                -- 액션 수행한 사용자
-  action TEXT NOT NULL,               -- 'session_started', 'joined', 'visit_recorded', 'memo_added', 'photo_uploaded', 'session_ended'
-  target_type TEXT,                   -- 'unit', 'building', 'card', 'chat'
+  actor_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
+  actor_name TEXT NOT NULL,     -- snapshot
+  action TEXT NOT NULL,         -- 'session_started', 'joined', 'visit_recorded', 'memo_added', 'message_deleted', etc.
+  target_type TEXT,
   target_id BIGINT,
-  details JSONB,                      -- 추가 정보 (방문 결과, 메모 내용 등)
+  details JSONB,                -- 추가 정보 (방문 결과, 메모 원문, 삭제된 메시지 원문 등)
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_log_session ON service_logs(session_id, created_at);
 CREATE INDEX idx_log_event ON service_logs(event_id, created_at);
+CREATE INDEX idx_log_actor ON service_logs(actor_id);
+```
+
+**기존 테이블 수정 (점진적, 호환성 유지):**
+
+기존 `visit_histories.visitor`, `service_sessions.user_name` 등은 **그대로 두고**,
+신규 테이블만 user_id 패턴 적용. 기존 마이그레이션 부담 X.
+
+### 사진 만료 처리
+
+```sql
+-- Cron Edge Function (매일 새벽 3시):
+-- 1. chat_messages에서 6개월 지난 image_url 찾기
+-- 2. Storage에서 파일 삭제
+-- 3. 메시지 UPDATE: image_url = NULL, image_expired = TRUE
+-- 4. 클라이언트는 image_expired = TRUE 시 "[사진 만료됨]" 표시
 ```
 
 ### Supabase Storage Bucket
@@ -260,6 +292,25 @@ chat-images/        # 채팅 사진
   - 6개월 후 자동 삭제 (Edge Function cron)
   - 자동 압축 (1MB 미만)
 ```
+
+### 인증 방식 (출시 단계 / 중장기 계획)
+
+**현 상태:**
+- 자체 PIN 인증 (`auth_login` RPC + localStorage 세션)
+- Supabase Auth 미사용
+- DB는 anon open access (RLS 거의 없음)
+
+**출시 단계 — 클라이언트 필터링:**
+- DB는 그대로 anon open
+- 클라이언트가 모든 권한 체크 + 데이터 필터링
+- 80명 내부 / URL 비공개 / 의도적 공격 가능성 낮음 → 충분
+- 보안 약점: 개발자도구로 anon 키 알아내면 우회 가능 (의도적 공격만)
+
+**중장기 (별도 페이즈):**
+- Supabase Auth 마이그레이션
+- 사용자에게 새 인증 방식 안내
+- 진짜 RLS 정책 적용
+- 시기: V1+ 출시 안정화 후 (3~6개월)
 
 ### 봉사자 카드 제한 (클라이언트 필터링)
 
@@ -1112,10 +1163,11 @@ Android Chrome:
 
 알림 종류
 ☑ 새 공지
-☑ 새 일정 / 변경
+☑ 일정 변경 (시간/장소)
 ☑ 댓글
 ☑ 채팅 메시지
 ☑ @멘션
+(새 일정 등록은 알림 안 옴 — 일정 잦음)
 
 방해금지 시간
 ☑ 사용
@@ -1173,6 +1225,57 @@ Android Chrome:
 - `chat_message` — 채팅 메시지 (요약)
 - `chat_image` — 사진 첨부
 - `session_ended` — 봉사 종료
+
+---
+
+## 10-A. 권한 / 개인정보 매트릭스
+
+### 데이터 접근 권한
+
+| 데이터 | 봉사자 | 인도자 | 관리자 |
+|---|---|---|---|
+| 본인 참여 봉사 채팅 (보기/쓰기) | ✅ | ✅ | ✅ |
+| 다른 팀 채팅 보기 | ❌ | ✅ (조용히) | ✅ |
+| 다른 팀 메시지 삭제 | ❌ | ✅ | ✅ |
+| 채팅방 삭제 | ❌ | ✅ | ✅ |
+| 본인 카드 호수 메모 | ✅ | ✅ | ✅ |
+| 다른 카드 호수 메모 | ❌ | ✅ | ✅ |
+| 본인 참여 봉사 방문 기록 | ✅ | ✅ | ✅ |
+| 다른 카드 방문 기록 | ❌ | ✅ | ✅ |
+| 봉사 로그 (감사) | ❌ | ✅ (자기 카드만) | ✅ (모든 봉사) |
+| CSV 다운로드 (봉사 로그) | ❌ | ✅ (자기 카드) | ✅ |
+| CSV에 메모 포함 | - | ✅ | ✅ |
+| 사용자 명단 보기 | 이름만 | 이름 + 폰 | 모두 (PIN 제외) |
+| 댓글 작성 | ✅ | ✅ | ✅ |
+| 본인 댓글 수정/삭제 | ✅ (5분) | 동일 | 동일 |
+| 다른 사람 댓글 삭제 | ❌ | ✅ | ✅ |
+| 일정 추가/수정/삭제 | ❌ | ✅ | ✅ |
+| 공지 작성/삭제 | ❌ | ✅ | ✅ |
+
+### 삭제·수정 보존 정책
+
+| 액션 | 보존 방식 |
+|---|---|
+| 댓글 삭제 | soft delete (`deleted_at`), 화면엔 안 보임 / 봉사 로그엔 기록 |
+| 메시지 삭제 | soft delete, 채팅에 "[메시지 삭제됨]" 표시 / 봉사 로그엔 원문 기록 |
+| 일정 삭제 | hard delete (옵션: 채팅 같이 삭제 / 보존) |
+| 공지 삭제 | hard delete |
+| 사용자 삭제 | author_id NULL, name snapshot 유지 |
+| 사진 만료 (6개월) | Storage 삭제 + `image_expired = TRUE` / 메시지엔 "[사진 만료됨]" |
+
+### 인도자/관리자 모니터링 표시
+
+- 인도자/관리자가 봉사 외 채팅 볼 때 → **표시 X** (조용히)
+- 일반 사용자가 모니터링 사실 모름
+- 단, 메시지 삭제 시 → "관리자가 메시지를 삭제했습니다" 시스템 메시지
+
+### 봉사자 인도자 모드 토글 시
+
+- 인도자가 "봉사자 모드"로 전환하면:
+  - 다른 카드 안 보임 (봉사자처럼 제한)
+  - 모든 채팅 모니터링 권한 X
+  - 자기 참여 봉사만 보임
+- 다시 "인도자 모드"로 전환하면 권한 복구
 
 ---
 
@@ -1263,8 +1366,8 @@ Android Chrome:
 - [ ] 필터 / CSV 다운로드
 
 **Day 17: 자동 정리 작업**
-- [ ] Edge Function cron: 사진 6개월 삭제
-- [ ] Edge Function cron: 채팅방 1주 후 read-only
+- [ ] Edge Function cron: 사진 6개월 삭제 + 메시지 `image_expired = TRUE` 업데이트
+- [ ] ~~Edge Function cron: 채팅방 1주 후 read-only~~ (안 함, 조회 시 계산)
 
 **Day 18~19: 기존 화면 정리**
 - [ ] MobileHome 사용자 영역 → 헤더로
@@ -1273,11 +1376,25 @@ Android Chrome:
 - [ ] 중복 UI 제거
 
 **Day 20~21: 테스트 + 최적화**
+
+플랫폼 테스트:
 - [ ] iOS PWA 테스트
 - [ ] Android PWA 테스트
 - [ ] 알림 발송 테스트 (각 트리거)
 - [ ] 채팅 Realtime 안정성
 - [ ] 카드/지도 성능 점검
+
+**권한 테스트 매트릭스:**
+- [ ] 봉사자가 다른 카드 URL 직접 접근 → 차단 확인
+- [ ] 봉사자가 다른 카드 API 직접 호출 → 결과 빈 배열 (필터링 동작)
+- [ ] 비참여자가 채팅방 URL 직접 접근 → 차단
+- [ ] 본인 아닌 메시지 삭제 시도 → 차단
+- [ ] 본인 메시지 5분+ 후 삭제 시도 → 차단
+- [ ] 인도자가 봉사자 모드일 때 다른 카드 안 보임
+- [ ] 일반 봉사자가 [채팅방 삭제] 시도 → 메뉴 안 보임 (UI) + API 차단
+- [ ] 잠긴 채팅방 (1주+)에 메시지 작성 → 거부
+- [ ] 사용자 삭제 후 그 사람 댓글/메시지 → "[삭제된 사용자]" 또는 snapshot 이름 표시
+- [ ] 만료된 사진 메시지 → "[사진 만료됨]" 표시
 
 ---
 
@@ -1308,18 +1425,28 @@ Android Chrome:
 
 ## 15. 비용
 
-기존과 동일, 추가 부담 없음:
+**초기 운영은 무료 범위 내 예상, 사용량 증가 시 재검토**
 
-| 서비스 | 비용 |
-|---|---|
-| Supabase | $0 (500MB DB 무료, 1GB Storage 무료) |
-| Vercel | $0 |
-| Push 알림 | $0 (Web Push, FCM 없이도 가능) |
-| **합계** | **$0/월** |
+| 서비스 | 무료 한도 | 사용 예측 |
+|---|---|---|
+| Supabase DB | 500MB | 첫 1년 ~50MB (텍스트 위주) |
+| Supabase Storage | 1GB | 채팅 사진 6개월 만료 → 유지 가능 |
+| Supabase Realtime | 200 동시 연결 | 80명 회중 OK |
+| Supabase Edge Functions | 500K 호출/월 | 알림 발송 트리거 충분 |
+| Vercel | 100GB 대역폭 | OK |
+| Push 알림 (Web Push) | 무료 | OK |
 
-장기적 (1년+):
-- DB 100MB 도달 가능 → 여전히 무료
-- Storage 1GB 도달 가능 → 사진 6개월 만료로 유지
+**모니터링 필요한 지표:**
+- DB 크기 (월 단위)
+- Storage 사용량 (사진 첨부 빈도에 따라)
+- Edge Function 실행 횟수 (알림 발송)
+- Realtime 동시 연결 수 (피크 시간)
+
+**유료 전환 시점 (예상):**
+- DB 400MB+ → 6개월 이상 후 채팅 메시지 누적 시
+- Storage 800MB+ → 사진 첨부 매우 많을 시
+
+진짜 한도 도달 시 Supabase Pro $25/월 ($25 × 12 = $300/년) 정도 검토.
 
 ---
 
@@ -1441,6 +1568,17 @@ Android Chrome:
 | 2026-05-11 | PWA 아이콘 | 임시 텍스트 아이콘으로 시작 (192/512 PNG) |
 | 2026-05-11 | RLS 보안 수준 | 클라이언트 필터링 (실용적, 80명 내부) |
 | 2026-05-11 | RLS 마이그레이션 | 추후 (Supabase Auth 마이그레이션 시) |
+| 2026-05-11 | **DB 식별 패턴** | **user_id FK + name snapshot (모든 신규 테이블)** |
+| 2026-05-11 | 사용자 삭제 | author_id NULL, name snapshot 보존 |
+| 2026-05-11 | 사진 만료 처리 | Storage 삭제 + image_expired = TRUE 메시지 업데이트 |
+| 2026-05-11 | 새 일정 알림 | 안 함 (notification_preferences에서도 컬럼 제거) |
+| 2026-05-11 | notification_preferences | push_new_event 삭제, push_event_change만 |
+| 2026-05-11 | 채팅방 1주 잠금 Cron | 안 함 (조회 시 계산으로 통일) |
+| 2026-05-11 | 댓글/메시지 삭제 | soft delete (deleted_at) — 감사 로그 보존 |
+| 2026-05-11 | 인도자 채팅 모니터링 | 조용히 (사용자에게 표시 X) |
+| 2026-05-11 | 메시지 삭제 알림 | "[메시지 삭제됨]" 표시 + 봉사 로그에 원문 |
+| 2026-05-11 | 비용 표현 | "초기 무료 범위 예상, 증가 시 재검토" |
+| 2026-05-11 | 권한 테스트 매트릭스 | Day 20-21에 10개 테스트 추가 |
 
 ---
 
