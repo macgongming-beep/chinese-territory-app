@@ -1,0 +1,722 @@
+# V1 강화 — 작업 계획서
+
+> 기존 chinese-territory-app 을 그대로 발전시킴.
+> 댓글 / 채팅 / 푸시 알림 / PWA / 봉사 로그 추가.
+>
+> 작성일: 2026-05-05
+> 이전 V2 분리 컨셉은 폐기 → `archive/V2_PLAN_archived.md` 참조
+
+---
+
+## 1. 핵심 컨셉 변경
+
+**처음 V2 안 (폐기):**
+- 밴드 vs 웹앱 역할 분리
+- 캘린더·공지 제거
+- 봉사 도구로만 단순화
+
+**현재 결정 (V1 강화):**
+- **모든 봉사 기능을 웹앱에 통합**
+- 캘린더·공지 유지 + 댓글 추가
+- 일정별 채팅방 추가
+- 웹 푸시 알림으로 밴드 의존 점진 감소
+- 밴드는 친목·일상으로 자연스럽게 분리
+
+---
+
+## 2. 추가될 기능 (5개 큰 묶음)
+
+### A. 헤더 패턴 통일
+- 모든 화면 우상단: 🔍 검색 / 🔔 알림(배지) / 💬 채팅(배지) / ⋮ 메뉴
+- 카톡·밴드·당근 등에서 익숙한 패턴
+- 어느 화면에 있든 알림/채팅 즉시 접근
+
+### B. 댓글 시스템
+- 위치: 공지 / 캘린더 일정
+- 공개 (회중 누구나 보고 작성)
+- 본인 작성만 수정/삭제
+- @멘션 가능
+
+### C. 일정별 채팅방
+- 일정 등록 시 즉시 채팅방 생성
+- 참여한 사람만 입장 / 메시지 작성
+- 텍스트 + 사진 첨부
+- @멘션 가능
+- 시스템 메시지: 합류 / 봉사 종료 요약
+- 봉사 종료 후 1주일 활성 → read-only
+- 텍스트 영구 보존, 사진 6개월 자동 삭제
+
+### D. 웹 푸시 알림
+- 새 공지 / 새 일정 / 댓글 / 채팅 / 멘션 시 발송
+- PWA 설치 필수 (iOS), 설치 안내 제공
+- 사용자가 종류별 on/off, 방해금지 시간 설정
+- 알림 묶음 처리 (5분 내 같은 채널)
+
+### E. 관리자용 봉사 로그
+- 봉사별 시간순 액션 기록 (방문/합류/메모 등)
+- 통계와 별도, 감사 로그
+- CSV 다운로드
+
+---
+
+## 3. 결정 사항 전체 표
+
+| 항목 | 결정 |
+|---|---|
+| **댓글 위치** | 공지 / 캘린더 일정 |
+| **댓글 권한** | 누구나 작성 / 본인만 수정·삭제 |
+| **채팅 위치** | 일정에 종속 (참여자만) |
+| **채팅 진입점** | 홈 위젯 + 헤더 💬 + 일정 상세 |
+| **비참여자 채팅 접근** | 안 보임 |
+| **참여 후 과거 채팅** | 모두 볼 수 있음 |
+| **인도자/관리자 권한** | 모든 채팅 보기 + 메시지/방 삭제 + 방 생성 (조용히) |
+| **채팅방 시작 시점** | 일정 등록 즉시 |
+| **채팅 보존 (텍스트)** | 영구 |
+| **채팅 보존 (사진)** | 6개월 후 자동 삭제 |
+| **종료 후 채팅** | 1주일 활성 → read-only |
+| **메시지 답장 (Reply)** | 첫 버전 X |
+| **메시지 본인 수정** | X |
+| **메시지 본인 삭제** | OK (5분 이내) |
+| **사진 첨부** | OK |
+| **사진 미리보기** | 썸네일 → 풀스크린 + 다운로드 |
+| **채팅방 인원 표시** | 헤더에 "N명", 누르면 명단 |
+| **봉사 외 채팅방** | 안 만듦 |
+| **@멘션** | 누구나 / 댓글에서도 / 무조건 알림 |
+| **멘션과 방해금지** | 방해금지 따름 (무음, 배지) |
+| **알림 묶음** | OK (5분 내 같은 채팅) |
+| **푸시 그룹화** | OK |
+| **방해금지 시간** | 사용자 설정, 기본 22:00~07:00 |
+| **방해금지 동작** | 알림 받되 무음 (배지로만) |
+| **봉사 1시간 전 알림** | 안 함 |
+| **시스템 메시지** | 합류 + 봉사 종료 요약 |
+| **봉사 로그** | 별도 화면 (관리자용) |
+| **채팅방 알림 끄기** | 가능 (방마다) |
+| **메시지 검색 전체** | 안 함 |
+| **PWA 첫 방문 안내** | 모바일 5초 후 슬라이드업 배너 |
+| **PWA 안내 닫기** | "나중에" 7일간 안 보임 / 설치 후 영구 |
+| **알림 종류별 on/off** | 가능 (설정에서) |
+
+---
+
+## 4. DB 스키마 변경
+
+### 신규 테이블
+
+```sql
+-- 댓글 (공지/일정 통합)
+CREATE TABLE comments (
+  id BIGSERIAL PRIMARY KEY,
+  target_type TEXT NOT NULL,    -- 'notice' | 'calendar_event'
+  target_id BIGINT NOT NULL,
+  author TEXT NOT NULL,         -- app_users.name
+  content TEXT NOT NULL,
+  mentions TEXT[],              -- @멘션된 사용자 이름 배열
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_comments_target ON comments(target_type, target_id);
+CREATE INDEX idx_comments_author ON comments(author);
+
+-- 채팅 메시지
+CREATE TABLE chat_messages (
+  id BIGSERIAL PRIMARY KEY,
+  event_id BIGINT NOT NULL REFERENCES calendar_events(id) ON DELETE CASCADE,
+  author TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'text',   -- 'text' | 'image' | 'system'
+  content TEXT,
+  image_url TEXT,
+  mentions TEXT[],
+  deleted_at TIMESTAMPTZ,              -- soft delete
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_chat_event ON chat_messages(event_id, created_at);
+CREATE INDEX idx_chat_author ON chat_messages(author);
+
+-- 채팅 읽음 상태
+CREATE TABLE chat_read_status (
+  event_id BIGINT NOT NULL REFERENCES calendar_events(id) ON DELETE CASCADE,
+  user_name TEXT NOT NULL,
+  last_read_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (event_id, user_name)
+);
+
+-- 푸시 구독
+CREATE TABLE push_subscriptions (
+  id BIGSERIAL PRIMARY KEY,
+  user_name TEXT NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  device_label TEXT,                  -- "iPhone 13" 등
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  last_used_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_push_user ON push_subscriptions(user_name);
+
+-- 알림 (사용자별 알림함)
+CREATE TABLE notifications (
+  id BIGSERIAL PRIMARY KEY,
+  user_name TEXT NOT NULL,
+  type TEXT NOT NULL,                 -- 'notice' | 'event' | 'comment' | 'mention' | 'chat'
+  title TEXT NOT NULL,
+  body TEXT,
+  link TEXT,                          -- 클릭 시 이동할 경로
+  related_id BIGINT,                  -- 관련 entity id
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_notif_user ON notifications(user_name, is_read, created_at DESC);
+
+-- 알림 설정 (사용자별)
+CREATE TABLE notification_preferences (
+  user_name TEXT PRIMARY KEY,
+  push_new_notice BOOLEAN DEFAULT TRUE,
+  push_new_event BOOLEAN DEFAULT TRUE,
+  push_event_change BOOLEAN DEFAULT TRUE,
+  push_comment BOOLEAN DEFAULT TRUE,
+  push_chat BOOLEAN DEFAULT TRUE,
+  push_mention BOOLEAN DEFAULT TRUE,
+  dnd_enabled BOOLEAN DEFAULT TRUE,
+  dnd_start TIME DEFAULT '22:00',
+  dnd_end TIME DEFAULT '07:00',
+  dnd_silent BOOLEAN DEFAULT TRUE,    -- TRUE = 무음으로만 / FALSE = 차단
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 봉사 로그 (감사 로그)
+CREATE TABLE service_logs (
+  id BIGSERIAL PRIMARY KEY,
+  session_id BIGINT REFERENCES service_sessions(id),
+  event_id BIGINT REFERENCES calendar_events(id),
+  actor TEXT NOT NULL,                -- 액션 수행한 사용자
+  action TEXT NOT NULL,               -- 'session_started', 'joined', 'visit_recorded', 'memo_added', 'photo_uploaded', 'session_ended'
+  target_type TEXT,                   -- 'unit', 'building', 'card', 'chat'
+  target_id BIGINT,
+  details JSONB,                      -- 추가 정보 (방문 결과, 메모 내용 등)
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_log_session ON service_logs(session_id, created_at);
+CREATE INDEX idx_log_event ON service_logs(event_id, created_at);
+```
+
+### Supabase Storage Bucket
+
+```
+chat-images/        # 채팅 사진
+  ├ event_{id}/
+  │   ├ {uuid}.jpg
+  │   └ ...
+  
+정책:
+  - 인증된 사용자만 업로드
+  - 6개월 후 자동 삭제 (Edge Function cron)
+  - 자동 압축 (1MB 미만)
+```
+
+### 자동 정리 Edge Function
+
+```sql
+-- 6개월 지난 사진 삭제 (매일 새벽 3시)
+-- supabase/functions/cleanup-chat-images/
+
+-- 종료 후 1주일 지난 채팅 read-only 마킹 (매일 새벽 3시)
+-- supabase/functions/lockdown-chat/
+```
+
+---
+
+## 5. 헤더 패턴 명세
+
+### 모바일
+
+```
+모든 화면 상단:
+─────────────────────────────────────
+[<] 페이지명           🔍  🔔(●)  💬(●)  ⋮
+─────────────────────────────────────
+
+좌:  뒤로가기 (필요한 경우만)
+중:  현재 페이지 이름
+우:  검색 / 알림 / 채팅 / 메뉴
+```
+
+각 아이콘 동작:
+- **🔍 검색** — 컨텍스트별 검색 모달 (홈에선 카드 검색, 일정에선 일정 검색 등)
+- **🔔 알림** — 알림 센터 슬라이드업, 배지로 미읽음 표시
+- **💬 채팅** — 채팅 목록 슬라이드업, 배지로 미읽음 표시
+- **⋮ 메뉴** — 페이지별 추가 액션 (편집, 공유 등)
+
+### PC
+
+```
+상단 nav bar:
+─────────────────────────────────────
+[로고] [홈] [캘린더] [구역] ...        🔔(●) 💬(●) [👤김철수 ▾]
+─────────────────────────────────────
+```
+
+### 기존 화면에서 정리 필요
+
+헤더 통일하면서 각 화면에서 중복되는 부분 제거:
+- **DesktopHome**: 우상단 사용자 정보 → 헤더로 이동
+- **DesktopCalendar**: 알림 아이콘 (있다면) 제거
+- **MobileHome**: 우상단 사용자 정보 → 헤더로
+- **MobileNotices**: 헤더 통일
+- 등등
+
+→ 헤더 컴포넌트 만든 후 각 화면에서 중복 정리 (1~2일 추가 작업)
+
+---
+
+## 6. 댓글 시스템 명세
+
+### 화면
+
+```
+공지 상세 / 일정 상세 화면 하단:
+─────────────────────────
+📝 댓글 5
+
+박영희 · 2시간 전
+잘 다녀오겠습니다!
+                    [수정] [삭제]
+
+김철수 · 1시간 전
+@박영희 시간 맞춰서 출발하겠습니다
+                    [수정] [삭제]
+─────────────────────────
+[댓글 입력...] [@] [등록]
+```
+
+### @멘션 UX
+- `@` 입력 → 자동완성 드롭다운 (사용자 명단)
+- 멘션 받은 사람에게 알림 발송
+- 본인 멘션은 강조 표시
+
+### 권한
+- 작성: 누구나 (로그인된 사용자)
+- 수정/삭제: 본인만
+- 인도자/관리자: 부적절 댓글 삭제 가능
+
+---
+
+## 7. 일정별 채팅방 명세
+
+### 채팅방 화면
+
+```
+─────────────────────────────────────
+[<] 5/5 (토) 마평동 봉사     🔍 ⋮
+    참여자 4명 ▾
+─────────────────────────────────────
+
+[김철수님이 합류했습니다]
+                   오후 4:55
+
+김철수                     오후 4:30
+오늘 5시 정문에서 모여요
+
+                 도착했어요!     박영희
+                              오후 4:55
+
+이민수                     오후 5:02
+저 좀 늦어요 5분만
+
+[사진 1장]
+                   오후 5:30
+                              
+[봉사 종료]
+방문 8세대 / 만남 1 / 부재 7
+                   오후 7:00
+
+─────────────────────────────────────
+[메시지 입력...]            📷  ➤
+─────────────────────────────────────
+```
+
+### 채팅방 메뉴 (⋮)
+- 참여자 보기
+- 사진 모아보기
+- 알림 끄기 (방마다)
+- 채팅방 나가기 (= 일정 참여 취소)
+- (인도자/관리자만) 채팅방 삭제
+
+### 시스템 메시지
+
+| 트리거 | 메시지 |
+|---|---|
+| 사용자 합류 | "{이름}님이 합류했습니다" |
+| 봉사 종료 | "[봉사 종료] 방문 N세대 / 만남 X / 부재 Y" |
+
+### 사진 첨부 흐름
+
+```
+📷 → 갤러리 / 카메라 선택
+    → 자동 압축 (max 1MB, 1280px)
+    → Supabase Storage 업로드
+    → 메시지로 전송
+    
+6개월 후:
+    → 사진 자동 삭제
+    → 메시지에 "[사진 만료됨]" 표시
+```
+
+### 봉사 종료 후 흐름
+
+```
+봉사 종료 누름
+   ↓
+1주일간 활성 (회고용 메시지, 알림 옴)
+   ↓
+1주일 후: read-only
+   - 보기는 가능
+   - 메시지 작성 불가
+   - 사진 다운로드 가능
+   ↓
+사진 6개월 후 자동 삭제
+텍스트는 영구 보존
+```
+
+---
+
+## 8. 푸시 알림 명세
+
+### 발송 트리거
+
+| 상황 | 받는 사람 | 알림 종류 |
+|---|---|---|
+| 새 공지 등록 | 모든 사용자 | `notice` |
+| 새 일정 등록 | 모든 사용자 | `event` |
+| 일정 시간/장소 변경 | 일정 참여자 | `event_change` |
+| 공지/일정에 댓글 | 작성자 + 멘션받은 사람 | `comment` |
+| 채팅 새 메시지 | 채팅방 참여자 (본인 제외) | `chat` |
+| @멘션 (댓글/채팅) | 멘션받은 사람 | `mention` |
+
+### 알림 묶음 (Bundle)
+
+```
+같은 채팅방에서 5분 안에 여러 메시지:
+
+기존 알림 3개:
+🔔 박영희: 도착했어요
+🔔 김철수: 5분만 기다려요
+🔔 이민수: 저도 출발
+
+묶음 알림 1개:
+🔔 5/5 마평동 봉사 채팅 (3개 새 메시지)
+   박영희, 김철수, 이민수
+```
+
+### 방해금지 동작
+
+```
+22:00 ~ 07:00 (사용자 설정):
+  - 알림 자체는 도착 (DB에 기록)
+  - 푸시 sound/vibration 없음
+  - 배지로만 표시
+  - 핸드폰 켜면 알림 센터에서 확인 가능
+  
+멘션도 동일 (긴급 X)
+```
+
+### PWA 설치 필요성 (iOS)
+
+```
+iOS 16.4+ Safari에서:
+  - PWA 설치 안 하면 푸시 알림 0%
+  - 첫 방문 시 안내 배너로 설치 유도
+  
+Android Chrome:
+  - 설치 안 해도 푸시 가능
+  - 설치하면 더 빠르고 안정적
+```
+
+---
+
+## 9. PWA 안내 명세
+
+### 첫 방문 시 배너 (모바일)
+
+```
+페이지 진입 후 5초 경과 + 모바일 + PWA 미설치:
+
+화면 하단에서 슬라이드업:
+─────────────────────────────────────
+📱 봉사 알림 받으시려면
+   홈 화면에 추가해주세요
+
+   [설치 안내 보기]   [나중에]
+─────────────────────────────────────
+```
+
+### 설치 안내 모달
+
+```
+─────────────────────────────────────
+앱 설치 안내
+
+🍎 iPhone (Safari)
+1. 하단 [공유] 버튼 탭
+   [공유 아이콘 이미지]
+2. "홈 화면에 추가" 선택
+3. "추가" 탭
+
+🤖 Android (Chrome)
+1. 우상단 [⋮] 탭
+2. "홈 화면에 추가"
+
+[완료] [나중에]
+─────────────────────────────────────
+```
+
+### 설정 메뉴에서 항상 접근 가능
+
+```
+설정 → 앱 설치 / 알림
+─────────────────────────────────────
+📱 앱 설치 상태
+   ✅ 설치됨 (또는 ⚠️ 브라우저로 사용 중)
+   [설치 안내]
+
+🔔 알림 권한
+   ✅ 허용됨 (또는 ❌ 거부됨)
+   [브라우저 설정 열기]
+
+알림 종류
+☑ 새 공지
+☑ 새 일정 / 변경
+☑ 댓글
+☑ 채팅 메시지
+☑ @멘션
+
+방해금지 시간
+☑ 사용
+시작: [22:00 ▾]
+종료: [07:00 ▾]
+●  무음 (배지로만)
+○  완전 차단
+─────────────────────────────────────
+```
+
+---
+
+## 10. 봉사 로그 (관리자용)
+
+### 화면
+
+```
+관리자 메뉴 → 봉사 로그
+─────────────────────────────────────
+[필터: 날짜 / 카드 / 봉사자 / 일정]
+[CSV 다운로드]
+
+📅 5/5 (토) 마평동 2 봉사
+─────────────────────────────────────
+17:00  ▶️ 봉사 시작 (인도자: 김철수)
+17:02  ➕ 김철수 합류
+17:04  ➕ 박영희 합류
+17:08  ➕ 이민수 합류
+17:15  📝 김철수 → 102호 부재 기록
+17:20  ⭐ 박영희 → 105호 만남 기록
+17:28  📝 김철수 → 107호 부재 기록
+17:42  💬 메모 추가 - 105호 (김철수)
+       "한국어 가능, 다음 주 다시 방문"
+18:30  📷 채팅 사진 첨부 (이민수)
+19:00  ⏹ 봉사 종료
+       총 8세대 / 만남 1 / 부재 7
+
+📅 5/5 (토) 김량장 봉사
+─────────────────────────────────────
+...
+```
+
+### 로그 항목
+
+자동으로 service_logs에 기록되는 액션:
+- `session_started` — 봉사 시작
+- `joined` — 사용자 합류
+- `left` — 사용자 이탈
+- `visit_recorded` — 호수 방문 기록
+- `visit_updated` — 방문 기록 수정
+- `visit_deleted` — 방문 기록 삭제
+- `memo_added` — 메모 추가
+- `unit_flag_changed` — 호수 플래그 변경 (중국인/방문금지/정기방문)
+- `building_added/updated` — 건물 추가/수정
+- `chat_message` — 채팅 메시지 (요약)
+- `chat_image` — 사진 첨부
+- `session_ended` — 봉사 종료
+
+---
+
+## 11. 기존 화면 정리 필요 사항
+
+헤더 패턴 도입하면서 중복 정리:
+
+| 화면 | 제거할 것 | 헤더로 이동 |
+|---|---|---|
+| MobileHome | 우상단 사용자 카드 | 사용자 정보 → 헤더 ⋮ |
+| DesktopHome | 우상단 알림 영역 | 알림 → 헤더 🔔 |
+| MobileNotices | 자체 헤더 디자인 | 통일된 헤더 |
+| DesktopCalendar | 일부 액션 버튼 | 헤더 ⋮ 또는 inline |
+| 모든 페이지 | 다양한 헤더 스타일 | 통일 |
+
+→ 헤더 컴포넌트 (`AppHeader.tsx`) 먼저 만들고 각 화면에 적용.
+
+---
+
+## 12. 작업 단계 (총 약 3주)
+
+### Week 1: 기반 + 댓글 + 채팅 (핵심)
+
+**Day 1: DB 스키마 + 헤더**
+- [ ] SQL 마이그레이션 파일 작성 + Supabase 적용
+- [ ] `AppHeader.tsx` 컴포넌트 (모바일/PC)
+- [ ] 기존 화면에 헤더 적용 (점진적)
+
+**Day 2~3: 댓글 시스템**
+- [ ] `comments` 테이블 CRUD
+- [ ] `CommentSection.tsx` 컴포넌트
+- [ ] 공지/일정 상세 화면에 추가
+- [ ] @멘션 자동완성
+- [ ] 본인 댓글 수정/삭제
+
+**Day 4~6: 일정별 채팅방**
+- [ ] `chat_messages` 테이블 + Realtime 구독
+- [ ] `ChatRoom.tsx`, `ChatList.tsx`
+- [ ] 일정 등록 시 채팅방 자동 생성
+- [ ] 참여자 자동 입장 / 권한 체크
+- [ ] 사진 첨부 (Storage 업로드)
+- [ ] 시스템 메시지 (합류/종료)
+- [ ] 본인 메시지 삭제 (5분)
+- [ ] 안 읽음 카운트
+- [ ] 인도자 모니터링 + 삭제 권한
+
+**Day 7: PWA 기본 설정**
+- [ ] `manifest.json`, 아이콘
+- [ ] Service Worker 등록
+- [ ] PWA 설치 안내 배너
+- [ ] 설치 안내 모달
+
+### Week 2: 알림 시스템
+
+**Day 8~10: 푸시 알림 인프라**
+- [ ] VAPID 키 생성
+- [ ] `push_subscriptions` 테이블
+- [ ] 권한 요청 + 구독 등록
+- [ ] Supabase Edge Function (push 발송)
+- [ ] 토큰 만료 처리
+
+**Day 11~12: 알림 트리거**
+- [ ] 새 공지 → 모두에게 발송
+- [ ] 새 일정 → 모두에게 발송
+- [ ] 댓글 → 작성자 + 멘션
+- [ ] 채팅 → 참여자 (본인 제외)
+- [ ] 멘션 → 해당 사람
+- [ ] 알림 묶음 처리 (5분 윈도우)
+- [ ] 방해금지 시간 체크
+
+**Day 13: 알림 센터 + 설정**
+- [ ] 헤더 🔔 → `NotificationCenter.tsx`
+- [ ] 알림 목록 / 읽음 처리
+- [ ] 설정 화면 (종류별 on/off, 방해금지)
+
+**Day 14: 채팅 헤더 통합**
+- [ ] 헤더 💬 → `ChatList.tsx` 모달
+- [ ] 안 읽음 카운트 동기화
+- [ ] 홈 화면 채팅 위젯
+
+### Week 3: 봉사 로그 + 정리
+
+**Day 15~16: 봉사 로그**
+- [ ] `service_logs` 자동 기록 (각 액션 hook)
+- [ ] `ServiceLogPage.tsx` (관리자 메뉴)
+- [ ] 필터 / CSV 다운로드
+
+**Day 17: 자동 정리 작업**
+- [ ] Edge Function cron: 사진 6개월 삭제
+- [ ] Edge Function cron: 채팅방 1주 후 read-only
+
+**Day 18~19: 기존 화면 정리**
+- [ ] MobileHome 사용자 영역 → 헤더로
+- [ ] DesktopHome 정리
+- [ ] 헤더 패턴 모든 화면 적용
+- [ ] 중복 UI 제거
+
+**Day 20~21: 테스트 + 최적화**
+- [ ] iOS PWA 테스트
+- [ ] Android PWA 테스트
+- [ ] 알림 발송 테스트 (각 트리거)
+- [ ] 채팅 Realtime 안정성
+- [ ] 카드/지도 성능 점검
+
+---
+
+## 13. 단계별 출시
+
+각 Week 끝나면 사용자 테스트 가능:
+
+**Week 1 끝:** 댓글 + 채팅 + PWA 사용 가능
+**Week 2 끝:** 알림 받기 시작
+**Week 3 끝:** 정식 운영
+
+각 단계마다 commit·push·배포 가능 (Vercel 자동).
+
+---
+
+## 14. 위험 / 대비
+
+| 위험 | 대비책 |
+|---|---|
+| iOS PWA 설치 안 함 → 푸시 X | 첫 방문 안내 강화, 설정에서도 안내 |
+| Supabase Realtime 끊김 | 폴백: 30초마다 polling |
+| Push 인프라 장애 | 알림 누락, 다음 발송으로 회복 |
+| 채팅 사진 용량 폭증 | 자동 압축 + 6개월 만료 |
+| 알림 폭탄 | 묶음 처리 + 방해금지 |
+| 부적절 메시지 | 인도자/관리자 삭제 권한 |
+
+---
+
+## 15. 비용
+
+기존과 동일, 추가 부담 없음:
+
+| 서비스 | 비용 |
+|---|---|
+| Supabase | $0 (500MB DB 무료, 1GB Storage 무료) |
+| Vercel | $0 |
+| Push 알림 | $0 (Web Push, FCM 없이도 가능) |
+| **합계** | **$0/월** |
+
+장기적 (1년+):
+- DB 100MB 도달 가능 → 여전히 무료
+- Storage 1GB 도달 가능 → 사진 6개월 만료로 유지
+
+---
+
+## 16. 미결정 (나중에)
+
+- 메시지 답장 (Reply) 기능 추가
+- 1:1 메시지
+- 메시지 검색 (전체)
+- 사용자 신고 / 차단
+- 알림 발송 통계 (관리자용)
+- 자유 채팅방 (필요 시)
+- 비공식 봉사 카드 시스템 (별도 작업)
+- 식당 봉사 시스템 (별도 작업)
+
+---
+
+## 다음 액션
+
+1. ✅ V2_PLAN.md → archive 이동
+2. ✅ V1_ENHANCEMENT.md 작성 (이 문서)
+3. ⏭ DB 스키마 SQL 작성 + Supabase 적용
+4. ⏭ AppHeader 컴포넌트 작성
+5. ⏭ 댓글 시스템 구현
+6. ⏭ 채팅 시스템 구현
+7. ⏭ PWA + 푸시 알림
+8. ⏭ 봉사 로그 + 정리
+
+---
+
+*이 문서는 작업 진행하면서 계속 업데이트.*
