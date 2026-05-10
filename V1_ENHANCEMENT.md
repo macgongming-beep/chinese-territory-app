@@ -67,7 +67,8 @@
 | 항목 | 결정 |
 |---|---|
 | **댓글 위치** | 공지 / 캘린더 일정 |
-| **댓글 권한** | 누구나 작성 / 본인만 수정·삭제 |
+| **댓글 권한** | 누구나 작성 / 본인만 수정·삭제 (시간 제한 없음) |
+| **메시지 본인 삭제 시간 제한** | 5분 이내만 (채팅만) |
 | **채팅 위치** | 일정에 종속 (참여자만) |
 | **채팅 진입점** | 홈 위젯 + 헤더 💬 + 일정 상세 + 푸시 + 참여 후 토스트 |
 | **참여 후 채팅 진입** | 자동 이동 X / **토스트 안내** "채팅방 입장됨 [열기]" |
@@ -148,6 +149,149 @@
 ---
 
 ## 4. DB 스키마 변경
+
+### 세션 토큰 시스템 (V1+ 보안 핵심)
+
+**현 V1:** `auth_login` RPC + localStorage 세션 → 매 RPC 호출 시 검증 X
+**V1+:** `auth_login` 성공 시 토큰 발급 → 모든 민감 RPC가 토큰 검증
+
+```sql
+-- 신규 테이블
+CREATE TABLE auth_sessions (
+  token UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '30 days',
+  last_used_at TIMESTAMPTZ DEFAULT NOW(),
+  device_label TEXT,
+  user_agent TEXT
+);
+CREATE INDEX idx_auth_sessions_user ON auth_sessions(user_id);
+CREATE INDEX idx_auth_sessions_expires ON auth_sessions(expires_at);
+
+-- 직접 SELECT 차단
+REVOKE SELECT ON auth_sessions FROM anon, authenticated;
+```
+
+**auth_login 변경:**
+```sql
+-- 기존: 로그인 성공 시 user 정보만 반환
+-- 신규: 토큰도 발급
+CREATE OR REPLACE FUNCTION auth_login(
+  p_login_id TEXT,
+  p_pin TEXT,
+  p_device_label TEXT DEFAULT NULL,
+  p_user_agent TEXT DEFAULT NULL
+) RETURNS TABLE (
+  token UUID,
+  user_id BIGINT,
+  user_name TEXT,
+  role TEXT
+) AS $$
+DECLARE
+  v_user_id BIGINT;
+  v_user_name TEXT;
+  v_role TEXT;
+  v_token UUID;
+BEGIN
+  -- 기존 PIN 검증 (bcrypt)
+  SELECT id, name, role INTO v_user_id, v_user_name, v_role
+  FROM app_users
+  WHERE login_id = p_login_id
+    AND pin = crypt(p_pin, pin);
+  
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION '로그인 실패';
+  END IF;
+  
+  -- 토큰 발급
+  INSERT INTO auth_sessions (user_id, device_label, user_agent)
+  VALUES (v_user_id, p_device_label, p_user_agent)
+  RETURNING auth_sessions.token INTO v_token;
+  
+  -- last_login_at + login_logs 기록 (기존 로직 유지)
+  UPDATE app_users SET last_login_at = NOW() WHERE id = v_user_id;
+  INSERT INTO login_logs (user_id, logged_in_at) VALUES (v_user_id, NOW());
+  
+  RETURN QUERY SELECT v_token, v_user_id, v_user_name, v_role;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+**모든 민감 RPC: 토큰 검증 함수 사용:**
+```sql
+-- 검증 헬퍼
+CREATE OR REPLACE FUNCTION verify_session(p_token UUID)
+RETURNS BIGINT AS $$
+DECLARE
+  v_user_id BIGINT;
+BEGIN
+  SELECT user_id INTO v_user_id
+  FROM auth_sessions
+  WHERE token = p_token AND expires_at > NOW();
+  
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION '세션 만료. 다시 로그인해주세요';
+  END IF;
+  
+  -- last_used_at 갱신
+  UPDATE auth_sessions SET last_used_at = NOW() WHERE token = p_token;
+  
+  RETURN v_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 사용 예: 모든 민감 RPC가 이렇게
+CREATE OR REPLACE FUNCTION send_chat_message(
+  p_token UUID,         -- ← 클라이언트가 보낸 user_id 대신 토큰
+  p_event_id BIGINT,
+  p_content TEXT
+) RETURNS BIGINT AS $$
+DECLARE
+  v_author_id BIGINT;
+  v_session_ended TIMESTAMPTZ;
+  v_message_id BIGINT;
+BEGIN
+  -- 1. 토큰 검증 → 진짜 user_id 추출
+  v_author_id := verify_session(p_token);
+  
+  -- 2. 잠금 체크 (생략)
+  
+  -- 3. 메시지 INSERT
+  INSERT INTO chat_messages (event_id, author_id, author_name, content, type)
+  VALUES (p_event_id, v_author_id,
+          (SELECT name FROM app_users WHERE id = v_author_id),
+          p_content, 'text')
+  RETURNING id INTO v_message_id;
+  
+  RETURN v_message_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+**클라이언트 변경:**
+```typescript
+// 로그인 시 토큰 받아서 저장
+const { token, userId, userName, role } = await auth_login(loginId, pin)
+localStorage.setItem('auth_token', token)
+localStorage.setItem('auth_session', JSON.stringify({ userId, userName, role }))
+
+// 모든 민감 RPC 호출 시 토큰 포함
+const token = localStorage.getItem('auth_token')
+await supabase.rpc('send_chat_message', {
+  p_token: token,
+  p_event_id: eventId,
+  p_content: content
+})
+
+// 토큰 만료 시 (RPC가 에러 던짐) → 로그아웃 + 로그인 화면
+```
+
+**Cron: 만료 토큰 정리**
+```sql
+-- 매일 새벽 3시
+DELETE FROM auth_sessions WHERE expires_at < NOW() - INTERVAL '7 days';
+```
 
 ### 사용자 식별 원칙
 
@@ -232,7 +376,8 @@ CREATE INDEX idx_push_user ON push_subscriptions(user_id);
 CREATE TABLE notifications (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,           -- 'notice' | 'event_change' | 'comment' | 'mention' | 'chat'
+  type TEXT NOT NULL,           -- 'notice' | 'event_change' | 'comment' | 'mention' 
+                                -- | 'chat' | 'service_started' | 'service_ended'
   title TEXT NOT NULL,
   body TEXT,
   link TEXT,
@@ -262,16 +407,18 @@ CREATE TABLE service_logs (
   id BIGSERIAL PRIMARY KEY,
   session_id BIGINT REFERENCES service_sessions(id),
   event_id BIGINT REFERENCES calendar_events(id),
+  card_id BIGINT REFERENCES cards(id),  -- 카드 직접 참조 (필터 정확성)
   actor_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
   actor_name TEXT NOT NULL,     -- snapshot
   action TEXT NOT NULL,         -- 'session_started', 'joined', 'visit_recorded', 'memo_added', 'message_deleted', etc.
-  target_type TEXT,
+  target_type TEXT,             -- 'unit' | 'building' | 'message' | 'memo' (의미 명확)
   target_id BIGINT,
   details JSONB,                -- 추가 정보 (방문 결과, 메모 원문, 삭제된 메시지 원문 등)
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_log_session ON service_logs(session_id, created_at);
 CREATE INDEX idx_log_event ON service_logs(event_id, created_at);
+CREATE INDEX idx_log_card ON service_logs(card_id, created_at);
 CREATE INDEX idx_log_actor ON service_logs(actor_id);
 ```
 
@@ -472,7 +619,10 @@ BEGIN
       'type', 'comment',
       'title', '새 댓글',
       'body', NEW.author_name || ': ' || LEFT(NEW.content, 50),
-      'link', '/notices/' || NEW.target_id
+      'link', CASE NEW.target_type
+        WHEN 'notice' THEN '/notices/' || NEW.target_id
+        WHEN 'calendar_event' THEN '/calendar/events/' || NEW.target_id
+      END
     )::text
   );
   RETURN NEW;
@@ -504,15 +654,49 @@ CREATE TRIGGER on_comment_insert
 - 봉사 시작 후 종료 = ended_at 설정됨 = 1주 후 잠금
 
 ```typescript
-// 클라이언트
+// 클라이언트 — 다중 세션 처리 (한 일정에 여러 세션 가능)
 function isChatLocked(eventId: number, sessions: ServiceSession[]): boolean {
-  const session = sessions.find(s => s.calendarEventId === eventId)
-  if (!session?.endedAt) return false  // 봉사 안 끝남 → 활성
+  const eventSessions = sessions.filter(s => s.calendarEventId === eventId)
   
-  const lockTime = new Date(session.endedAt)
+  // 봉사 안 한 일정 (세션 0개) → 채팅방 항상 활성
+  if (eventSessions.length === 0) return false
+  
+  // 진행 중인 세션 있음 → 활성
+  const allEnded = eventSessions.every(s => s.endedAt !== null)
+  if (!allEnded) return false
+  
+  // 모든 세션 종료됨 → 가장 마지막 ended_at + 7일
+  const latestEnded = Math.max(
+    ...eventSessions.map(s => new Date(s.endedAt!).getTime())
+  )
+  const lockTime = new Date(latestEnded)
   lockTime.setDate(lockTime.getDate() + 7)
   return new Date() > lockTime
 }
+```
+
+**서버 RPC도 같은 로직:**
+```sql
+-- 모든 세션 종료된 시점부터 7일
+SELECT MAX(ended_at) INTO v_last_ended
+FROM service_sessions
+WHERE calendar_event_id = p_event_id
+  AND ended_at IS NOT NULL;
+
+-- 진행 중 세션 있으면 NULL 반환 → 활성
+SELECT EXISTS(
+  SELECT 1 FROM service_sessions
+  WHERE calendar_event_id = p_event_id AND ended_at IS NULL
+) INTO v_has_active;
+
+IF v_has_active THEN
+  -- 활성, 잠금 X
+  RETURN;
+END IF;
+
+IF v_last_ended IS NOT NULL AND v_last_ended < NOW() - INTERVAL '7 days' THEN
+  RAISE EXCEPTION '채팅방이 잠겼습니다 (모든 세션 종료 후 1주일 경과)';
+END IF;
 ```
 
 ```sql
@@ -1177,7 +1361,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 **구현:**
 - `notifications` 테이블에 항상 INSERT
-- 푸시 발송 시 같은 (user_name, type, related_id)에 5분 내 알림 있으면 silent 플래그
+- 푸시 발송 시 같은 `(user_id, type, related_id)`에 5분 내 알림 있으면 silent 플래그
 - 클라이언트에서 묶어서 표시
 
 ### 채팅 읽음 처리
@@ -1190,20 +1374,20 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```typescript
 // 진입
 useEffect(() => {
-  updateLastRead(eventId, currentUserName)
+  updateLastRead(eventId, currentUserId)
 }, [eventId])
 
 // 이탈 (cleanup)
 useEffect(() => {
   return () => {
-    updateLastRead(eventId, currentUserName)
+    updateLastRead(eventId, currentUserId)
   }
 }, [eventId])
 
 // 새 메시지 + 화면 활성
 useEffect(() => {
   if (document.hidden) return  // 백그라운드면 X
-  updateLastRead(eventId, currentUserName)
+  updateLastRead(eventId, currentUserId)
 }, [messages])
 ```
 
@@ -1385,10 +1569,11 @@ Android Chrome:
 | 사용자 명단 보기 | 이름만 | 이름 + 폰 | 모두 (PIN 제외) | 모두 + 로그인 기록 |
 | 공지 댓글 작성 | ✅ | ✅ | ✅ | ✅ |
 | 일정 댓글 작성 (참여 무관) | ✅ (공개) | ✅ | ✅ | ✅ |
-| 본인 댓글 수정/삭제 | ✅ (5분) | 동일 | 동일 | 동일 |
+| 본인 댓글 수정/삭제 | ✅ (시간 제한 없음) | 동일 | 동일 | 동일 |
+| 본인 채팅 메시지 삭제 | ✅ (5분 이내) | 동일 | 동일 | 동일 |
 | 다른 사람 댓글 삭제 | ❌ | ✅ | ✅ | ✅ |
 | 일정 추가/수정/삭제 | ❌ | ✅ | ✅ | ✅ |
-| 일정 삭제 시 채팅 보존 선택 | - | ✅ | ✅ | ✅ |
+| 일정 삭제 (채팅 함께 삭제) | - | ✅ | ✅ | ✅ |
 | 공지 작성/삭제 | ❌ | ✅ | ✅ | ✅ |
 | 봉사 종료 (전체 종료) | ✅ (참여자 누구나) | ✅ | ✅ | ✅ |
 | 봉사 재개 (5분 이내) | ✅ (누구나) | ✅ | ✅ | ✅ |
@@ -1404,10 +1589,11 @@ Android Chrome:
 
 ### 참여 취소 / 일정 삭제 시 정책
 
-- **참여 취소**: 채팅방에서 즉시 이탈, 더 이상 채팅 못 봄/못 씀 (24h read-only X — 즉시 차단)
-- **일정 삭제**: 인도자/관리자 선택
-  - 옵션 A: 채팅도 함께 삭제 (정리)
-  - 옵션 B: 채팅 보존 (참고 자료)
+- **참여 취소**: 채팅방에서 즉시 이탈, 더 이상 채팅 못 봄/못 씀 (24h read-only X)
+- **일정 삭제**: 채팅방도 함께 삭제 (CASCADE)
+  - 일정 삭제 시 확인 모달: "일정과 채팅 기록이 함께 삭제됩니다"
+  - 봉사 로그(service_logs)에 액션 기록은 보존 (감사용)
+  - 진짜 보존 필요하면 봉사 로그 CSV 다운로드 후 삭제
 
 ### 삭제·수정 보존 정책
 
@@ -1415,7 +1601,7 @@ Android Chrome:
 |---|---|
 | 댓글 삭제 | soft delete (`deleted_at`), 화면엔 안 보임 / 봉사 로그엔 기록 |
 | 메시지 삭제 | soft delete, 채팅에 "[메시지 삭제됨]" 표시 / 봉사 로그엔 원문 기록 |
-| 일정 삭제 | hard delete (옵션: 채팅 같이 삭제 / 보존) |
+| 일정 삭제 | hard delete (채팅 CASCADE로 함께 삭제) |
 | 공지 삭제 | hard delete |
 | 사용자 삭제 | author_id NULL, name snapshot 유지 |
 | 사진 만료 (6개월) | Storage 삭제 + `image_expired = TRUE` / 메시지엔 "[사진 만료됨]" |
@@ -1456,8 +1642,15 @@ Android Chrome:
 
 ### Week 1: 기반 + 댓글 + 채팅 (핵심)
 
-**Day 1: DB 스키마 + 헤더**
+**Day 1~2: DB 스키마 + 세션 토큰 + 헤더**
 - [ ] SQL 마이그레이션 파일 작성 + Supabase 적용
+  - [ ] 신규 테이블 (auth_sessions, comments, chat_*, push_*, notifications, service_logs)
+  - [ ] auth_login RPC 변경 (토큰 발급)
+  - [ ] verify_session RPC
+  - [ ] 모든 민감 RPC 토큰 검증 패턴 적용
+  - [ ] REVOKE SELECT (auth_sessions, service_logs)
+  - [ ] Cron: 만료 토큰 정리
+- [ ] 클라이언트 useAuth 토큰 저장/관리 로직
 - [ ] `AppHeader.tsx` 컴포넌트 (모바일/PC)
 - [ ] 기존 화면에 헤더 적용 (점진적)
 
@@ -1745,6 +1938,19 @@ Android Chrome:
 | 2026-05-11 | 채팅 잠금 기준 | service_sessions.ended_at 통일 (calendar_events 아님) |
 | 2026-05-11 | 권한 매트릭스 | 개발자/특수상태/참여취소/일정삭제 케이스 추가 |
 | 2026-05-11 | 봉사 안 시작한 일정 | 채팅방 항상 활성 (잠금 X) |
+| 2026-05-11 | **RPC 보안** | **세션 토큰 시스템 도입 (auth_sessions 테이블)** |
+| 2026-05-11 | auth_login RPC | 토큰 발급 + last_used_at 갱신 |
+| 2026-05-11 | 모든 민감 RPC | p_token 받아 verify_session() 검증 |
+| 2026-05-11 | 토큰 만료 | 30일, Cron으로 만료 후 7일 지난 것 삭제 |
+| 2026-05-11 | 일정 삭제 | A: 단순 (CASCADE로 채팅도 함께 삭제, 보존 옵션 X) |
+| 2026-05-11 | 댓글 수정/삭제 시간 | 제한 없음 (본인만) |
+| 2026-05-11 | 채팅 메시지 삭제 시간 | 5분 이내 (본인만) |
+| 2026-05-11 | service_logs.card_id | 컬럼 추가 (필터 정확성) |
+| 2026-05-11 | 알림 type 목록 | service_started, service_ended 추가 |
+| 2026-05-11 | 댓글 알림 링크 | target_type 따라 분기 (notice / calendar_event) |
+| 2026-05-11 | 채팅 잠금 다중 세션 | 모든 세션 종료 + 마지막 ended_at + 7일 |
+| 2026-05-11 | user_id 표현 통일 | 알림 묶음/읽음 처리 코드 모두 user_id 사용 |
+| 2026-05-11 | 작업 단계 Day 1 | Day 1~2로 확장 (세션 토큰 시스템 추가로) |
 
 ---
 
