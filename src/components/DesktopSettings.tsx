@@ -3,6 +3,7 @@ import type { Role, SpecialPeriod } from '../types'
 import { PERIOD_COLORS, roleLabels } from '../types'
 import { supabase } from '../lib/supabase'
 import { PwaInstallSection } from './PwaInstall'
+import { NotificationSettings } from './NotificationSettings'
 
 function formatLoginAt(iso: string): string {
   const d = new Date(iso)
@@ -104,6 +105,10 @@ export function DesktopSettings({
       <div className="desk-settings-stack">
         <article className="desk-card ds-card" style={{ padding: 0, background: 'transparent', border: 'none' }}>
           <PwaInstallSection />
+        </article>
+
+        <article className="desk-card ds-card" style={{ padding: 0, background: 'transparent', border: 'none' }}>
+          <NotificationSettings userId={currentUserId} />
         </article>
 
         <article className="desk-card ds-card">

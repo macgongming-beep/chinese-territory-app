@@ -16,6 +16,7 @@ import { languageLabels, t } from '../i18n'
 import { SpecialPeriodBanner } from './SpecialPeriodBanner'
 import { SpecialPeriodSettings } from './SpecialPeriodSettings'
 import { PwaInstallSection } from './PwaInstall'
+import { NotificationSettings } from './NotificationSettings'
 
 type MobileTab = '홈' | '캘린더' | '나의봉사' | '구역' | '지도' | '배정' | '설정'
 
@@ -1399,6 +1400,10 @@ export function MobileHome({
 
                 <div style={{ padding: '0 16px', marginBottom: 16 }}>
                   <PwaInstallSection />
+                </div>
+
+                <div style={{ padding: '0 16px', marginBottom: 16 }}>
+                  <NotificationSettings userId={currentUser.id} />
                 </div>
 
                 <button className="mobile-settings-logout" onClick={onLogout} type="button">
