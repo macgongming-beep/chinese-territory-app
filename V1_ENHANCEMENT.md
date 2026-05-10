@@ -241,21 +241,38 @@ ALTER TABLE app_users
 
 **모든 민감 RPC: 토큰 검증 함수 사용:**
 ```sql
--- 검증 헬퍼
+-- 검증 헬퍼 (토큰 만료 + 사용자 차단/승인 상태도 즉시 체크)
 CREATE OR REPLACE FUNCTION verify_session(p_token UUID)
 RETURNS BIGINT AS $$
 DECLARE
   v_user_id BIGINT;
+  v_is_active BOOLEAN;
+  v_approval_status TEXT;
 BEGIN
-  SELECT user_id INTO v_user_id
-  FROM auth_sessions
-  WHERE token = p_token AND expires_at > NOW();
+  -- 1. 토큰 + 사용자 상태 한 번에 조회
+  SELECT s.user_id, u.is_active, u.approval_status
+  INTO v_user_id, v_is_active, v_approval_status
+  FROM auth_sessions s
+  JOIN app_users u ON u.id = s.user_id
+  WHERE s.token = p_token AND s.expires_at > NOW();
   
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION '세션 만료. 다시 로그인해주세요';
   END IF;
   
-  -- last_used_at 갱신
+  -- 2. 차단된 사용자 즉시 차단 (관리자가 차단하면 기존 토큰도 즉시 무효)
+  IF v_is_active IS FALSE THEN
+    DELETE FROM auth_sessions WHERE token = p_token;
+    RAISE EXCEPTION '비활성화된 계정입니다';
+  END IF;
+  
+  -- 3. 승인 취소된 사용자도 즉시 차단
+  IF v_approval_status IS DISTINCT FROM 'approved' THEN
+    DELETE FROM auth_sessions WHERE token = p_token;
+    RAISE EXCEPTION '승인 대기 중인 계정입니다';
+  END IF;
+  
+  -- 4. last_used_at 갱신
   UPDATE auth_sessions SET last_used_at = NOW() WHERE token = p_token;
   
   RETURN v_user_id;
@@ -416,6 +433,7 @@ CREATE TABLE notification_preferences (
   push_comment BOOLEAN DEFAULT TRUE,
   push_chat BOOLEAN DEFAULT TRUE,
   push_mention BOOLEAN DEFAULT TRUE,
+  push_service_status BOOLEAN DEFAULT TRUE,  -- 봉사 시작/종료 시스템 메시지
   dnd_enabled BOOLEAN DEFAULT TRUE,
   dnd_start TIME DEFAULT '22:00',
   dnd_end TIME DEFAULT '07:00',
@@ -423,12 +441,15 @@ CREATE TABLE notification_preferences (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 봉사 로그 (감사 로그)
+-- 봉사 로그 (감사 로그) — 일정/세션 삭제돼도 보존
 CREATE TABLE service_logs (
   id BIGSERIAL PRIMARY KEY,
-  session_id BIGINT REFERENCES service_sessions(id),
-  event_id BIGINT REFERENCES calendar_events(id),
-  card_id BIGINT REFERENCES cards(id),  -- 카드 직접 참조 (필터 정확성)
+  session_id BIGINT REFERENCES service_sessions(id) ON DELETE SET NULL,
+  event_id BIGINT REFERENCES calendar_events(id) ON DELETE SET NULL,  -- 일정 삭제돼도 로그 보존
+  event_title TEXT,             -- snapshot (일정 삭제 후에도 표시 가능)
+  event_date DATE,              -- snapshot
+  card_id BIGINT REFERENCES cards(id) ON DELETE SET NULL,
+  card_name TEXT,               -- snapshot
   actor_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
   actor_name TEXT NOT NULL,     -- snapshot
   action TEXT NOT NULL,         -- 'session_started', 'joined', 'visit_recorded', 'memo_added', 'message_deleted', etc.
@@ -441,6 +462,9 @@ CREATE INDEX idx_log_session ON service_logs(session_id, created_at);
 CREATE INDEX idx_log_event ON service_logs(event_id, created_at);
 CREATE INDEX idx_log_card ON service_logs(card_id, created_at);
 CREATE INDEX idx_log_actor ON service_logs(actor_id);
+
+-- 직접 접근 차단 (RPC로만)
+REVOKE SELECT, INSERT, UPDATE, DELETE ON service_logs FROM anon, authenticated;
 ```
 
 **기존 테이블 수정 (점진적, 호환성 유지):**
@@ -489,10 +513,10 @@ chat-images/        # 채팅 사진
 **해결: RPC로 조회 감싸기**
 
 ```sql
--- 1. service_logs 직접 SELECT 차단
-REVOKE SELECT ON service_logs FROM anon, authenticated;
+-- 1. service_logs 직접 접근 전체 차단 (SELECT/INSERT/UPDATE/DELETE 모두 RPC로만)
+REVOKE SELECT, INSERT, UPDATE, DELETE ON service_logs FROM anon, authenticated;
 
--- 2. 권한 체크된 RPC 함수만 허용 (토큰 검증)
+-- 2. 권한 체크된 RPC 함수만 허용 (토큰 검증 + 인도자 카드 범위 제한)
 CREATE OR REPLACE FUNCTION get_service_logs(
   p_token UUID,                              -- ← 토큰
   p_filter_event_id BIGINT DEFAULT NULL,
@@ -501,24 +525,35 @@ CREATE OR REPLACE FUNCTION get_service_logs(
 ) RETURNS SETOF service_logs AS $$
 DECLARE
   v_user_id BIGINT;
+  v_user_name TEXT;
   v_role TEXT;
 BEGIN
   -- 1. 토큰 검증 → user_id 추출
   v_user_id := verify_session(p_token);
   
   -- 2. 권한 확인
-  SELECT role INTO v_role FROM app_users WHERE id = v_user_id;
+  SELECT name, role INTO v_user_name, v_role 
+  FROM app_users WHERE id = v_user_id;
   
   IF v_role NOT IN ('leader', 'admin', 'developer') THEN
     RAISE EXCEPTION '권한 없음';
   END IF;
   
-  -- 3. 조회 (card_id 컬럼으로 필터)
+  -- 3. 조회 (card_id 컬럼으로 필터 + 인도자는 자기 카드만)
   RETURN QUERY
-  SELECT * FROM service_logs
-  WHERE (p_filter_event_id IS NULL OR event_id = p_filter_event_id)
-    AND (p_filter_card_id IS NULL OR card_id = p_filter_card_id)
-  ORDER BY created_at DESC
+  SELECT sl.* FROM service_logs sl
+  WHERE (p_filter_event_id IS NULL OR sl.event_id = p_filter_event_id)
+    AND (p_filter_card_id IS NULL OR sl.card_id = p_filter_card_id)
+    AND (
+      -- admin/developer: 모든 로그
+      v_role IN ('admin', 'developer')
+      -- leader: 자기 담당 카드 로그만
+      OR (v_role = 'leader' AND sl.card_id IN (
+        SELECT cla.card_id FROM card_leader_assignments cla
+        WHERE cla.user_name = v_user_name
+      ))
+    )
+  ORDER BY sl.created_at DESC
   LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -695,6 +730,25 @@ CREATE TRIGGER on_comment_insert
 - 각 사용자의 push_subscriptions 조회
 - 방해금지 시간 체크 (있으면 silent: true)
 - Web Push 발송
+
+**🔒 비밀값 처리 (필수):**
+- VAPID private key, Supabase service_role key 등은 **Supabase Vault 또는 Edge Function 환경변수**에서 읽기
+- DB 트리거 SQL의 `Bearer xxx`는 placeholder (실제 구현 시 Supabase Vault에서 조회)
+- `vault.secrets` 테이블 사용 또는 `Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')`
+- ❌ **절대 SQL/문서/코드에 하드코딩 금지**
+- ❌ git commit에 노출되지 않도록 .env.local 사용 (이미 gitignore됨)
+
+```sql
+-- 트리거에서 Vault 사용 예시
+PERFORM net.http_post(
+  url := 'https://xxx.supabase.co/functions/v1/send-push',
+  headers := jsonb_build_object(
+    'Authorization', 'Bearer ' || vault.read_secret('edge_function_key'),
+    'Content-Type', 'application/json'
+  ),
+  body := ...
+);
+```
 
 ### 채팅방 잠금 (조회 시 계산, service_sessions.ended_at 기준)
 
@@ -1503,6 +1557,7 @@ Android Chrome:
 ☑ 댓글
 ☑ 채팅 메시지
 ☑ @멘션
+☑ 봉사 시작/종료 시스템 알림
 (새 일정 등록은 알림 안 옴 — 일정 잦음)
 
 방해금지 시간
@@ -1977,6 +2032,13 @@ Android Chrome:
 | 2026-05-11 | send_chat_message 중복 예시 | 토큰 + 다중 세션 버전으로 통일, 옛 예시 제거 |
 | 2026-05-11 | 본인 알림 제외 코드 | recipient_id <> NEW.author_id 사용 |
 | 2026-05-11 | auth_login | 승인 상태 + 비활성화 체크 추가 (특수 상태 정책 반영) |
+| 2026-05-11 | service_logs.event_id | ON DELETE SET NULL + event_title/date snapshot |
+| 2026-05-11 | service_logs.card_id | ON DELETE SET NULL + card_name snapshot |
+| 2026-05-11 | service_logs 차단 | SELECT/INSERT/UPDATE/DELETE 모두 RPC로만 |
+| 2026-05-11 | verify_session | is_active + approval_status 즉시 체크 (차단 즉시 토큰 무효) |
+| 2026-05-11 | get_service_logs | leader는 card_leader_assignments 기준 자기 카드만 |
+| 2026-05-11 | notification_preferences | push_service_status 토글 추가 |
+| 2026-05-11 | Edge Function 비밀값 | Supabase Vault / 환경변수 사용 명시 (하드코딩 금지) |
 
 ---
 
