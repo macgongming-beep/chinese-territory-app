@@ -219,7 +219,7 @@ function App() {
     <>
       <Toast />
       <PwaInstallBanner />
-      {user && <GlobalNotificationButton userId={user.id} />}
+      {user && <GlobalNotificationButton userId={user.id} userName={user.name} />}
       <Suspense
         fallback={
           <div className="app-loading">
