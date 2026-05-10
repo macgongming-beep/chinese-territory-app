@@ -192,10 +192,13 @@ DECLARE
   v_user_id BIGINT;
   v_user_name TEXT;
   v_role TEXT;
+  v_approval_status TEXT;
+  v_is_active BOOLEAN;
   v_token UUID;
 BEGIN
-  -- 기존 PIN 검증 (bcrypt)
-  SELECT id, name, role INTO v_user_id, v_user_name, v_role
+  -- 1. PIN 검증 (bcrypt)
+  SELECT id, name, role, approval_status, is_active
+  INTO v_user_id, v_user_name, v_role, v_approval_status, v_is_active
   FROM app_users
   WHERE login_id = p_login_id
     AND pin = crypt(p_pin, pin);
@@ -204,18 +207,36 @@ BEGIN
     RAISE EXCEPTION '로그인 실패';
   END IF;
   
-  -- 토큰 발급
+  -- 2. 승인 상태 체크
+  IF v_approval_status IS DISTINCT FROM 'approved' THEN
+    RAISE EXCEPTION '승인 대기 중인 계정입니다';
+  END IF;
+  
+  -- 3. 비활성화 체크 (관리자 차단)
+  IF v_is_active IS FALSE THEN
+    RAISE EXCEPTION '비활성화된 계정입니다';
+  END IF;
+  
+  -- 4. 토큰 발급
   INSERT INTO auth_sessions (user_id, device_label, user_agent)
   VALUES (v_user_id, p_device_label, p_user_agent)
   RETURNING auth_sessions.token INTO v_token;
   
-  -- last_login_at + login_logs 기록 (기존 로직 유지)
+  -- 5. last_login_at + login_logs 기록 (기존 로직 유지)
   UPDATE app_users SET last_login_at = NOW() WHERE id = v_user_id;
   INSERT INTO login_logs (user_id, logged_in_at) VALUES (v_user_id, NOW());
   
   RETURN QUERY SELECT v_token, v_user_id, v_user_name, v_role;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+**전제: app_users에 다음 컬럼 있다고 가정 (기존 V1 schema 확인 필요):**
+```sql
+-- 없으면 마이그레이션에서 추가
+ALTER TABLE app_users 
+  ADD COLUMN IF NOT EXISTS approval_status TEXT DEFAULT 'approved',
+  ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 ```
 
 **모든 민감 RPC: 토큰 검증 함수 사용:**
@@ -471,27 +492,32 @@ chat-images/        # 채팅 사진
 -- 1. service_logs 직접 SELECT 차단
 REVOKE SELECT ON service_logs FROM anon, authenticated;
 
--- 2. 권한 체크된 RPC 함수만 허용
+-- 2. 권한 체크된 RPC 함수만 허용 (토큰 검증)
 CREATE OR REPLACE FUNCTION get_service_logs(
-  p_user_id BIGINT,
+  p_token UUID,                              -- ← 토큰
   p_filter_event_id BIGINT DEFAULT NULL,
   p_filter_card_id BIGINT DEFAULT NULL,
   p_limit INT DEFAULT 100
 ) RETURNS SETOF service_logs AS $$
 DECLARE
+  v_user_id BIGINT;
   v_role TEXT;
 BEGIN
-  -- 호출자 권한 확인
-  SELECT role INTO v_role FROM app_users WHERE id = p_user_id;
+  -- 1. 토큰 검증 → user_id 추출
+  v_user_id := verify_session(p_token);
+  
+  -- 2. 권한 확인
+  SELECT role INTO v_role FROM app_users WHERE id = v_user_id;
   
   IF v_role NOT IN ('leader', 'admin', 'developer') THEN
     RAISE EXCEPTION '권한 없음';
   END IF;
   
+  -- 3. 조회 (card_id 컬럼으로 필터)
   RETURN QUERY
   SELECT * FROM service_logs
   WHERE (p_filter_event_id IS NULL OR event_id = p_filter_event_id)
-    AND (p_filter_card_id IS NULL OR target_id = p_filter_card_id)
+    AND (p_filter_card_id IS NULL OR card_id = p_filter_card_id)
   ORDER BY created_at DESC
   LIMIT p_limit;
 END;
@@ -500,21 +526,43 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION get_service_logs TO anon;
 ```
 
-**INSERT도 RPC 권장:**
+**INSERT도 RPC + 토큰:**
 ```sql
--- 클라이언트가 직접 INSERT 안 하고 RPC 호출
 CREATE OR REPLACE FUNCTION log_service_action(
+  p_token UUID,                  -- ← 토큰
   p_session_id BIGINT,
-  p_actor_id BIGINT,
+  p_event_id BIGINT,
+  p_card_id BIGINT,
   p_action TEXT,
+  p_target_type TEXT,
+  p_target_id BIGINT,
   p_details JSONB
 ) RETURNS BIGINT AS $$
+DECLARE
+  v_actor_id BIGINT;
+  v_actor_name TEXT;
+  v_log_id BIGINT;
 BEGIN
-  -- 호출자 검증 + INSERT
-  INSERT INTO service_logs (...) VALUES (...);
-  RETURN ...;
+  -- 토큰 → user_id
+  v_actor_id := verify_session(p_token);
+  SELECT name INTO v_actor_name FROM app_users WHERE id = v_actor_id;
+  
+  INSERT INTO service_logs (
+    session_id, event_id, card_id,
+    actor_id, actor_name,
+    action, target_type, target_id, details
+  ) VALUES (
+    p_session_id, p_event_id, p_card_id,
+    v_actor_id, v_actor_name,
+    p_action, p_target_type, p_target_id, p_details
+  )
+  RETURNING id INTO v_log_id;
+  
+  RETURN v_log_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION log_service_action TO anon;
 ```
 
 ### 인증 방식 (출시 단계 / 중장기 계획)
@@ -606,7 +654,10 @@ BEGIN
     p_type := 'comment',
     p_title := '새 댓글',
     p_body := NEW.author_name || ': ' || LEFT(NEW.content, 50),
-    p_link := '/notices/' || NEW.target_id,
+    p_link := CASE NEW.target_type
+      WHEN 'notice' THEN '/notices/' || NEW.target_id
+      WHEN 'calendar_event' THEN '/calendar/events/' || NEW.target_id
+    END,
     p_related_id := NEW.id
   );
   
@@ -700,40 +751,8 @@ END IF;
 ```
 
 ```sql
--- 서버 RPC (메시지 작성 시 검증)
-CREATE OR REPLACE FUNCTION send_chat_message(
-  p_event_id BIGINT,
-  p_author_id BIGINT,
-  p_content TEXT
-) RETURNS BIGINT AS $$
-DECLARE
-  v_session_ended TIMESTAMPTZ;
-  v_message_id BIGINT;
-BEGIN
-  -- 1. 잠금 체크 (service_sessions 기준)
-  SELECT ended_at INTO v_session_ended
-  FROM service_sessions
-  WHERE calendar_event_id = p_event_id
-  ORDER BY created_at DESC LIMIT 1;
-  
-  IF v_session_ended IS NOT NULL 
-     AND v_session_ended < NOW() - INTERVAL '7 days' THEN
-    RAISE EXCEPTION '채팅방이 잠겼습니다 (봉사 종료 1주일 경과)';
-  END IF;
-  
-  -- 2. 참여 권한 체크
-  -- (해당 일정 참여자만 작성 가능)
-  
-  -- 3. 메시지 INSERT
-  INSERT INTO chat_messages (event_id, author_id, author_name, content, type)
-  VALUES (p_event_id, p_author_id, 
-          (SELECT name FROM app_users WHERE id = p_author_id),
-          p_content, 'text')
-  RETURNING id INTO v_message_id;
-  
-  RETURN v_message_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- 서버 RPC: 위 세션 토큰 섹션의 send_chat_message(p_token, ...) 와 동일
+-- + 다중 세션 잠금 로직은 다음 코드 블록 참고
 ```
 
 **일정에 봉사 안 한 경우 (service_session 없음):**
@@ -1399,7 +1418,8 @@ useEffect(() => {
 
 ```sql
 -- 알림 발송 트리거에서:
-WHERE recipient != NEW.author
+WHERE recipient_id <> NEW.author_id
+-- 또는 array_remove(recipients, NEW.author_id) 같은 형태로
 ```
 
 ### 방해금지 동작
@@ -1951,6 +1971,12 @@ Android Chrome:
 | 2026-05-11 | 채팅 잠금 다중 세션 | 모든 세션 종료 + 마지막 ended_at + 7일 |
 | 2026-05-11 | user_id 표현 통일 | 알림 묶음/읽음 처리 코드 모두 user_id 사용 |
 | 2026-05-11 | 작업 단계 Day 1 | Day 1~2로 확장 (세션 토큰 시스템 추가로) |
+| 2026-05-11 | get_service_logs RPC | p_user_id → p_token, target_id 필터 → card_id 필터 |
+| 2026-05-11 | log_service_action RPC | p_actor_id → p_token, verify_session으로 actor 추출 |
+| 2026-05-11 | 댓글 알림 DB insert link | target_type 분기 (Edge Function뿐만 아니라 insert_notifications에도) |
+| 2026-05-11 | send_chat_message 중복 예시 | 토큰 + 다중 세션 버전으로 통일, 옛 예시 제거 |
+| 2026-05-11 | 본인 알림 제외 코드 | recipient_id <> NEW.author_id 사용 |
+| 2026-05-11 | auth_login | 승인 상태 + 비활성화 체크 추가 (특수 상태 정책 반영) |
 
 ---
 
