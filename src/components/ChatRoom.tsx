@@ -11,6 +11,7 @@ type ChatMessage = {
   message_type: 'text' | 'image' | 'system'
   content: string | null
   image_url: string | null
+  image_expired?: boolean
   mention_ids: number[] | null
   mention_names: string[] | null
   created_at: string
@@ -84,7 +85,7 @@ export function ChatRoom({
     setLoading(true)
     const { data, error } = await supabase
       .from('chat_messages')
-      .select('id, event_id, author_id, author_name, message_type, content, image_url, mention_ids, mention_names, created_at, deleted_at')
+      .select('id, event_id, author_id, author_name, message_type, content, image_url, image_expired, mention_ids, mention_names, created_at, deleted_at')
       .eq('event_id', eventId)
       .is('deleted_at', null)
       .order('created_at', { ascending: true })
@@ -262,10 +263,26 @@ export function ChatRoom({
                       <span>{formatChatTime(message.created_at)}</span>
                     </div>
                   )}
-                  {message.image_url && (
+                  {message.image_url && !message.image_expired && (
                     <a href={message.image_url} rel="noreferrer" target="_blank">
                       <img alt="채팅 첨부 이미지" src={message.image_url} />
                     </a>
+                  )}
+                  {message.message_type === 'image' && message.image_expired && (
+                    <div style={{
+                      padding: '12px 14px',
+                      background: '#f1f5f9',
+                      borderRadius: 8,
+                      color: '#94a3b8',
+                      fontSize: 13,
+                      fontStyle: 'italic',
+                      textAlign: 'center',
+                    }}>
+                      📷 [사진 만료됨]
+                      <div style={{ fontSize: 11, marginTop: 4 }}>
+                        6개월 보관 후 자동 삭제됩니다
+                      </div>
+                    </div>
                   )}
                   {message.content && <p>{message.content}</p>}
                 </div>
