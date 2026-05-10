@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Toast } from './components/Toast'
+import { PwaInstallBanner } from './components/PwaInstall'
 import { useStore } from './hooks/useStore'
 import { useAuth } from './hooks/useAuth'
 import type { Role } from './types'
@@ -216,6 +217,7 @@ function App() {
   return (
     <>
       <Toast />
+      <PwaInstallBanner />
       <Suspense
         fallback={
           <div className="app-loading">

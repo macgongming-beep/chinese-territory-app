@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { Role, SpecialPeriod } from '../types'
 import { PERIOD_COLORS, roleLabels } from '../types'
 import { supabase } from '../lib/supabase'
+import { PwaInstallSection } from './PwaInstall'
 
 function formatLoginAt(iso: string): string {
   const d = new Date(iso)
@@ -101,6 +102,10 @@ export function DesktopSettings({
       </header>
 
       <div className="desk-settings-stack">
+        <article className="desk-card ds-card" style={{ padding: 0, background: 'transparent', border: 'none' }}>
+          <PwaInstallSection />
+        </article>
+
         <article className="desk-card ds-card">
           <div className="desk-card__head">
             <h2 className="desk-card__title"><span className="desk-card__title-dot" />계정</h2>
