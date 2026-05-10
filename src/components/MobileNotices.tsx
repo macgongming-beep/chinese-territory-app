@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Notice, Role } from '../types'
+import { CommentSection, type MentionUser } from './CommentSection'
 
 const PRIORITY_COLOR: Record<Notice['priority'], { bg: string; color: string }> = {
   긴급: { bg: 'var(--danger-100)', color: '#b91c1c' },
@@ -9,14 +10,18 @@ const PRIORITY_COLOR: Record<Notice['priority'], { bg: string; color: string }> 
 
 export function MobileNotices({
   currentVisitor,
+  currentUserId,
   notices,
   role,
+  mentionUsers = [],
   onCreateNotice,
   onDeleteNotice,
 }: {
   currentVisitor: string
+  currentUserId?: number | null
   notices: Notice[]
   role: Role
+  mentionUsers?: MentionUser[]
   onCreateNotice: (input: { title: string; content: string; priority: Notice['priority']; author: string }) => void
   onDeleteNotice: (id: number) => void
 }) {
@@ -108,6 +113,15 @@ export function MobileNotices({
               </button>
             )}
           </div>
+          <CommentSection
+            compact
+            currentUserId={currentUserId}
+            currentVisitor={currentVisitor}
+            role={role}
+            targetId={notice.id}
+            targetType="notice"
+            users={mentionUsers}
+          />
         </div>
       ))}
     </div>

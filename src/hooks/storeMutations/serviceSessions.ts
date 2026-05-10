@@ -1,5 +1,6 @@
 import type { Building, Role, ServiceSession, ServiceSessionStatus, TimeSlot } from '../../types'
 import { supabase, showToast, reportMutationError, getLocalDateString, getCurrentVisitor } from './shared'
+import { createSystemChatMessage } from './chatSystem'
 
 export function makeServiceSessionMutations(deps: {
   fetchAll: () => Promise<void>
@@ -119,6 +120,7 @@ export function makeServiceSessionMutations(deps: {
       return null
     }
 
+    await createSystemChatMessage(input.calendarEventId, `${visitor}님이 ${input.timeSlot} 봉사를 시작했습니다.`)
     await fetchAll()
     showToast(
       activeSessionsToEnd.length > 0
@@ -129,6 +131,7 @@ export function makeServiceSessionMutations(deps: {
   }
 
   const endServiceSession = async (sessionId: number) => {
+    const targetSession = serviceSessions.find((session) => session.id === sessionId)
     const result = await supabase
       .from('service_sessions')
       .update({ status: 'ended', ended_at: new Date().toISOString() })
@@ -139,6 +142,7 @@ export function makeServiceSessionMutations(deps: {
       return
     }
 
+    await createSystemChatMessage(targetSession?.calendarEventId, `${targetSession?.userName ?? '사용자'}님이 봉사를 종료했습니다.`)
     await fetchAll()
     showToast('봉사 세션을 종료했습니다')
   }

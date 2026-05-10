@@ -287,6 +287,33 @@ grant usage, select on sequence
   public.notifications_id_seq
 to anon, authenticated;
 
+-- ─── Storage: 채팅 사진 첨부 버킷 ─────────────────────────────
+-- V1에서는 getPublicUrl 기반으로 단순 운영한다.
+-- 중장기에는 signed upload/download + 만료 Edge Function으로 강화한다.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'chat-attachments',
+  'chat-attachments',
+  true,
+  10485760,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists chat_attachments_public_read on storage.objects;
+create policy chat_attachments_public_read on storage.objects
+for select to anon, authenticated
+using (bucket_id = 'chat-attachments');
+
+drop policy if exists chat_attachments_upload on storage.objects;
+create policy chat_attachments_upload on storage.objects
+for insert to anon, authenticated
+with check (bucket_id = 'chat-attachments');
+
 -- ─── 만료 토큰 정리 함수 + pg_cron 스케줄 ─────────────────────
 create or replace function public.cleanup_expired_auth_sessions()
 returns integer

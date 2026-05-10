@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { CalendarEvent, Role } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t } from '../i18n'
+import { ChatRoom } from './ChatRoom'
+import { CommentSection, type MentionUser } from './CommentSection'
 
 const WEEKDAYS: Record<AppLanguage, string[]> = {
   ko: ['일', '월', '화', '수', '목', '금', '토'],
@@ -73,11 +75,13 @@ function CalMiniIcon({ name }: { name: 'place' | 'leader' | 'users' }) {
 export function MobileCalendar({
   language,
   currentVisitor,
+  currentUserId,
   leaderNames = [],
   leaderPhones = {},
   events,
   role = 'user',
   allUserNames = [],
+  mentionUsers = [],
   onApplyToEvent,
   onAddParticipant,
   onCreateEvent,
@@ -86,11 +90,13 @@ export function MobileCalendar({
 }: {
   language: AppLanguage
   currentVisitor: string
+  currentUserId?: number | null
   leaderNames?: string[]
   leaderPhones?: Record<string, string | null | undefined>
   events: CalendarEvent[]
   role?: Role
   allUserNames?: string[]
+  mentionUsers?: MentionUser[]
   onApplyToEvent: (eventId: number) => void
   onAddParticipant?: (eventId: number, userName: string) => void
   onCreateEvent?: (input: EventInput & { date: string }) => void
@@ -489,6 +495,23 @@ export function MobileCalendar({
                     </button>
                   </div>
                 )}
+                <CommentSection
+                  compact
+                  currentUserId={currentUserId}
+                  currentVisitor={currentVisitor}
+                  role={role}
+                  targetId={event.id}
+                  targetType="calendar_event"
+                  users={mentionUsers}
+                />
+                <ChatRoom
+                  compact
+                  currentUserId={currentUserId}
+                  currentVisitor={currentVisitor}
+                  eventId={event.id}
+                  eventTitle={event.title}
+                  users={mentionUsers}
+                />
               </div>
             </div>
           )

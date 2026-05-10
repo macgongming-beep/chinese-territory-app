@@ -1162,8 +1162,10 @@ export function MobileHome({
             <Route path="/notices" element={
               <MobileNotices
                 currentVisitor={currentVisitor}
+                currentUserId={currentUser.id}
                 notices={notices}
                 role={role}
+                mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
                 onCreateNotice={onCreateNotice}
                 onDeleteNotice={onDeleteNotice}
               />
@@ -1183,11 +1185,13 @@ export function MobileHome({
               <MobileCalendar
                 language={language}
                 currentVisitor={currentVisitor}
+                currentUserId={currentUser.id}
                 leaderNames={leaderNames}
                 leaderPhones={Object.fromEntries(allUsers.filter((u) => u.phone).map((u) => [u.name, u.phone]))}
                 events={calendarEvents}
                 role={role}
                 allUserNames={allUsers.map((u) => u.name)}
+                mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
                 onApplyToEvent={onApplyToEvent}
                 onAddParticipant={onAddParticipantToEvent}
                 onCreateEvent={onCreateCalendarEvent}

@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from 'react'
 import type { CalendarEvent, SpecialPeriod, TerritoryCard } from '../types'
 import { PERIOD_COLORS } from '../types'
+import { ChatRoom } from './ChatRoom'
+import { CommentSection, type MentionUser } from './CommentSection'
 
 function getCalendarDays(year: number, month: number): (number | null)[] {
   const firstDay = new Date(year, month - 1, 1).getDay()
@@ -75,11 +77,13 @@ type ScopeModal =
 
 export function DesktopCalendar({
   currentVisitor,
+  currentUserId,
   leaderNames = [],
   cards: _cards,
   events,
   role = 'user',
   allUserNames = [],
+  mentionUsers = [],
   onApplyToEvent,
   onAssignToEvent: _onAssignToEvent,
   onAssignCardToEventParticipant: _onAssignCardToEventParticipant,
@@ -97,11 +101,13 @@ export function DesktopCalendar({
   specialPeriods,
 }: {
   currentVisitor: string
+  currentUserId?: number | null
   leaderNames?: string[]
   cards: TerritoryCard[]
   events: CalendarEvent[]
   role?: import('../types').Role
   allUserNames?: string[]
+  mentionUsers?: MentionUser[]
   onApplyToEvent: (eventId: number) => void
   onAssignToEvent: (eventId: number, userName: string) => void
   onAssignCardToEventParticipant: (eventId: number, userName: string, cardId: number | null) => void
@@ -560,6 +566,26 @@ export function DesktopCalendar({
                     )}
 
                     {event.memo && <p className="event-memo">{event.memo}</p>}
+
+                    <div className="event-collab-grid">
+                      <CommentSection
+                        compact
+                        currentUserId={currentUserId}
+                        currentVisitor={currentVisitor}
+                        role={role}
+                        targetId={event.id}
+                        targetType="calendar_event"
+                        users={mentionUsers}
+                      />
+                      <ChatRoom
+                        compact
+                        currentUserId={currentUserId}
+                        currentVisitor={currentVisitor}
+                        eventId={event.id}
+                        eventTitle={event.title}
+                        users={mentionUsers}
+                      />
+                    </div>
                   </article>
                 )
               })}

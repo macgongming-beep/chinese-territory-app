@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { Notice } from '../types'
+import type { Notice, Role } from '../types'
+import { CommentSection, type MentionUser } from './CommentSection'
 
 const PRIORITY_BADGE: Record<Notice['priority'], string> = {
   긴급: 'notice-badge--danger',
@@ -9,12 +10,18 @@ const PRIORITY_BADGE: Record<Notice['priority'], string> = {
 
 export function DesktopNotices({
   currentVisitor,
+  currentUserId,
+  role = 'user',
   notices,
+  mentionUsers = [],
   onCreateNotice,
   onDeleteNotice,
 }: {
   currentVisitor: string
+  currentUserId?: number | null
+  role?: Role
   notices: Notice[]
+  mentionUsers?: MentionUser[]
   onCreateNotice: (input: { title: string; content: string; priority: Notice['priority']; author: string }) => void
   onDeleteNotice: (id: number) => void
 }) {
@@ -146,6 +153,14 @@ export function DesktopNotices({
               <div className="notice-detail-body">
                 <h2 className="notice-detail-title">{selected.title}</h2>
                 <p className="notice-detail-content">{selected.content}</p>
+                <CommentSection
+                  currentUserId={currentUserId}
+                  currentVisitor={currentVisitor}
+                  role={role}
+                  targetId={selected.id}
+                  targetType="notice"
+                  users={mentionUsers}
+                />
               </div>
             </>
           )}

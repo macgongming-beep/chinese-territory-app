@@ -401,10 +401,12 @@ export function DesktopApp({
         <Route path="/calendar" element={
           <DesktopCalendar
             currentVisitor={currentVisitor}
+            currentUserId={currentUserId}
             leaderNames={leaderNames}
             events={calendarEvents}
             role={viewMode}
             allUserNames={allUsers.map((u) => u.name)}
+            mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
             onApplyToEvent={onApplyToEvent}
             onAssignToEvent={onAssignToEvent}
             onAssignCardToEventParticipant={onAssignCardToEventParticipant}
@@ -598,7 +600,10 @@ export function DesktopApp({
         <Route path="/notices" element={
           <DesktopNotices
             currentVisitor={currentVisitor}
+            currentUserId={currentUserId}
+            role={actualRole}
             notices={notices}
+            mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
             onCreateNotice={onCreateNotice}
             onDeleteNotice={onDeleteNotice}
           />

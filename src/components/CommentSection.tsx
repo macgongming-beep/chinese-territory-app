@@ -1,0 +1,237 @@
+import { useEffect, useMemo, useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { showToast } from '../lib/toast'
+import type { Role } from '../types'
+
+export type MentionUser = {
+  id: number
+  name: string
+  role?: string
+}
+
+type CommentTargetType = 'notice' | 'calendar_event'
+
+type CommentRecord = {
+  id: number
+  target_type: CommentTargetType
+  target_id: number
+  author_id: number | null
+  author_name: string
+  content: string
+  mention_ids: number[] | null
+  mention_names: string[] | null
+  created_at: string
+  deleted_at: string | null
+}
+
+type CommentSectionProps = {
+  targetType: CommentTargetType
+  targetId: number
+  currentVisitor: string
+  currentUserId?: number | null
+  role?: Role
+  users?: MentionUser[]
+  title?: string
+  compact?: boolean
+}
+
+function getMentionQuery(value: string) {
+  const match = value.match(/(^|\s)@([^\s@]*)$/)
+  return match ? match[2] : null
+}
+
+function insertMention(value: string, userName: string) {
+  return value.replace(/(^|\s)@([^\s@]*)$/, `$1@${userName} `)
+}
+
+function getMentionPayload(value: string, users: MentionUser[]) {
+  const mentioned = users.filter((user) => value.includes(`@${user.name}`))
+  return {
+    ids: mentioned.map((user) => user.id),
+    names: mentioned.map((user) => user.name),
+  }
+}
+
+function formatCommentTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+export function CommentSection({
+  targetType,
+  targetId,
+  currentVisitor,
+  currentUserId,
+  role = 'user',
+  users = [],
+  title = '댓글',
+  compact = false,
+}: CommentSectionProps) {
+  const [comments, setComments] = useState<CommentRecord[]>([])
+  const [draft, setDraft] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [missingTable, setMissingTable] = useState(false)
+
+  const mentionQuery = getMentionQuery(draft)
+  const mentionSuggestions = useMemo(() => {
+    if (mentionQuery === null) return []
+    return users
+      .filter((user) => user.name !== currentVisitor && user.name.includes(mentionQuery))
+      .slice(0, 6)
+  }, [currentVisitor, mentionQuery, users])
+
+  const fetchComments = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('comments')
+      .select('id, target_type, target_id, author_id, author_name, content, mention_ids, mention_names, created_at, deleted_at')
+      .eq('target_type', targetType)
+      .eq('target_id', targetId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.warn('댓글을 불러오지 못했습니다. comments 테이블이 아직 없을 수 있습니다.', error)
+      setMissingTable(true)
+      setComments([])
+      setLoading(false)
+      return
+    }
+
+    setMissingTable(false)
+    setComments((data as CommentRecord[]) ?? [])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    void fetchComments()
+
+    const channel = supabase
+      .channel(`comments:${targetType}:${targetId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comments', filter: `target_id=eq.${targetId}` },
+        () => void fetchComments(),
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetId, targetType])
+
+  const submitComment = async () => {
+    const content = draft.trim()
+    if (!content) return
+
+    const mentions = getMentionPayload(content, users)
+    const { error } = await supabase.from('comments').insert({
+      target_type: targetType,
+      target_id: targetId,
+      author_id: currentUserId ?? null,
+      author_name: currentVisitor,
+      content,
+      mention_ids: mentions.ids,
+      mention_names: mentions.names,
+    })
+
+    if (error) {
+      reportCommentError(error)
+      return
+    }
+
+    setDraft('')
+    await fetchComments()
+  }
+
+  const deleteComment = async (comment: CommentRecord) => {
+    const { error } = await supabase
+      .from('comments')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', comment.id)
+
+    if (error) {
+      showToast('댓글을 삭제하지 못했습니다.', 'error')
+      return
+    }
+    await fetchComments()
+  }
+
+  const canDelete = (comment: CommentRecord) =>
+    comment.author_name === currentVisitor || role === 'admin' || role === 'developer'
+
+  if (missingTable) {
+    return (
+      <section className={`comment-section${compact ? ' comment-section--compact' : ''}`}>
+        <div className="comment-empty">댓글 기능은 V1+ SQL 적용 후 사용할 수 있습니다.</div>
+      </section>
+    )
+  }
+
+  return (
+    <section className={`comment-section${compact ? ' comment-section--compact' : ''}`}>
+      <div className="comment-section__head">
+        <strong>{title}</strong>
+        <span>{comments.length}개</span>
+      </div>
+
+      <div className="comment-list">
+        {loading && comments.length === 0 ? (
+          <div className="comment-empty">댓글을 불러오는 중...</div>
+        ) : comments.length === 0 ? (
+          <div className="comment-empty">아직 댓글이 없습니다.</div>
+        ) : (
+          comments.map((comment) => (
+            <article className="comment-item" key={comment.id}>
+              <div className="comment-item__avatar">{comment.author_name.slice(0, 1)}</div>
+              <div className="comment-item__body">
+                <div className="comment-item__meta">
+                  <strong>{comment.author_name}</strong>
+                  <span>{formatCommentTime(comment.created_at)}</span>
+                  {canDelete(comment) && (
+                    <button onClick={() => deleteComment(comment)} type="button">삭제</button>
+                  )}
+                </div>
+                <p>{comment.content}</p>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
+      <div className="comment-composer">
+        <textarea
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') void submitComment()
+          }}
+          placeholder="댓글을 입력하세요. @이름으로 언급할 수 있습니다."
+          rows={compact ? 2 : 3}
+          value={draft}
+        />
+        {mentionSuggestions.length > 0 && (
+          <div className="mention-menu">
+            {mentionSuggestions.map((user) => (
+              <button
+                key={user.id}
+                onClick={() => setDraft((value) => insertMention(value, user.name))}
+                type="button"
+              >
+                <span>{user.name.slice(0, 1)}</span>
+                {user.name}
+              </button>
+            ))}
+          </div>
+        )}
+        <button disabled={!draft.trim()} onClick={submitComment} type="button">등록</button>
+      </div>
+    </section>
+  )
+}
+
+function reportCommentError(error: unknown) {
+  console.error('댓글 등록 실패', error)
+  showToast('댓글을 등록하지 못했습니다. V1+ SQL 적용 여부를 확인해 주세요.', 'error')
+}

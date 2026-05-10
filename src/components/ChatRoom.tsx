@@ -1,0 +1,324 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { showToast } from '../lib/toast'
+import type { MentionUser } from './CommentSection'
+
+type ChatMessage = {
+  id: number
+  event_id: number
+  author_id: number | null
+  author_name: string
+  message_type: 'text' | 'image' | 'system'
+  content: string | null
+  image_url: string | null
+  mention_ids: number[] | null
+  mention_names: string[] | null
+  created_at: string
+  deleted_at: string | null
+}
+
+type ChatRoomProps = {
+  eventId: number
+  eventTitle: string
+  currentVisitor: string
+  currentUserId?: number | null
+  users?: MentionUser[]
+  compact?: boolean
+}
+
+function getMentionQuery(value: string) {
+  const match = value.match(/(^|\s)@([^\s@]*)$/)
+  return match ? match[2] : null
+}
+
+function insertMention(value: string, userName: string) {
+  return value.replace(/(^|\s)@([^\s@]*)$/, `$1@${userName} `)
+}
+
+function getMentionPayload(value: string, users: MentionUser[]) {
+  const mentioned = users.filter((user) => value.includes(`@${user.name}`))
+  return {
+    ids: mentioned.map((user) => user.id),
+    names: mentioned.map((user) => user.name),
+  }
+}
+
+function formatChatTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function createUploadPath(eventId: number, file: File) {
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+  const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return `event-${eventId}/${id}.${ext}`
+}
+
+export function ChatRoom({
+  eventId,
+  eventTitle,
+  currentVisitor,
+  currentUserId,
+  users = [],
+  compact = false,
+}: ChatRoomProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [draft, setDraft] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [missingTable, setMissingTable] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const mentionQuery = getMentionQuery(draft)
+  const mentionSuggestions = useMemo(() => {
+    if (mentionQuery === null) return []
+    return users
+      .filter((user) => user.name !== currentVisitor && user.name.includes(mentionQuery))
+      .slice(0, 6)
+  }, [currentVisitor, mentionQuery, users])
+
+  const fetchMessages = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('id, event_id, author_id, author_name, message_type, content, image_url, mention_ids, mention_names, created_at, deleted_at')
+      .eq('event_id', eventId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.warn('채팅 메시지를 불러오지 못했습니다. chat_messages 테이블이 아직 없을 수 있습니다.', error)
+      setMissingTable(true)
+      setMessages([])
+      setLoading(false)
+      return
+    }
+
+    setMissingTable(false)
+    setMessages((data as ChatMessage[]) ?? [])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    void fetchMessages()
+
+    const channel = supabase
+      .channel(`chat:${eventId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chat_messages', filter: `event_id=eq.${eventId}` },
+        () => void fetchMessages(),
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId])
+
+  const insertDirectMessage = async (input: {
+    messageType: ChatMessage['message_type']
+    content?: string | null
+    imageUrl?: string | null
+    mentionIds?: number[]
+    mentionNames?: string[]
+  }) => {
+    return supabase.from('chat_messages').insert({
+      event_id: eventId,
+      author_id: currentUserId ?? null,
+      author_name: currentVisitor,
+      message_type: input.messageType,
+      content: input.content ?? null,
+      image_url: input.imageUrl ?? null,
+      image_expires_at: input.imageUrl ? new Date(Date.now() + 1000 * 60 * 60 * 24 * 180).toISOString() : null,
+      mention_ids: input.mentionIds ?? [],
+      mention_names: input.mentionNames ?? [],
+    })
+  }
+
+  const sendTextMessage = async () => {
+    const content = draft.trim()
+    if (!content) return
+
+    const mentions = getMentionPayload(content, users)
+    const token = localStorage.getItem('auth_token')
+
+    if (token) {
+      const { error } = await supabase.rpc('send_chat_message', {
+        p_token: token,
+        p_event_id: eventId,
+        p_content: content,
+        p_mention_ids: mentions.ids,
+        p_mention_names: mentions.names,
+      })
+
+      if (!error) {
+        setDraft('')
+        await fetchMessages()
+        return
+      }
+
+      console.warn('send_chat_message RPC 실패, 직접 INSERT로 재시도합니다.', error)
+    }
+
+    const { error } = await insertDirectMessage({
+      messageType: 'text',
+      content,
+      mentionIds: mentions.ids,
+      mentionNames: mentions.names,
+    })
+
+    if (error) {
+      showToast('메시지를 보내지 못했습니다. V1+ SQL 적용 여부를 확인해 주세요.', 'error')
+      return
+    }
+
+    setDraft('')
+    await fetchMessages()
+  }
+
+  const uploadPhoto = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      showToast('이미지 파일만 첨부할 수 있습니다.', 'error')
+      return
+    }
+
+    setUploading(true)
+    const path = createUploadPath(eventId, file)
+    const { error: uploadError } = await supabase.storage
+      .from('chat-attachments')
+      .upload(path, file, { cacheControl: '3600', contentType: file.type, upsert: false })
+
+    if (uploadError) {
+      console.error('사진 업로드 실패', uploadError)
+      showToast('사진을 업로드하지 못했습니다. chat-attachments Storage 버킷을 확인해 주세요.', 'error')
+      setUploading(false)
+      return
+    }
+
+    const { data } = supabase.storage.from('chat-attachments').getPublicUrl(path)
+    const { error } = await insertDirectMessage({
+      messageType: 'image',
+      content: draft.trim() || null,
+      imageUrl: data.publicUrl,
+    })
+
+    if (error) {
+      showToast('사진 메시지를 저장하지 못했습니다.', 'error')
+      setUploading(false)
+      return
+    }
+
+    setDraft('')
+    setUploading(false)
+    await fetchMessages()
+  }
+
+  if (missingTable) {
+    return (
+      <section className={`chat-room${compact ? ' chat-room--compact' : ''}`}>
+        <div className="chat-empty">채팅 기능은 V1+ SQL 적용 후 사용할 수 있습니다.</div>
+      </section>
+    )
+  }
+
+  return (
+    <section className={`chat-room${compact ? ' chat-room--compact' : ''}`}>
+      <div className="chat-room__head">
+        <div>
+          <strong>채팅</strong>
+          <span>{eventTitle}</span>
+        </div>
+        <em>{messages.length}개</em>
+      </div>
+
+      <div className="chat-messages">
+        {loading && messages.length === 0 ? (
+          <div className="chat-empty">채팅을 불러오는 중...</div>
+        ) : messages.length === 0 ? (
+          <div className="chat-empty">아직 메시지가 없습니다.</div>
+        ) : (
+          messages.map((message) => {
+            const mine = message.author_name === currentVisitor
+            const system = message.message_type === 'system'
+            return (
+              <article
+                className={[
+                  'chat-message',
+                  mine ? 'is-mine' : '',
+                  system ? 'is-system' : '',
+                ].filter(Boolean).join(' ')}
+                key={message.id}
+              >
+                {!mine && !system && <div className="chat-message__avatar">{message.author_name.slice(0, 1)}</div>}
+                <div className="chat-message__bubble">
+                  {!system && (
+                    <div className="chat-message__meta">
+                      <strong>{message.author_name}</strong>
+                      <span>{formatChatTime(message.created_at)}</span>
+                    </div>
+                  )}
+                  {message.image_url && (
+                    <a href={message.image_url} rel="noreferrer" target="_blank">
+                      <img alt="채팅 첨부 이미지" src={message.image_url} />
+                    </a>
+                  )}
+                  {message.content && <p>{message.content}</p>}
+                </div>
+              </article>
+            )
+          })
+        )}
+      </div>
+
+      <div className="chat-composer">
+        <input
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) void sendTextMessage()
+          }}
+          placeholder="메시지 입력. @이름으로 언급할 수 있습니다."
+          value={draft}
+        />
+        {mentionSuggestions.length > 0 && (
+          <div className="mention-menu mention-menu--chat">
+            {mentionSuggestions.map((user) => (
+              <button
+                key={user.id}
+                onClick={() => setDraft((value) => insertMention(value, user.name))}
+                type="button"
+              >
+                <span>{user.name.slice(0, 1)}</span>
+                {user.name}
+              </button>
+            ))}
+          </div>
+        )}
+        <input
+          accept="image/*"
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            if (file) void uploadPhoto(file)
+            event.target.value = ''
+          }}
+          ref={fileInputRef}
+          type="file"
+        />
+        <button
+          className="chat-composer__photo"
+          disabled={uploading}
+          onClick={() => fileInputRef.current?.click()}
+          type="button"
+        >
+          {uploading ? '...' : '사진'}
+        </button>
+        <button disabled={!draft.trim()} onClick={sendTextMessage} type="button">전송</button>
+      </div>
+    </section>
+  )
+}

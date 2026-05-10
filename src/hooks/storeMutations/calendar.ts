@@ -1,5 +1,6 @@
 import type { CalendarEvent } from '../../types'
 import { supabase, showToast, reportMutationError, getCurrentVisitor } from './shared'
+import { createSystemChatMessage } from './chatSystem'
 
 /** 일정 입력 공통 타입 */
 export type CalendarEventInput = {
@@ -37,11 +38,12 @@ export function makeCalendarMutations(deps: {
   // ─── 일정 CRUD ───────────────────────────────────────────────
   const createCalendarEvent = async (input: { date: string } & CalendarEventInput) => {
     const payload = { ...buildEventPayload(input), event_date: input.date }
-    const result = await supabase.from('calendar_events').insert(payload)
+    const result = await supabase.from('calendar_events').insert(payload).select('id').single()
     if (result.error) {
       reportMutationError('일정을 등록하지 못했습니다.', result.error)
       return
     }
+    await createSystemChatMessage(result.data?.id, '채팅방이 생성되었습니다.')
     await fetchAll()
     showToast('일정이 등록됐습니다')
   }
@@ -51,11 +53,12 @@ export function makeCalendarMutations(deps: {
     const basePayload = buildEventPayload(input)
     const result = await supabase.from('calendar_events').insert(
       dates.map((date) => ({ ...basePayload, event_date: date, series_id: seriesId })),
-    )
+    ).select('id')
     if (result.error) {
       reportMutationError('반복 일정을 등록하지 못했습니다.', result.error)
       return
     }
+    await Promise.all((result.data ?? []).map((row) => createSystemChatMessage(row.id, '채팅방이 생성되었습니다.')))
     await fetchAll()
     showToast(`${dates.length}개 일정이 등록됐습니다`)
   }
@@ -150,6 +153,7 @@ export function makeCalendarMutations(deps: {
         reportMutationError('봉사 신청을 저장하지 못했습니다.', result.error)
         return
       }
+      await createSystemChatMessage(eventId, `${currentVisitor}님이 합류했습니다.`)
     }
     await fetchAll()
     showToast(isApplied ? '신청이 취소됐습니다' : '일정에 신청됐습니다')
@@ -160,6 +164,7 @@ export function makeCalendarMutations(deps: {
       { event_id: eventId, user_name: userName, role: '입명' },
       { onConflict: 'event_id,user_name' },
     )
+    await createSystemChatMessage(eventId, `${userName}님이 배정되었습니다.`)
     await fetchAll()
   }
 
@@ -183,6 +188,7 @@ export function makeCalendarMutations(deps: {
       reportMutationError('참가자를 추가하지 못했습니다.', result.error)
       return
     }
+    await createSystemChatMessage(eventId, `${userName}님이 합류했습니다.`)
     await fetchAll()
     showToast(`${userName}님을 신청자로 추가했습니다`)
   }
