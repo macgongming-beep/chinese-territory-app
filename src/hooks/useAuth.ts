@@ -9,6 +9,7 @@ export type AuthUser = {
   name: string
   phone?: string | null
   role: Role
+  authToken?: string | null
 }
 
 export type AppUserRecord = {
@@ -37,14 +38,21 @@ function isAdminLike(role: Role | undefined) {
   return role === 'admin' || role === 'developer'
 }
 
-function toAuthUser(data: { id: number; name: string; phone?: string | null; login_id?: string | null; role: string }): AuthUser {
+function toAuthUser(data: { id: number; name: string; phone?: string | null; login_id?: string | null; role: string; token?: string | null }): AuthUser {
   return {
     id: data.id,
     loginId: data.login_id ?? data.name,
     name: data.name,
     phone: data.phone ?? null,
     role: isDeveloperAccount(data) ? 'developer' : isRole(data.role) ? data.role : 'user',
+    authToken: data.token ?? null,
   }
+}
+
+function getDeviceLabel() {
+  if (typeof navigator === 'undefined') return 'unknown'
+  const platform = navigator.platform || 'web'
+  return `${platform} browser`
 }
 
 export function useAuth() {
@@ -73,10 +81,12 @@ export function useAuth() {
 
           if (error && !error.message?.includes('phone')) throw error
           if (data && !cancelled) {
-            const freshUser = toAuthUser(data)
+            const restoredToken = parsed.authToken ?? localStorage.getItem('auth_token')
+            const freshUser = { ...toAuthUser(data), authToken: restoredToken ?? null }
             setUser(freshUser)
             localStorage.setItem('currentVisitor', freshUser.name)
             localStorage.setItem('auth_session', JSON.stringify(freshUser))
+            if (restoredToken) localStorage.setItem('auth_token', restoredToken)
             setLoading(false)
             return
           }
@@ -89,6 +99,7 @@ export function useAuth() {
             name: parsed.name,
             phone: parsed.phone ?? null,
             role: isRole(parsed.role) ? parsed.role : 'user',
+            authToken: parsed.authToken ?? localStorage.getItem('auth_token') ?? null,
           }
           setUser(restoredUser)
           localStorage.setItem('currentVisitor', restoredUser.name)
@@ -111,10 +122,21 @@ export function useAuth() {
       const normalizedLoginId = loginId.trim()
 
       // 서버에서 bcrypt 검증 + last_login_at 갱신 + login_logs 기록 모두 수행
-      const { data, error } = await supabase.rpc('auth_login', {
+      let { data, error } = await supabase.rpc('auth_login', {
         p_login_id: normalizedLoginId,
         p_pin: pin,
+        p_device_label: getDeviceLabel(),
+        p_user_agent: typeof navigator === 'undefined' ? null : navigator.userAgent,
       })
+
+      if (error && /p_device_label|function|schema cache/i.test(error.message ?? '')) {
+        const fallback = await supabase.rpc('auth_login', {
+          p_login_id: normalizedLoginId,
+          p_pin: pin,
+        })
+        data = fallback.data
+        error = fallback.error
+      }
 
       if (error) {
         console.error('[login] auth_login RPC failed:', error)
@@ -123,7 +145,14 @@ export function useAuth() {
       }
 
       // RPC는 빈 배열이면 인증 실패 (사용자 없음 OR 비밀번호 불일치)
-      const row = (data as Array<{ id: number; name: string; login_id: string; role: string; approval_status?: string | null }>)?.[0]
+      const row = (data as Array<{
+        token?: string | null
+        id: number
+        name: string
+        login_id: string
+        role: string
+        approval_status?: string | null
+      }>)?.[0]
       if (!row) {
         showToast('아이디 또는 비밀번호가 일치하지 않습니다.', 'error')
         return false
@@ -144,14 +173,17 @@ export function useAuth() {
         name: row.name,
         login_id: row.login_id,
         role: row.role,
+        token: row.token ?? null,
       })
       setUser(authUser)
 
       localStorage.setItem('currentVisitor', authUser.name)
       if (rememberMe) {
         localStorage.setItem('auth_session', JSON.stringify(authUser))
+        if (row.token) localStorage.setItem('auth_token', row.token)
       } else {
         localStorage.removeItem('auth_session')
+        localStorage.removeItem('auth_token')
       }
 
       showToast('로그인 성공!', 'success')
@@ -224,6 +256,7 @@ export function useAuth() {
   const logout = () => {
     setUser(null)
     localStorage.removeItem('auth_session')
+    localStorage.removeItem('auth_token')
     localStorage.removeItem('currentVisitor')
     showToast('로그아웃 되었습니다.')
   }

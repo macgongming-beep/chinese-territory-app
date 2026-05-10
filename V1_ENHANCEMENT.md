@@ -1723,7 +1723,7 @@ Android Chrome:
   - [ ] auth_login RPC 변경 (토큰 발급)
   - [ ] verify_session RPC
   - [ ] 모든 민감 RPC 토큰 검증 패턴 적용
-  - [ ] REVOKE SELECT (auth_sessions, service_logs)
+  - [ ] REVOKE 전체 권한 (auth_sessions, service_logs 직접 접근 차단)
   - [ ] Cron: 만료 토큰 정리
 - [ ] 클라이언트 useAuth 토큰 저장/관리 로직
 - [ ] `AppHeader.tsx` 컴포넌트 (모바일/PC)
