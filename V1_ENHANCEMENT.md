@@ -149,14 +149,25 @@
 
 ## 4. DB 스키마 변경
 
-### 사용자 식별 원칙 (모든 신규 테이블 공통)
+### 사용자 식별 원칙
 
-**user_id FK + name snapshot 패턴:**
+**작성자·행위자·표시되는 사람 정보가 있는 테이블에 적용:**
 - `xxx_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL` (참조)
 - `xxx_name TEXT NOT NULL` (작성 시점 이름 snapshot)
 - 사용자 삭제: id NULL, name은 보존 (메시지/댓글 그대로 표시)
 - 이름 변경: 과거 메시지엔 옛 이름 (snapshot)
 - 동명이인: id로 구분
+
+**적용 대상:**
+- comments (author_id, author_name, mention_ids, mention_names)
+- chat_messages (author_id, author_name, mention_ids, mention_names)
+- service_logs (actor_id, actor_name)
+
+**미적용 (상태/설정 테이블):**
+- chat_read_status — 단순 상태 (user_id만, name snapshot 불필요)
+- push_subscriptions — 디바이스 정보 (user_id만)
+- notification_preferences — 사용자 설정 (user_id가 PK, name 불필요)
+- notifications — 사용자별 알림함 (user_id만, 표시 X)
 
 ### 신규 테이블
 
@@ -286,11 +297,77 @@ chat-images/        # 채팅 사진
   ├ event_{id}/
   │   ├ {uuid}.jpg
   │   └ ...
+```
+
+**출시 단계 정책 (V1):**
+- anon insert 허용 (Supabase Auth 미사용)
+- 앱단에서 채팅방 참여자만 업로드 버튼 노출 (UI 차단)
+- 외부 직접 업로드 가능 위험 → 80명 내부라 감수
+- 자동 압축 (1MB, 1280px) 후 업로드
+- 6개월 후 자동 삭제 (Cron + Edge Function)
+
+**중장기 (안정화 후):**
+- `createSignedUploadUrl` RPC로 서명된 URL 발급 → 직접 업로드
+- 권한 검증 (RPC 안에서 채팅방 참여 확인)
+- Storage 정책 = 서명된 URL만 허용
+- 업로드 실패 시 재시도 (최대 3회)
+
+### 민감 로그 보안 (RPC로 감싸기)
+
+**문제:**
+- service_logs.details에 메모 원문, 삭제된 메시지 원문 등 민감 정보
+- anon 키로 직접 SELECT 가능 → 보안 위험
+
+**해결: RPC로 조회 감싸기**
+
+```sql
+-- 1. service_logs 직접 SELECT 차단
+REVOKE SELECT ON service_logs FROM anon, authenticated;
+
+-- 2. 권한 체크된 RPC 함수만 허용
+CREATE OR REPLACE FUNCTION get_service_logs(
+  p_user_id BIGINT,
+  p_filter_event_id BIGINT DEFAULT NULL,
+  p_filter_card_id BIGINT DEFAULT NULL,
+  p_limit INT DEFAULT 100
+) RETURNS SETOF service_logs AS $$
+DECLARE
+  v_role TEXT;
+BEGIN
+  -- 호출자 권한 확인
+  SELECT role INTO v_role FROM app_users WHERE id = p_user_id;
   
-정책:
-  - 인증된 사용자만 업로드
-  - 6개월 후 자동 삭제 (Edge Function cron)
-  - 자동 압축 (1MB 미만)
+  IF v_role NOT IN ('leader', 'admin', 'developer') THEN
+    RAISE EXCEPTION '권한 없음';
+  END IF;
+  
+  RETURN QUERY
+  SELECT * FROM service_logs
+  WHERE (p_filter_event_id IS NULL OR event_id = p_filter_event_id)
+    AND (p_filter_card_id IS NULL OR target_id = p_filter_card_id)
+  ORDER BY created_at DESC
+  LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION get_service_logs TO anon;
+```
+
+**INSERT도 RPC 권장:**
+```sql
+-- 클라이언트가 직접 INSERT 안 하고 RPC 호출
+CREATE OR REPLACE FUNCTION log_service_action(
+  p_session_id BIGINT,
+  p_actor_id BIGINT,
+  p_action TEXT,
+  p_details JSONB
+) RETURNS BIGINT AS $$
+BEGIN
+  -- 호출자 검증 + INSERT
+  INSERT INTO service_logs (...) VALUES (...);
+  RETURN ...;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
 ### 인증 방식 (출시 단계 / 중장기 계획)
@@ -363,16 +440,38 @@ function useVisibleCards(role: Role, mode: 'normal' | 'volunteer'): TerritoryCar
 -- 1. 댓글 생성 시 트리거
 CREATE OR REPLACE FUNCTION notify_on_comment()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_target_author_id BIGINT;
+  v_recipient_ids BIGINT[];
 BEGIN
-  -- notifications 테이블에 INSERT
-  -- 멘션된 사용자 + 게시물 작성자에게
+  -- 게시물 작성자 ID 조회
+  v_target_author_id := get_target_author_id(NEW.target_type, NEW.target_id);
+  
+  -- 본인 알림 제외
+  v_recipient_ids := array_remove(
+    NEW.mention_ids || ARRAY[v_target_author_id],
+    NEW.author_id
+  );
+  
+  -- notifications 테이블에 INSERT (RPC로 감싼 함수 호출)
+  PERFORM insert_notifications(
+    p_user_ids := v_recipient_ids,
+    p_type := 'comment',
+    p_title := '새 댓글',
+    p_body := NEW.author_name || ': ' || LEFT(NEW.content, 50),
+    p_link := '/notices/' || NEW.target_id,
+    p_related_id := NEW.id
+  );
+  
+  -- 푸시 발송 (Edge Function)
   PERFORM net.http_post(
     url := 'https://xxx.supabase.co/functions/v1/send-push',
     headers := '{"Authorization": "Bearer xxx"}',
     body := json_build_object(
-      'recipients', NEW.mentions || ARRAY[get_target_author(NEW.target_type, NEW.target_id)],
+      'recipient_ids', v_recipient_ids,
+      'type', 'comment',
       'title', '새 댓글',
-      'body', NEW.author || ': ' || LEFT(NEW.content, 50),
+      'body', NEW.author_name || ': ' || LEFT(NEW.content, 50),
       'link', '/notices/' || NEW.target_id
     )::text
   );
@@ -396,34 +495,67 @@ CREATE TRIGGER on_comment_insert
 - 방해금지 시간 체크 (있으면 silent: true)
 - Web Push 발송
 
-### 채팅방 잠금 (조회 시 계산)
+### 채팅방 잠금 (조회 시 계산, service_sessions.ended_at 기준)
+
+**기준 통일: `service_sessions.ended_at` 사용**
+- `calendar_events.endedAt`은 일정 자체의 종료 시각 (모호)
+- `service_sessions.ended_at`은 **실제 봉사 종료 시각** (명확)
+- 일정 등록만 되고 봉사 시작 안 한 경우 = service_session 없음 = 잠금 X (계속 활성)
+- 봉사 시작 후 종료 = ended_at 설정됨 = 1주 후 잠금
 
 ```typescript
-// 클라이언트에서 메시지 작성 가능 여부 체크
-function isChatLocked(event: CalendarEvent): boolean {
-  if (!event.endedAt) return false  // 봉사 끝 안 남
-  const lockTime = new Date(event.endedAt)
+// 클라이언트
+function isChatLocked(eventId: number, sessions: ServiceSession[]): boolean {
+  const session = sessions.find(s => s.calendarEventId === eventId)
+  if (!session?.endedAt) return false  // 봉사 안 끝남 → 활성
+  
+  const lockTime = new Date(session.endedAt)
   lockTime.setDate(lockTime.getDate() + 7)
   return new Date() > lockTime
 }
+```
 
-// 메시지 작성 시 서버에서도 체크 (RPC)
+```sql
+-- 서버 RPC (메시지 작성 시 검증)
 CREATE OR REPLACE FUNCTION send_chat_message(
   p_event_id BIGINT,
+  p_author_id BIGINT,
   p_content TEXT
 ) RETURNS BIGINT AS $$
 DECLARE
-  v_event_ended TIMESTAMPTZ;
+  v_session_ended TIMESTAMPTZ;
+  v_message_id BIGINT;
 BEGIN
-  SELECT ended_at INTO v_event_ended FROM service_sessions WHERE event_id = p_event_id;
-  IF v_event_ended IS NOT NULL AND v_event_ended < NOW() - INTERVAL '7 days' THEN
-    RAISE EXCEPTION '채팅방이 잠겼습니다 (1주일 경과)';
+  -- 1. 잠금 체크 (service_sessions 기준)
+  SELECT ended_at INTO v_session_ended
+  FROM service_sessions
+  WHERE calendar_event_id = p_event_id
+  ORDER BY created_at DESC LIMIT 1;
+  
+  IF v_session_ended IS NOT NULL 
+     AND v_session_ended < NOW() - INTERVAL '7 days' THEN
+    RAISE EXCEPTION '채팅방이 잠겼습니다 (봉사 종료 1주일 경과)';
   END IF;
-  -- 메시지 INSERT
-  ...
+  
+  -- 2. 참여 권한 체크
+  -- (해당 일정 참여자만 작성 가능)
+  
+  -- 3. 메시지 INSERT
+  INSERT INTO chat_messages (event_id, author_id, author_name, content, type)
+  VALUES (p_event_id, p_author_id, 
+          (SELECT name FROM app_users WHERE id = p_author_id),
+          p_content, 'text')
+  RETURNING id INTO v_message_id;
+  
+  RETURN v_message_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
+
+**일정에 봉사 안 한 경우 (service_session 없음):**
+- 채팅방 항상 활성 (잠금 X)
+- 메시지 자유롭게 작성 가능
+- 단, "봉사 종료" 시스템 메시지는 안 옴 (당연)
 
 ### 자동 정리 Edge Function
 
@@ -673,7 +805,7 @@ $$ LANGUAGE plpgsql;
 🔴 새 공지: "5월 특별 봉사 안내"
    김철수 (관리자) · 30분 전
    
-🔴 새 일정: 5/8 (화) 김량장 봉사
+🔴 일정 변경: 5/8 김량장 봉사 시간이 18:00으로 변경
    이민수 · 1시간 전
 
 ────── 이전 알림 ──────
@@ -1230,27 +1362,52 @@ Android Chrome:
 
 ## 10-A. 권한 / 개인정보 매트릭스
 
+> 역할: **봉사자** / **인도자** / **관리자** / **개발자** (admin + 시스템 권한)
+> 특수 상태: 승인대기 / 차단된 사용자
+
 ### 데이터 접근 권한
 
-| 데이터 | 봉사자 | 인도자 | 관리자 |
-|---|---|---|---|
-| 본인 참여 봉사 채팅 (보기/쓰기) | ✅ | ✅ | ✅ |
-| 다른 팀 채팅 보기 | ❌ | ✅ (조용히) | ✅ |
-| 다른 팀 메시지 삭제 | ❌ | ✅ | ✅ |
-| 채팅방 삭제 | ❌ | ✅ | ✅ |
-| 본인 카드 호수 메모 | ✅ | ✅ | ✅ |
-| 다른 카드 호수 메모 | ❌ | ✅ | ✅ |
-| 본인 참여 봉사 방문 기록 | ✅ | ✅ | ✅ |
-| 다른 카드 방문 기록 | ❌ | ✅ | ✅ |
-| 봉사 로그 (감사) | ❌ | ✅ (자기 카드만) | ✅ (모든 봉사) |
-| CSV 다운로드 (봉사 로그) | ❌ | ✅ (자기 카드) | ✅ |
-| CSV에 메모 포함 | - | ✅ | ✅ |
-| 사용자 명단 보기 | 이름만 | 이름 + 폰 | 모두 (PIN 제외) |
-| 댓글 작성 | ✅ | ✅ | ✅ |
-| 본인 댓글 수정/삭제 | ✅ (5분) | 동일 | 동일 |
-| 다른 사람 댓글 삭제 | ❌ | ✅ | ✅ |
-| 일정 추가/수정/삭제 | ❌ | ✅ | ✅ |
-| 공지 작성/삭제 | ❌ | ✅ | ✅ |
+| 데이터 | 봉사자 | 인도자 | 관리자 | 개발자 |
+|---|---|---|---|---|
+| 본인 참여 봉사 채팅 (보기/쓰기) | ✅ | ✅ | ✅ | ✅ |
+| 다른 팀 채팅 보기 | ❌ | ✅ (조용히) | ✅ | ✅ |
+| 다른 팀 메시지 삭제 | ❌ | ✅ | ✅ | ✅ |
+| 채팅방 삭제 | ❌ | ✅ | ✅ | ✅ |
+| read-only 채팅 메시지 삭제 | ❌ | ✅ | ✅ | ✅ |
+| read-only 채팅 보기 | 본인 참여 시 ✅ | ✅ | ✅ | ✅ |
+| 본인 카드 호수 메모 | ✅ | ✅ | ✅ | ✅ |
+| 다른 카드 호수 메모 | ❌ | ✅ | ✅ | ✅ |
+| 본인 참여 봉사 방문 기록 | ✅ | ✅ | ✅ | ✅ |
+| 다른 카드 방문 기록 | ❌ | ✅ | ✅ | ✅ |
+| 봉사 로그 (감사) | ❌ | ✅ (자기 카드만) | ✅ (모든 봉사) | ✅ |
+| CSV 다운로드 (봉사 로그) | ❌ | ✅ (자기 카드) | ✅ | ✅ |
+| CSV에 메모 포함 | - | ✅ | ✅ | ✅ |
+| 사용자 명단 보기 | 이름만 | 이름 + 폰 | 모두 (PIN 제외) | 모두 + 로그인 기록 |
+| 공지 댓글 작성 | ✅ | ✅ | ✅ | ✅ |
+| 일정 댓글 작성 (참여 무관) | ✅ (공개) | ✅ | ✅ | ✅ |
+| 본인 댓글 수정/삭제 | ✅ (5분) | 동일 | 동일 | 동일 |
+| 다른 사람 댓글 삭제 | ❌ | ✅ | ✅ | ✅ |
+| 일정 추가/수정/삭제 | ❌ | ✅ | ✅ | ✅ |
+| 일정 삭제 시 채팅 보존 선택 | - | ✅ | ✅ | ✅ |
+| 공지 작성/삭제 | ❌ | ✅ | ✅ | ✅ |
+| 봉사 종료 (전체 종료) | ✅ (참여자 누구나) | ✅ | ✅ | ✅ |
+| 봉사 재개 (5분 이내) | ✅ (누구나) | ✅ | ✅ | ✅ |
+| 다른 사용자 로그인 기록 조회 | ❌ | ❌ | ❌ | ✅ (개발자만) |
+
+### 특수 상태 사용자
+
+| 상태 | 진입 가능? | 비고 |
+|---|---|---|
+| **승인대기** (가입 신청 후 미승인) | 로그인 화면에 "승인 대기 중" 표시, 진입 X | 관리자가 승인해야 함 |
+| **차단된 사용자** (관리자가 비활성화) | 로그인 자체 차단 | "비활성화된 계정" 안내 |
+| **참여 취소한 사용자** | 채팅방 즉시 차단 | 과거 기록도 못 봄 |
+
+### 참여 취소 / 일정 삭제 시 정책
+
+- **참여 취소**: 채팅방에서 즉시 이탈, 더 이상 채팅 못 봄/못 씀 (24h read-only X — 즉시 차단)
+- **일정 삭제**: 인도자/관리자 선택
+  - 옵션 A: 채팅도 함께 삭제 (정리)
+  - 옵션 B: 채팅 보존 (참고 자료)
 
 ### 삭제·수정 보존 정책
 
@@ -1548,7 +1705,7 @@ Android Chrome:
 | 2026-05-11 | **사용자 관리** | **기존 V1 그대로** |
 | 2026-05-11 | **가입 승인** | **기존 V1 그대로** |
 | 2026-05-11 | V1 → V1+ 변경 핵심 | 새 기능 추가 + 봉사자 카드 제한 (이게 전부) |
-| 2026-05-11 | 봉사자 카드 제한 구현 | Supabase RLS 정책 (DB 레벨) |
+| 2026-05-11 | 봉사자 카드 제한 구현 | 클라이언트 필터링 (RLS는 추후, 코덱스 리뷰 반영) |
 | 2026-05-11 | 헤더 🔍 검색 | 안 만듦 (헤더는 🔔 💬 ⋮ 만) |
 | 2026-05-11 | 알림 발송 메커니즘 | PostgreSQL 트리거 + Edge Function |
 | 2026-05-11 | 채팅방 1주 잠금 | 조회 시 계산 (별도 컬럼·Cron X) |
@@ -1579,6 +1736,15 @@ Android Chrome:
 | 2026-05-11 | 메시지 삭제 알림 | "[메시지 삭제됨]" 표시 + 봉사 로그에 원문 |
 | 2026-05-11 | 비용 표현 | "초기 무료 범위 예상, 증가 시 재검토" |
 | 2026-05-11 | 권한 테스트 매트릭스 | Day 20-21에 10개 테스트 추가 |
+| 2026-05-11 | 알림 SQL 트리거 예시 | 새 스키마(mention_ids, author_name) 반영 |
+| 2026-05-11 | 민감 로그 보안 | RPC로 조회·INSERT 감싸기 (anon 직접 차단) |
+| 2026-05-11 | Storage 정책 | V1: anon + 앱단 제한 / 안정화 후: 서명된 URL |
+| 2026-05-11 | 사용자 식별 표현 | "작성자·행위자 정보 테이블에 적용" (상태 테이블 제외 명시) |
+| 2026-05-11 | 비참여자 일정 댓글 | 작성 가능 (공개, 공지와 동일) |
+| 2026-05-11 | 참여 취소 후 채팅 | 즉시 차단 (24h read-only X) |
+| 2026-05-11 | 채팅 잠금 기준 | service_sessions.ended_at 통일 (calendar_events 아님) |
+| 2026-05-11 | 권한 매트릭스 | 개발자/특수상태/참여취소/일정삭제 케이스 추가 |
+| 2026-05-11 | 봉사 안 시작한 일정 | 채팅방 항상 활성 (잠금 X) |
 
 ---
 
