@@ -259,14 +259,114 @@ chat-images/        # 채팅 사진
   - 자동 압축 (1MB 미만)
 ```
 
+### RLS 정책 (봉사자 카드 제한)
+
+```sql
+-- 봉사자: 본인이 참여한 (또는 참여 중인) 일정의 카드만 볼 수 있음
+-- 인도자/관리자: 모두 볼 수 있음
+-- 인도자 "봉사자 모드" 시: 봉사자처럼 제한
+
+-- cards 테이블 RLS:
+CREATE POLICY "봉사자_본인_참여_카드만"
+  ON cards FOR SELECT
+  USING (
+    -- 인도자/관리자 (실제 권한)
+    EXISTS (SELECT 1 FROM app_users
+            WHERE name = current_user_name()
+            AND role IN ('leader', 'admin'))
+    -- 또는 본인이 참여(중)인 일정의 카드
+    OR id IN (
+      SELECT primary_card_id FROM service_sessions
+      WHERE user_name = current_user_name()
+        AND service_date >= CURRENT_DATE - INTERVAL '7 days'
+    )
+  );
+
+-- buildings, units, visit_histories 등도 같은 패턴
+-- 봉사자 모드 토글 = 클라이언트에서 헤더에 'X-User-Mode' 보내거나
+-- 세션 변수로 관리
+```
+
+**구현 방식:**
+- `current_user_name()` = 인증된 사용자 이름 추출 (RPC)
+- 모드 토글 = 클라이언트에서 별도 플래그 관리 (RLS는 항상 봉사자 권한처럼 동작)
+- 인도자가 "봉사자 모드"면 다른 카드 조회 자체를 안 함
+
+### 알림 발송 메커니즘
+
+```sql
+-- 1. 댓글 생성 시 트리거
+CREATE OR REPLACE FUNCTION notify_on_comment()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- notifications 테이블에 INSERT
+  -- 멘션된 사용자 + 게시물 작성자에게
+  PERFORM net.http_post(
+    url := 'https://xxx.supabase.co/functions/v1/send-push',
+    headers := '{"Authorization": "Bearer xxx"}',
+    body := json_build_object(
+      'recipients', NEW.mentions || ARRAY[get_target_author(NEW.target_type, NEW.target_id)],
+      'title', '새 댓글',
+      'body', NEW.author || ': ' || LEFT(NEW.content, 50),
+      'link', '/notices/' || NEW.target_id
+    )::text
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER on_comment_insert
+  AFTER INSERT ON comments
+  FOR EACH ROW EXECUTE FUNCTION notify_on_comment();
+```
+
+같은 패턴으로:
+- chat_messages INSERT → 채팅 참여자에게
+- calendar_events UPDATE (시간/장소) → 참여자에게
+- notices INSERT → 모든 사용자에게
+
+**Edge Function (send-push):**
+- recipients 배열 받음
+- 각 사용자의 push_subscriptions 조회
+- 방해금지 시간 체크 (있으면 silent: true)
+- Web Push 발송
+
+### 채팅방 잠금 (조회 시 계산)
+
+```typescript
+// 클라이언트에서 메시지 작성 가능 여부 체크
+function isChatLocked(event: CalendarEvent): boolean {
+  if (!event.endedAt) return false  // 봉사 끝 안 남
+  const lockTime = new Date(event.endedAt)
+  lockTime.setDate(lockTime.getDate() + 7)
+  return new Date() > lockTime
+}
+
+// 메시지 작성 시 서버에서도 체크 (RPC)
+CREATE OR REPLACE FUNCTION send_chat_message(
+  p_event_id BIGINT,
+  p_content TEXT
+) RETURNS BIGINT AS $$
+DECLARE
+  v_event_ended TIMESTAMPTZ;
+BEGIN
+  SELECT ended_at INTO v_event_ended FROM service_sessions WHERE event_id = p_event_id;
+  IF v_event_ended IS NOT NULL AND v_event_ended < NOW() - INTERVAL '7 days' THEN
+    RAISE EXCEPTION '채팅방이 잠겼습니다 (1주일 경과)';
+  END IF;
+  -- 메시지 INSERT
+  ...
+END;
+$$ LANGUAGE plpgsql;
+```
+
 ### 자동 정리 Edge Function
 
 ```sql
 -- 6개월 지난 사진 삭제 (매일 새벽 3시)
 -- supabase/functions/cleanup-chat-images/
 
--- 종료 후 1주일 지난 채팅 read-only 마킹 (매일 새벽 3시)
--- supabase/functions/lockdown-chat/
+-- 종료 후 1주일 지난 채팅 read-only 마킹 (매일 새벽 3시) ← 안 함, 조회 시 계산
 ```
 
 ---
@@ -278,19 +378,20 @@ chat-images/        # 채팅 사진
 ```
 모든 화면 상단:
 ─────────────────────────────────────
-[<] 페이지명           🔍  🔔(●)  💬(●)  ⋮
+[<] 페이지명               🔔(●)  💬(●)  ⋮
 ─────────────────────────────────────
 
 좌:  뒤로가기 (필요한 경우만)
-중:  현재 페이지 이름
-우:  검색 / 알림 / 채팅 / 메뉴
+중:  현재 페이지 이름 (홈은 페이지명 + 날짜)
+우:  알림 / 채팅 / 메뉴
 ```
 
 각 아이콘 동작:
-- **🔍 검색** — 컨텍스트별 검색 모달 (홈에선 카드 검색, 일정에선 일정 검색 등)
 - **🔔 알림** — 알림 센터 슬라이드업, 배지로 미읽음 표시
 - **💬 채팅** — 채팅 목록 슬라이드업, 배지로 미읽음 표시
 - **⋮ 메뉴** — 페이지별 추가 액션 (편집, 공유 등)
+
+**검색은 안 만듦** (필요해지면 그때 추가)
 
 ### PC
 
@@ -1253,6 +1354,16 @@ Android Chrome:
 | 2026-05-11 | **사용자 관리** | **기존 V1 그대로** |
 | 2026-05-11 | **가입 승인** | **기존 V1 그대로** |
 | 2026-05-11 | V1 → V1+ 변경 핵심 | 새 기능 추가 + 봉사자 카드 제한 (이게 전부) |
+| 2026-05-11 | 봉사자 카드 제한 구현 | Supabase RLS 정책 (DB 레벨) |
+| 2026-05-11 | 헤더 🔍 검색 | 안 만듦 (헤더는 🔔 💬 ⋮ 만) |
+| 2026-05-11 | 알림 발송 메커니즘 | PostgreSQL 트리거 + Edge Function |
+| 2026-05-11 | 채팅방 1주 잠금 | 조회 시 계산 (별도 컬럼·Cron X) |
+| 2026-05-11 | PWA 라이브러리 | vite-plugin-pwa |
+| 2026-05-11 | @멘션 UX | 자동완성 드롭다운 + [@] 버튼 |
+| 2026-05-11 | 봉사자/인도자 모드 토글 | 기존 V1 그대로 유지 |
+| 2026-05-11 | 호수 기록 시간슬롯 | 봉사 시작 시각 기준 (한 봉사 = 한 슬롯) |
+| 2026-05-11 | 알림 디폴트 | 모든 종류 켜짐 (사용자가 끌 수 있음) |
+| 2026-05-11 | 인도자 봉사자 모드 시 | 카드 제한 적용 (모드 따라 다르게) |
 
 ---
 
