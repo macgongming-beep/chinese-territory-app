@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Role, SpecialPeriod } from '../types'
 import { PERIOD_COLORS, roleLabels } from '../types'
 import { supabase } from '../lib/supabase'
@@ -35,6 +36,7 @@ export function DesktopSettings({
   onCreateSpecialPeriod?: (input: { label: string; startDate: string; endDate: string; color: string }) => Promise<void> | void
   onDeleteSpecialPeriod?: (id: number) => Promise<void> | void
 }) {
+  const navigate = useNavigate()
   const todayStr = new Date().toISOString().slice(0, 10)
   const activePeriod = specialPeriods.find((period) => todayStr >= period.startDate && todayStr <= period.endDate)
   const upcomingPeriods = specialPeriods.filter((period) => todayStr < period.startDate).sort((a, b) => a.startDate.localeCompare(b.startDate))
@@ -110,6 +112,32 @@ export function DesktopSettings({
         <article className="desk-card ds-card" style={{ padding: 0, background: 'transparent', border: 'none' }}>
           <NotificationSettings userId={currentUserId} />
         </article>
+
+        {(actualRole === 'leader' || actualRole === 'admin' || actualRole === 'developer') && (
+          <article className="desk-card ds-card">
+            <div className="desk-card__head">
+              <h2 className="desk-card__title"><span className="desk-card__title-dot" />관리자 도구</h2>
+            </div>
+            <button
+              onClick={() => navigate('/service-logs')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+                padding: '12px 16px', borderRadius: 10, border: '1px solid #e2e8f0',
+                background: '#fff', cursor: 'pointer', textAlign: 'left',
+              }}
+              type="button"
+            >
+              <span style={{ fontSize: 22 }}>📋</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>봉사 로그</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b' }}>
+                  {actualRole === 'leader' ? '담당 카드 봉사 활동 로그' : '회중 전체 봉사 활동 감사 로그'}
+                </p>
+              </div>
+              <span style={{ color: '#94a3b8', fontSize: 18 }}>›</span>
+            </button>
+          </article>
+        )}
 
         <article className="desk-card ds-card">
           <div className="desk-card__head">

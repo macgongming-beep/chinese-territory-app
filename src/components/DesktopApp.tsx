@@ -12,6 +12,7 @@ import { DesktopMap } from './DesktopMap'
 import { DesktopAdminAssignment } from './DesktopAdminAssignment'
 import { DesktopLeaderAssignment } from './DesktopLeaderAssignment'
 import { DesktopUsers } from './DesktopUsers'
+import { ServiceLogPage } from './ServiceLogPage'
 import type { Building, CalendarEvent, CardBoundary, DesktopPage, GeoPoint, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import { roleLabels } from '../types'
 
@@ -628,6 +629,11 @@ export function DesktopApp({
             onCreateSpecialPeriod={async (input) => onCreateSpecialPeriod(input)}
             onDeleteSpecialPeriod={async (id) => onDeleteSpecialPeriod(id)}
           />
+        } />
+        <Route path="/service-logs" element={
+          (viewMode === 'leader' || viewMode === 'admin')
+            ? <ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={viewMode} />
+            : <Navigate to="/" replace />
         } />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
