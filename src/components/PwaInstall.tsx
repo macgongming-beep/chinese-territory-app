@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react'
 import { isPWAInstalled, isMobile, isIOS, isAndroid } from '../lib/pwa'
+import {
+  isPushSupported,
+  isCurrentDeviceSubscribed,
+  requestNotificationPermission,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '../lib/push'
+import { useAuth } from '../hooks/useAuth'
 
 const SNOOZE_KEY = 'pwa_install_snoozed_until'
 const SNOOZE_DAYS = 7
@@ -235,16 +243,57 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
  * 설정 페이지에서 보여줄 PWA 상태 + 설치 안내 버튼
  */
 export function PwaInstallSection() {
+  const { user } = useAuth()
   const [installed, setInstalled] = useState(isPWAInstalled())
   const [showModal, setShowModal] = useState(false)
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(
     typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
   )
+  const [subscribed, setSubscribed] = useState(false)
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => setInstalled(isPWAInstalled()), 3000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    isCurrentDeviceSubscribed().then(setSubscribed)
+  }, [notifPermission])
+
+  async function handleEnablePush() {
+    if (!user) return
+    setBusy(true)
+    try {
+      // 권한 먼저
+      let perm = notifPermission as NotificationPermission
+      if (perm !== 'granted') {
+        perm = await requestNotificationPermission()
+        setNotifPermission(perm)
+        if (perm !== 'granted') return
+      }
+      // 구독 등록
+      const result = await subscribeToPush(user.id)
+      if (result.ok) {
+        setSubscribed(true)
+      } else {
+        console.warn('[push] subscribe failed:', result.reason)
+        alert('알림 등록에 실패했습니다: ' + (result.reason ?? 'unknown'))
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleDisablePush() {
+    setBusy(true)
+    try {
+      await unsubscribeFromPush()
+      setSubscribed(false)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <>
@@ -280,7 +329,7 @@ export function PwaInstallSection() {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
           <div>
             <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>알림 권한</p>
             <p style={{ margin: '2px 0 0', fontSize: 14, fontWeight: 700, color: notifPermission === 'granted' ? '#16a34a' : notifPermission === 'denied' ? '#dc2626' : '#94a3b8' }}>
@@ -290,26 +339,61 @@ export function PwaInstallSection() {
               {notifPermission === 'unsupported' && '❌ 미지원 브라우저'}
             </p>
           </div>
-          {notifPermission === 'default' && (
-            <button
-              onClick={async () => {
-                const result = await Notification.requestPermission()
-                setNotifPermission(result)
-              }}
-              style={{
-                padding: '7px 14px',
-                borderRadius: 8,
-                border: '1px solid #2563eb',
-                background: '#fff',
-                color: '#2563eb',
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-              type="button"
-            >
-              알림 허용
-            </button>
+        </div>
+
+        {/* 푸시 알림 구독 토글 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0' }}>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>이 기기에서 푸시 알림</p>
+            <p style={{ margin: '2px 0 0', fontSize: 14, fontWeight: 700, color: subscribed ? '#16a34a' : '#94a3b8' }}>
+              {!isPushSupported() && '❌ 미지원'}
+              {isPushSupported() && subscribed && '🔔 받는 중'}
+              {isPushSupported() && !subscribed && '🔕 꺼짐'}
+            </p>
+          </div>
+          {isPushSupported() && user && notifPermission !== 'denied' && (
+            subscribed ? (
+              <button
+                onClick={handleDisablePush}
+                disabled={busy}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 8,
+                  border: '1px solid #e2e8f0',
+                  background: '#fff',
+                  color: '#64748b',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: busy ? 'not-allowed' : 'pointer',
+                  opacity: busy ? 0.6 : 1,
+                }}
+                type="button"
+              >
+                {busy ? '...' : '끄기'}
+              </button>
+            ) : (
+              <button
+                onClick={handleEnablePush}
+                disabled={busy}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 8,
+                  border: '1px solid #2563eb',
+                  background: '#2563eb',
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: busy ? 'not-allowed' : 'pointer',
+                  opacity: busy ? 0.6 : 1,
+                }}
+                type="button"
+              >
+                {busy ? '...' : '켜기'}
+              </button>
+            )
+          )}
+          {notifPermission === 'denied' && (
+            <span style={{ fontSize: 11, color: '#dc2626' }}>브라우저 설정에서 허용 필요</span>
           )}
         </div>
 

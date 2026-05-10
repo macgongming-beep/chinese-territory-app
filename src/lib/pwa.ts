@@ -56,3 +56,18 @@ export function isIOS(): boolean {
 export function isAndroid(): boolean {
   return /Android/i.test(navigator.userAgent)
 }
+
+/**
+ * Service Worker → 클라이언트 navigate 메시지 수신
+ * (푸시 알림 클릭 시 SW가 postMessage('NAVIGATE')로 알려줌)
+ */
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const data = event.data
+    if (data && data.type === 'NAVIGATE' && typeof data.link === 'string') {
+      // SPA 라우팅 (history API)
+      window.history.pushState({}, '', data.link)
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    }
+  })
+}

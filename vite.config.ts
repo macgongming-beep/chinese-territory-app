@@ -8,6 +8,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'src/lib',
+      filename: 'sw.ts',
+      injectRegister: false, // src/lib/pwa.ts에서 직접 등록
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         name: '중국 구역 봉사 관리',
@@ -41,28 +45,11 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
-        // Naver 지도 SDK는 캐시하지 않음 (외부 도메인)
-        navigateFallbackDenylist: [/^\/api/, /^\/auth/],
-        runtimeCaching: [
-          {
-            // Supabase API 응답은 NetworkFirst (최신 데이터 우선, 오프라인 시 캐시)
-            urlPattern: ({ url }) => url.hostname.includes('supabase.co'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 5, // 5분
-              },
-              networkTimeoutSeconds: 5,
-            },
-          },
-        ],
       },
       devOptions: {
-        enabled: false, // 개발 중엔 비활성화 (캐시 헷갈림 방지)
+        enabled: false,
       },
     }),
   ],
