@@ -57,13 +57,16 @@ export function useNotifications(userId: number | null | undefined) {
 
   const fetchAll = useCallback(async () => {
     if (!userId) return
+    const token = localStorage.getItem('auth_token')
+    if (!token) {
+      setNotifications([])
+      return
+    }
     setLoading(true)
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(PAGE_SIZE)
+    const { data, error } = await supabase.rpc('get_my_notifications', {
+      p_token: token,
+      p_limit: PAGE_SIZE,
+    })
     setLoading(false)
     if (error) {
       console.warn('[notifications] fetch failed:', error)
@@ -130,17 +133,18 @@ export function useNotifications(userId: number | null | undefined) {
   // 단일 알림 읽음 처리
   const markRead = useCallback(
     async (notificationId: number) => {
+      const token = localStorage.getItem('auth_token')
+      if (!token) return
       // 낙관적 갱신
       setNotifications((prev) =>
         prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
       )
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', notificationId)
+      const { error } = await supabase.rpc('mark_notification_read', {
+        p_token: token,
+        p_notification_id: notificationId,
+      })
       if (error) {
         console.warn('[notifications] markRead failed:', error)
-        // 롤백
         await fetchAll()
       }
     },
@@ -150,13 +154,13 @@ export function useNotifications(userId: number | null | undefined) {
   // 모두 읽음
   const markAllRead = useCallback(async () => {
     if (!userId || notifications.every((n) => n.isRead)) return
+    const token = localStorage.getItem('auth_token')
+    if (!token) return
     // 낙관적 갱신
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', userId)
-      .eq('is_read', false)
+    const { error } = await supabase.rpc('mark_all_notifications_read', {
+      p_token: token,
+    })
     if (error) {
       console.warn('[notifications] markAllRead failed:', error)
       await fetchAll()

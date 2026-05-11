@@ -64,7 +64,9 @@ export function useAuth() {
     let cancelled = false
 
     const restoreSession = async () => {
-      const storedSession = localStorage.getItem('auth_session')
+      // localStorage 우선, 없으면 sessionStorage (rememberMe 꺼진 경우)
+      const storedSession =
+        localStorage.getItem('auth_session') ?? sessionStorage.getItem('auth_session')
       if (!storedSession) {
         if (!cancelled) setLoading(false)
         return
@@ -178,12 +180,16 @@ export function useAuth() {
       setUser(authUser)
 
       localStorage.setItem('currentVisitor', authUser.name)
+
+      // 보안 RPC 토큰은 rememberMe 무관하게 항상 저장 (모든 민감 RPC 호출에 필요)
+      if (row.token) localStorage.setItem('auth_token', row.token)
+
       if (rememberMe) {
         localStorage.setItem('auth_session', JSON.stringify(authUser))
-        if (row.token) localStorage.setItem('auth_token', row.token)
       } else {
+        // rememberMe 꺼져 있어도 세션은 sessionStorage에 (브라우저 닫을 때까지 유지)
         localStorage.removeItem('auth_session')
-        localStorage.removeItem('auth_token')
+        sessionStorage.setItem('auth_session', JSON.stringify(authUser))
       }
 
       showToast('로그인 성공!', 'success')
@@ -258,6 +264,7 @@ export function useAuth() {
     localStorage.removeItem('auth_session')
     localStorage.removeItem('auth_token')
     localStorage.removeItem('currentVisitor')
+    sessionStorage.removeItem('auth_session')
     showToast('로그아웃 되었습니다.')
   }
 

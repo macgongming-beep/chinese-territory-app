@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { CalendarEvent, Role } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t } from '../i18n'
@@ -107,6 +108,30 @@ export function MobileCalendar({
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
   const [selectedDay, setSelectedDay] = useState(today.getDate())
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // openChat=<eventId> 쿼리 처리
+  useEffect(() => {
+    const openChatId = searchParams.get('openChat')
+    if (!openChatId) return
+    const targetEvent = events.find((ev) => ev.id === Number(openChatId))
+    if (!targetEvent) return
+
+    const d = new Date(targetEvent.date)
+    setYear(d.getFullYear())
+    setMonth(d.getMonth() + 1)
+    setSelectedDay(d.getDate())
+
+    setTimeout(() => {
+      const el = document.getElementById(`mobile-event-card-${openChatId}`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 200)
+
+    const next = new URLSearchParams(searchParams)
+    next.delete('openChat')
+    setSearchParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   // create form
   const [showCreate, setShowCreate] = useState(false)
@@ -376,7 +401,7 @@ export function MobileCalendar({
           const isApplied = event.applicants.includes(currentVisitor)
           const isEditing = editingId === event.id
           return (
-            <div className="mobile-cal-event-card" key={event.id}>
+            <div className="mobile-cal-event-card" key={event.id} id={`mobile-event-card-${event.id}`}>
               <div className="mobile-cal-event-body">
                 <div className="mobile-cal-event-head">
                   <span className="mobile-cal-event-time">{event.time || t(language, 'calendar.timeTbd')}</span>

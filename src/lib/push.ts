@@ -96,24 +96,27 @@ export async function subscribeToPush(userId: number): Promise<{ ok: boolean; re
     return { ok: false, reason: 'KEYS_MISSING' }
   }
 
-  // DB에 upsert (endpoint unique 제약)
-  const { error } = await supabase.from('push_subscriptions').upsert(
-    {
-      user_id: userId,
-      endpoint: subscription.endpoint,
-      p256dh: arrayBufferToBase64(p256dhKey),
-      auth: arrayBufferToBase64(authKey),
-      device_label: navigator.userAgent.slice(0, 80),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'endpoint' }
-  )
+  const token = localStorage.getItem('auth_token')
+  if (!token) {
+    return { ok: false, reason: 'AUTH_TOKEN_MISSING' }
+  }
+
+  // RPC로 등록 (서버에서 토큰 검증 + user_id 추출)
+  const { error } = await supabase.rpc('upsert_push_subscription', {
+    p_token: token,
+    p_endpoint: subscription.endpoint,
+    p_p256dh: arrayBufferToBase64(p256dhKey),
+    p_auth: arrayBufferToBase64(authKey),
+    p_device_label: navigator.userAgent.slice(0, 80),
+  })
 
   if (error) {
-    console.error('[push] DB upsert failed:', error)
+    console.error('[push] RPC upsert failed:', error)
     return { ok: false, reason: error.message }
   }
 
+  // userId 미사용이지만 시그니처 호환 위해 사용
+  void userId
   return { ok: true }
 }
 
@@ -130,10 +133,16 @@ export async function unsubscribeFromPush(): Promise<{ ok: boolean; reason?: str
   const endpoint = subscription.endpoint
   await subscription.unsubscribe()
 
-  // DB에서도 삭제
-  const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint)
+  // DB에서도 삭제 (토큰 기반 RPC)
+  const token = localStorage.getItem('auth_token')
+  if (!token) return { ok: true } // 로그아웃 상태면 브라우저만 해제하고 끝
+
+  const { error } = await supabase.rpc('delete_push_subscription', {
+    p_token: token,
+    p_endpoint: endpoint,
+  })
   if (error) {
-    console.error('[push] DB delete failed:', error)
+    console.error('[push] RPC delete failed:', error)
     return { ok: false, reason: error.message }
   }
   return { ok: true }

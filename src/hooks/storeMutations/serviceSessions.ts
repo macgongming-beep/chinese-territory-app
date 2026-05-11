@@ -121,13 +121,24 @@ export function makeServiceSessionMutations(deps: {
     }
 
     await createSystemChatMessage(input.calendarEventId, `${visitor}님이 ${input.timeSlot} 봉사를 시작했습니다.`)
+
+    // 봉사 로그 기록
+    const newSessionId = result.data?.id ?? existingId ?? null
+    await logServiceAction({
+      sessionId: newSessionId,
+      eventId: input.calendarEventId ?? null,
+      cardId: input.primaryCardId ?? null,
+      action: 'session_started',
+      details: { time_slot: input.timeSlot, role: input.role },
+    })
+
     await fetchAll()
     showToast(
       activeSessionsToEnd.length > 0
         ? `이전 봉사를 종료하고 ${input.timeSlot} 봉사를 시작했습니다`
         : `${input.timeSlot} 봉사를 시작했습니다`,
     )
-    return result.data?.id ?? existingId ?? null
+    return newSessionId
   }
 
   const endServiceSession = async (sessionId: number) => {
@@ -143,9 +154,46 @@ export function makeServiceSessionMutations(deps: {
     }
 
     await createSystemChatMessage(targetSession?.calendarEventId, `${targetSession?.userName ?? '사용자'}님이 봉사를 종료했습니다.`)
+
+    // 봉사 로그 기록
+    await logServiceAction({
+      sessionId,
+      eventId: targetSession?.calendarEventId ?? null,
+      cardId: targetSession?.primaryCardId ?? null,
+      action: 'session_ended',
+      details: { time_slot: targetSession?.timeSlot ?? null },
+    })
+
     await fetchAll()
     showToast('봉사 세션을 종료했습니다')
   }
 
   return { getRecordServiceSession, startServiceSession, endServiceSession }
+}
+
+// log_service_action RPC 호출 헬퍼
+async function logServiceAction(input: {
+  sessionId: number | null
+  eventId: number | null
+  cardId: number | null
+  action: string
+  targetType?: string | null
+  targetId?: number | null
+  details?: Record<string, unknown>
+}) {
+  const token = localStorage.getItem('auth_token')
+  if (!token) return // 토큰 없으면 조용히 스킵
+  const { error } = await supabase.rpc('log_service_action', {
+    p_token: token,
+    p_session_id: input.sessionId,
+    p_event_id: input.eventId,
+    p_card_id: input.cardId,
+    p_action: input.action,
+    p_target_type: input.targetType ?? null,
+    p_target_id: input.targetId ?? null,
+    p_details: input.details ?? {},
+  })
+  if (error) {
+    console.warn('[service_log] failed:', error)
+  }
 }

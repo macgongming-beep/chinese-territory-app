@@ -16,17 +16,13 @@ declare const self: ServiceWorkerGlobalScope
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-// SPA 라우팅: index.html로 폴백
-registerRoute(new NavigationRoute(
-  async () => {
-    const cache = await caches.open('workbox-precache-v2-https://example/')
-    const response = await cache.match('/index.html')
-    return response ?? fetch('/index.html')
-  },
-  {
+// SPA 라우팅: index.html로 폴백 (workbox precache의 실제 캐시 키 사용)
+import { createHandlerBoundToURL } from 'workbox-precaching'
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL('/index.html'), {
     denylist: [/^\/api/, /^\/auth/, /\/sw\.js/, /\/manifest\.webmanifest/],
-  }
-))
+  })
+)
 
 // Supabase API: NetworkFirst (오프라인 폴백)
 registerRoute(

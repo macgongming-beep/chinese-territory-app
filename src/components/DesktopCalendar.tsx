@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { CalendarEvent, SpecialPeriod, TerritoryCard } from '../types'
 import { PERIOD_COLORS } from '../types'
 import { ChatRoom } from './ChatRoom'
@@ -128,6 +129,32 @@ export function DesktopCalendar({
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
   const [selectedDay, setSelectedDay] = useState(today.getDate())
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // openChat=<eventId> 쿼리 처리: 해당 일정 날짜로 이동 + 스크롤
+  useEffect(() => {
+    const openChatId = searchParams.get('openChat')
+    if (!openChatId) return
+    const targetEvent = events.find((ev: CalendarEvent) => ev.id === Number(openChatId))
+    if (!targetEvent) return
+
+    const d = new Date(targetEvent.date)
+    setYear(d.getFullYear())
+    setMonth(d.getMonth() + 1)
+    setSelectedDay(d.getDate())
+
+    // 다음 tick에 스크롤
+    setTimeout(() => {
+      const el = document.getElementById(`event-card-${openChatId}`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 200)
+
+    // 쿼리 제거
+    const next = new URLSearchParams(searchParams)
+    next.delete('openChat')
+    setSearchParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newDate, setNewDate] = useState(() => toDateStr(today.getFullYear(), today.getMonth() + 1, today.getDate()))
   const [newTitle, setNewTitle] = useState('오전 방문')
@@ -472,7 +499,7 @@ export function DesktopCalendar({
                 }
 
                 return (
-                  <article className="detail-card" key={event.id}>
+                  <article className="detail-card" key={event.id} id={`event-card-${event.id}`}>
                     <div className="detail-title-row">
                       <div className="detail-title-main">
                         <h2>{event.title}</h2>

@@ -64,9 +64,21 @@ export function useUserChats(userId: number | null | undefined, userName: string
         .select('event_id, events:calendar_events(id, event_date, time, title)')
         .eq('user_name', userName)
 
-      const events = ((participants ?? []) as unknown as ParticipantRow[])
+      const eventsFromParticipants = ((participants ?? []) as unknown as ParticipantRow[])
         .map((p) => p.events)
         .filter((e): e is EventRow => Boolean(e))
+
+      // 1-b. 인도자가 본인인 일정도 포함 (참가자 명단에 없을 수 있음)
+      const { data: leaderEvents } = await supabase
+        .from('calendar_events')
+        .select('id, event_date, time, title')
+        .eq('leader_name', userName)
+
+      // 두 목록 합치기 (id 기준 중복 제거)
+      const eventMap = new Map<number, EventRow>()
+      eventsFromParticipants.forEach((e) => eventMap.set(e.id, e))
+      ;((leaderEvents ?? []) as EventRow[]).forEach((e) => eventMap.set(e.id, e))
+      const events = Array.from(eventMap.values())
 
       if (events.length === 0) {
         setChats([])
@@ -75,17 +87,19 @@ export function useUserChats(userId: number | null | undefined, userName: string
 
       const eventIds = events.map((e) => e.id)
 
-      // 2. 채팅 읽음 상태
-      const { data: readRows } = await supabase
-        .from('chat_read_status')
-        .select('event_id, last_read_at')
-        .eq('user_id', userId)
-        .in('event_id', eventIds)
-
+      // 2. 채팅 읽음 상태 (RPC — 본인 것만)
+      const token = localStorage.getItem('auth_token')
       const readMap = new Map<number, string>()
-      ;((readRows ?? []) as ReadStatusRow[]).forEach((r) => {
-        readMap.set(r.event_id, r.last_read_at)
-      })
+      if (token) {
+        const { data: readRows } = await supabase.rpc('get_my_chat_reads', {
+          p_token: token,
+        })
+        ;((readRows ?? []) as ReadStatusRow[]).forEach((r) => {
+          if (eventIds.includes(r.event_id)) {
+            readMap.set(r.event_id, r.last_read_at)
+          }
+        })
+      }
 
       // 3. 채팅 메시지 메타 (참여자 카운트, 최신, 안 읽음 카운트용)
       const { data: messages } = await supabase

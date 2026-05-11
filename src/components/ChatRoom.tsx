@@ -62,7 +62,7 @@ export function ChatRoom({
   eventId,
   eventTitle,
   currentVisitor,
-  currentUserId,
+  currentUserId: _currentUserId,
   users = [],
   compact = false,
 }: ChatRoomProps) {
@@ -103,78 +103,62 @@ export function ChatRoom({
     setLoading(false)
   }
 
+  // 읽음 처리 (진입 시 + 이탈 시)
+  const markChatRead = async () => {
+    const token = localStorage.getItem('auth_token')
+    if (!token) return
+    await supabase.rpc('update_chat_read', {
+      p_token: token,
+      p_event_id: eventId,
+    })
+  }
+
   useEffect(() => {
     void fetchMessages()
+    void markChatRead() // 진입 시 즉시 읽음 처리
 
     const channel = supabase
       .channel(`chat:${eventId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'chat_messages', filter: `event_id=eq.${eventId}` },
-        () => void fetchMessages(),
+        () => {
+          void fetchMessages()
+          if (!document.hidden) void markChatRead() // 활성 화면이면 즉시 갱신
+        },
       )
       .subscribe()
 
     return () => {
       void supabase.removeChannel(channel)
+      void markChatRead() // 이탈 시 한 번 더 (안전)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId])
-
-  const insertDirectMessage = async (input: {
-    messageType: ChatMessage['message_type']
-    content?: string | null
-    imageUrl?: string | null
-    mentionIds?: number[]
-    mentionNames?: string[]
-  }) => {
-    return supabase.from('chat_messages').insert({
-      event_id: eventId,
-      author_id: currentUserId ?? null,
-      author_name: currentVisitor,
-      message_type: input.messageType,
-      content: input.content ?? null,
-      image_url: input.imageUrl ?? null,
-      image_expires_at: input.imageUrl ? new Date(Date.now() + 1000 * 60 * 60 * 24 * 180).toISOString() : null,
-      mention_ids: input.mentionIds ?? [],
-      mention_names: input.mentionNames ?? [],
-    })
-  }
 
   const sendTextMessage = async () => {
     const content = draft.trim()
     if (!content) return
 
-    const mentions = getMentionPayload(content, users)
     const token = localStorage.getItem('auth_token')
-
-    if (token) {
-      const { error } = await supabase.rpc('send_chat_message', {
-        p_token: token,
-        p_event_id: eventId,
-        p_content: content,
-        p_mention_ids: mentions.ids,
-        p_mention_names: mentions.names,
-      })
-
-      if (!error) {
-        setDraft('')
-        await fetchMessages()
-        return
-      }
-
-      console.warn('send_chat_message RPC 실패, 직접 INSERT로 재시도합니다.', error)
+    if (!token) {
+      showToast('로그인 정보가 만료되었습니다. 다시 로그인해주세요.', 'error')
+      return
     }
 
-    const { error } = await insertDirectMessage({
-      messageType: 'text',
-      content,
-      mentionIds: mentions.ids,
-      mentionNames: mentions.names,
+    const mentions = getMentionPayload(content, users)
+
+    const { error } = await supabase.rpc('send_chat_message', {
+      p_token: token,
+      p_event_id: eventId,
+      p_content: content,
+      p_mention_ids: mentions.ids,
+      p_mention_names: mentions.names,
     })
 
     if (error) {
-      showToast('메시지를 보내지 못했습니다. V1+ SQL 적용 여부를 확인해 주세요.', 'error')
+      console.error('send_chat_message RPC 실패', error)
+      showToast(error.message ?? '메시지를 보내지 못했습니다.', 'error')
       return
     }
 
@@ -185,6 +169,12 @@ export function ChatRoom({
   const uploadPhoto = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       showToast('이미지 파일만 첨부할 수 있습니다.', 'error')
+      return
+    }
+
+    const token = localStorage.getItem('auth_token')
+    if (!token) {
+      showToast('로그인 정보가 만료되었습니다. 다시 로그인해주세요.', 'error')
       return
     }
 
@@ -202,14 +192,21 @@ export function ChatRoom({
     }
 
     const { data } = supabase.storage.from('chat-attachments').getPublicUrl(path)
-    const { error } = await insertDirectMessage({
-      messageType: 'image',
-      content: draft.trim() || null,
-      imageUrl: data.publicUrl,
+    const caption = draft.trim() || null
+    const captionMentions = caption ? getMentionPayload(caption, users) : { ids: [], names: [] }
+
+    const { error } = await supabase.rpc('send_chat_image', {
+      p_token: token,
+      p_event_id: eventId,
+      p_image_url: data.publicUrl,
+      p_caption: caption,
+      p_mention_ids: captionMentions.ids,
+      p_mention_names: captionMentions.names,
     })
 
     if (error) {
-      showToast('사진 메시지를 저장하지 못했습니다.', 'error')
+      console.error('send_chat_image RPC 실패', error)
+      showToast(error.message ?? '사진 메시지를 저장하지 못했습니다.', 'error')
       setUploading(false)
       return
     }

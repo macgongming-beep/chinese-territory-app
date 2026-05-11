@@ -56,12 +56,12 @@ export function useNotificationPrefs(userId: number | null | undefined) {
 
   const fetch = useCallback(async () => {
     if (!userId) return
+    const token = localStorage.getItem('auth_token')
+    if (!token) return
     setLoading(true)
-    const { data, error } = await supabase
-      .from('notification_preferences')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle()
+    const { data, error } = await supabase.rpc('get_my_notification_prefs', {
+      p_token: token,
+    })
     setLoading(false)
     if (error) {
       console.warn('[notification_prefs] fetch failed:', error)
@@ -81,28 +81,24 @@ export function useNotificationPrefs(userId: number | null | undefined) {
   const update = useCallback(
     async (patch: Partial<NotificationPrefs>) => {
       if (!userId) return
+      const token = localStorage.getItem('auth_token')
+      if (!token) return
       const next = { ...prefs, ...patch }
       // 낙관적 갱신
       setPrefs(next)
       setSaving(true)
 
-      const { error } = await supabase
-        .from('notification_preferences')
-        .upsert(
-          {
-            user_id: userId,
-            push_new_notice: next.pushNewNotice,
-            push_event_change: next.pushEventChange,
-            push_comment: next.pushComment,
-            push_chat: next.pushChat,
-            push_mention: next.pushMention,
-            push_service_status: next.pushServiceStatus,
-            quiet_hours_start: next.quietHoursStart,
-            quiet_hours_end: next.quietHoursEnd,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id' }
-        )
+      const { error } = await supabase.rpc('update_my_notification_prefs', {
+        p_token: token,
+        p_push_new_notice: next.pushNewNotice,
+        p_push_event_change: next.pushEventChange,
+        p_push_comment: next.pushComment,
+        p_push_chat: next.pushChat,
+        p_push_mention: next.pushMention,
+        p_push_service_status: next.pushServiceStatus,
+        p_quiet_hours_start: next.quietHoursStart,
+        p_quiet_hours_end: next.quietHoursEnd,
+      })
 
       setSaving(false)
       if (error) {
