@@ -34,7 +34,7 @@ export function NotificationCenter({
   userId,
   onClose,
 }: {
-  userId: number
+  userId: number | null
   onClose: () => void
 }) {
   const navigate = useNavigate()
@@ -117,7 +117,15 @@ export function NotificationCenter({
 
         {/* 본문 */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {notifications.length === 0 ? (
+          {!userId ? (
+            <div style={{
+              padding: '60px 20px', textAlign: 'center', color: '#94a3b8',
+            }}>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>🔔</div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#475569' }}>로그인 정보 확인이 필요합니다</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12 }}>다시 로그인하면 알림을 불러올 수 있습니다.</p>
+            </div>
+          ) : notifications.length === 0 ? (
             <div style={{
               padding: '60px 20px', textAlign: 'center', color: '#94a3b8',
             }}>

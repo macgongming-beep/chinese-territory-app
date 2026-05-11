@@ -90,7 +90,7 @@ export function AppHeaderActionButtons({
       onOpenNotifications()
       return
     }
-    if (userId) setOpenNotifications(true)
+    setOpenNotifications(true)
   }
 
   const handleOpenChat = () => {
@@ -98,7 +98,7 @@ export function AppHeaderActionButtons({
       onOpenChat()
       return
     }
-    if (userId) setOpenChat(true)
+    setOpenChat(true)
   }
 
   return (
@@ -129,14 +129,14 @@ export function AppHeaderActionButtons({
         ) : null}
       </div>
 
-      {openNotifications && userId ? (
+      {openNotifications ? (
         <HeaderOverlayPortal>
-          <NotificationCenter userId={userId} onClose={() => setOpenNotifications(false)} />
+          <NotificationCenter userId={userId ?? null} onClose={() => setOpenNotifications(false)} />
         </HeaderOverlayPortal>
       ) : null}
-      {openChat && userId ? (
+      {openChat ? (
         <HeaderOverlayPortal>
-          <GlobalChatModal userId={userId} userName={userName} onClose={() => setOpenChat(false)} />
+          <GlobalChatModal userId={userId ?? null} userName={userName} onClose={() => setOpenChat(false)} />
         </HeaderOverlayPortal>
       ) : null}
     </>

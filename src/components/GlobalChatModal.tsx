@@ -38,7 +38,7 @@ export function GlobalChatModal({
   userName,
   onClose,
 }: {
-  userId: number
+  userId: number | null
   userName: string
   onClose: () => void
 }) {
@@ -94,13 +94,19 @@ export function GlobalChatModal({
 
         {/* 본문 */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {loading && activeChats.length === 0 && lockedChats.length === 0 && (
+          {!userId ? (
+            <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#475569' }}>로그인 정보 확인이 필요합니다</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12 }}>다시 로그인하면 채팅 목록을 불러올 수 있습니다.</p>
+            </div>
+          ) : loading && activeChats.length === 0 && lockedChats.length === 0 && (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
               불러오는 중...
             </div>
           )}
 
-          {!loading && activeChats.length === 0 && lockedChats.length === 0 && (
+          {userId && !loading && activeChats.length === 0 && lockedChats.length === 0 && (
             <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
               <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
               <p style={{ margin: 0, fontSize: 14 }}>참여한 봉사 채팅방이 없습니다</p>
