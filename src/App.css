@@ -299,6 +299,111 @@ button:focus-visible {
   box-shadow: var(--shadow-xs);
 }
 
+.header-action-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50000;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.header-action-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
+  flex-direction: column;
+  background: var(--bg-card);
+  color: var(--gray-800);
+  animation: headerPanelSlideIn 0.2s ease-out;
+}
+
+.header-action-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.header-action-panel__head h2 {
+  margin: 0;
+  color: var(--gray-800);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.header-action-panel__head button {
+  min-width: 0;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: var(--gray-400);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.header-action-panel__body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.header-action-panel__empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 60px 20px;
+  color: var(--gray-400);
+  text-align: center;
+}
+
+.header-action-panel__empty > span {
+  margin-bottom: 2px;
+  font-size: 36px;
+  line-height: 1;
+}
+
+.header-action-panel__empty strong {
+  color: var(--gray-600);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.header-action-panel__empty p {
+  margin: 0;
+  color: var(--gray-400);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.header-action-panel__empty small {
+  max-width: 320px;
+  color: var(--danger-600);
+  font-size: 11px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+@keyframes headerPanelSlideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (max-width: 480px) {
+  .header-action-panel {
+    max-width: none;
+    animation-name: headerPanelDropIn;
+  }
+
+  @keyframes headerPanelDropIn {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
+  }
+}
+
 .comment-section,
 .chat-room {
   margin-top: 16px;

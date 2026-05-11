@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Component } from 'react'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNotifications } from '../hooks/useNotifications'
@@ -38,6 +39,47 @@ type AppHeaderActionButtonsProps = {
   className?: string
   buttonClassName?: string
   showMenu?: boolean
+}
+
+type HeaderOverlayErrorBoundaryProps = {
+  children: ReactNode
+  onClose: () => void
+}
+
+type HeaderOverlayErrorBoundaryState = {
+  error: Error | null
+}
+
+class HeaderOverlayErrorBoundary extends Component<HeaderOverlayErrorBoundaryProps, HeaderOverlayErrorBoundaryState> {
+  state: HeaderOverlayErrorBoundaryState = { error: null }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('[header overlay] render failed', error)
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children
+
+    return (
+      <div className="header-action-panel-backdrop" onClick={this.props.onClose}>
+        <section className="header-action-panel" onClick={(event) => event.stopPropagation()}>
+          <div className="header-action-panel__head">
+            <h2>불러오지 못했습니다</h2>
+            <button type="button" aria-label="닫기" onClick={this.props.onClose}>×</button>
+          </div>
+          <div className="header-action-panel__empty">
+            <strong>패널을 여는 중 문제가 발생했습니다.</strong>
+            <p>새로고침 후 다시 시도해 주세요.</p>
+            <small>{this.state.error.message}</small>
+          </div>
+        </section>
+      </div>
+    )
+  }
 }
 
 function formatHeaderDate(date: Date | string) {
@@ -131,12 +173,16 @@ export function AppHeaderActionButtons({
 
       {openNotifications ? (
         <HeaderOverlayPortal>
-          <NotificationCenter userId={userId ?? null} onClose={() => setOpenNotifications(false)} />
+          <HeaderOverlayErrorBoundary onClose={() => setOpenNotifications(false)}>
+            <NotificationCenter userId={userId ?? null} onClose={() => setOpenNotifications(false)} />
+          </HeaderOverlayErrorBoundary>
         </HeaderOverlayPortal>
       ) : null}
       {openChat ? (
         <HeaderOverlayPortal>
-          <GlobalChatModal userId={userId ?? null} userName={userName} onClose={() => setOpenChat(false)} />
+          <HeaderOverlayErrorBoundary onClose={() => setOpenChat(false)}>
+            <GlobalChatModal userId={userId ?? null} userName={userName} onClose={() => setOpenChat(false)} />
+          </HeaderOverlayErrorBoundary>
         </HeaderOverlayPortal>
       ) : null}
     </>

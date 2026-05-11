@@ -52,6 +52,7 @@ export function GlobalChatModal({
 
   return (
     <div
+      className="header-action-panel-backdrop"
       style={{
         position: 'fixed',
         inset: 0,
@@ -61,6 +62,7 @@ export function GlobalChatModal({
       onClick={onClose}
     >
       <div
+        className="header-action-panel"
         style={{
           position: 'absolute',
           top: 0,
@@ -76,7 +78,7 @@ export function GlobalChatModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div style={{
+        <div className="header-action-panel__head" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '16px 16px 12px', borderBottom: '1px solid #f1f5f9',
         }}>
@@ -93,10 +95,10 @@ export function GlobalChatModal({
         </div>
 
         {/* 본문 */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div className="header-action-panel__body" style={{ flex: 1, overflowY: 'auto' }}>
           {!userId ? (
-            <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
-              <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
+            <div className="header-action-panel__empty" style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
+              <span style={{ fontSize: 36, marginBottom: 8 }}>💬</span>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#475569' }}>로그인 정보 확인이 필요합니다</p>
               <p style={{ margin: '6px 0 0', fontSize: 12 }}>다시 로그인하면 채팅 목록을 불러올 수 있습니다.</p>
             </div>
@@ -107,8 +109,8 @@ export function GlobalChatModal({
           )}
 
           {userId && !loading && activeChats.length === 0 && lockedChats.length === 0 && (
-            <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
-              <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
+            <div className="header-action-panel__empty" style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
+              <span style={{ fontSize: 36, marginBottom: 8 }}>💬</span>
               <p style={{ margin: 0, fontSize: 14 }}>참여한 봉사 채팅방이 없습니다</p>
               <p style={{ margin: '6px 0 0', fontSize: 12 }}>일정 상세에서 [참여]를 누르면 채팅방에 입장됩니다</p>
             </div>
