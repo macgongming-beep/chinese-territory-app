@@ -465,6 +465,13 @@ export function DesktopCalendar({
             <div className="detail-stack">
               {selectedEvents.map((event) => {
                 const isApplied = event.applicants.includes(currentVisitor)
+                const canAccessChat =
+                  role === 'admin' ||
+                  role === 'developer' ||
+                  role === 'leader' ||
+                  event.applicants.includes(currentVisitor) ||
+                  event.assigned.includes(currentVisitor) ||
+                  event.leader === currentVisitor
                 const isEditing = editingEventId === event.id
 
                 if (isEditing && editDraft) {
@@ -604,6 +611,7 @@ export function DesktopCalendar({
                         users={mentionUsers}
                       />
                       <ChatRoom
+                        canAccess={canAccessChat}
                         compact
                         currentUserId={currentUserId}
                         currentVisitor={currentVisitor}

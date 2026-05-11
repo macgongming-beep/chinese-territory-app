@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { showToast } from '../lib/toast'
 import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { DesktopCalendar } from './DesktopCalendar'
@@ -268,6 +268,42 @@ export function DesktopApp({
 
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
   const focusedMapBuildingId = searchParams.get('buildingId') ? Number(searchParams.get('buildingId')) : null
+  const userVisibleMapCardIds = useMemo(() => {
+    const ids = new Set<number>()
+    cards.forEach((card) => {
+      if (card.assignedUsers.includes(currentVisitor)) ids.add(card.id)
+    })
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
+    serviceSessions.forEach((session) => {
+      if (session.userName !== currentVisitor) return
+      const sessionTime = new Date(session.serviceDate || session.startedAt).getTime()
+      if (Number.isFinite(sessionTime) && sessionTime < cutoff) return
+      if (session.primaryCardId) ids.add(session.primaryCardId)
+      if (session.assignedCardId) ids.add(session.assignedCardId)
+    })
+    return ids
+  }, [cards, currentVisitor, serviceSessions])
+  const isUserMapScope = viewMode === 'user'
+  const mapCards = useMemo(
+    () => isUserMapScope ? cards.filter((card) => userVisibleMapCardIds.has(card.id)) : cards,
+    [cards, isUserMapScope, userVisibleMapCardIds],
+  )
+  const mapBuildings = useMemo(
+    () => isUserMapScope ? buildings.filter((building) => userVisibleMapCardIds.has(building.cardId)) : buildings,
+    [buildings, isUserMapScope, userVisibleMapCardIds],
+  )
+  const mapCardBoundaries = useMemo(
+    () => isUserMapScope ? cardBoundaries.filter((boundary) => userVisibleMapCardIds.has(boundary.cardId)) : cardBoundaries,
+    [cardBoundaries, isUserMapScope, userVisibleMapCardIds],
+  )
+  const safeFocusedMapCardId =
+    isUserMapScope && focusedMapCardId && !userVisibleMapCardIds.has(focusedMapCardId)
+      ? null
+      : focusedMapCardId
+  const safeFocusedMapBuildingId =
+    isUserMapScope && focusedMapBuildingId && !mapBuildings.some((building) => building.id === focusedMapBuildingId)
+      ? null
+      : focusedMapBuildingId
 
   const openCardOnMap = (cardId: number, editBoundary = false) => {
     if (editBoundary) setBoundaryEditRequest((request) => request + 1)
@@ -550,15 +586,15 @@ export function DesktopApp({
         } />
         <Route path="/map" element={
           <DesktopMap
-            buildings={buildings}
+            buildings={mapBuildings}
             boundaryEditRequest={boundaryEditRequest}
-            cardBoundaries={cardBoundaries}
-            cards={cards}
+            cardBoundaries={mapCardBoundaries}
+            cards={mapCards}
             currentVisitor={currentVisitor}
             actualRole={viewMode}
             serviceSessions={serviceSessions}
-            focusedCardId={focusedMapCardId}
-            focusedBuildingId={focusedMapBuildingId}
+            focusedCardId={safeFocusedMapCardId}
+            focusedBuildingId={safeFocusedMapBuildingId}
             onAddUnit={onAddUnit}
             onCreateBuilding={onCreateBuilding}
             onDeleteBuilding={onDeleteBuilding}

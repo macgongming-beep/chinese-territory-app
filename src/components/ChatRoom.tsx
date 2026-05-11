@@ -26,6 +26,7 @@ type ChatRoomProps = {
   currentUserId?: number | null
   users?: MentionUser[]
   compact?: boolean
+  canAccess?: boolean
 }
 
 function getMentionQuery(value: string) {
@@ -66,6 +67,7 @@ export function ChatRoom({
   currentUserId: _currentUserId,
   users = [],
   compact = false,
+  canAccess = true,
 }: ChatRoomProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
@@ -83,6 +85,11 @@ export function ChatRoom({
   }, [currentVisitor, mentionQuery, users])
 
   const fetchMessages = async () => {
+    if (!canAccess) {
+      setMessages([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     const { data, error } = await supabase
       .from('chat_messages')
@@ -106,6 +113,7 @@ export function ChatRoom({
 
   // 읽음 처리 (진입 시 + 이탈 시)
   const markChatRead = async () => {
+    if (!canAccess) return
     const token = getAuthToken()
     if (!token) return
     await supabase.rpc('update_chat_read', {
@@ -138,6 +146,10 @@ export function ChatRoom({
   }, [eventId])
 
   const sendTextMessage = async () => {
+    if (!canAccess) {
+      showToast('참여한 봉사 채팅방만 이용할 수 있습니다.', 'error')
+      return
+    }
     const content = draft.trim()
     if (!content) return
 
@@ -168,6 +180,10 @@ export function ChatRoom({
   }
 
   const uploadPhoto = async (file: File) => {
+    if (!canAccess) {
+      showToast('참여한 봉사 채팅방만 이용할 수 있습니다.', 'error')
+      return
+    }
     if (!file.type.startsWith('image/')) {
       showToast('이미지 파일만 첨부할 수 있습니다.', 'error')
       return
@@ -225,6 +241,14 @@ export function ChatRoom({
     return (
       <section className={`chat-room${compact ? ' chat-room--compact' : ''}`}>
         <div className="chat-empty">채팅 기능은 V1+ SQL 적용 후 사용할 수 있습니다.</div>
+      </section>
+    )
+  }
+
+  if (!canAccess) {
+    return (
+      <section className={`chat-room${compact ? ' chat-room--compact' : ''}`}>
+        <div className="chat-empty">참여한 봉사 채팅방만 볼 수 있습니다.</div>
       </section>
     )
   }

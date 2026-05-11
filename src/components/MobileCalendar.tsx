@@ -398,6 +398,13 @@ export function MobileCalendar({
 
         {selectedEvents.map((event) => {
           const isApplied = event.applicants.includes(currentVisitor)
+          const canAccessChat =
+            role === 'admin' ||
+            role === 'developer' ||
+            role === 'leader' ||
+            event.applicants.includes(currentVisitor) ||
+            event.assigned.includes(currentVisitor) ||
+            event.leader === currentVisitor
           const isEditing = editingId === event.id
           return (
             <div className="mobile-cal-event-card" key={event.id} id={`mobile-event-card-${event.id}`}>
@@ -529,6 +536,7 @@ export function MobileCalendar({
                   users={mentionUsers}
                 />
                 <ChatRoom
+                  canAccess={canAccessChat}
                   compact
                   currentUserId={currentUserId}
                   currentVisitor={currentVisitor}

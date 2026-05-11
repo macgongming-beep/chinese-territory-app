@@ -892,6 +892,41 @@ export function MobileHome({
       .filter((value) => Number.isFinite(value))
   }, [searchParams])
   const focusedMapScopeLabel = searchParams.get('scope') === 'mine' ? t(language, 'zone.myTerritories') : undefined
+  const userVisibleMapCardIds = useMemo(() => {
+    const ids = new Set<number>()
+    cards.forEach((card) => {
+      if (card.assignedUsers.includes(currentVisitor)) ids.add(card.id)
+    })
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
+    serviceSessions.forEach((session) => {
+      if (session.userName !== currentVisitor) return
+      const sessionTime = new Date(session.serviceDate || session.startedAt).getTime()
+      if (Number.isFinite(sessionTime) && sessionTime < cutoff) return
+      if (session.primaryCardId) ids.add(session.primaryCardId)
+      if (session.assignedCardId) ids.add(session.assignedCardId)
+    })
+    return ids
+  }, [cards, currentVisitor, serviceSessions])
+  const isUserMapScope = role === 'user'
+  const mapCards = useMemo(
+    () => isUserMapScope ? cards.filter((card) => userVisibleMapCardIds.has(card.id)) : cards,
+    [cards, isUserMapScope, userVisibleMapCardIds],
+  )
+  const mapBuildings = useMemo(
+    () => isUserMapScope ? buildings.filter((building) => userVisibleMapCardIds.has(building.cardId)) : buildings,
+    [buildings, isUserMapScope, userVisibleMapCardIds],
+  )
+  const mapCardBoundaries = useMemo(
+    () => isUserMapScope ? cardBoundaries.filter((boundary) => userVisibleMapCardIds.has(boundary.cardId)) : cardBoundaries,
+    [cardBoundaries, isUserMapScope, userVisibleMapCardIds],
+  )
+  const safeFocusedMapCardId =
+    isUserMapScope && focusedMapCardId && !userVisibleMapCardIds.has(focusedMapCardId)
+      ? null
+      : focusedMapCardId
+  const safeFocusedMapCardIds = isUserMapScope
+    ? focusedMapCardIds.filter((cardId) => userVisibleMapCardIds.has(cardId))
+    : focusedMapCardIds
   const roleLabel = role === 'admin' ? t(language, 'role.admin') : role === 'leader' ? t(language, 'role.leader') : t(language, 'role.user')
   const pendingSignupCount = useMemo(
     () => allUsers.filter((item) => item.approvalStatus === 'pending').length,
@@ -942,15 +977,15 @@ export function MobileHome({
         <>
           <MobileMap
             language={language}
-            buildings={buildings}
-            cardBoundaries={cardBoundaries}
-            cards={cards}
+            buildings={mapBuildings}
+            cardBoundaries={mapCardBoundaries}
+            cards={mapCards}
             currentVisitor={currentVisitor}
             currentUserId={currentUser.id}
             actualRole={role}
             serviceSessions={serviceSessions}
-            focusedCardId={focusedMapCardId}
-            focusedCardIds={focusedMapCardIds}
+            focusedCardId={safeFocusedMapCardId}
+            focusedCardIds={safeFocusedMapCardIds}
             focusedScopeLabel={focusedMapScopeLabel}
             onBack={() => navigate(role === 'user' ? '/territory' : '/zone')}
             onAddUnit={onAddUnit}
