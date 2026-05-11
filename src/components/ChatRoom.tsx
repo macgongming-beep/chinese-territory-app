@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { showToast } from '../lib/toast'
 import { getAuthToken } from '../lib/authToken'
 import type { MentionUser } from './CommentSection'
+import type { Role } from '../types'
 
 type ChatMessage = {
   id: number
@@ -27,6 +28,7 @@ type ChatRoomProps = {
   users?: MentionUser[]
   compact?: boolean
   canAccess?: boolean
+  role?: Role
 }
 
 function getMentionQuery(value: string) {
@@ -64,10 +66,11 @@ export function ChatRoom({
   eventId,
   eventTitle,
   currentVisitor,
-  currentUserId: _currentUserId,
+  currentUserId,
   users = [],
   compact = false,
   canAccess = true,
+  role = 'user',
 }: ChatRoomProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
@@ -237,6 +240,33 @@ export function ChatRoom({
     await fetchMessages()
   }
 
+  const canDeleteMessage = (message: ChatMessage) => {
+    if (message.message_type === 'system') return role === 'leader' || role === 'admin' || role === 'developer'
+    if (role === 'leader' || role === 'admin' || role === 'developer') return true
+    if (message.author_id !== currentUserId && message.author_name !== currentVisitor) return false
+    return Date.now() - new Date(message.created_at).getTime() <= 5 * 60 * 1000
+  }
+
+  const deleteMessage = async (message: ChatMessage) => {
+    const token = getAuthToken()
+    if (!token) {
+      showToast('로그인 정보가 만료되었습니다. 다시 로그인해주세요.', 'error')
+      return
+    }
+
+    const { error } = await supabase.rpc('delete_chat_message', {
+      p_token: token,
+      p_message_id: message.id,
+    })
+
+    if (error) {
+      showToast(error.message ?? '메시지를 삭제하지 못했습니다.', 'error')
+      return
+    }
+
+    await fetchMessages()
+  }
+
   if (missingTable) {
     return (
       <section className={`chat-room${compact ? ' chat-room--compact' : ''}`}>
@@ -287,6 +317,14 @@ export function ChatRoom({
                     <div className="chat-message__meta">
                       <strong>{message.author_name}</strong>
                       <span>{formatChatTime(message.created_at)}</span>
+                      {canDeleteMessage(message) && (
+                        <button onClick={() => deleteMessage(message)} type="button">삭제</button>
+                      )}
+                    </div>
+                  )}
+                  {system && canDeleteMessage(message) && (
+                    <div className="chat-message__meta">
+                      <button onClick={() => deleteMessage(message)} type="button">삭제</button>
                     </div>
                   )}
                   {message.image_url && !message.image_expired && (

@@ -70,6 +70,8 @@ export function CommentSection({
 }: CommentSectionProps) {
   const [comments, setComments] = useState<CommentRecord[]>([])
   const [draft, setDraft] = useState('')
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editDraft, setEditDraft] = useState('')
   const [loading, setLoading] = useState(false)
   const [missingTable, setMissingTable] = useState(false)
 
@@ -159,8 +161,44 @@ export function CommentSection({
     await fetchComments()
   }
 
+  const startEdit = (comment: CommentRecord) => {
+    setEditingId(comment.id)
+    setEditDraft(comment.content)
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditDraft('')
+  }
+
+  const saveEdit = async (comment: CommentRecord) => {
+    const content = editDraft.trim()
+    if (!content) return
+
+    const mentions = getMentionPayload(content, users)
+    const { error } = await supabase
+      .from('comments')
+      .update({
+        content,
+        mention_ids: mentions.ids,
+        mention_names: mentions.names,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', comment.id)
+
+    if (error) {
+      showToast('댓글을 수정하지 못했습니다.', 'error')
+      return
+    }
+
+    cancelEdit()
+    await fetchComments()
+  }
+
   const canDelete = (comment: CommentRecord) =>
     comment.author_name === currentVisitor || role === 'admin' || role === 'developer'
+
+  const canEdit = (comment: CommentRecord) => comment.author_name === currentVisitor
 
   if (missingTable) {
     return (
@@ -190,11 +228,32 @@ export function CommentSection({
                 <div className="comment-item__meta">
                   <strong>{comment.author_name}</strong>
                   <span>{formatCommentTime(comment.created_at)}</span>
+                  {canEdit(comment) && editingId !== comment.id && (
+                    <button onClick={() => startEdit(comment)} type="button">수정</button>
+                  )}
                   {canDelete(comment) && (
                     <button onClick={() => deleteComment(comment)} type="button">삭제</button>
                   )}
                 </div>
-                <p>{comment.content}</p>
+                {editingId === comment.id ? (
+                  <div className="comment-edit-box">
+                    <textarea
+                      onChange={(event) => setEditDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') void saveEdit(comment)
+                        if (event.key === 'Escape') cancelEdit()
+                      }}
+                      rows={2}
+                      value={editDraft}
+                    />
+                    <div className="comment-edit-actions">
+                      <button disabled={!editDraft.trim()} onClick={() => saveEdit(comment)} type="button">저장</button>
+                      <button onClick={cancelEdit} type="button">취소</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p>{comment.content}</p>
+                )}
               </div>
             </article>
           ))

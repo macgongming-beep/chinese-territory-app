@@ -519,7 +519,8 @@ button:focus-visible {
   font-weight: 700;
 }
 
-.comment-item__meta button {
+.comment-item__meta button,
+.chat-message__meta button {
   min-height: 0;
   margin-left: auto;
   padding: 0;
@@ -527,6 +528,58 @@ button:focus-visible {
   color: var(--danger-500);
   font-size: 11px;
   font-weight: 800;
+}
+
+.comment-item__meta button:first-of-type:not(:last-child) {
+  margin-left: auto;
+  color: var(--primary-600);
+}
+
+.comment-edit-box {
+  display: grid;
+  gap: 6px;
+}
+
+.comment-edit-box textarea {
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--gray-800);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.comment-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.comment-edit-actions button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.comment-edit-actions button:first-child {
+  border-color: var(--primary-100);
+  background: var(--primary-50);
+  color: var(--primary-700);
+}
+
+.comment-edit-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .comment-item p,

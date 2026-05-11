@@ -542,6 +542,7 @@ export function MobileCalendar({
                   currentVisitor={currentVisitor}
                   eventId={event.id}
                   eventTitle={event.title}
+                  role={role}
                   users={mentionUsers}
                 />
               </div>

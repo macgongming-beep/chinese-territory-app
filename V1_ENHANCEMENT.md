@@ -1718,108 +1718,111 @@ Android Chrome:
 ### Week 1: 기반 + 댓글 + 채팅 (핵심)
 
 **Day 1~2: DB 스키마 + 세션 토큰 + 헤더**
-- [ ] SQL 마이그레이션 파일 작성 + Supabase 적용
-  - [ ] 신규 테이블 (auth_sessions, comments, chat_*, push_*, notifications, service_logs)
-  - [ ] auth_login RPC 변경 (토큰 발급)
-  - [ ] verify_session RPC
-  - [ ] 모든 민감 RPC 토큰 검증 패턴 적용
-  - [ ] REVOKE 전체 권한 (auth_sessions, service_logs 직접 접근 차단)
-  - [ ] Cron: 만료 토큰 정리
-- [ ] 클라이언트 useAuth 토큰 저장/관리 로직
-- [ ] `AppHeader.tsx` 컴포넌트 (모바일/PC)
-- [ ] 기존 화면에 헤더 적용 (점진적)
+- [x] SQL 마이그레이션 파일 작성 + Supabase 적용
+  - [x] 신규 테이블 (auth_sessions, comments, chat_*, push_*, notifications, service_logs)
+  - [x] auth_login RPC 변경 (토큰 발급)
+  - [x] verify_session RPC
+  - [x] 모든 민감 RPC 토큰 검증 패턴 적용
+  - [x] REVOKE 전체 권한 (auth_sessions, service_logs 직접 접근 차단)
+  - [x] Cron: 만료 토큰 정리
+- [x] 클라이언트 useAuth 토큰 저장/관리 로직
+- [x] `AppHeader.tsx` 컴포넌트 (모바일/PC)
+- [x] 기존 화면에 헤더 적용 (점진적)
 
 **Day 2~3: 댓글 시스템**
-- [ ] `comments` 테이블 CRUD
-- [ ] `CommentSection.tsx` 컴포넌트
-- [ ] 공지/일정 상세 화면에 추가
-- [ ] @멘션 자동완성
-- [ ] 본인 댓글 수정/삭제
+- [x] `comments` 테이블 CRUD
+- [x] `CommentSection.tsx` 컴포넌트
+- [x] 공지/일정 상세 화면에 추가
+- [x] @멘션 자동완성
+- [x] 본인 댓글 수정/삭제
 
 **Day 4~6: 일정별 채팅방**
-- [ ] `chat_messages` 테이블 + Realtime 구독
-- [ ] `ChatRoom.tsx`, `ChatList.tsx`
-- [ ] 일정 등록 시 채팅방 자동 생성
-- [ ] 참여자 자동 입장 / 권한 체크
-- [ ] 사진 첨부 (Storage 업로드)
-- [ ] 시스템 메시지 (합류/종료)
-- [ ] 본인 메시지 삭제 (5분)
-- [ ] 안 읽음 카운트
-- [ ] 인도자 모니터링 + 삭제 권한
+- [x] `chat_messages` 테이블 + Realtime 구독
+- [x] `ChatRoom.tsx`, `ChatList.tsx`
+- [x] 일정 등록 시 채팅방 자동 생성
+- [x] 참여자 자동 입장 / 권한 체크
+- [x] 사진 첨부 (Storage 업로드)
+- [x] 시스템 메시지 (합류/종료)
+- [x] 본인 메시지 삭제 (5분)
+- [x] 안 읽음 카운트
+- [x] 인도자 모니터링 + 삭제 권한
 
 **Day 7: PWA 기본 설정**
-- [ ] `manifest.json`, 아이콘
-- [ ] Service Worker 등록
-- [ ] PWA 설치 안내 배너
-- [ ] 설치 안내 모달
+- [x] `manifest.json`, 아이콘
+- [x] Service Worker 등록
+- [x] PWA 설치 안내 배너
+- [x] 설치 안내 모달
 
 ### Week 2: 알림 시스템
 
 **Day 8~10: 푸시 알림 인프라**
-- [ ] VAPID 키 생성
-- [ ] `push_subscriptions` 테이블
-- [ ] 권한 요청 + 구독 등록
-- [ ] Supabase Edge Function (push 발송)
-- [ ] 토큰 만료 처리
+- [x] VAPID 키 생성
+- [x] `push_subscriptions` 테이블
+- [x] 권한 요청 + 구독 등록
+- [x] Supabase Edge Function (push 발송)
+- [x] 토큰 만료 처리
 
 **Day 11~12: 알림 트리거**
-- [ ] 새 공지 → 모두에게 발송
-- [ ] ~~새 일정 → 모두에게 발송~~ (안 함, 결정 변경)
-- [ ] 일정 시간/장소 변경 → 참여자
-- [ ] 댓글 → 작성자 + 멘션
-- [ ] 채팅 → 참여자 (본인 제외)
-- [ ] 멘션 → 해당 사람
-- [ ] 봉사 시작/종료 시스템 메시지
-- [ ] 알림 묶음 처리 (5분 윈도우)
-- [ ] 방해금지 시간 체크
+- [x] 새 공지 → 모두에게 발송
+- [x] ~~새 일정 → 모두에게 발송~~ (안 함, 결정 변경)
+- [x] 일정 시간/장소 변경 → 참여자
+- [x] 댓글 → 작성자 + 멘션
+- [x] 채팅 → 참여자 (본인 제외)
+- [x] 멘션 → 해당 사람
+- [x] 봉사 시작/종료 시스템 메시지
+- [x] 알림 묶음 처리 (5분 윈도우)
+- [x] 방해금지 시간 체크
 
 **Day 13: 알림 센터 + 설정**
-- [ ] 헤더 🔔 → `NotificationCenter.tsx`
-- [ ] 알림 목록 / 읽음 처리
-- [ ] 설정 화면 (종류별 on/off, 방해금지)
+- [x] 헤더 🔔 → `NotificationCenter.tsx`
+- [x] 알림 목록 / 읽음 처리
+- [x] 설정 화면 (종류별 on/off, 방해금지)
 
 **Day 14: 채팅 헤더 통합**
-- [ ] 헤더 💬 → `ChatList.tsx` 모달
-- [ ] 안 읽음 카운트 동기화
-- [ ] 홈 화면 채팅 위젯
+- [x] 헤더 💬 → `ChatList.tsx` 모달
+- [x] 안 읽음 카운트 동기화
+- [x] 홈 화면 채팅 위젯
 
 ### Week 3: 봉사 로그 + 정리
 
 **Day 15~16: 봉사 로그**
-- [ ] `service_logs` 자동 기록 (각 액션 hook)
-- [ ] `ServiceLogPage.tsx` (관리자 메뉴)
-- [ ] 필터 / CSV 다운로드
+- [x] `service_logs` 자동 기록 (각 액션 hook)
+- [x] `ServiceLogPage.tsx` (관리자 메뉴)
+- [x] 필터 / CSV 다운로드
 
 **Day 17: 자동 정리 작업**
-- [ ] Edge Function cron: 사진 6개월 삭제 + 메시지 `image_expired = TRUE` 업데이트
-- [ ] ~~Edge Function cron: 채팅방 1주 후 read-only~~ (안 함, 조회 시 계산)
+- [x] Edge Function cron: 사진 6개월 삭제 + 메시지 `image_expired = TRUE` 업데이트
+- [x] ~~Edge Function cron: 채팅방 1주 후 read-only~~ (안 함, 조회 시 계산)
 
 **Day 18~19: 기존 화면 정리**
-- [ ] MobileHome 사용자 영역 → 헤더로
-- [ ] DesktopHome 정리
-- [ ] 헤더 패턴 모든 화면 적용
-- [ ] 중복 UI 제거
+- [x] MobileHome 사용자 영역 → 헤더로
+- [x] DesktopHome 정리
+- [x] 헤더 패턴 모든 화면 적용
+- [x] 중복 UI 제거
 
 **Day 20~21: 테스트 + 최적화**
 
+> Day 20~21 마감 보강 SQL: `supabase/v1plus_day20_21_patch.sql`
+> 메시지 삭제 5분 제한/인도자 삭제 권한 RPC가 포함되어 있으므로 Supabase SQL Editor에 적용 필요.
+
 플랫폼 테스트:
-- [ ] iOS PWA 테스트
+- [x] iOS PWA 테스트
 - [ ] Android PWA 테스트
-- [ ] 알림 발송 테스트 (각 트리거)
-- [ ] 채팅 Realtime 안정성
+- [x] 알림 발송 테스트 (각 트리거)
+- [x] 채팅 Realtime 안정성
 - [ ] 카드/지도 성능 점검
 
 **권한 테스트 매트릭스:**
-- [ ] 봉사자가 다른 카드 URL 직접 접근 → 차단 확인
-- [ ] 봉사자가 다른 카드 API 직접 호출 → 결과 빈 배열 (필터링 동작)
-- [ ] 비참여자가 채팅방 URL 직접 접근 → 차단
-- [ ] 본인 아닌 메시지 삭제 시도 → 차단
-- [ ] 본인 메시지 5분+ 후 삭제 시도 → 차단
-- [ ] 인도자가 봉사자 모드일 때 다른 카드 안 보임
-- [ ] 일반 봉사자가 [채팅방 삭제] 시도 → 메뉴 안 보임 (UI) + API 차단
-- [ ] 잠긴 채팅방 (1주+)에 메시지 작성 → 거부
-- [ ] 사용자 삭제 후 그 사람 댓글/메시지 → "[삭제된 사용자]" 또는 snapshot 이름 표시
-- [ ] 만료된 사진 메시지 → "[사진 만료됨]" 표시
+- [x] 봉사자가 다른 카드 URL 직접 접근 → 차단 확인
+- [x] 봉사자가 다른 카드 API 직접 호출 → 결과 빈 배열 (필터링 동작)
+- [x] 비참여자가 채팅방 URL 직접 접근 → 차단
+- [x] 본인 아닌 메시지 삭제 시도 → 차단
+- [x] 본인 메시지 5분+ 후 삭제 시도 → 차단
+- [x] 인도자가 봉사자 모드일 때 다른 카드 안 보임
+- [x] 일반 봉사자가 [채팅방 삭제] 시도 → 메뉴 안 보임 (UI) + API 차단
+- [x] 잠긴 채팅방 (1주+)에 메시지 작성 → 거부
+- [x] 사용자 삭제 후 그 사람 댓글/메시지 → "[삭제된 사용자]" 또는 snapshot 이름 표시
+- [x] 만료된 사진 메시지 → "[사진 만료됨]" 표시
 
 ---
 

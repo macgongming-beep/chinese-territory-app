@@ -617,6 +617,7 @@ export function DesktopCalendar({
                         currentVisitor={currentVisitor}
                         eventId={event.id}
                         eventTitle={event.title}
+                        role={role}
                         users={mentionUsers}
                       />
                     </div>
