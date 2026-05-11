@@ -13,6 +13,7 @@ import { DesktopAdminAssignment } from './DesktopAdminAssignment'
 import { DesktopLeaderAssignment } from './DesktopLeaderAssignment'
 import { DesktopUsers } from './DesktopUsers'
 import { ServiceLogPage } from './ServiceLogPage'
+import { AppHeaderActionButtons } from './AppHeader'
 import type { Building, CalendarEvent, CardBoundary, DesktopPage, GeoPoint, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import { roleLabels } from '../types'
 
@@ -337,6 +338,13 @@ export function DesktopApp({
           ))}
         </nav>
         <div className="nav-user" ref={roleDropdownRef}>
+          <AppHeaderActionButtons
+            userId={currentUserId}
+            userName={currentVisitor}
+            onOpenMenu={() => navigate('/settings')}
+            className="desktop-header-actions"
+            buttonClassName="desktop-header-action"
+          />
           <div className="nav-user-info">
             <strong className="nav-user-name">{currentVisitor}</strong>
             {actualRole === 'admin' ? (

@@ -202,6 +202,12 @@ button:focus-visible {
   gap: 8px;
 }
 
+.app-header__actions-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .app-header__action {
   position: relative;
   width: 40px;
@@ -224,6 +230,67 @@ button:focus-visible {
   font-size: 10px;
   font-weight: 800;
   line-height: 13px;
+}
+
+.app-shell > .app-header--mobile {
+  margin: 0 -20px 16px;
+}
+
+.mobile-settings-page > .app-header--mobile {
+  margin: -24px -14px 18px;
+}
+
+.desktop-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+}
+
+.desktop-header-action {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  color: var(--gray-700);
+  font-size: 16px;
+  box-shadow: none;
+}
+
+.desktop-header-action:hover {
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+
+.mobile-map-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.mobile-map-header-action {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  color: var(--gray-700);
+  font-size: 15px;
+  box-shadow: var(--shadow-xs);
 }
 
 .comment-section,

@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Toast } from './components/Toast'
 import { PwaInstallBanner } from './components/PwaInstall'
-import { GlobalNotificationButton } from './components/GlobalNotificationButton'
 import { useStore } from './hooks/useStore'
 import { useAuth } from './hooks/useAuth'
 import type { Role } from './types'
@@ -219,7 +218,6 @@ function App() {
     <>
       <Toast />
       <PwaInstallBanner />
-      {user && <GlobalNotificationButton userId={user.id} userName={user.name} />}
       <Suspense
         fallback={
           <div className="app-loading">

@@ -1,4 +1,9 @@
 import type { ReactNode } from 'react'
+import { useState } from 'react'
+import { useNotifications } from '../hooks/useNotifications'
+import { useUserChats } from '../hooks/useUserChats'
+import { NotificationCenter } from './NotificationCenter'
+import { GlobalChatModal } from './GlobalChatModal'
 
 type AppHeaderVariant = 'mobile' | 'desktop'
 
@@ -12,11 +17,26 @@ type AppHeaderProps = {
   onBack?: () => void
   notificationCount?: number
   chatCount?: number
+  userId?: number | null
+  userName?: string
   onOpenNotifications?: () => void
   onOpenChat?: () => void
   onOpenMenu?: () => void
   rightSlot?: ReactNode
   className?: string
+}
+
+type AppHeaderActionButtonsProps = {
+  userId?: number | null
+  userName?: string
+  notificationCount?: number
+  chatCount?: number
+  onOpenNotifications?: () => void
+  onOpenChat?: () => void
+  onOpenMenu?: () => void
+  className?: string
+  buttonClassName?: string
+  showMenu?: boolean
 }
 
 function formatHeaderDate(date: Date | string) {
@@ -40,6 +60,79 @@ function IconBadge({ count }: { count?: number }) {
   )
 }
 
+export function AppHeaderActionButtons({
+  userId,
+  userName = '',
+  notificationCount,
+  chatCount,
+  onOpenNotifications,
+  onOpenChat,
+  onOpenMenu,
+  className = 'app-header__actions',
+  buttonClassName = 'app-header__action',
+  showMenu = true,
+}: AppHeaderActionButtonsProps) {
+  const [openNotifications, setOpenNotifications] = useState(false)
+  const [openChat, setOpenChat] = useState(false)
+  const { unreadCount } = useNotifications(userId ?? null)
+  const { totalUnread } = useUserChats(userId ?? null, userName)
+  const resolvedNotificationCount = notificationCount ?? unreadCount
+  const resolvedChatCount = chatCount ?? totalUnread
+
+  const handleOpenNotifications = () => {
+    if (onOpenNotifications) {
+      onOpenNotifications()
+      return
+    }
+    if (userId) setOpenNotifications(true)
+  }
+
+  const handleOpenChat = () => {
+    if (onOpenChat) {
+      onOpenChat()
+      return
+    }
+    if (userId) setOpenChat(true)
+  }
+
+  return (
+    <>
+      <div className={className}>
+        <button
+          type="button"
+          className={buttonClassName}
+          aria-label={resolvedNotificationCount ? `알림 ${resolvedNotificationCount}개` : '알림'}
+          onClick={handleOpenNotifications}
+        >
+          <span aria-hidden="true">🔔</span>
+          <IconBadge count={resolvedNotificationCount} />
+        </button>
+        <button
+          type="button"
+          className={buttonClassName}
+          aria-label={resolvedChatCount ? `채팅 ${resolvedChatCount}개` : '채팅'}
+          onClick={handleOpenChat}
+        >
+          <span aria-hidden="true">💬</span>
+          <IconBadge count={resolvedChatCount} />
+        </button>
+        {showMenu ? (
+          <button type="button" className={buttonClassName} aria-label="더보기" onClick={onOpenMenu}>
+            <span aria-hidden="true">⋮</span>
+          </button>
+        ) : null}
+      </div>
+
+      {openNotifications && userId ? (
+        <NotificationCenter userId={userId} onClose={() => setOpenNotifications(false)} />
+      ) : null}
+      {openChat && userId ? (
+        <GlobalChatModal userId={userId} userName={userName} onClose={() => setOpenChat(false)} />
+      ) : null}
+    </>
+  )
+}
+
 export function AppHeader({
   pageTitle,
   variant = 'mobile',
@@ -50,6 +143,8 @@ export function AppHeader({
   onBack,
   notificationCount,
   chatCount,
+  userId,
+  userName,
   onOpenNotifications,
   onOpenChat,
   onOpenMenu,
@@ -76,27 +171,16 @@ export function AppHeader({
 
       <div className="app-header__actions">
         {rightSlot}
-        <button
-          type="button"
-          className="app-header__action"
-          aria-label={notificationCount ? `알림 ${notificationCount}개` : '알림'}
-          onClick={onOpenNotifications}
-        >
-          <span aria-hidden="true">🔔</span>
-          <IconBadge count={notificationCount} />
-        </button>
-        <button
-          type="button"
-          className="app-header__action"
-          aria-label={chatCount ? `채팅 ${chatCount}개` : '채팅'}
-          onClick={onOpenChat}
-        >
-          <span aria-hidden="true">💬</span>
-          <IconBadge count={chatCount} />
-        </button>
-        <button type="button" className="app-header__action" aria-label="더보기" onClick={onOpenMenu}>
-          <span aria-hidden="true">⋮</span>
-        </button>
+        <AppHeaderActionButtons
+          userId={userId}
+          userName={userName}
+          notificationCount={notificationCount}
+          chatCount={chatCount}
+          onOpenNotifications={onOpenNotifications}
+          onOpenChat={onOpenChat}
+          onOpenMenu={onOpenMenu}
+          className="app-header__actions-inline"
+        />
       </div>
     </header>
   )

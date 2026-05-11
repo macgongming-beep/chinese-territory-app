@@ -17,6 +17,7 @@ import { SpecialPeriodBanner } from './SpecialPeriodBanner'
 import { SpecialPeriodSettings } from './SpecialPeriodSettings'
 import { PwaInstallSection } from './PwaInstall'
 import { NotificationSettings } from './NotificationSettings'
+import { AppHeader } from './AppHeader'
 
 type MobileTab = '홈' | '캘린더' | '나의봉사' | '구역' | '지도' | '배정' | '설정'
 
@@ -891,7 +892,6 @@ export function MobileHome({
       .filter((value) => Number.isFinite(value))
   }, [searchParams])
   const focusedMapScopeLabel = searchParams.get('scope') === 'mine' ? t(language, 'zone.myTerritories') : undefined
-  const modeTitle = role === 'admin' ? t(language, 'home.adminHome') : role === 'leader' ? t(language, 'home.leaderHome') : t(language, 'home.userHome')
   const roleLabel = role === 'admin' ? t(language, 'role.admin') : role === 'leader' ? t(language, 'role.leader') : t(language, 'role.user')
   const pendingSignupCount = useMemo(
     () => allUsers.filter((item) => item.approvalStatus === 'pending').length,
@@ -946,6 +946,7 @@ export function MobileHome({
             cardBoundaries={cardBoundaries}
             cards={cards}
             currentVisitor={currentVisitor}
+            currentUserId={currentUser.id}
             actualRole={role}
             serviceSessions={serviceSessions}
             focusedCardId={focusedMapCardId}
@@ -977,29 +978,13 @@ export function MobileHome({
             {/* 홈 */}
             <Route path="/" element={
               <>
-                <header className="mobile-home-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className="mobile-page-title">
-                    <span aria-hidden="true"><NavIcon name="home" /></span>
-                    <h1>홈</h1>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontSize: '11px', color: 'var(--ink-500)', margin: 0 }}>{modeTitle}</p>
-                      <strong style={{ fontSize: '14px', color: 'var(--ink-900)' }}>{currentVisitor}</strong>
-                    </div>
-                    <div style={{
-                      width: '32px', height: '32px', borderRadius: '50%',
-                      background: role === 'admin' ? 'var(--danger-100)' : role === 'leader' ? 'var(--accent-100)' : 'var(--brand-100)',
-                      color: role === 'admin' ? 'var(--danger-700)' : role === 'leader' ? 'var(--accent-700)' : 'var(--brand-700)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: 700, fontSize: '14px'
-                    }}>
-                      {currentVisitor[0]}
-                    </div>
-                  </div>
-                </header>
-
-                <div className="mobile-date-pill">{todayLabel}</div>
+                <AppHeader
+                  pageTitle={t(language, 'nav.home')}
+                  subtitle={todayLabel}
+                  userId={currentUser.id}
+                  userName={currentVisitor}
+                  onOpenMenu={() => navigate('/settings')}
+                />
 
                 {specialPeriods && (
                   <div style={{ padding: '0 16px', marginBottom: '12px' }}>
@@ -1184,22 +1169,30 @@ export function MobileHome({
 
             {/* 캘린더 */}
             <Route path="/calendar" element={
-              <MobileCalendar
-                language={language}
-                currentVisitor={currentVisitor}
-                currentUserId={currentUser.id}
-                leaderNames={leaderNames}
-                leaderPhones={Object.fromEntries(allUsers.filter((u) => u.phone).map((u) => [u.name, u.phone]))}
-                events={calendarEvents}
-                role={role}
-                allUserNames={allUsers.map((u) => u.name)}
-                mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
-                onApplyToEvent={onApplyToEvent}
-                onAddParticipant={onAddParticipantToEvent}
-                onCreateEvent={onCreateCalendarEvent}
-                onDeleteEvent={onDeleteCalendarEvent}
-                onUpdateEvent={onUpdateCalendarEvent}
-              />
+              <>
+                <AppHeader
+                  pageTitle={t(language, 'nav.calendar')}
+                  userId={currentUser.id}
+                  userName={currentVisitor}
+                  onOpenMenu={() => navigate('/settings')}
+                />
+                <MobileCalendar
+                  language={language}
+                  currentVisitor={currentVisitor}
+                  currentUserId={currentUser.id}
+                  leaderNames={leaderNames}
+                  leaderPhones={Object.fromEntries(allUsers.filter((u) => u.phone).map((u) => [u.name, u.phone]))}
+                  events={calendarEvents}
+                  role={role}
+                  allUserNames={allUsers.map((u) => u.name)}
+                  mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
+                  onApplyToEvent={onApplyToEvent}
+                  onAddParticipant={onAddParticipantToEvent}
+                  onCreateEvent={onCreateCalendarEvent}
+                  onDeleteEvent={onDeleteCalendarEvent}
+                  onUpdateEvent={onUpdateCalendarEvent}
+                />
+              </>
             } />
 
             {/* 나의봉사 (개인 봉사 현황) */}
@@ -1277,10 +1270,14 @@ export function MobileHome({
             <Route path="/special-periods" element={
               role === 'admin' ? (
                 <div className="mobile-settings-page">
-                  <div className="mobile-page-title">
-                    <span aria-hidden="true"><NavIcon name="settings" /></span>
-                    <h1>특별 봉사 시즌 관리</h1>
-                  </div>
+                  <AppHeader
+                    pageTitle="특별 봉사 시즌 관리"
+                    showBack
+                    onBack={() => navigate('/settings')}
+                    userId={currentUser.id}
+                    userName={currentVisitor}
+                    onOpenMenu={() => navigate('/settings')}
+                  />
                   <SpecialPeriodSettings
                     isAdmin
                     specialPeriods={specialPeriods}
@@ -1296,9 +1293,12 @@ export function MobileHome({
             {/* 설정 */}
             <Route path="/settings" element={
               <div className="mobile-settings-page">
-                <div className="mobile-page-title">
-                  <h1>{t(language, 'settings.title')}</h1>
-                </div>
+                <AppHeader
+                  pageTitle={t(language, 'settings.title')}
+                  userId={currentUser.id}
+                  userName={currentVisitor}
+                  onOpenMenu={() => navigate('/settings')}
+                />
 
                 <button className="mobile-settings-profile" onClick={() => navigate('/profile')} type="button" aria-label="내 정보 관리">
                   <div className="mobile-settings-avatar" aria-hidden="true">

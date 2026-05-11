@@ -8,6 +8,7 @@ import { getBuildingStatus, findCardForCoordinates } from '../utils/mapUtils'
 import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 import { showToast } from '../lib/toast'
 import { UnitSlotGrid } from './UnitSlotGrid'
+import { AppHeaderActionButtons } from './AppHeader'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
@@ -26,6 +27,7 @@ export function MobileMap({
   cardBoundaries,
   cards,
   currentVisitor,
+  currentUserId,
   actualRole,
   serviceSessions,
   focusedCardId,
@@ -53,6 +55,7 @@ export function MobileMap({
   cardBoundaries: CardBoundary[]
   cards: TerritoryCard[]
   currentVisitor: string
+  currentUserId?: number | null
   actualRole: Role
   serviceSessions: ServiceSession[]
   focusedCardId?: number | null
@@ -640,6 +643,13 @@ export function MobileMap({
                 {t(language, 'map.allView')}
               </button>
             )}
+            <AppHeaderActionButtons
+              userId={currentUserId}
+              userName={currentVisitor}
+              className="mobile-map-header-actions"
+              buttonClassName="mobile-map-header-action"
+              showMenu={false}
+            />
             {navLevel === 'map' && (
               <div className="mobile-map-progress-mini">
                 <strong>{completionRate}%</strong>
