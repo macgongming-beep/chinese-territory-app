@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { Notice, Role } from '../types'
 import { CommentSection, type MentionUser } from './CommentSection'
 
@@ -30,6 +31,22 @@ export function MobileNotices({
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [priority, setPriority] = useState<Notice['priority']>('일반')
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    const noticeId = searchParams.get('noticeId')
+    if (!noticeId) return
+    const notice = notices.find((item) => item.id === Number(noticeId))
+    if (!notice) return
+
+    setTimeout(() => {
+      document.getElementById(`mobile-notice-${noticeId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 120)
+
+    const next = new URLSearchParams(searchParams)
+    next.delete('noticeId')
+    setSearchParams(next, { replace: true })
+  }, [notices, searchParams, setSearchParams])
 
   const handleCreate = () => {
     if (!title.trim() || !content.trim()) return
@@ -95,7 +112,7 @@ export function MobileNotices({
       )}
 
       {notices.map((notice) => (
-        <div className="mobile-notice-card" key={notice.id}>
+        <div className="mobile-notice-card" id={`mobile-notice-${notice.id}`} key={notice.id}>
           <span className="mobile-notice-priority" style={{ background: PRIORITY_COLOR[notice.priority]?.bg, color: PRIORITY_COLOR[notice.priority]?.color }}>
             {notice.priority}
           </span>

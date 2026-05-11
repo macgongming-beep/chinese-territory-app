@@ -1147,15 +1147,25 @@ export function MobileHome({
 
             {/* 공지 */}
             <Route path="/notices" element={
-              <MobileNotices
-                currentVisitor={currentVisitor}
-                currentUserId={currentUser.id}
-                notices={notices}
-                role={role}
-                mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
-                onCreateNotice={onCreateNotice}
-                onDeleteNotice={onDeleteNotice}
-              />
+              <>
+                <AppHeader
+                  pageTitle={t(language, 'settings.notice')}
+                  showBack
+                  onBack={() => navigate('/settings')}
+                  userId={currentUser.id}
+                  userName={currentVisitor}
+                  onOpenMenu={() => navigate('/settings')}
+                />
+                <MobileNotices
+                  currentVisitor={currentVisitor}
+                  currentUserId={currentUser.id}
+                  notices={notices}
+                  role={role}
+                  mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
+                  onCreateNotice={onCreateNotice}
+                  onDeleteNotice={onDeleteNotice}
+                />
+              </>
             } />
 
             {/* 내 정보 */}

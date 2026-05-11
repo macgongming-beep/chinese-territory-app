@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
+import { AppHeader } from './AppHeader'
 
 type UserFilter = 'all' | 'admin' | 'leader' | 'user'
 
@@ -101,10 +102,14 @@ export function MobileUsers() {
   if (!isAdminLike) {
     return (
       <div className="mobile-users-page">
-        <header className="mobile-subpage-head">
-          <button onClick={() => navigate('/settings')} type="button">‹</button>
-          <h1>사용자</h1>
-        </header>
+        <AppHeader
+          pageTitle="사용자"
+          showBack
+          onBack={() => navigate('/settings')}
+          userId={currentUser?.id}
+          userName={currentUser?.name}
+          onOpenMenu={() => navigate('/settings')}
+        />
         <section className="mobile-users-empty">관리자만 사용할 수 있습니다.</section>
       </div>
     )
@@ -114,13 +119,15 @@ export function MobileUsers() {
     const canDelete = currentUser?.id !== selectedUser.id
     return (
       <div className="mobile-users-page">
-        <header className="mobile-subpage-head">
-          <button onClick={() => setSelectedUserId(null)} type="button">‹</button>
-          <div>
-            <h1>{selectedUser.name}</h1>
-            <p>{roleScope(selectedUser.role)}</p>
-          </div>
-        </header>
+        <AppHeader
+          pageTitle={selectedUser.name}
+          subtitle={roleScope(selectedUser.role)}
+          showBack
+          onBack={() => setSelectedUserId(null)}
+          userId={currentUser?.id}
+          userName={currentUser?.name}
+          onOpenMenu={() => navigate('/settings')}
+        />
 
         <section className="mobile-user-detail-card">
           <div className={`mobile-user-avatar ${roleClass(selectedUser.role)}`}>
@@ -221,10 +228,14 @@ export function MobileUsers() {
 
   return (
     <div className="mobile-users-page">
-      <header className="mobile-subpage-head">
-        <button onClick={() => navigate('/settings')} type="button">‹</button>
-        <h1>사용자</h1>
-      </header>
+      <AppHeader
+        pageTitle="사용자"
+        showBack
+        onBack={() => navigate('/settings')}
+        userId={currentUser?.id}
+        userName={currentUser?.name}
+        onOpenMenu={() => navigate('/settings')}
+      />
 
       <section className="mobile-users-toolbar">
         <div className="mobile-users-search-row">

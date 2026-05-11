@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
+import { AppHeader } from './AppHeader'
 
 type ApprovalTab = 'pending' | 'approved' | 'blocked'
 
@@ -67,10 +68,14 @@ export function MobileSignupRequests() {
   if (!isAdminLike) {
     return (
       <div className="mobile-signup-requests-page">
-        <header className="mobile-subpage-head">
-          <button onClick={() => navigate('/settings')} type="button">‹</button>
-          <h1>가입 신청</h1>
-        </header>
+        <AppHeader
+          pageTitle="가입 신청"
+          showBack
+          onBack={() => navigate('/settings')}
+          userId={currentUser?.id}
+          userName={currentUser?.name}
+          onOpenMenu={() => navigate('/settings')}
+        />
         <section className="signup-request-empty-card">관리자만 사용할 수 있습니다.</section>
       </div>
     )
@@ -78,10 +83,14 @@ export function MobileSignupRequests() {
 
   return (
     <div className="mobile-signup-requests-page">
-      <header className="mobile-subpage-head">
-        <button onClick={() => navigate('/settings')} type="button">‹</button>
-        <h1>가입 신청</h1>
-      </header>
+      <AppHeader
+        pageTitle="가입 신청"
+        showBack
+        onBack={() => navigate('/settings')}
+        userId={currentUser?.id}
+        userName={currentUser?.name}
+        onOpenMenu={() => navigate('/settings')}
+      />
 
       <nav className="signup-request-tabs" aria-label="가입 신청 상태">
         {(['pending', 'approved', 'blocked'] as ApprovalTab[]).map((tab) => (

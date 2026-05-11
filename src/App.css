@@ -240,6 +240,12 @@ button:focus-visible {
   margin: -24px -14px 18px;
 }
 
+.mobile-signup-requests-page > .app-header--mobile,
+.mobile-profile-page > .app-header--mobile,
+.mobile-users-page > .app-header--mobile {
+  margin: -18px -14px 18px;
+}
+
 .desktop-header-actions {
   display: flex;
   align-items: center;

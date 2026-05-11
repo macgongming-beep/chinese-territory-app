@@ -1,6 +1,7 @@
 // 알림 센터 (헤더 🔔 클릭 시 슬라이드 다운)
 import { useNavigate } from 'react-router-dom'
 import { useNotifications, type AppNotification, type NotificationType } from '../hooks/useNotifications'
+import { normalizeAppLink } from '../utils/appNavigation'
 
 const TYPE_LABEL: Record<NotificationType, { icon: string; color: string }> = {
   notice: { icon: '📢', color: '#2563eb' },
@@ -45,8 +46,9 @@ export function NotificationCenter({
   async function handleClickItem(n: AppNotification) {
     if (!n.isRead) await markRead(n.id)
     onClose()
-    if (n.link) {
-      navigate(n.link)
+    const targetLink = normalizeAppLink(n.link)
+    if (targetLink) {
+      navigate(targetLink)
     }
   }
 

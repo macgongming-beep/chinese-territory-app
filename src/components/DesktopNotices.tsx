@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { Notice, Role } from '../types'
 import { CommentSection, type MentionUser } from './CommentSection'
 
@@ -28,6 +29,23 @@ export function DesktopNotices({
   const [selected, setSelected] = useState<Notice | null>(notices[0] ?? null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ title: '', content: '', priority: '일반' as Notice['priority'] })
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    const noticeId = searchParams.get('noticeId')
+    if (!noticeId) return
+    const notice = notices.find((item) => item.id === Number(noticeId))
+    if (!notice) return
+
+    setSelected(notice)
+    setTimeout(() => {
+      document.getElementById(`desktop-notice-${noticeId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 120)
+
+    const next = new URLSearchParams(searchParams)
+    next.delete('noticeId')
+    setSearchParams(next, { replace: true })
+  }, [notices, searchParams, setSearchParams])
 
   const handleCreate = () => {
     if (!form.title.trim() || !form.content.trim()) return
@@ -106,6 +124,7 @@ export function DesktopNotices({
             notices.map((notice) => (
               <button
                 key={notice.id}
+                id={`desktop-notice-${notice.id}`}
                 className={`notice-row${selected?.id === notice.id ? ' is-selected' : ''}`}
                 onClick={() => setSelected(notice)}
                 type="button"

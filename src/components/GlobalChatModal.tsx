@@ -2,6 +2,7 @@
 // 메시지 미리보기 X (사생활 보호 결정)
 import { useNavigate } from 'react-router-dom'
 import { useUserChats, type UserChat } from '../hooks/useUserChats'
+import { normalizeAppLink } from '../utils/appNavigation'
 
 function formatChatDate(iso: string | null, eventDate: string): string {
   if (!iso) {
@@ -46,8 +47,7 @@ export function GlobalChatModal({
 
   const handleClick = (chat: UserChat) => {
     onClose()
-    // 일정 상세 또는 채팅방으로 이동
-    navigate(`/calendar?openChat=${chat.eventId}`)
+    navigate(normalizeAppLink(`/calendar/events/${chat.eventId}/chat`) ?? '/calendar')
   }
 
   return (

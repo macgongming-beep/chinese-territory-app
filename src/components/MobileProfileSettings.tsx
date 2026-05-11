@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { AuthUser } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
+import { AppHeader } from './AppHeader'
 
 export function MobileProfileSettings({
   user,
@@ -30,13 +31,15 @@ export function MobileProfileSettings({
 
   return (
     <div className="mobile-profile-page">
-      <header className="mobile-subpage-head">
-        <button onClick={() => navigate('/settings')} type="button">‹</button>
-        <div>
-          <h1>내 정보</h1>
-          <p>{roleLabel} 계정 정보</p>
-        </div>
-      </header>
+      <AppHeader
+        pageTitle="내 정보"
+        subtitle={`${roleLabel} 계정 정보`}
+        showBack
+        onBack={() => navigate('/settings')}
+        userId={user.id}
+        userName={user.name}
+        onOpenMenu={() => navigate('/settings')}
+      />
 
       <section className="mobile-profile-hero">
         <div className="mobile-settings-avatar" aria-hidden="true">{user.name.slice(0, 1)}</div>

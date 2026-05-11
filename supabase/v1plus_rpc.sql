@@ -585,8 +585,8 @@ begin
   end if;
 
   v_link := case new.target_type
-    when 'notice' then '/notices/' || new.target_id
-    when 'calendar_event' then '/calendar/events/' || new.target_id
+    when 'notice' then '/notices?noticeId=' || new.target_id
+    when 'calendar_event' then '/calendar?openChat=' || new.target_id
     else null
   end;
 
@@ -667,7 +667,7 @@ begin
   end if;
 
   v_body := new.author_name || ': ' || left(coalesce(new.content, '사진 메시지'), 50);
-  v_link := '/calendar/events/' || new.event_id || '/chat';
+  v_link := '/calendar?openChat=' || new.event_id;
 
   perform public.insert_notifications(
     v_recipient_ids,
@@ -737,7 +737,7 @@ begin
     return new;
   end if;
 
-  v_link := '/calendar/events/' || new.id;
+  v_link := '/calendar?openChat=' || new.id;
 
   perform public.insert_notifications(
     v_recipient_ids,
@@ -813,7 +813,7 @@ begin
     'notice',
     '새 공지',
     v_title,
-    '/notices/' || new.id,
+    '/notices?noticeId=' || new.id,
     new.id::integer
   );
 
@@ -822,7 +822,7 @@ begin
     'notice',
     '새 공지',
     v_title,
-    '/notices/' || new.id,
+    '/notices?noticeId=' || new.id,
     new.id::integer
   );
 
