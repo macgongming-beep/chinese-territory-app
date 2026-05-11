@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNotifications } from '../hooks/useNotifications'
 import { useUserChats } from '../hooks/useUserChats'
 import { NotificationCenter } from './NotificationCenter'
@@ -58,6 +59,11 @@ function IconBadge({ count }: { count?: number }) {
       {count > 99 ? '99+' : count}
     </span>
   )
+}
+
+function HeaderOverlayPortal({ children }: { children: ReactNode }) {
+  if (typeof document === 'undefined') return null
+  return createPortal(children, document.body)
 }
 
 export function AppHeaderActionButtons({
@@ -124,10 +130,14 @@ export function AppHeaderActionButtons({
       </div>
 
       {openNotifications && userId ? (
-        <NotificationCenter userId={userId} onClose={() => setOpenNotifications(false)} />
+        <HeaderOverlayPortal>
+          <NotificationCenter userId={userId} onClose={() => setOpenNotifications(false)} />
+        </HeaderOverlayPortal>
       ) : null}
       {openChat && userId ? (
-        <GlobalChatModal userId={userId} userName={userName} onClose={() => setOpenChat(false)} />
+        <HeaderOverlayPortal>
+          <GlobalChatModal userId={userId} userName={userName} onClose={() => setOpenChat(false)} />
+        </HeaderOverlayPortal>
       ) : null}
     </>
   )

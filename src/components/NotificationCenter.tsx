@@ -57,7 +57,7 @@ export function NotificationCenter({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 1500,
+        zIndex: 50000,
         background: 'rgba(15,23,42,0.5)',
       }}
       onClick={onClose}
