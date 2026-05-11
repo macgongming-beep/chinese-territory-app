@@ -1,5 +1,5 @@
 // 사용자별 알림 함 + 안 읽음 카운트 + Realtime
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getAuthToken } from '../lib/authToken'
 
@@ -55,6 +55,11 @@ const PAGE_SIZE = 50
 export function useNotifications(userId: number | null | undefined) {
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(false)
+  const channelIdRef = useRef(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  )
 
   const fetchAll = useCallback(async () => {
     if (!userId) return
@@ -85,7 +90,7 @@ export function useNotifications(userId: number | null | undefined) {
   useEffect(() => {
     if (!userId) return
     const channel = supabase
-      .channel(`notifications:user:${userId}`)
+      .channel(`notifications:user:${userId}:${channelIdRef.current}`)
       .on(
         'postgres_changes',
         {

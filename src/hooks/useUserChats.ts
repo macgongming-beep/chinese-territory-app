@@ -1,5 +1,5 @@
 // 사용자가 참여한 일정 + 각 채팅방의 안 읽음 카운트
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getAuthToken } from '../lib/authToken'
 
@@ -50,6 +50,11 @@ function isLockedByEndedAt(latestEnded: number): boolean {
 export function useUserChats(userId: number | null | undefined, userName: string | null | undefined) {
   const [chats, setChats] = useState<UserChat[]>([])
   const [loading, setLoading] = useState(false)
+  const channelIdRef = useRef(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  )
 
   const fetchAll = useCallback(async () => {
     if (!userId || !userName) {
@@ -206,7 +211,7 @@ export function useUserChats(userId: number | null | undefined, userName: string
     }
 
     const channel = supabase
-      .channel(`user_chats:user:${userId}`)
+      .channel(`user_chats:user:${userId}:${channelIdRef.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, trigger)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_read_status', filter: `user_id=eq.${userId}` }, trigger)
       .subscribe()
