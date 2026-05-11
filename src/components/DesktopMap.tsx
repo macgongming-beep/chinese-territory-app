@@ -437,11 +437,29 @@ export function DesktopMap({
   }
 
   const cardMap = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards])
+  const buildingsByCardId = useMemo(() => {
+    const map = new Map<number, Building[]>()
+    buildings.forEach((building) => {
+      const list = map.get(building.cardId)
+      if (list) list.push(building)
+      else map.set(building.cardId, [building])
+    })
+    return map
+  }, [buildings])
   const boundariesByCardId = useMemo(() => {
     const map = new Map<number, CardBoundary>()
     cardBoundaries.forEach(b => map.set(b.cardId, b))
     return map
   }, [cardBoundaries])
+  const visitHistoriesByUnitId = useMemo(() => {
+    const map = new Map<number, VisitHistory[]>()
+    visitHistories.forEach((history) => {
+      const list = map.get(history.unitId)
+      if (list) list.push(history)
+      else map.set(history.unitId, [history])
+    })
+    return map
+  }, [visitHistories])
 
   const cardMatchesStructureFilters = (card: TerritoryCard) => {
     if (regionFilter !== '전체' && card.region !== regionFilter) return false
@@ -517,7 +535,8 @@ export function DesktopMap({
     filteredBuildings.reduce<Record<BuildingStatus, number>>(
       (counts, building) => {
         const status = getBuildingStatus(building)
-        return { ...counts, [status]: counts[status] + 1 }
+        counts[status] += 1
+        return counts
       },
       { 방문필요: 0, 방문완료: 0, 방문금지: 0, 정기방문: 0 },
     ),
@@ -537,10 +556,15 @@ export function DesktopMap({
       정기방문: '정기방문',
       방문완료: '방문완료',
     }
+    const grouped = new Map<BuildingStatus, Building[]>()
+    order.forEach((status) => grouped.set(status, []))
+    panelBuildings.forEach((building) => {
+      grouped.get(getBuildingStatus(building))?.push(building)
+    })
     return order.map((status) => ({
       status,
       label: labels[status],
-      buildings: panelBuildings.filter((building) => getBuildingStatus(building) === status),
+      buildings: grouped.get(status) ?? [],
     }))
   }, [panelBuildings])
   const panelUnitTotal = useMemo(() => panelBuildings.reduce((total, building) => total + building.units.length, 0), [panelBuildings])
@@ -959,7 +983,7 @@ export function DesktopMap({
                 </div>
               )}
               {orderedCards.map((card) => {
-                const cardBuildings = buildings.filter((building) => building.cardId === card.id)
+                const cardBuildings = buildingsByCardId.get(card.id) ?? []
                 const hasBoundary = boundariesByCardId.has(card.id)
                 const boundaryVisible = visibleBoundarySelection === card.id || visibleBoundarySelection === '전체'
                 return (
@@ -1312,7 +1336,7 @@ export function DesktopMap({
                       ? building.units.filter(unitMatchesOperatingFilter)
                       : building.units
                     ).map((unit) => {
-                      const unitHistories = visitHistories.filter((h) => h.unitId === unit.id)
+                      const unitHistories = visitHistoriesByUnitId.get(unit.id) ?? []
                       const latestHistory = unitHistories[0]
                       const isUnitExpanded = expandedUnitId === unit.id
 

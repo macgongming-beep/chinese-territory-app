@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
 import { showToast } from '../lib/toast'
@@ -152,6 +152,26 @@ export function DesktopTerritory({
     }
   }, [allUsers.length, fetchAllUsers, isAdmin])
 
+  const cardMap = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards])
+  const buildingsByCardId = useMemo(() => {
+    const map = new Map<number, Building[]>()
+    buildings.forEach((building) => {
+      const list = map.get(building.cardId)
+      if (list) list.push(building)
+      else map.set(building.cardId, [building])
+    })
+    return map
+  }, [buildings])
+  const visitHistoriesByUnitId = useMemo(() => {
+    const map = new Map<number, VisitHistory[]>()
+    visitHistories.forEach((history) => {
+      const list = map.get(history.unitId)
+      if (list) list.push(history)
+      else map.set(history.unitId, [history])
+    })
+    return map
+  }, [visitHistories])
+
   const areaFilterOptions =
     regionFilter === '전체'
       ? Array.from(new Set(cards.map((card) => card.area))).sort()
@@ -167,7 +187,7 @@ export function DesktopTerritory({
   const getAreaMetricCount = (area: string) => {
     if (activeTab === '건물 관리' && buildingSubTab === '중국인 포인트') {
       return buildings.reduce((sum, building) => {
-        const card = cards.find((item) => item.id === building.cardId)
+        const card = cardMap.get(building.cardId)
         if (!card || card.area !== area) return sum
         if (regionFilter !== '전체' && card.region !== regionFilter) return sum
         return sum + building.units.filter((unit) => unit.isChinese || unit.isRegularVisit).length
@@ -176,7 +196,7 @@ export function DesktopTerritory({
 
     if (activeTab === '건물 관리') {
       return buildings.reduce((sum, building) => {
-        const card = cards.find((item) => item.id === building.cardId)
+        const card = cardMap.get(building.cardId)
         if (!card || card.area !== area) return sum
         if (regionFilter !== '전체' && card.region !== regionFilter) return sum
         return sum + 1
@@ -197,12 +217,9 @@ export function DesktopTerritory({
   const cardHasRegularVisit = (card: TerritoryCard) =>
     card.regularVisits > 0 ||
     card.regularVisitPoints.length > 0 ||
-    buildings.some((building) =>
-      building.cardId === card.id &&
-      building.units.some((unit) => unit.isRegularVisit),
-    )
+    (buildingsByCardId.get(card.id) ?? []).some((building) => building.units.some((unit) => unit.isRegularVisit))
   const cardChineseHeavyCount = (cardId: number) =>
-    buildings.filter((building) => building.cardId === cardId && building.isChineseHeavy).length
+    (buildingsByCardId.get(cardId) ?? []).filter((building) => building.isChineseHeavy).length
 
   const leaderFilterOptions = Array.from(
     new Set(cards.flatMap((card) => getCardLeaderList(card))),
@@ -244,9 +261,7 @@ export function DesktopTerritory({
     cards.find((card) => card.id === selectedCardId) ??
     cards[0] ??
     null
-  const selectedCardBuildings = selectedCard
-    ? buildings.filter((building) => building.cardId === selectedCard.id)
-    : []
+  const selectedCardBuildings = selectedCard ? buildingsByCardId.get(selectedCard.id) ?? [] : []
   const selectedChinesePointCount = selectedCardBuildings.reduce(
     (sum, building) => sum + building.units.filter((unit) => unit.isChinese).length,
     0,
@@ -310,7 +325,6 @@ export function DesktopTerritory({
     }
   }
 
-  const cardMap = new Map(cards.map((card) => [card.id, card]))
   const hasText = (value?: string | null) => Boolean(value?.trim())
   const buildingHasRegularVisit = (building: Building) => building.units.some((unit) => unit.isRegularVisit)
   const buildingHasMemo = (building: Building) =>
@@ -430,7 +444,7 @@ export function DesktopTerritory({
     building.units
       .filter((unit) => unit.isChinese || unit.isRegularVisit)
       .map((unit) => {
-        const histories = visitHistories.filter((history) => history.unitId === unit.id)
+        const histories = visitHistoriesByUnitId.get(unit.id) ?? []
         return { building, unit, latestHistory: histories[0] }
       }),
   ).filter(({ unit }) => {
@@ -817,7 +831,8 @@ export function DesktopTerritory({
   const handleDeleteCheckedCards = () => {
     const ids = Array.from(checkedCardIds)
     if (ids.length === 0) return
-    const relatedBuildingCount = buildings.filter((building) => ids.includes(building.cardId)).length
+    const idSet = new Set(ids)
+    const relatedBuildingCount = buildings.filter((building) => idSet.has(building.cardId)).length
     const confirmed = window.confirm(`선택한 카드 ${ids.length}개를 삭제할까요?\n이 카드에 속한 건물 ${relatedBuildingCount}개도 함께 삭제됩니다.`)
     if (!confirmed) return
     onDeleteCards(ids)
@@ -1621,7 +1636,7 @@ export function DesktopTerritory({
             </thead>
             <tbody>
               {filteredCards.map((card) => {
-                const cardBuildings = buildings.filter((b) => b.cardId === card.id)
+                const cardBuildings = buildingsByCardId.get(card.id) ?? []
                 const chinesePointCount = cardBuildings.reduce((sum, b) => sum + b.units.filter((u) => u.isChinese).length, 0)
                 const storeCount = cardBuildings.filter((building) => building.type === '상가').length
                 const houseCount = cardBuildings.filter((building) => building.type === '주택').length

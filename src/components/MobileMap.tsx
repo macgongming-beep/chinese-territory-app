@@ -343,6 +343,15 @@ export function MobileMap({
   )
 
   const cardMap = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards])
+  const visitHistoriesByUnitId = useMemo(() => {
+    const map = new Map<number, VisitHistory[]>()
+    visitHistories.forEach((history) => {
+      const list = map.get(history.unitId)
+      if (list) list.push(history)
+      else map.set(history.unitId, [history])
+    })
+    return map
+  }, [visitHistories])
   const cardBuildingTypeCounts = useMemo(() => {
     const map = new Map<number, { total: number; house: number; shop: number }>()
     cards.forEach((card) => map.set(card.id, { total: 0, house: 0, shop: 0 }))
@@ -373,7 +382,7 @@ export function MobileMap({
       if (b.units.length > 0 && !b.units.some(unitMatchesStrategyFilter)) return false
       return true
     }),
-    [buildings, selectedCardId, focusedCardIdSet, selectedArea, selectedRegion, scopedCardIds, statusFilter, strategyFilter, visitHistories]
+    [buildings, selectedCardId, focusedCardIdSet, selectedArea, selectedRegion, scopedCardIds, statusFilter, strategyFilter]
   )
 
   const typeCounts = useMemo(() => ({
@@ -391,7 +400,7 @@ export function MobileMap({
 
   const statusCounts = useMemo(() =>
     filteredBuildings.reduce<Record<BuildingStatus, number>>(
-      (acc, b) => { const s = getBuildingStatus(b); return { ...acc, [s]: acc[s] + 1 } },
+      (acc, b) => { const s = getBuildingStatus(b); acc[s] += 1; return acc },
       { 방문필요: 0, 방문완료: 0, 방문금지: 0, 정기방문: 0 }
     ), [filteredBuildings])
 
@@ -402,9 +411,14 @@ export function MobileMap({
 
   const buildingGroups = useMemo(() => {
     const order: BuildingStatus[] = ['방문금지', '방문필요', '정기방문', '방문완료']
+    const grouped = new Map<BuildingStatus, Building[]>()
+    order.forEach((status) => grouped.set(status, []))
+    filteredBuildings.forEach((building) => {
+      grouped.get(getBuildingStatus(building))?.push(building)
+    })
     return order.map((status) => ({
       status,
-      buildings: filteredBuildings.filter((building) => getBuildingStatus(building) === status),
+      buildings: grouped.get(status) ?? [],
     }))
   }, [filteredBuildings])
 
@@ -1060,7 +1074,7 @@ export function MobileMap({
                           ? building.units
                           : building.units.filter(unitMatchesStrategyFilter)
                         ).map((unit) => {
-                          const unitHistories = visitHistories.filter(h => h.unitId === unit.id)
+                          const unitHistories = visitHistoriesByUnitId.get(unit.id) ?? []
                           const latestHistory = unitHistories[0]
                           const isUnitExpanded = expandedUnitId === unit.id
 
