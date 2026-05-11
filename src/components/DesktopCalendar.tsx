@@ -153,8 +153,7 @@ export function DesktopCalendar({
     const next = new URLSearchParams(searchParams)
     next.delete('openChat')
     setSearchParams(next, { replace: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams])
+  }, [events, searchParams, setSearchParams])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newDate, setNewDate] = useState(() => toDateStr(today.getFullYear(), today.getMonth() + 1, today.getDate()))
   const [newTitle, setNewTitle] = useState('오전 방문')

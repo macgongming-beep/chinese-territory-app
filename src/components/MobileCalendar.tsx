@@ -130,8 +130,7 @@ export function MobileCalendar({
     const next = new URLSearchParams(searchParams)
     next.delete('openChat')
     setSearchParams(next, { replace: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams])
+  }, [events, searchParams, setSearchParams])
 
   // create form
   const [showCreate, setShowCreate] = useState(false)
