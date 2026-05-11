@@ -1,6 +1,7 @@
 import type { Building, Role, ServiceSession, ServiceSessionStatus, TimeSlot } from '../../types'
 import { supabase, showToast, reportMutationError, getLocalDateString, getCurrentVisitor } from './shared'
 import { createSystemChatMessage } from './chatSystem'
+import { getAuthToken } from '../../lib/authToken'
 
 export function makeServiceSessionMutations(deps: {
   fetchAll: () => Promise<void>
@@ -181,7 +182,7 @@ async function logServiceAction(input: {
   targetId?: number | null
   details?: Record<string, unknown>
 }) {
-  const token = localStorage.getItem('auth_token')
+  const token = getAuthToken()
   if (!token) return // 토큰 없으면 조용히 스킵
   const { error } = await supabase.rpc('log_service_action', {
     p_token: token,

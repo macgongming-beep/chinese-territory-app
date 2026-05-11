@@ -1,6 +1,7 @@
 // 알림 설정 (notification_preferences) 조회 + 저장
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { getAuthToken } from '../lib/authToken'
 
 export type NotificationPrefs = {
   pushNewNotice: boolean
@@ -56,7 +57,7 @@ export function useNotificationPrefs(userId: number | null | undefined) {
 
   const fetch = useCallback(async () => {
     if (!userId) return
-    const token = localStorage.getItem('auth_token')
+    const token = getAuthToken()
     if (!token) return
     setLoading(true)
     const { data, error } = await supabase.rpc('get_my_notification_prefs', {
@@ -81,7 +82,7 @@ export function useNotificationPrefs(userId: number | null | undefined) {
   const update = useCallback(
     async (patch: Partial<NotificationPrefs>) => {
       if (!userId) return
-      const token = localStorage.getItem('auth_token')
+      const token = getAuthToken()
       if (!token) return
       const next = { ...prefs, ...patch }
       // 낙관적 갱신

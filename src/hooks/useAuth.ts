@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { showToast } from '../lib/toast'
+import {
+  clearAuthStorage,
+  getAuthToken,
+  getStoredAuthSession,
+  isPersistentAuthSession,
+  setAuthSession,
+  setAuthToken,
+} from '../lib/authToken'
 import type { Role } from '../types'
 
 export type AuthUser = {
@@ -65,15 +73,14 @@ export function useAuth() {
 
     const restoreSession = async () => {
       // localStorage 우선, 없으면 sessionStorage (rememberMe 꺼진 경우)
-      const storedSession =
-        localStorage.getItem('auth_session') ?? sessionStorage.getItem('auth_session')
+      const storedSession = getStoredAuthSession()
       if (!storedSession) {
         if (!cancelled) setLoading(false)
         return
       }
 
       try {
-        const parsed = JSON.parse(storedSession)
+        const parsed = JSON.parse(storedSession.raw)
         if (parsed?.id) {
           const { data, error } = await supabase
             .from('app_users')
@@ -83,12 +90,12 @@ export function useAuth() {
 
           if (error && !error.message?.includes('phone')) throw error
           if (data && !cancelled) {
-            const restoredToken = parsed.authToken ?? localStorage.getItem('auth_token')
+            const restoredToken = parsed.authToken ?? getAuthToken()
             const freshUser = { ...toAuthUser(data), authToken: restoredToken ?? null }
             setUser(freshUser)
             localStorage.setItem('currentVisitor', freshUser.name)
-            localStorage.setItem('auth_session', JSON.stringify(freshUser))
-            if (restoredToken) localStorage.setItem('auth_token', restoredToken)
+            setAuthSession(freshUser, storedSession.persistent)
+            if (restoredToken) setAuthToken(restoredToken, storedSession.persistent)
             setLoading(false)
             return
           }
@@ -101,10 +108,11 @@ export function useAuth() {
             name: parsed.name,
             phone: parsed.phone ?? null,
             role: isRole(parsed.role) ? parsed.role : 'user',
-            authToken: parsed.authToken ?? localStorage.getItem('auth_token') ?? null,
+            authToken: parsed.authToken ?? getAuthToken(),
           }
           setUser(restoredUser)
           localStorage.setItem('currentVisitor', restoredUser.name)
+          setAuthSession(restoredUser, storedSession.persistent)
         }
       } catch (e) {
         console.error('Failed to parse auth_session', e)
@@ -182,14 +190,13 @@ export function useAuth() {
       localStorage.setItem('currentVisitor', authUser.name)
 
       // 보안 RPC 토큰은 rememberMe 무관하게 항상 저장 (모든 민감 RPC 호출에 필요)
-      if (row.token) localStorage.setItem('auth_token', row.token)
+      if (row.token) setAuthToken(row.token, rememberMe)
 
       if (rememberMe) {
-        localStorage.setItem('auth_session', JSON.stringify(authUser))
+        setAuthSession(authUser, true)
       } else {
         // rememberMe 꺼져 있어도 세션은 sessionStorage에 (브라우저 닫을 때까지 유지)
-        localStorage.removeItem('auth_session')
-        sessionStorage.setItem('auth_session', JSON.stringify(authUser))
+        setAuthSession(authUser, false)
       }
 
       showToast('로그인 성공!', 'success')
@@ -261,10 +268,8 @@ export function useAuth() {
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem('auth_session')
-    localStorage.removeItem('auth_token')
+    clearAuthStorage()
     localStorage.removeItem('currentVisitor')
-    sessionStorage.removeItem('auth_session')
     showToast('로그아웃 되었습니다.')
   }
 
@@ -327,7 +332,7 @@ export function useAuth() {
     const nextUser: AuthUser = { ...user, name: trimmedName, phone: trimmedPhone || null }
     setUser(nextUser)
     localStorage.setItem('currentVisitor', nextUser.name)
-    localStorage.setItem('auth_session', JSON.stringify(nextUser))
+    setAuthSession(nextUser, isPersistentAuthSession())
     showToast('개인 정보가 변경되었습니다.', 'success')
     await fetchAllUsers()
     return true
@@ -614,7 +619,7 @@ export function useAuth() {
       const nextUser: AuthUser = { ...user, loginId: trimmedLoginId, name: trimmedName }
       setUser(nextUser)
       localStorage.setItem('currentVisitor', nextUser.name)
-      localStorage.setItem('auth_session', JSON.stringify(nextUser))
+      setAuthSession(nextUser, isPersistentAuthSession())
     }
 
     showToast('아이디/닉네임이 변경되었습니다.', 'success')

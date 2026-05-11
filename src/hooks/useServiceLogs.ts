@@ -2,6 +2,7 @@
 // get_service_logs RPC (토큰 검증 + 인도자는 자기 카드만)
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { getAuthToken } from '../lib/authToken'
 
 export type ServiceLog = {
   id: number
@@ -68,7 +69,7 @@ export function useServiceLogs(filter: ServiceLogFilter = {}) {
   const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
-    const token = localStorage.getItem('auth_token')
+    const token = getAuthToken()
     if (!token) {
       setError('로그인이 필요합니다')
       setLogs([])

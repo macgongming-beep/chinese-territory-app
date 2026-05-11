@@ -1,6 +1,7 @@
 // 사용자별 알림 함 + 안 읽음 카운트 + Realtime
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { getAuthToken } from '../lib/authToken'
 
 export type NotificationType =
   | 'notice'
@@ -57,7 +58,7 @@ export function useNotifications(userId: number | null | undefined) {
 
   const fetchAll = useCallback(async () => {
     if (!userId) return
-    const token = localStorage.getItem('auth_token')
+    const token = getAuthToken()
     if (!token) {
       setNotifications([])
       return
@@ -133,7 +134,7 @@ export function useNotifications(userId: number | null | undefined) {
   // 단일 알림 읽음 처리
   const markRead = useCallback(
     async (notificationId: number) => {
-      const token = localStorage.getItem('auth_token')
+      const token = getAuthToken()
       if (!token) return
       // 낙관적 갱신
       setNotifications((prev) =>
@@ -154,7 +155,7 @@ export function useNotifications(userId: number | null | undefined) {
   // 모두 읽음
   const markAllRead = useCallback(async () => {
     if (!userId || notifications.every((n) => n.isRead)) return
-    const token = localStorage.getItem('auth_token')
+    const token = getAuthToken()
     if (!token) return
     // 낙관적 갱신
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))

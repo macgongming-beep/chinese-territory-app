@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { showToast } from '../lib/toast'
+import { getAuthToken } from '../lib/authToken'
 import type { MentionUser } from './CommentSection'
 
 type ChatMessage = {
@@ -105,7 +106,7 @@ export function ChatRoom({
 
   // 읽음 처리 (진입 시 + 이탈 시)
   const markChatRead = async () => {
-    const token = localStorage.getItem('auth_token')
+    const token = getAuthToken()
     if (!token) return
     await supabase.rpc('update_chat_read', {
       p_token: token,
@@ -140,7 +141,7 @@ export function ChatRoom({
     const content = draft.trim()
     if (!content) return
 
-    const token = localStorage.getItem('auth_token')
+    const token = getAuthToken()
     if (!token) {
       showToast('로그인 정보가 만료되었습니다. 다시 로그인해주세요.', 'error')
       return
@@ -172,7 +173,7 @@ export function ChatRoom({
       return
     }
 
-    const token = localStorage.getItem('auth_token')
+    const token = getAuthToken()
     if (!token) {
       showToast('로그인 정보가 만료되었습니다. 다시 로그인해주세요.', 'error')
       return
@@ -206,6 +207,10 @@ export function ChatRoom({
 
     if (error) {
       console.error('send_chat_image RPC 실패', error)
+      const { error: removeError } = await supabase.storage.from('chat-attachments').remove([path])
+      if (removeError) {
+        console.warn('사진 메시지 저장 실패 후 업로드 파일 정리에 실패했습니다.', removeError)
+      }
       showToast(error.message ?? '사진 메시지를 저장하지 못했습니다.', 'error')
       setUploading(false)
       return

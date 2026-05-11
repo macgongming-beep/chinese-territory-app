@@ -1,6 +1,7 @@
 // 사용자가 참여한 일정 + 각 채팅방의 안 읽음 카운트
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { getAuthToken } from '../lib/authToken'
 
 export type UserChat = {
   eventId: number
@@ -88,7 +89,7 @@ export function useUserChats(userId: number | null | undefined, userName: string
       const eventIds = events.map((e) => e.id)
 
       // 2. 채팅 읽음 상태 (RPC — 본인 것만)
-      const token = localStorage.getItem('auth_token')
+      const token = getAuthToken()
       const readMap = new Map<number, string>()
       if (token) {
         const { data: readRows } = await supabase.rpc('get_my_chat_reads', {

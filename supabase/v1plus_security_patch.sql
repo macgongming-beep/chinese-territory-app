@@ -5,7 +5,8 @@
 --
 -- 포함:
 --   1. send_chat_image RPC (사진 첨부도 토큰 검증 + 잠금 체크)
---   2. open_access 테이블 잠금 + RPC 추가
+--   2. create_system_chat_message RPC + chat_messages 쓰기 잠금
+--   3. open_access 테이블 잠금 + RPC 추가
 --      - push_subscriptions
 --      - notifications
 --      - notification_preferences
@@ -90,6 +91,90 @@ end;
 $$;
 
 grant execute on function public.send_chat_image(uuid, integer, text, text, integer[], text[]) to anon, authenticated;
+
+
+-- ─── 1-b. 시스템 채팅 RPC + chat_messages 직접 쓰기 잠금 ───────
+create or replace function public.create_system_chat_message(
+  p_token uuid,
+  p_event_id integer,
+  p_content text
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor_id integer;
+  v_actor_name text;
+  v_actor_role text;
+  v_message_id bigint;
+begin
+  v_actor_id := public.verify_session(p_token);
+
+  select name, role
+  into v_actor_name, v_actor_role
+  from public.app_users
+  where id = v_actor_id;
+
+  if p_event_id is null then
+    return null;
+  end if;
+
+  if nullif(trim(coalesce(p_content, '')), '') is null then
+    raise exception '시스템 메시지가 비어있습니다';
+  end if;
+
+  if public.is_chat_locked(p_event_id) then
+    raise exception '채팅방이 잠겼습니다 (모든 세션 종료 후 1주일 경과)';
+  end if;
+
+  if v_actor_role not in ('leader', 'admin', 'developer')
+    and not exists (
+      select 1
+      from public.event_participants ep
+      where ep.event_id = p_event_id
+        and ep.user_name = v_actor_name
+    )
+  then
+    raise exception '채팅방 참여자가 아닙니다';
+  end if;
+
+  insert into public.chat_messages (
+    event_id,
+    author_id,
+    author_name,
+    message_type,
+    content,
+    mention_ids,
+    mention_names
+  )
+  values (
+    p_event_id,
+    null,
+    '시스템',
+    'system',
+    trim(p_content),
+    '{}',
+    '{}'
+  )
+  returning id into v_message_id;
+
+  return v_message_id;
+end;
+$$;
+
+grant execute on function public.create_system_chat_message(uuid, integer, text) to anon, authenticated;
+
+-- 채팅 메시지는 클라이언트에서 직접 읽기만 허용하고 쓰기는 RPC로만 허용한다.
+revoke all on public.chat_messages from anon, authenticated;
+revoke usage, select on sequence public.chat_messages_id_seq from anon, authenticated;
+drop policy if exists open_access on public.chat_messages;
+drop policy if exists chat_messages_read on public.chat_messages;
+create policy chat_messages_read on public.chat_messages
+for select to anon, authenticated
+using (true);
+grant select on public.chat_messages to anon, authenticated;
 
 
 -- ─── 2. push_subscriptions 잠금 + RPC ────────────────────────

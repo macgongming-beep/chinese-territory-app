@@ -1,5 +1,6 @@
 // 웹 푸시 구독 / 해지 로직
 import { supabase } from './supabase'
+import { getAuthToken } from './authToken'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
 
@@ -96,7 +97,7 @@ export async function subscribeToPush(userId: number): Promise<{ ok: boolean; re
     return { ok: false, reason: 'KEYS_MISSING' }
   }
 
-  const token = localStorage.getItem('auth_token')
+  const token = getAuthToken()
   if (!token) {
     return { ok: false, reason: 'AUTH_TOKEN_MISSING' }
   }
@@ -134,7 +135,7 @@ export async function unsubscribeFromPush(): Promise<{ ok: boolean; reason?: str
   await subscription.unsubscribe()
 
   // DB에서도 삭제 (토큰 기반 RPC)
-  const token = localStorage.getItem('auth_token')
+  const token = getAuthToken()
   if (!token) return { ok: true } // 로그아웃 상태면 브라우저만 해제하고 끝
 
   const { error } = await supabase.rpc('delete_push_subscription', {
