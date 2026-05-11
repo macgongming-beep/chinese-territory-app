@@ -7,11 +7,21 @@ PostgreSQL 트리거(`dispatch_push_notification`)에서 호출되는 웹 푸시
 **Project Settings → Edge Functions → Secrets**
 
 ```
-VAPID_PUBLIC_KEY=BGjL6Vi-zNPv2ZOq3pH7BeonyxS5kwGpOaTyWBEggzr6fcncv2uNOcXAustfT6f0hi6uGNLPyHEnrD2rQNksp_I
-VAPID_PRIVATE_KEY=nhs1BRf_6N59CCD1UyyOMguIB38bcdMGBn8KzXGE3VU
-VAPID_SUBJECT=mailto:mac.gongming@gmail.com
+VAPID_PUBLIC_KEY=<web-push로 생성한 public key>
+VAPID_PRIVATE_KEY=<web-push로 생성한 private key — 절대 git에 커밋 X>
+VAPID_SUBJECT=mailto:your-email@example.com
 PUSH_EDGE_FUNCTION_KEY=<랜덤 UUID 생성해서 입력>
 ```
+
+**키 생성:**
+```bash
+node -e "const wp=require('web-push');console.log(wp.generateVAPIDKeys());"
+```
+
+⚠️ **VAPID_PRIVATE_KEY 보안:**
+- 절대 git, 문서, 클라이언트 코드에 노출 금지
+- Supabase Vault 또는 Edge Function Secrets에만 저장
+- 노출 시 즉시 새 키로 재발급 필요
 
 > `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`는 Edge Function이 자동으로 가짐.
 
