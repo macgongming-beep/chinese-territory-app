@@ -10,6 +10,13 @@ import { NotificationCenter } from './NotificationCenter'
 import { GlobalChatModal } from './GlobalChatModal'
 import type { MentionUser } from './CommentSection'
 
+type HeaderChatTarget = {
+  eventId: number
+  eventTitle: string
+  eventDate: string
+  eventTime: string | null
+} | null
+
 type AppHeaderVariant = 'mobile' | 'desktop'
 
 type AppHeaderProps = {
@@ -134,6 +141,7 @@ export function AppHeaderActionButtons({
   const chatReturnToRef = useRef<string | null>(null)
   const [openNotifications, setOpenNotifications] = useState(false)
   const [openChat, setOpenChat] = useState(false)
+  const [headerChatTarget, setHeaderChatTarget] = useState<HeaderChatTarget>(null)
   const { unreadCount } = useNotifications(userId ?? null)
   const { totalUnread } = useUserChats(userId ?? null, userName)
   const resolvedNotificationCount = notificationCount ?? unreadCount
@@ -159,6 +167,7 @@ export function AppHeaderActionButtons({
   const handleCloseChat = () => {
     const returnTo = chatReturnToRef.current
     setOpenChat(false)
+    setHeaderChatTarget(null)
     chatReturnToRef.current = null
 
     if (!returnTo) return
@@ -166,6 +175,20 @@ export function AppHeaderActionButtons({
     const current = `${location.pathname}${location.search}${location.hash}`
     if (current !== returnTo) {
       navigate(returnTo, { replace: true })
+    }
+  }
+
+  const handleOpenChatRoom = (chat: NonNullable<HeaderChatTarget>) => {
+    const returnTo = chatReturnToRef.current
+    setHeaderChatTarget(chat)
+    setOpenChat(true)
+    if (returnTo) {
+      window.setTimeout(() => {
+        const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+        if (current !== returnTo) {
+          navigate(returnTo, { replace: true })
+        }
+      }, 0)
     }
   }
 
@@ -212,6 +235,9 @@ export function AppHeaderActionButtons({
               userName={userName}
               role={role}
               users={chatUsers}
+              selectedChat={headerChatTarget}
+              onSelectChat={handleOpenChatRoom}
+              onBackToList={() => setHeaderChatTarget(null)}
               onClose={handleCloseChat}
             />
           </HeaderOverlayErrorBoundary>

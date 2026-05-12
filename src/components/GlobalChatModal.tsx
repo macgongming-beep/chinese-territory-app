@@ -40,19 +40,38 @@ export function GlobalChatModal({
   userName,
   role = 'user',
   users = [],
+  selectedChat: controlledSelectedChat,
+  onSelectChat,
+  onBackToList,
   onClose,
 }: {
   userId: number | null
   userName: string
   role?: Role
   users?: MentionUser[]
+  selectedChat?: Pick<UserChat, 'eventId' | 'eventTitle' | 'eventDate' | 'eventTime'> | null
+  onSelectChat?: (chat: Pick<UserChat, 'eventId' | 'eventTitle' | 'eventDate' | 'eventTime'>) => void
+  onBackToList?: () => void
   onClose: () => void
 }) {
-  const [selectedChat, setSelectedChat] = useState<UserChat | null>(null)
+  const [localSelectedChat, setLocalSelectedChat] = useState<UserChat | null>(null)
   const { activeChats, lockedChats, loading } = useUserChats(userId, userName)
+  const selectedChat = controlledSelectedChat ?? localSelectedChat
 
   const handleClick = (chat: UserChat) => {
-    setSelectedChat(chat)
+    const next = {
+      eventId: chat.eventId,
+      eventTitle: chat.eventTitle,
+      eventDate: chat.eventDate,
+      eventTime: chat.eventTime,
+    }
+    if (onSelectChat) onSelectChat(next)
+    else setLocalSelectedChat(chat)
+  }
+
+  const handleBackToList = () => {
+    if (onBackToList) onBackToList()
+    else setLocalSelectedChat(null)
   }
 
   const mentionUsers = users.length > 0
@@ -97,7 +116,7 @@ export function GlobalChatModal({
             {selectedChat && (
               <button
                 aria-label="채팅 목록으로 돌아가기"
-                onClick={() => setSelectedChat(null)}
+                onClick={handleBackToList}
                 style={{
                   width: 32, height: 32, minHeight: 32, borderRadius: 999,
                   border: '1px solid #e2e8f0', background: '#fff',
