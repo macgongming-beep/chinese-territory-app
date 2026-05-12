@@ -133,7 +133,7 @@ function NavIcon({ name }: { name: IconName }) {
   )
 }
 
-function SettingsIcon({ name }: { name: 'notice' | 'users' | 'signup' | 'season' | 'logout' }) {
+function SettingsIcon({ name }: { name: 'notice' | 'users' | 'signup' | 'season' | 'notification' | 'logout' }) {
   if (name === 'users') {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -167,6 +167,14 @@ function SettingsIcon({ name }: { name: 'notice' | 'users' | 'signup' | 'season'
         <path d="M10 6H6v12h4" />
         <path d="M13 8l4 4-4 4" />
         <path d="M17 12H9" />
+      </svg>
+    )
+  }
+  if (name === 'notification') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M18 9a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+        <path d="M10 21a2 2 0 0 0 4 0" />
       </svg>
     )
   }
@@ -1347,6 +1355,25 @@ export function MobileHome({
               )
             } />
 
+            {/* 알림 설정 */}
+            <Route path="/notification-settings" element={
+              <div className="mobile-settings-page">
+                <AppHeader
+                  pageTitle="알림 설정"
+                  showBack
+                  onBack={() => navigate('/settings')}
+                  userId={currentUser.id}
+                  userName={currentVisitor}
+                  role={role}
+                  chatUsers={headerChatUsers}
+                  onOpenMenu={() => navigate('/settings')}
+                />
+                <div style={{ padding: '0 16px', marginBottom: 16 }}>
+                  <NotificationSettings userId={currentUser.id} />
+                </div>
+              </div>
+            } />
+
             {/* 설정 */}
             <Route path="/settings" element={
               <div className="mobile-settings-page">
@@ -1416,6 +1443,16 @@ export function MobileHome({
                     </span>
                     <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                   </button>
+                  <button onClick={() => navigate('/notification-settings')} type="button">
+                    <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
+                      <SettingsIcon name="notification" />
+                    </span>
+                    <span className="mobile-settings-row-text">
+                      <strong>알림 설정</strong>
+                      <small>받을 알림과 방해금지 시간 관리</small>
+                    </span>
+                    <span className="mobile-settings-chevron" aria-hidden="true">›</span>
+                  </button>
                   {role === 'admin' && (
                     <>
                       <button onClick={() => navigate('/users')} type="button">
@@ -1459,10 +1496,6 @@ export function MobileHome({
 
                 <div style={{ padding: '0 16px', marginBottom: 16 }}>
                   <PwaInstallSection />
-                </div>
-
-                <div style={{ padding: '0 16px', marginBottom: 16 }}>
-                  <NotificationSettings userId={currentUser.id} />
                 </div>
 
                 <button className="mobile-settings-logout" onClick={onLogout} type="button">
