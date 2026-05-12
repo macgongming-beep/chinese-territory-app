@@ -43,12 +43,32 @@ type SessionRow = {
   ended_at: string | null
 }
 
+type UserChatsCacheEntry = {
+  chats: UserChat[]
+  fetchedAt: number
+}
+
+const USER_CHATS_CACHE_TTL = 15 * 1000
+const userChatsCache = new Map<string, UserChatsCacheEntry>()
+const userChatsInflight = new Map<string, Promise<UserChat[]>>()
+
+function getUserChatsCacheKey(userId: number | null | undefined, userName: string | null | undefined) {
+  if (!userId || !userName) return null
+  return `${userId}:${userName}`
+}
+
+function getCachedUserChats(cacheKey: string | null) {
+  if (!cacheKey) return null
+  return userChatsCache.get(cacheKey) ?? null
+}
+
 function isLockedByEndedAt(latestEnded: number): boolean {
   return Date.now() - latestEnded > 7 * 24 * 60 * 60 * 1000
 }
 
 export function useUserChats(userId: number | null | undefined, userName: string | null | undefined) {
-  const [chats, setChats] = useState<UserChat[]>([])
+  const cacheKey = getUserChatsCacheKey(userId, userName)
+  const [chats, setChats] = useState<UserChat[]>(() => getCachedUserChats(cacheKey)?.chats ?? [])
   const [loading, setLoading] = useState(false)
   const channelIdRef = useRef(
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -56,14 +76,37 @@ export function useUserChats(userId: number | null | undefined, userName: string
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
   )
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (options?: { force?: boolean }) => {
     if (!userId || !userName) {
       setChats([])
       return
     }
-    setLoading(true)
 
-    try {
+    const cached = getCachedUserChats(cacheKey)
+    const cacheFresh = cached && Date.now() - cached.fetchedAt < USER_CHATS_CACHE_TTL
+    if (cached) {
+      setChats(cached.chats)
+    }
+    if (cacheFresh && !options?.force) {
+      setLoading(false)
+      return
+    }
+
+    const existingRequest = cacheKey ? userChatsInflight.get(cacheKey) : null
+    if (existingRequest) {
+      setLoading(!cached)
+      try {
+        const result = await existingRequest
+        setChats(result)
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
+    setLoading(!cached)
+
+    const loadPromise = (async (): Promise<UserChat[]> => {
       // 1. 사용자가 참여한 일정 (event_participants)
       const { data: participants } = await supabase
         .from('event_participants')
@@ -87,8 +130,7 @@ export function useUserChats(userId: number | null | undefined, userName: string
       const events = Array.from(eventMap.values())
 
       if (events.length === 0) {
-        setChats([])
-        return
+        return []
       }
 
       const eventIds = events.map((e) => e.id)
@@ -188,14 +230,30 @@ export function useUserChats(userId: number | null | undefined, userName: string
         return bTime - aTime
       })
 
+      return result
+    })()
+
+    if (cacheKey) {
+      userChatsInflight.set(cacheKey, loadPromise)
+    }
+
+    try {
+      const result = await loadPromise
+      if (cacheKey) {
+        userChatsCache.set(cacheKey, { chats: result, fetchedAt: Date.now() })
+      }
       setChats(result)
     } catch (e) {
       console.warn('[user_chats] fetch failed:', e)
-      setChats([])
+      if (cached) setChats(cached.chats)
+      else setChats([])
     } finally {
+      if (cacheKey) {
+        userChatsInflight.delete(cacheKey)
+      }
       setLoading(false)
     }
-  }, [userId, userName])
+  }, [cacheKey, userId, userName])
 
   useEffect(() => {
     fetchAll()
@@ -207,7 +265,7 @@ export function useUserChats(userId: number | null | undefined, userName: string
     let pending: ReturnType<typeof setTimeout> | null = null
     const trigger = () => {
       if (pending) clearTimeout(pending)
-      pending = setTimeout(() => fetchAll(), 800)
+      pending = setTimeout(() => fetchAll({ force: true }), 800)
     }
 
     const channel = supabase
