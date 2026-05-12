@@ -167,6 +167,7 @@ export function DesktopCalendar({
   const [repeatEnd, setRepeatEnd] = useState('')
   const [editingEventId, setEditingEventId] = useState<number | null>(null)
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null)
+  const [chatEvent, setChatEvent] = useState<CalendarEvent | null>(null)
   const [scopeModal, setScopeModal] = useState<ScopeModal | null>(null)
   const [showPeriodForm, setShowPeriodForm] = useState(false)
   const [periodLabel, setPeriodLabel] = useState('')
@@ -610,16 +611,23 @@ export function DesktopCalendar({
                         targetType="calendar_event"
                         users={mentionUsers}
                       />
-                      <ChatRoom
-                        canAccess={canAccessChat}
-                        compact
-                        currentUserId={currentUserId}
-                        currentVisitor={currentVisitor}
-                        eventId={event.id}
-                        eventTitle={event.title}
-                        role={role}
-                        users={mentionUsers}
-                      />
+                      <section className="chat-room chat-room--compact chat-room-summary">
+                        <div className="chat-room__head">
+                          <div>
+                            <strong>채팅</strong>
+                            <span>{event.title}</span>
+                          </div>
+                        </div>
+                        <button
+                          className="chat-open-btn"
+                          disabled={!canAccessChat}
+                          onClick={() => setChatEvent(event)}
+                          type="button"
+                        >
+                          채팅방 열기
+                        </button>
+                        {!canAccessChat && <p className="chat-summary-muted">참여한 봉사 채팅방만 볼 수 있습니다.</p>}
+                      </section>
                     </div>
                   </article>
                 )
@@ -634,6 +642,29 @@ export function DesktopCalendar({
           </div>
         </aside>
       </section>
+      {chatEvent && (
+        <div className="chat-room-modal-backdrop" onClick={() => setChatEvent(null)}>
+          <div className="chat-room-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="chat-room-modal__head">
+              <div>
+                <strong>{chatEvent.title}</strong>
+                <span>{chatEvent.date} · {chatEvent.time || '시간 미정'}</span>
+              </div>
+              <button onClick={() => setChatEvent(null)} type="button">닫기</button>
+            </div>
+            <ChatRoom
+              canAccess
+              compact
+              currentUserId={currentUserId}
+              currentVisitor={currentVisitor}
+              eventId={chatEvent.id}
+              eventTitle={chatEvent.title}
+              role={role}
+              users={mentionUsers}
+            />
+          </div>
+        </div>
+      )}
     </>
   )
 }

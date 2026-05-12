@@ -77,6 +77,8 @@ export function ChatRoom({
   const [loading, setLoading] = useState(false)
   const [missingTable, setMissingTable] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedMessageIds, setSelectedMessageIds] = useState<Set<number>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const mentionQuery = getMentionQuery(draft)
@@ -241,7 +243,7 @@ export function ChatRoom({
   }
 
   const canDeleteMessage = (message: ChatMessage) => {
-    if (message.message_type === 'system') return role === 'leader' || role === 'admin' || role === 'developer'
+    if (message.message_type === 'system') return false
     if (role === 'leader' || role === 'admin' || role === 'developer') return true
     if (message.author_id !== currentUserId && message.author_name !== currentVisitor) return false
     return Date.now() - new Date(message.created_at).getTime() <= 5 * 60 * 1000
@@ -264,6 +266,40 @@ export function ChatRoom({
       return
     }
 
+    await fetchMessages()
+  }
+
+  const selectableMessages = messages.filter(canDeleteMessage)
+  const selectedMessages = messages.filter((message) => selectedMessageIds.has(message.id) && canDeleteMessage(message))
+  const enterSelectMode = () => {
+    if (selectableMessages.length === 0) {
+      showToast('삭제할 수 있는 메시지가 없습니다.', 'info')
+      return
+    }
+    setSelectedMessageIds(new Set())
+    setSelectMode(true)
+  }
+  const cancelSelectMode = () => {
+    setSelectedMessageIds(new Set())
+    setSelectMode(false)
+  }
+  const toggleMessageSelected = (message: ChatMessage) => {
+    if (!canDeleteMessage(message)) return
+    setSelectedMessageIds((current) => {
+      const next = new Set(current)
+      if (next.has(message.id)) next.delete(message.id)
+      else next.add(message.id)
+      return next
+    })
+  }
+  const deleteSelectedMessages = async () => {
+    if (selectedMessages.length === 0) return
+    const confirmed = window.confirm(`선택한 메시지 ${selectedMessages.length}개를 삭제할까요?`)
+    if (!confirmed) return
+    for (const message of selectedMessages) {
+      await deleteMessage(message)
+    }
+    cancelSelectMode()
     await fetchMessages()
   }
 
@@ -290,7 +326,20 @@ export function ChatRoom({
           <strong>채팅</strong>
           <span>{eventTitle}</span>
         </div>
-        <em>{messages.length}개</em>
+        {selectMode ? (
+          <div className="chat-select-actions">
+            <button onClick={cancelSelectMode} type="button">취소</button>
+            <em>{selectedMessages.length}개 선택</em>
+            <button disabled={selectedMessages.length === 0} onClick={deleteSelectedMessages} type="button">삭제</button>
+          </div>
+        ) : (
+          <div className="chat-room__tools">
+            <em>{messages.length}개</em>
+            {selectableMessages.length > 0 && (
+              <button aria-label="메시지 선택" onClick={enterSelectMode} type="button">⋯</button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="chat-messages">
@@ -302,29 +351,36 @@ export function ChatRoom({
           messages.map((message) => {
             const mine = message.author_name === currentVisitor
             const system = message.message_type === 'system'
+            const selectable = canDeleteMessage(message)
+            const selected = selectedMessageIds.has(message.id)
             return (
               <article
                 className={[
                   'chat-message',
                   mine ? 'is-mine' : '',
                   system ? 'is-system' : '',
+                  selectMode ? 'is-selecting' : '',
+                  selected ? 'is-selected' : '',
                 ].filter(Boolean).join(' ')}
                 key={message.id}
               >
+                {selectMode && !system && (
+                  <button
+                    aria-label="메시지 선택"
+                    className="chat-message__check"
+                    disabled={!selectable}
+                    onClick={() => toggleMessageSelected(message)}
+                    type="button"
+                  >
+                    {selected ? '✓' : ''}
+                  </button>
+                )}
                 {!mine && !system && <div className="chat-message__avatar">{message.author_name.slice(0, 1)}</div>}
                 <div className="chat-message__bubble">
                   {!system && (
                     <div className="chat-message__meta">
                       <strong>{message.author_name}</strong>
                       <span>{formatChatTime(message.created_at)}</span>
-                      {canDeleteMessage(message) && (
-                        <button onClick={() => deleteMessage(message)} type="button">삭제</button>
-                      )}
-                    </div>
-                  )}
-                  {system && canDeleteMessage(message) && (
-                    <div className="chat-message__meta">
-                      <button onClick={() => deleteMessage(message)} type="button">삭제</button>
                     </div>
                   )}
                   {message.image_url && !message.image_expired && (

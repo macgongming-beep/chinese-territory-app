@@ -72,6 +72,7 @@ export function CommentSection({
   const [draft, setDraft] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editDraft, setEditDraft] = useState('')
+  const [menuCommentId, setMenuCommentId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [missingTable, setMissingTable] = useState(false)
 
@@ -162,6 +163,7 @@ export function CommentSection({
   }
 
   const startEdit = (comment: CommentRecord) => {
+    setMenuCommentId(null)
     setEditingId(comment.id)
     setEditDraft(comment.content)
   }
@@ -199,6 +201,7 @@ export function CommentSection({
     comment.author_name === currentVisitor || role === 'admin' || role === 'developer'
 
   const canEdit = (comment: CommentRecord) => comment.author_name === currentVisitor
+  const hasActions = (comment: CommentRecord) => canEdit(comment) || canDelete(comment)
 
   if (missingTable) {
     return (
@@ -228,11 +231,23 @@ export function CommentSection({
                 <div className="comment-item__meta">
                   <strong>{comment.author_name}</strong>
                   <span>{formatCommentTime(comment.created_at)}</span>
-                  {canEdit(comment) && editingId !== comment.id && (
-                    <button onClick={() => startEdit(comment)} type="button">수정</button>
-                  )}
-                  {canDelete(comment) && (
-                    <button onClick={() => deleteComment(comment)} type="button">삭제</button>
+                  {hasActions(comment) && editingId !== comment.id && (
+                    <div className="comment-action-menu">
+                      <button
+                        aria-label="댓글 메뉴"
+                        className="comment-action-trigger"
+                        onClick={() => setMenuCommentId((id) => id === comment.id ? null : comment.id)}
+                        type="button"
+                      >
+                        ⋯
+                      </button>
+                      {menuCommentId === comment.id && (
+                        <div className="comment-action-popover">
+                          {canEdit(comment) && <button onClick={() => startEdit(comment)} type="button">수정</button>}
+                          {canDelete(comment) && <button className="danger" onClick={() => { setMenuCommentId(null); void deleteComment(comment) }} type="button">삭제</button>}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
                 {editingId === comment.id ? (
