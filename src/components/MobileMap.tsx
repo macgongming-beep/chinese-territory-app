@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { MapCanvas } from './MapCanvas'
+import type { MapAggregateMarker } from './MapCanvas'
 import type { Building, BuildingStatus, CardBoundary, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t } from '../i18n'
@@ -341,6 +342,7 @@ export function MobileMap({
     () => new Set(scopedCards.map((card) => card.id)),
     [scopedCards]
   )
+  const emptyHighlightedCardIds = useMemo(() => new Set<number>(), [])
 
   const cardMap = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards])
   const visitHistoriesByUnitId = useMemo(() => {
@@ -409,7 +411,88 @@ export function MobileMap({
     [filteredBuildings, hiddenMapStatuses],
   )
 
+  const shouldUseAggregateMap =
+    !isUserMap &&
+    navLevel === 'map' &&
+    selectedCardId == null &&
+    !selectedRegion &&
+    focusedCardIdSet.size === 0 &&
+    !addingBuildingMode &&
+    !editingPinMode &&
+    !drawingBoundaryMode
+
+  const mapAggregateMarkers = useMemo<MapAggregateMarker[]>(() => {
+    if (!shouldUseAggregateMap) return []
+    const groups = new Map<string, MapAggregateMarker & { latSum: number; lngSum: number; pointCount: number }>()
+    mapBuildings.forEach((building) => {
+      const card = cardMap.get(building.cardId)
+      if (!card) return
+      const label = selectedArea ? card.area : String(card.region)
+      if (!label) return
+      const id = `${selectedArea ? 'area' : 'region'}:${label}`
+      const current = groups.get(id) ?? {
+        id,
+        label,
+        count: 0,
+        unitCount: 0,
+        houseCount: 0,
+        shopCount: 0,
+        lat: 0,
+        lng: 0,
+        latSum: 0,
+        lngSum: 0,
+        pointCount: 0,
+      }
+      current.count += 1
+      current.unitCount += building.units.length
+      if (building.type === '주택') current.houseCount += 1
+      if (building.type === '상가') current.shopCount += 1
+      if (Number.isFinite(building.lat) && Number.isFinite(building.lng)) {
+        current.latSum += building.lat
+        current.lngSum += building.lng
+        current.pointCount += 1
+      }
+      groups.set(id, current)
+    })
+    return Array.from(groups.values())
+      .filter((group) => group.pointCount > 0)
+      .map((group) => ({
+        id: group.id,
+        label: group.label,
+        count: group.count,
+        unitCount: group.unitCount,
+        houseCount: group.houseCount,
+        shopCount: group.shopCount,
+        lat: group.latSum / group.pointCount,
+        lng: group.lngSum / group.pointCount,
+      }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'))
+  }, [cardMap, mapBuildings, selectedArea, shouldUseAggregateMap])
+
+  const aggregateScopeLabel = selectedArea ? '동' : '구'
+
+  const handleSelectAggregateMarker = (id: string) => {
+    const [kind, label] = id.split(':')
+    setSelectedBuildingId(null)
+    setExpandedBuildingIds(new Set())
+    setExpandedUnitId(null)
+    setSheetHeight(HALF_HEIGHT)
+    if (kind === 'region') {
+      setSelectedArea(label)
+      setSelectedRegion(null)
+      setSelectedCardId(null)
+      setNavLevel('map')
+      return
+    }
+    if (kind === 'area') {
+      setSelectedRegion(label)
+      setSelectedCardId(null)
+      setNavLevel('map')
+    }
+  }
+
   const buildingGroups = useMemo(() => {
+    if (shouldUseAggregateMap) return []
     const order: BuildingStatus[] = ['방문금지', '방문필요', '정기방문', '방문완료']
     const grouped = new Map<BuildingStatus, Building[]>()
     order.forEach((status) => grouped.set(status, []))
@@ -420,7 +503,7 @@ export function MobileMap({
       status,
       buildings: grouped.get(status) ?? [],
     }))
-  }, [filteredBuildings])
+  }, [filteredBuildings, shouldUseAggregateMap])
 
   const unitTotal = useMemo(() => filteredBuildings.reduce((t, b) => t + b.units.length, 0), [filteredBuildings])
   const visitedTotal = useMemo(() => filteredBuildings.reduce((t, b) => t + b.units.filter(u => u.status !== '미방문').length, 0), [filteredBuildings])
@@ -824,11 +907,13 @@ export function MobileMap({
               </div>
             )}
             <MapCanvas
-              buildings={mapBuildings}
-              cardBoundaries={mapBoundaries}
+              buildings={mapAggregateMarkers.length > 0 ? [] : mapBuildings}
+              aggregateMarkers={mapAggregateMarkers}
+              cardBoundaries={mapAggregateMarkers.length > 0 ? [] : mapBoundaries}
               cards={cards}
               selectedCardId={mapSelectedCardId}
-              highlightedCardIds={scopedCardIds}
+              highlightedCardIds={mapAggregateMarkers.length > 0 ? emptyHighlightedCardIds : scopedCardIds}
+              onSelectAggregate={handleSelectAggregateMarker}
               onSelectBuilding={(id) => {
                 if (editingPinMode) return
                 if (selectedBuildingId === id) {
@@ -970,7 +1055,11 @@ export function MobileMap({
               onPointerCancel={handlePointerEnd}
               onClick={handleSheetHandleClick}
             >
-              <span>{t(language, 'map.building')} {filteredBuildings.length}{t(language, 'calendar.countSuffix')}</span>
+              <span>
+                {mapAggregateMarkers.length > 0
+                  ? `${aggregateScopeLabel} ${mapAggregateMarkers.length}${t(language, 'calendar.countSuffix')}`
+                  : `${t(language, 'map.building')} ${filteredBuildings.length}${t(language, 'calendar.countSuffix')}`}
+              </span>
               <em>{completionRate}% · {visitedTotal}/{unitTotal} {t(language, 'map.unit')}</em>
             </div>
 
@@ -982,13 +1071,32 @@ export function MobileMap({
             )}
 
             <div className="mobile-sheet-scroll">
-              {filteredBuildings.length === 0 && (
+              {mapAggregateMarkers.length > 0 && (
+                <div className="mobile-map-aggregate-list">
+                  {mapAggregateMarkers.map((marker) => (
+                    <button
+                      className="mobile-map-aggregate-row"
+                      key={marker.id}
+                      onClick={() => handleSelectAggregateMarker(marker.id)}
+                      type="button"
+                    >
+                      <div>
+                        <strong>{marker.label}</strong>
+                        <span>건물 {marker.count} · 주택 {marker.houseCount} · 상가 {marker.shopCount}</span>
+                      </div>
+                      <em>세대 {marker.unitCount}</em>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {mapAggregateMarkers.length === 0 && filteredBuildings.length === 0 && (
                 <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>
                   <p>{t(language, 'map.noBuildings')}</p>
                 </div>
               )}
 
-              {buildingGroups.map(({ status, buildings: groupedBuildings }) => {
+              {mapAggregateMarkers.length === 0 && buildingGroups.map(({ status, buildings: groupedBuildings }) => {
                 if (groupedBuildings.length === 0) return null
                 const isGroupCollapsed = collapsedStatusGroups.has(status)
                 return (

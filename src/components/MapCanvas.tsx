@@ -135,6 +135,16 @@ function getClusterThresholdKm(zoom: number): number {
 }
 
 type BuildingCluster = { buildings: Building[]; lat: number; lng: number }
+export type MapAggregateMarker = {
+  id: string
+  label: string
+  count: number
+  unitCount: number
+  houseCount: number
+  shopCount: number
+  lat: number
+  lng: number
+}
 
 function clusterBuildings(buildings: Building[], zoom: number): BuildingCluster[] {
   const validBuildings = buildings.filter((building) => isValidMapCoordinate(Number(building.lat), Number(building.lng)))
@@ -182,6 +192,54 @@ function clusterMarkerHtml(count: number): string {
     font-family:sans-serif;
     user-select:none;
   ">${count}</div>`
+}
+
+function aggregateMarkerHtml(marker: MapAggregateMarker): string {
+  const brandColor = cssVar('--brand-700', '#4267a5')
+  const safeLabel = escapeAttr(marker.label)
+  const safeTitle = escapeAttr(`${marker.label} · 건물 ${marker.count}개 · 세대 ${marker.unitCount}개`)
+  return `<div title="${safeTitle}" style="
+    display:flex;
+    align-items:center;
+    gap:7px;
+    min-width:84px;
+    max-width:128px;
+    height:42px;
+    padding:0 10px 0 12px;
+    border:3px solid #ffffff;
+    border-radius:999px;
+    background:${brandColor};
+    box-shadow:0 5px 16px rgba(66,103,165,0.42);
+    color:#ffffff;
+    cursor:pointer;
+    font-family:sans-serif;
+    user-select:none;
+    box-sizing:border-box;
+  ">
+    <span style="
+      min-width:0;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:13px;
+      font-weight:700;
+      line-height:1;
+    ">${safeLabel}</span>
+    <strong style="
+      flex:0 0 auto;
+      display:grid;
+      min-width:24px;
+      height:24px;
+      place-items:center;
+      padding:0 6px;
+      border-radius:999px;
+      background:rgba(255,255,255,0.18);
+      font-size:13px;
+      font-weight:800;
+      line-height:1;
+      box-sizing:border-box;
+    ">${marker.count}</strong>
+  </div>`
 }
 
 function virtualPinHtml(label: string): string {
@@ -293,6 +351,7 @@ function markerHtml(
 
 function NaverMapCanvas({
   buildings,
+  aggregateMarkers = [],
   cardBoundaries,
   cards,
   clientId,
@@ -312,6 +371,7 @@ function NaverMapCanvas({
   onInsertBoundaryPoint,
   onRemoveBoundaryPoint,
   onSelectBuilding,
+  onSelectAggregate,
   onSelectCardBoundary,
   onUpdateBoundaryPoint,
   onMapRightClick,
@@ -327,6 +387,7 @@ function NaverMapCanvas({
   onMoveBuilding,
 }: {
   buildings: Building[]
+  aggregateMarkers?: MapAggregateMarker[]
   cardBoundaries: CardBoundary[]
   cards: TerritoryCard[]
   clientId: string
@@ -346,6 +407,7 @@ function NaverMapCanvas({
   onInsertBoundaryPoint?: (index: number, point: GeoPoint) => void
   onRemoveBoundaryPoint?: (index: number) => void
   onSelectBuilding?: (id: number) => void
+  onSelectAggregate?: (id: string) => void
   onSelectCardBoundary?: (cardId: number) => void
   onUpdateBoundaryPoint?: (index: number, point: GeoPoint) => void
   onMapRightClick?: (lat: number, lng: number) => void
@@ -377,6 +439,8 @@ function NaverMapCanvas({
   const visibleBuildingSignatureRef = useRef('')
   const selectedCardIdRef = useRef<number | '전체' | null>(selectedCardId)
   selectedCardIdRef.current = selectedCardId
+  const aggregateMarkersRef = useRef(aggregateMarkers)
+  aggregateMarkersRef.current = aggregateMarkers
   const highlightedCardIdsRef = useRef(highlightedCardIds)
   highlightedCardIdsRef.current = highlightedCardIds
 
@@ -404,6 +468,8 @@ function NaverMapCanvas({
   isMobileRef.current = isMobile
   const onSelectBuildingRef = useRef(onSelectBuilding)
   onSelectBuildingRef.current = onSelectBuilding
+  const onSelectAggregateRef = useRef(onSelectAggregate)
+  onSelectAggregateRef.current = onSelectAggregate
   const onSelectCardBoundaryRef = useRef(onSelectCardBoundary)
   onSelectCardBoundaryRef.current = onSelectCardBoundary
   const previewMarkerRef = useRef<any>(null)
@@ -429,6 +495,27 @@ function NaverMapCanvas({
 
     markersRef.current.forEach((m) => m.setMap(null))
     markersRef.current = []
+
+    if (aggregateMarkersRef.current.length > 0) {
+      aggregateMarkersRef.current.forEach((aggregate) => {
+        if (!isValidMapCoordinate(Number(aggregate.lat), Number(aggregate.lng))) return
+        const marker = new naver.maps.Marker({
+          map: mapInstanceRef.current,
+          position: new naver.maps.LatLng(aggregate.lat, aggregate.lng),
+          icon: {
+            content: aggregateMarkerHtml(aggregate),
+            anchor: new naver.maps.Point(54, 21),
+          },
+          zIndex: 8,
+        })
+        naver.maps.Event.addListener(marker, 'click', () => {
+          if (addingBuildingRef.current) return
+          onSelectAggregateRef.current?.(aggregate.id)
+        })
+        markersRef.current.push(marker)
+      })
+      return
+    }
 
     const zoom = mapInstanceRef.current.getZoom()
     const clusters = clusterBuildings(buildingsRef.current, zoom)
@@ -600,6 +687,27 @@ function NaverMapCanvas({
   const fitVisibleBuildings = (reason: 'data' | 'card' = 'data') => {
     const naver = (window as any).naver
     if (!naver?.maps || !mapInstanceRef.current) return false
+
+    if (aggregateMarkersRef.current.length > 0) {
+      const visibleAggregates = aggregateMarkersRef.current.filter((marker) =>
+        isValidMapCoordinate(Number(marker.lat), Number(marker.lng)),
+      )
+      if (visibleAggregates.length === 0) return false
+      if (visibleAggregates.length === 1) {
+        const marker = visibleAggregates[0]
+        mapInstanceRef.current.morph(new naver.maps.LatLng(Number(marker.lat), Number(marker.lng)), reason === 'card' ? 13 : 12)
+        return true
+      }
+      const bounds = new naver.maps.LatLngBounds(
+        new naver.maps.LatLng(Number(visibleAggregates[0].lat), Number(visibleAggregates[0].lng)),
+        new naver.maps.LatLng(Number(visibleAggregates[0].lat), Number(visibleAggregates[0].lng)),
+      )
+      visibleAggregates.forEach((marker) => {
+        bounds.extend(new naver.maps.LatLng(Number(marker.lat), Number(marker.lng)))
+      })
+      mapInstanceRef.current.fitBounds(bounds, { margin: getFitMargin() })
+      return true
+    }
 
     const visibleBuildings = buildingsRef.current.filter((building) => {
       const lat = Number(building.lat)
@@ -1034,9 +1142,15 @@ function NaverMapCanvas({
       .map((building) => `${building.id}:${building.cardId}:${Number(building.lat).toFixed(6)},${Number(building.lng).toFixed(6)}`)
       .sort()
       .join('|')
+    const aggregateSignature = aggregateMarkers
+      .filter((marker) => isValidMapCoordinate(Number(marker.lat), Number(marker.lng)))
+      .map((marker) => `${marker.id}:${marker.count}:${Number(marker.lat).toFixed(6)},${Number(marker.lng).toFixed(6)}`)
+      .sort()
+      .join('|')
+    const visibleMapSignature = aggregateSignature || visibleSignature
 
-    if (visibleSignature && visibleBuildingSignatureRef.current !== visibleSignature) {
-      visibleBuildingSignatureRef.current = visibleSignature
+    if (visibleMapSignature && visibleBuildingSignatureRef.current !== visibleMapSignature) {
+      visibleBuildingSignatureRef.current = visibleMapSignature
       if (!editingBuildingLocationRef.current && !addingBuildingRef.current) {
         fitVisibleBuildings('data')
       }
@@ -1045,7 +1159,7 @@ function NaverMapCanvas({
     // 선택 건물 클릭 때는 자동 이동하지 않음
     prevSelectedBuildingIdRef.current = selectedBuildingId
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildings, selectedBuildingId, previewPinLat, previewPinLng])
+  }, [buildings, aggregateMarkers, selectedBuildingId, previewPinLat, previewPinLng])
 
   useEffect(() => {
     if (!scriptLoadedRef.current) return
@@ -1201,6 +1315,7 @@ function NaverMapCanvas({
 
 export function MapCanvas({
   buildings,
+  aggregateMarkers = [],
   cardBoundaries = [],
   cards,
   drawingBoundary = false,
@@ -1219,6 +1334,7 @@ export function MapCanvas({
   onInsertBoundaryPoint,
   onRemoveBoundaryPoint,
   onSelectBuilding,
+  onSelectAggregate,
   onSelectCardBoundary,
   onUpdateBoundaryPoint,
   onMapRightClick,
@@ -1234,6 +1350,7 @@ export function MapCanvas({
   onMoveBuilding,
 }: {
   buildings: Building[]
+  aggregateMarkers?: MapAggregateMarker[]
   cardBoundaries?: CardBoundary[]
   cards: TerritoryCard[]
   drawingBoundary?: boolean
@@ -1252,6 +1369,7 @@ export function MapCanvas({
   onInsertBoundaryPoint?: (index: number, point: GeoPoint) => void
   onRemoveBoundaryPoint?: (index: number) => void
   onSelectBuilding: (buildingId: number) => void
+  onSelectAggregate?: (id: string) => void
   onSelectCardBoundary?: (cardId: number) => void
   onUpdateBoundaryPoint?: (index: number, point: GeoPoint) => void
   onMapRightClick?: (lat: number, lng: number) => void
@@ -1277,6 +1395,7 @@ export function MapCanvas({
       <div className="map-canvas-container" style={{ width: '100%', height: '100%' }}>
         <NaverMapCanvas
           buildings={validBuildings}
+          aggregateMarkers={aggregateMarkers}
           cardBoundaries={cardBoundaries}
           cards={cards}
           clientId={naverMapClientId}
@@ -1296,6 +1415,7 @@ export function MapCanvas({
           onInsertBoundaryPoint={onInsertBoundaryPoint}
           onRemoveBoundaryPoint={onRemoveBoundaryPoint}
           onSelectBuilding={onSelectBuilding}
+          onSelectAggregate={onSelectAggregate}
           onSelectCardBoundary={onSelectCardBoundary}
           onUpdateBoundaryPoint={onUpdateBoundaryPoint}
           onMapRightClick={onMapRightClick}
@@ -1395,7 +1515,26 @@ export function MapCanvas({
       <div className="mock-map-road road-two" />
       <div className="mock-map-road road-three" />
       <p className="mock-map-label">전체 구역 경계선 · KML {TERRITORY_BOUNDARY.length}개 좌표</p>
-      {validBuildings.map((building) => {
+      {aggregateMarkers.length > 0 && aggregateMarkers.map((marker) => {
+        const pos = getMockPoint({ lat: marker.lat, lng: marker.lng })
+        return (
+          <button
+            className="map-aggregate-marker"
+            key={marker.id}
+            onClick={(event) => {
+              if (drawingBoundary) return
+              event.stopPropagation()
+              onSelectAggregate?.(marker.id)
+            }}
+            style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+            type="button"
+          >
+            <span>{marker.label}</span>
+            <strong>{marker.count}</strong>
+          </button>
+        )
+      })}
+      {aggregateMarkers.length === 0 && validBuildings.map((building) => {
         const position = getMockPosition(validBuildings, building)
         const status = getBuildingStatus(building)
         const isDimmed = selectedCardId !== null && selectedCardId !== '전체' && building.cardId !== selectedCardId
