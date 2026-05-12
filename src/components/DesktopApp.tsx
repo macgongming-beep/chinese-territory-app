@@ -377,6 +377,8 @@ export function DesktopApp({
           <AppHeaderActionButtons
             userId={currentUserId}
             userName={currentVisitor}
+            role={viewMode}
+            chatUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role as Role }))}
             onOpenMenu={() => navigate('/settings')}
             className="desktop-header-actions"
             buttonClassName="desktop-header-action"

@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react'
 import { Component } from 'react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useNotifications } from '../hooks/useNotifications'
 import { useUserChats } from '../hooks/useUserChats'
+import type { Role } from '../types'
 import { NotificationCenter } from './NotificationCenter'
 import { GlobalChatModal } from './GlobalChatModal'
+import type { MentionUser } from './CommentSection'
 
 type AppHeaderVariant = 'mobile' | 'desktop'
 
@@ -21,6 +24,8 @@ type AppHeaderProps = {
   chatCount?: number
   userId?: number | null
   userName?: string
+  role?: Role
+  chatUsers?: MentionUser[]
   onOpenNotifications?: () => void
   onOpenChat?: () => void
   onOpenMenu?: () => void
@@ -36,6 +41,8 @@ type AppHeaderActionButtonsProps = {
   onOpenNotifications?: () => void
   onOpenChat?: () => void
   onOpenMenu?: () => void
+  role?: Role
+  chatUsers?: MentionUser[]
   className?: string
   buttonClassName?: string
   showMenu?: boolean
@@ -111,6 +118,8 @@ function HeaderOverlayPortal({ children }: { children: ReactNode }) {
 export function AppHeaderActionButtons({
   userId,
   userName = '',
+  role = 'user',
+  chatUsers = [],
   notificationCount,
   chatCount,
   onOpenNotifications,
@@ -120,6 +129,9 @@ export function AppHeaderActionButtons({
   buttonClassName = 'app-header__action',
   showMenu = true,
 }: AppHeaderActionButtonsProps) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const chatReturnToRef = useRef<string | null>(null)
   const [openNotifications, setOpenNotifications] = useState(false)
   const [openChat, setOpenChat] = useState(false)
   const { unreadCount } = useNotifications(userId ?? null)
@@ -140,7 +152,21 @@ export function AppHeaderActionButtons({
       onOpenChat()
       return
     }
+    chatReturnToRef.current = `${location.pathname}${location.search}${location.hash}`
     setOpenChat(true)
+  }
+
+  const handleCloseChat = () => {
+    const returnTo = chatReturnToRef.current
+    setOpenChat(false)
+    chatReturnToRef.current = null
+
+    if (!returnTo) return
+
+    const current = `${location.pathname}${location.search}${location.hash}`
+    if (current !== returnTo) {
+      navigate(returnTo, { replace: true })
+    }
   }
 
   return (
@@ -180,8 +206,14 @@ export function AppHeaderActionButtons({
       ) : null}
       {openChat ? (
         <HeaderOverlayPortal>
-          <HeaderOverlayErrorBoundary onClose={() => setOpenChat(false)}>
-            <GlobalChatModal userId={userId ?? null} userName={userName} onClose={() => setOpenChat(false)} />
+          <HeaderOverlayErrorBoundary onClose={handleCloseChat}>
+            <GlobalChatModal
+              userId={userId ?? null}
+              userName={userName}
+              role={role}
+              users={chatUsers}
+              onClose={handleCloseChat}
+            />
           </HeaderOverlayErrorBoundary>
         </HeaderOverlayPortal>
       ) : null}
@@ -201,6 +233,8 @@ export function AppHeader({
   chatCount,
   userId,
   userName,
+  role,
+  chatUsers,
   onOpenNotifications,
   onOpenChat,
   onOpenMenu,
@@ -230,6 +264,8 @@ export function AppHeader({
         <AppHeaderActionButtons
           userId={userId}
           userName={userName}
+          role={role}
+          chatUsers={chatUsers}
           notificationCount={notificationCount}
           chatCount={chatCount}
           onOpenNotifications={onOpenNotifications}

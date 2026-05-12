@@ -842,6 +842,10 @@ export function MobileHome({
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const role = actualRole === 'admin' ? viewMode : actualRole
+  const headerChatUsers = useMemo(
+    () => allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role as Role })),
+    [allUsers],
+  )
   const [todayCardsCollapsed, setTodayCardsCollapsed] = useState(() =>
     window.localStorage.getItem('mobileTodaySessionsCollapsed') === 'true'
   )
@@ -1018,6 +1022,8 @@ export function MobileHome({
                   subtitle={todayLabel}
                   userId={currentUser.id}
                   userName={currentVisitor}
+                  role={role}
+                  chatUsers={headerChatUsers}
                   onOpenMenu={() => navigate('/settings')}
                 />
 
@@ -1189,6 +1195,8 @@ export function MobileHome({
                   onBack={() => navigate('/settings')}
                   userId={currentUser.id}
                   userName={currentVisitor}
+                  role={role}
+                  chatUsers={headerChatUsers}
                   onOpenMenu={() => navigate('/settings')}
                 />
                 <MobileNotices
@@ -1219,6 +1227,8 @@ export function MobileHome({
                   pageTitle={t(language, 'nav.calendar')}
                   userId={currentUser.id}
                   userName={currentVisitor}
+                  role={role}
+                  chatUsers={headerChatUsers}
                   onOpenMenu={() => navigate('/settings')}
                 />
                 <MobileCalendar
@@ -1321,6 +1331,8 @@ export function MobileHome({
                     onBack={() => navigate('/settings')}
                     userId={currentUser.id}
                     userName={currentVisitor}
+                    role={role}
+                    chatUsers={headerChatUsers}
                     onOpenMenu={() => navigate('/settings')}
                   />
                   <SpecialPeriodSettings
@@ -1342,6 +1354,8 @@ export function MobileHome({
                   pageTitle={t(language, 'settings.title')}
                   userId={currentUser.id}
                   userName={currentVisitor}
+                  role={role}
+                  chatUsers={headerChatUsers}
                   onOpenMenu={() => navigate('/settings')}
                 />
 

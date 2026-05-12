@@ -743,6 +743,7 @@ export function MobileMap({
             <AppHeaderActionButtons
               userId={currentUserId}
               userName={currentVisitor}
+              role={actualRole}
               className="mobile-map-header-actions"
               buttonClassName="mobile-map-header-action"
               showMenu={false}

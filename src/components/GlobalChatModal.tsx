@@ -1,8 +1,10 @@
 // 글로벌 채팅 목록 모달 (헤더 💬 클릭 시 슬라이드 다운)
 // 메시지 미리보기 X (사생활 보호 결정)
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { useUserChats, type UserChat } from '../hooks/useUserChats'
-import { normalizeAppLink } from '../utils/appNavigation'
+import type { Role } from '../types'
+import { ChatRoom } from './ChatRoom'
+import type { MentionUser } from './CommentSection'
 
 function formatChatDate(iso: string | null, eventDate: string): string {
   if (!iso) {
@@ -36,19 +38,28 @@ function formatEventLabel(eventDate: string, eventTime: string | null): string {
 export function GlobalChatModal({
   userId,
   userName,
+  role = 'user',
+  users = [],
   onClose,
 }: {
   userId: number | null
   userName: string
+  role?: Role
+  users?: MentionUser[]
   onClose: () => void
 }) {
-  const navigate = useNavigate()
+  const [selectedChat, setSelectedChat] = useState<UserChat | null>(null)
   const { activeChats, lockedChats, loading } = useUserChats(userId, userName)
 
   const handleClick = (chat: UserChat) => {
-    onClose()
-    navigate(normalizeAppLink(`/calendar/events/${chat.eventId}/chat`) ?? '/calendar')
+    setSelectedChat(chat)
   }
+
+  const mentionUsers = users.length > 0
+    ? users
+    : userId
+      ? [{ id: userId, name: userName, role }]
+      : []
 
   return (
     <div
@@ -82,7 +93,36 @@ export function GlobalChatModal({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '16px 16px 12px', borderBottom: '1px solid #f1f5f9',
         }}>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#1e293b' }}>채팅</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            {selectedChat && (
+              <button
+                aria-label="채팅 목록으로 돌아가기"
+                onClick={() => setSelectedChat(null)}
+                style={{
+                  width: 32, height: 32, minHeight: 32, borderRadius: 999,
+                  border: '1px solid #e2e8f0', background: '#fff',
+                  color: '#334155', fontSize: 18, cursor: 'pointer',
+                  display: 'grid', placeItems: 'center', padding: 0,
+                }}
+                type="button"
+              >
+                ‹
+              </button>
+            )}
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#1e293b' }}>
+                {selectedChat ? selectedChat.eventTitle || '채팅방' : '채팅'}
+              </h2>
+              {selectedChat && (
+                <p style={{
+                  margin: '2px 0 0', color: '#64748b', fontSize: 12, fontWeight: 700,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {formatEventLabel(selectedChat.eventDate, selectedChat.eventTime)}
+                </p>
+              )}
+            </div>
+          </div>
           <button
             onClick={onClose}
             style={{
@@ -95,8 +135,22 @@ export function GlobalChatModal({
         </div>
 
         {/* 본문 */}
-        <div className="header-action-panel__body" style={{ flex: 1, overflowY: 'auto' }}>
-          {!userId ? (
+        <div
+          className={`header-action-panel__body${selectedChat ? ' header-action-panel__body--chat' : ''}`}
+          style={{ flex: 1, overflowY: selectedChat ? 'hidden' : 'auto' }}
+        >
+          {selectedChat ? (
+            <ChatRoom
+              canAccess
+              compact
+              currentUserId={userId}
+              currentVisitor={userName}
+              eventId={selectedChat.eventId}
+              eventTitle={selectedChat.eventTitle || formatEventLabel(selectedChat.eventDate, selectedChat.eventTime)}
+              role={role}
+              users={mentionUsers}
+            />
+          ) : !userId ? (
             <div className="header-action-panel__empty" style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
               <span style={{ fontSize: 36, marginBottom: 8 }}>💬</span>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#475569' }}>로그인 정보 확인이 필요합니다</p>
@@ -108,7 +162,7 @@ export function GlobalChatModal({
             </div>
           )}
 
-          {userId && !loading && activeChats.length === 0 && lockedChats.length === 0 && (
+          {!selectedChat && userId && !loading && activeChats.length === 0 && lockedChats.length === 0 && (
             <div className="header-action-panel__empty" style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
               <span style={{ fontSize: 36, marginBottom: 8 }}>💬</span>
               <p style={{ margin: 0, fontSize: 14 }}>참여한 봉사 채팅방이 없습니다</p>
@@ -117,7 +171,7 @@ export function GlobalChatModal({
           )}
 
           {/* 활성 채팅 */}
-          {activeChats.length > 0 && (
+          {!selectedChat && activeChats.length > 0 && (
             <div>
               <p style={{
                 margin: 0, padding: '12px 16px 6px', fontSize: 11, fontWeight: 700,
@@ -130,7 +184,7 @@ export function GlobalChatModal({
           )}
 
           {/* 종료 채팅 */}
-          {lockedChats.length > 0 && (
+          {!selectedChat && lockedChats.length > 0 && (
             <div>
               <p style={{
                 margin: 0, padding: '16px 16px 6px', fontSize: 11, fontWeight: 700,

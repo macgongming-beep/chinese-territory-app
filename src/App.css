@@ -351,6 +351,28 @@ button:focus-visible {
   overflow-y: auto;
 }
 
+.header-action-panel__body--chat {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.header-action-panel__body--chat .chat-room {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-card);
+}
+
+.header-action-panel__body--chat .chat-messages {
+  max-height: none;
+  flex: 1;
+}
+
 .header-action-panel__empty {
   display: grid;
   justify-items: center;
