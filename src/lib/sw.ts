@@ -9,8 +9,13 @@ import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { NetworkFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
+import { clientsClaim } from 'workbox-core'
 
 declare const self: ServiceWorkerGlobalScope
+
+// 새 배포가 준비되면 오래된 PWA 화면을 붙잡지 않고 즉시 새 버전이 제어하게 한다.
+self.skipWaiting()
+clientsClaim()
 
 // ─── Precache (자동 생성된 매니페스트) ─────────────────────
 precacheAndRoute(self.__WB_MANIFEST)

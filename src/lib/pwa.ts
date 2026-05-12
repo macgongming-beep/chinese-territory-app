@@ -18,6 +18,9 @@ export const updateApp = registerSW({
   onNeedRefresh() {
     _updateAvailable = true
     _updateListeners.forEach((cb) => cb())
+    setTimeout(() => {
+      void updateApp(true)
+    }, 0)
   },
   onOfflineReady() {
     // 오프라인 준비 완료 - 별도 안내 X (조용히)
