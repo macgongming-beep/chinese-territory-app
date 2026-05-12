@@ -117,6 +117,30 @@ function IconBadge({ count }: { count?: number }) {
   )
 }
 
+function HeaderActionIcon({ name }: { name: 'notification' | 'chat' | 'menu' }) {
+  if (name === 'notification') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M18 9a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+        <path d="M10 21a2 2 0 0 0 4 0" />
+      </svg>
+    )
+  }
+  if (name === 'chat') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.4-4.2A8 8 0 1 1 21 12Z" />
+        <path d="M8 12h.01M12 12h.01M16 12h.01" />
+      </svg>
+    )
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 5h.01M12 12h.01M12 19h.01" />
+    </svg>
+  )
+}
+
 function HeaderOverlayPortal({ children }: { children: ReactNode }) {
   if (typeof document === 'undefined') return null
   return createPortal(children, document.body)
@@ -201,7 +225,7 @@ export function AppHeaderActionButtons({
           aria-label={resolvedNotificationCount ? `알림 ${resolvedNotificationCount}개` : '알림'}
           onClick={handleOpenNotifications}
         >
-          <span aria-hidden="true">🔔</span>
+          <HeaderActionIcon name="notification" />
           <IconBadge count={resolvedNotificationCount} />
         </button>
         <button
@@ -210,12 +234,12 @@ export function AppHeaderActionButtons({
           aria-label={resolvedChatCount ? `채팅 ${resolvedChatCount}개` : '채팅'}
           onClick={handleOpenChat}
         >
-          <span aria-hidden="true">💬</span>
+          <HeaderActionIcon name="chat" />
           <IconBadge count={resolvedChatCount} />
         </button>
         {showMenu ? (
           <button type="button" className={buttonClassName} aria-label="더보기" onClick={onOpenMenu}>
-            <span aria-hidden="true">⋮</span>
+            <HeaderActionIcon name="menu" />
           </button>
         ) : null}
       </div>

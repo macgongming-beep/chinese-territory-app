@@ -156,9 +156,9 @@ button:focus-visible {
   flex: 0 0 auto;
   min-width: 0;
   border: 1px solid var(--border-default);
-  background: var(--bg-card);
+  background: var(--gray-50);
   color: var(--gray-700);
-  box-shadow: var(--shadow-xs);
+  box-shadow: none;
 }
 
 .app-header__back {
@@ -210,10 +210,26 @@ button:focus-visible {
 
 .app-header__action {
   position: relative;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-full);
-  font-size: 18px;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+}
+
+.app-header__action:hover {
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+
+.app-header__action svg,
+.desktop-header-action svg,
+.mobile-map-header-action svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .app-header__badge {
@@ -263,10 +279,9 @@ button:focus-visible {
   min-height: 34px;
   padding: 0;
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-full);
-  background: var(--bg-card);
+  border-radius: 12px;
+  background: var(--gray-50);
   color: var(--gray-700);
-  font-size: 16px;
   box-shadow: none;
 }
 
@@ -292,11 +307,10 @@ button:focus-visible {
   min-height: 34px;
   padding: 0;
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-full);
-  background: var(--bg-card);
+  border-radius: 12px;
+  background: var(--gray-50);
   color: var(--gray-700);
-  font-size: 15px;
-  box-shadow: var(--shadow-xs);
+  box-shadow: none;
 }
 
 .header-action-panel-backdrop {

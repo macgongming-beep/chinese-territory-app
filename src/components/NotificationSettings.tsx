@@ -39,10 +39,10 @@ export function NotificationSettings({ userId }: { userId: number }) {
             </svg>
           </span>
           <div style={{ minWidth: 0 }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111827', lineHeight: 1.25 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 750, color: '#111827', lineHeight: 1.25 }}>
               알림 설정
             </h3>
-            <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 700, color: '#6b7280' }}>
+            <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 600, color: '#6b7280' }}>
               받을 알림과 조용한 시간 관리
             </p>
           </div>
@@ -50,7 +50,7 @@ export function NotificationSettings({ userId }: { userId: number }) {
         {saving && (
           <span style={{
             flexShrink: 0, padding: '5px 9px', borderRadius: 999,
-            background: '#f3f4f6', color: '#6b7280', fontSize: 11, fontWeight: 800,
+            background: '#f3f4f6', color: '#6b7280', fontSize: 11, fontWeight: 700,
           }}>
             저장 중
           </span>
@@ -60,7 +60,7 @@ export function NotificationSettings({ userId }: { userId: number }) {
       {/* 종류별 토글 */}
       <div style={{ marginBottom: 18 }}>
         <p style={{
-          margin: '0 0 8px', fontSize: 12, fontWeight: 800, color: '#6b7280',
+          margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#6b7280',
         }}>받을 알림 종류</p>
         {TYPES.map(({ key, label, desc }) => (
           <label
@@ -72,8 +72,8 @@ export function NotificationSettings({ userId }: { userId: number }) {
             }}
           >
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#111827', lineHeight: 1.25 }}>{label}</p>
-              <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 700, color: '#6b7280', lineHeight: 1.35 }}>{desc}</p>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 650, color: '#111827', lineHeight: 1.25 }}>{label}</p>
+              <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 500, color: '#6b7280', lineHeight: 1.35 }}>{desc}</p>
             </div>
             <Toggle
               checked={prefs[key]}
@@ -81,7 +81,7 @@ export function NotificationSettings({ userId }: { userId: number }) {
             />
           </label>
         ))}
-        <p style={{ margin: '10px 0 0', padding: '10px 12px', borderRadius: 12, background: '#f8fafc', fontSize: 12, fontWeight: 700, color: '#6b7280', lineHeight: 1.5 }}>
+        <p style={{ margin: '10px 0 0', padding: '10px 12px', borderRadius: 12, background: '#f8fafc', fontSize: 12, fontWeight: 500, color: '#6b7280', lineHeight: 1.5 }}>
           새 일정 등록 알림은 보내지 않습니다. 일정 추가와 삭제가 잦은 흐름을 고려했습니다.
         </p>
       </div>
@@ -89,7 +89,7 @@ export function NotificationSettings({ userId }: { userId: number }) {
       {/* 방해금지 시간 */}
       <div>
         <p style={{
-          margin: '0 0 8px', fontSize: 12, fontWeight: 800, color: '#6b7280',
+          margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#6b7280',
         }}>방해금지 시간</p>
 
         <label style={{
@@ -97,8 +97,8 @@ export function NotificationSettings({ userId }: { userId: number }) {
           gap: 12, padding: '11px 0', cursor: 'pointer',
         }}>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#111827', lineHeight: 1.25 }}>방해금지 시간 사용</p>
-            <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 700, color: '#6b7280', lineHeight: 1.35 }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 650, color: '#111827', lineHeight: 1.25 }}>방해금지 시간 사용</p>
+            <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 500, color: '#6b7280', lineHeight: 1.35 }}>
               설정한 시간에는 알림이 와도 무음 (배지로만 표시)
             </p>
           </div>
@@ -120,7 +120,7 @@ export function NotificationSettings({ userId }: { userId: number }) {
             background: '#f8fafc', border: '1px solid #eef1f5', borderRadius: 12,
           }}>
             <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#6b7280', marginBottom: 5 }}>시작</label>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6b7280', marginBottom: 5 }}>시작</label>
               <input
                 type="time"
                 value={localStart}
@@ -130,12 +130,12 @@ export function NotificationSettings({ userId }: { userId: number }) {
                 }}
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: 9,
-                  border: '1px solid #d8dbe0', fontSize: 13, fontWeight: 700, color: '#111827',
+                  border: '1px solid #d8dbe0', fontSize: 13, fontWeight: 600, color: '#111827',
                 }}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#6b7280', marginBottom: 5 }}>종료</label>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6b7280', marginBottom: 5 }}>종료</label>
               <input
                 type="time"
                 value={localEnd}
@@ -145,7 +145,7 @@ export function NotificationSettings({ userId }: { userId: number }) {
                 }}
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: 9,
-                  border: '1px solid #d8dbe0', fontSize: 13, fontWeight: 700, color: '#111827',
+                  border: '1px solid #d8dbe0', fontSize: 13, fontWeight: 600, color: '#111827',
                 }}
               />
             </div>
@@ -168,14 +168,15 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       }}
       style={{
         position: 'relative',
-        width: 42,
-        height: 24,
+        width: 58,
+        height: 30,
         flexShrink: 0,
         borderRadius: 99,
-        border: 'none',
-        background: checked ? '#1d4ed8' : '#d8dbe0',
+        border: `1px solid ${checked ? '#c7d7fe' : '#d8dbe0'}`,
+        background: checked ? '#eff4fe' : '#f3f4f6',
+        color: checked ? '#1d4ed8' : '#6b7280',
         cursor: 'pointer',
-        transition: 'background 0.15s',
+        transition: 'background 0.15s, border-color 0.15s, color 0.15s',
         padding: 0,
         marginLeft: 12,
       }}
@@ -183,12 +184,28 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       <span
         style={{
           position: 'absolute',
-          top: 2,
-          left: checked ? 20 : 2,
-          width: 20,
-          height: 20,
+          top: 0,
+          right: checked ? 24 : 8,
+          left: checked ? 8 : 'auto',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          fontSize: 10,
+          fontWeight: 700,
+          lineHeight: 1,
+        }}
+      >
+        {checked ? '켬' : '끔'}
+      </span>
+      <span
+        style={{
+          position: 'absolute',
+          top: 3,
+          left: checked ? 31 : 3,
+          width: 22,
+          height: 22,
           borderRadius: '50%',
-          background: '#fff',
+          background: checked ? '#1d4ed8' : '#ffffff',
           transition: 'left 0.15s',
           boxShadow: '0 1px 2px rgba(16,24,40,0.18)',
         }}
