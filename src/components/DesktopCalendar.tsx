@@ -130,8 +130,9 @@ export function DesktopCalendar({
   const [month, setMonth] = useState(today.getMonth() + 1)
   const [selectedDay, setSelectedDay] = useState(today.getDate())
   const [searchParams, setSearchParams] = useSearchParams()
+  const [chatEvent, setChatEvent] = useState<CalendarEvent | null>(null)
 
-  // openChat=<eventId> 쿼리 처리: 해당 일정 날짜로 이동 + 스크롤
+  // openChat=<eventId> 쿼리 처리: 해당 일정 날짜로 이동 + 채팅방 열기
   useEffect(() => {
     const openChatId = searchParams.get('openChat')
     if (!openChatId) return
@@ -142,6 +143,7 @@ export function DesktopCalendar({
     setYear(d.getFullYear())
     setMonth(d.getMonth() + 1)
     setSelectedDay(d.getDate())
+    setChatEvent(targetEvent)
 
     // 다음 tick에 스크롤
     setTimeout(() => {
@@ -167,7 +169,6 @@ export function DesktopCalendar({
   const [repeatEnd, setRepeatEnd] = useState('')
   const [editingEventId, setEditingEventId] = useState<number | null>(null)
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null)
-  const [chatEvent, setChatEvent] = useState<CalendarEvent | null>(null)
   const [scopeModal, setScopeModal] = useState<ScopeModal | null>(null)
   const [showPeriodForm, setShowPeriodForm] = useState(false)
   const [periodLabel, setPeriodLabel] = useState('')
