@@ -125,3 +125,21 @@ self.addEventListener('message', (event) => {
     self.skipWaiting()
   }
 })
+
+// 새 서비스워커가 활성화되면 이미 열려 있는 화면도 새 번들로 다시 읽게 한다.
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      await Promise.all(
+        clientsList.map(async (client) => {
+          try {
+            await client.navigate(client.url)
+          } catch {
+            // 일부 브라우저/PWA 환경에서는 navigate가 막힐 수 있다.
+          }
+        })
+      )
+    })()
+  )
+})
