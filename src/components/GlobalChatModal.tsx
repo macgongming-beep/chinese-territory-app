@@ -35,6 +35,28 @@ function formatEventLabel(eventDate: string, eventTime: string | null): string {
   return eventTime ? `${dateLabel} ${eventTime}` : dateLabel
 }
 
+function ChatEmptyIcon() {
+  return (
+    <span className="header-action-panel__empty-icon" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M5.5 16.5L4 20l4-1.4c1.1.5 2.4.8 3.8.8 4.4 0 8-2.9 8-6.7S16.2 6 11.8 6 4 8.9 4 12.7c0 1.4.5 2.7 1.5 3.8Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M8.5 12.7h.01M12 12.7h.01M15.5 12.7h.01"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+        />
+      </svg>
+    </span>
+  )
+}
+
 export function GlobalChatModal({
   userId,
   userName,
@@ -55,7 +77,7 @@ export function GlobalChatModal({
   onClose: () => void
 }) {
   const [localSelectedChat, setLocalSelectedChat] = useState<UserChat | null>(null)
-  const { activeChats, lockedChats, loading } = useUserChats(userId, userName)
+  const { activeChats, lockedChats, loading } = useUserChats(userId, userName, { realtime: false })
   const selectedChat = controlledSelectedChat ?? localSelectedChat
 
   const handleClick = (chat: UserChat) => {
@@ -171,7 +193,7 @@ export function GlobalChatModal({
             />
           ) : !userId ? (
             <div className="header-action-panel__empty" style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
-              <span style={{ fontSize: 36, marginBottom: 8 }}>💬</span>
+              <ChatEmptyIcon />
               <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#475569' }}>로그인 정보 확인이 필요합니다</p>
               <p style={{ margin: '6px 0 0', fontSize: 12 }}>다시 로그인하면 채팅 목록을 불러올 수 있습니다.</p>
             </div>
@@ -183,7 +205,7 @@ export function GlobalChatModal({
 
           {!selectedChat && userId && !loading && activeChats.length === 0 && lockedChats.length === 0 && (
             <div className="header-action-panel__empty" style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
-              <span style={{ fontSize: 36, marginBottom: 8 }}>💬</span>
+              <ChatEmptyIcon />
               <p style={{ margin: 0, fontSize: 14 }}>참여한 봉사 채팅방이 없습니다</p>
               <p style={{ margin: '6px 0 0', fontSize: 12 }}>일정 상세에서 [참여]를 누르면 채팅방에 입장됩니다</p>
             </div>
@@ -195,7 +217,7 @@ export function GlobalChatModal({
               <p style={{
                 margin: 0, padding: '12px 16px 6px', fontSize: 11, fontWeight: 700,
                 color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase',
-              }}>🟢 활성 (참여 중)</p>
+              }}>활성 채팅</p>
               {activeChats.map((chat) => (
                 <ChatRow key={chat.eventId} chat={chat} onClick={handleClick} />
               ))}

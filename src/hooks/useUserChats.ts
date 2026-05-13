@@ -2,18 +2,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getAuthToken } from '../lib/authToken'
+import {
+  USER_CHATS_CACHE_TTL,
+  clearInflightUserChats,
+  getCachedUserChats,
+  getInflightUserChats,
+  getUserChatsCacheKey,
+  setCachedUserChats,
+  setInflightUserChats,
+  type UserChat,
+} from '../lib/userChatsCache'
 
-export type UserChat = {
-  eventId: number
-  eventTitle: string
-  eventDate: string
-  eventTime: string | null
-  participantCount: number
-  lastMessageAt: string | null
-  unreadCount: number
-  isLocked: boolean // service_session 종료 + 7일 경과
-  hasEnded: boolean // service_session 종료 (1주일 활성)
-}
+export type { UserChat } from '../lib/userChatsCache'
 
 type EventRow = {
   id: number
@@ -43,30 +43,23 @@ type SessionRow = {
   ended_at: string | null
 }
 
-type UserChatsCacheEntry = {
-  chats: UserChat[]
-  fetchedAt: number
-}
-
-const USER_CHATS_CACHE_TTL = 15 * 1000
-const userChatsCache = new Map<string, UserChatsCacheEntry>()
-const userChatsInflight = new Map<string, Promise<UserChat[]>>()
-
-function getUserChatsCacheKey(userId: number | null | undefined, userName: string | null | undefined) {
-  if (!userId || !userName) return null
-  return `${userId}:${userName}`
-}
-
-function getCachedUserChats(cacheKey: string | null) {
-  if (!cacheKey) return null
-  return userChatsCache.get(cacheKey) ?? null
-}
-
 function isLockedByEndedAt(latestEnded: number): boolean {
   return Date.now() - latestEnded > 7 * 24 * 60 * 60 * 1000
 }
 
-export function useUserChats(userId: number | null | undefined, userName: string | null | undefined) {
+function isMissingRpcFunction(error: { code?: string; message?: string } | null) {
+  if (!error) return false
+  return error.code === 'PGRST202'
+    || error.code === '42883'
+    || (error.message ?? '').includes('Could not find the function')
+}
+
+export function useUserChats(
+  userId: number | null | undefined,
+  userName: string | null | undefined,
+  options?: { realtime?: boolean },
+) {
+  const realtimeEnabled = options?.realtime !== false
   const cacheKey = getUserChatsCacheKey(userId, userName)
   const [chats, setChats] = useState<UserChat[]>(() => getCachedUserChats(cacheKey)?.chats ?? [])
   const [loading, setLoading] = useState(false)
@@ -92,7 +85,7 @@ export function useUserChats(userId: number | null | undefined, userName: string
       return
     }
 
-    const existingRequest = cacheKey ? userChatsInflight.get(cacheKey) : null
+    const existingRequest = getInflightUserChats(cacheKey)
     if (existingRequest) {
       setLoading(!cached)
       try {
@@ -150,16 +143,39 @@ export function useUserChats(userId: number | null | undefined, userName: string
       }
 
       // 3. 채팅 메시지 메타 (참여자 카운트, 최신, 안 읽음 카운트용)
-      const { data: messages } = await supabase
-        .from('chat_messages')
-        .select('event_id, created_at, author_id')
-        .in('event_id', eventIds)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(1000)
+      let messages: MessageMetaRow[] = []
+      let messageMetaLoadedByRpc = false
+      let canUseDirectFallback = false
+      if (token) {
+        const { data: rpcMessages, error: rpcError } = await supabase.rpc('get_chat_message_meta', {
+          p_token: token,
+          p_event_ids: eventIds,
+        })
+
+        if (!rpcError) {
+          messages = (rpcMessages ?? []) as MessageMetaRow[]
+          messageMetaLoadedByRpc = true
+        } else {
+          canUseDirectFallback = isMissingRpcFunction(rpcError)
+          messageMetaLoadedByRpc = !canUseDirectFallback
+          console.warn('[user_chats] get_chat_message_meta failed:', rpcError)
+        }
+      }
+
+      if (!messageMetaLoadedByRpc && (!token || canUseDirectFallback)) {
+        const { data: directMessages } = await supabase
+          .from('chat_messages')
+          .select('event_id, created_at, author_id')
+          .in('event_id', eventIds)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1000)
+
+        messages = (directMessages ?? []) as MessageMetaRow[]
+      }
 
       const messagesByEvent = new Map<number, MessageMetaRow[]>()
-      ;((messages ?? []) as MessageMetaRow[]).forEach((m) => {
+      messages.forEach((m) => {
         const arr = messagesByEvent.get(m.event_id) ?? []
         arr.push(m)
         messagesByEvent.set(m.event_id, arr)
@@ -233,24 +249,18 @@ export function useUserChats(userId: number | null | undefined, userName: string
       return result
     })()
 
-    if (cacheKey) {
-      userChatsInflight.set(cacheKey, loadPromise)
-    }
+    setInflightUserChats(cacheKey, loadPromise)
 
     try {
       const result = await loadPromise
-      if (cacheKey) {
-        userChatsCache.set(cacheKey, { chats: result, fetchedAt: Date.now() })
-      }
+      setCachedUserChats(cacheKey, result)
       setChats(result)
     } catch (e) {
       console.warn('[user_chats] fetch failed:', e)
       if (cached) setChats(cached.chats)
       else setChats([])
     } finally {
-      if (cacheKey) {
-        userChatsInflight.delete(cacheKey)
-      }
+      clearInflightUserChats(cacheKey)
       setLoading(false)
     }
   }, [cacheKey, userId, userName])
@@ -261,7 +271,7 @@ export function useUserChats(userId: number | null | undefined, userName: string
 
   // Realtime: 채팅 메시지 변동 시 재조회 (가벼운 디바운스)
   useEffect(() => {
-    if (!userId) return
+    if (!userId || !realtimeEnabled) return
     let pending: ReturnType<typeof setTimeout> | null = null
     const trigger = () => {
       if (pending) clearTimeout(pending)
@@ -272,13 +282,14 @@ export function useUserChats(userId: number | null | undefined, userName: string
       .channel(`user_chats:user:${userId}:${channelIdRef.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, trigger)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_read_status', filter: `user_id=eq.${userId}` }, trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_participants' }, trigger)
       .subscribe()
 
     return () => {
       if (pending) clearTimeout(pending)
       supabase.removeChannel(channel)
     }
-  }, [userId, fetchAll])
+  }, [userId, realtimeEnabled, fetchAll])
 
   // 총 안 읽음 수
   const totalUnread = useMemo(

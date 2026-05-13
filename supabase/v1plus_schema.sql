@@ -125,9 +125,8 @@ on public.chat_messages(author_id, created_at);
 alter table public.chat_messages enable row level security;
 drop policy if exists open_access on public.chat_messages;
 drop policy if exists chat_messages_read on public.chat_messages;
-create policy chat_messages_read on public.chat_messages
-for select to anon, authenticated
-using (true);
+-- chat_messages는 참여자 검증 RPC(get_chat_messages 계열)로만 읽는다.
+revoke all on public.chat_messages from anon, authenticated;
 
 -- ─── chat_read_status: 채팅 읽음 상태 ───────────────────────────
 create table if not exists public.chat_read_status (
@@ -279,8 +278,8 @@ grant select, insert, update, delete on
   public.notification_preferences
 to anon, authenticated;
 
--- chat_messages는 클라이언트 직접 쓰기를 막고 RPC로만 작성한다.
-grant select on public.chat_messages to anon, authenticated;
+-- chat_messages는 클라이언트 직접 읽기/쓰기를 막고 RPC로만 접근한다.
+revoke all on public.chat_messages from anon, authenticated;
 
 grant usage, select on sequence
   public.comments_id_seq,

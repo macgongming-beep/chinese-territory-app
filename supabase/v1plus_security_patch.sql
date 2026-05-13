@@ -166,15 +166,11 @@ $$;
 
 grant execute on function public.create_system_chat_message(uuid, integer, text) to anon, authenticated;
 
--- 채팅 메시지는 클라이언트에서 직접 읽기만 허용하고 쓰기는 RPC로만 허용한다.
+-- 채팅 메시지는 클라이언트 직접 읽기/쓰기를 막고 RPC로만 접근한다.
 revoke all on public.chat_messages from anon, authenticated;
 revoke usage, select on sequence public.chat_messages_id_seq from anon, authenticated;
 drop policy if exists open_access on public.chat_messages;
 drop policy if exists chat_messages_read on public.chat_messages;
-create policy chat_messages_read on public.chat_messages
-for select to anon, authenticated
-using (true);
-grant select on public.chat_messages to anon, authenticated;
 
 
 -- ─── 2. push_subscriptions 잠금 + RPC ────────────────────────

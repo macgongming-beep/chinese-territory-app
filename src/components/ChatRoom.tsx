@@ -31,6 +31,13 @@ type ChatRoomProps = {
   role?: Role
 }
 
+function isMissingRpcFunction(error: { code?: string; message?: string } | null | undefined) {
+  if (!error) return false
+  return error.code === 'PGRST202'
+    || error.code === '42883'
+    || (error.message ?? '').includes('Could not find the function')
+}
+
 function getMentionQuery(value: string) {
   const match = value.match(/(^|\s)@([^\s@]*)$/)
   return match ? match[2] : null
@@ -96,14 +103,39 @@ export function ChatRoom({
       return
     }
     setLoading(true)
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .select('id, event_id, author_id, author_name, message_type, content, image_url, image_expired, mention_ids, mention_names, created_at, deleted_at')
-      .eq('event_id', eventId)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: true })
+    const token = getAuthToken()
+    let data: ChatMessage[] | null = null
+    let error: unknown = null
+    let canUseDirectFallback = false
 
-    if (error) {
+    if (token) {
+      const rpcResult = await supabase.rpc('get_chat_messages', {
+        p_token: token,
+        p_event_id: eventId,
+      })
+      if (rpcResult.error) {
+        canUseDirectFallback = isMissingRpcFunction(rpcResult.error)
+        console.warn('채팅 메시지 RPC 조회 실패:', rpcResult.error)
+        error = rpcResult.error
+      } else {
+        data = (rpcResult.data as ChatMessage[]) ?? []
+        error = null
+      }
+    }
+
+    if (!data && error && canUseDirectFallback) {
+      const directResult = await supabase
+        .from('chat_messages')
+        .select('id, event_id, author_id, author_name, message_type, content, image_url, image_expired, mention_ids, mention_names, created_at, deleted_at')
+        .eq('event_id', eventId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: true })
+
+      data = (directResult.data as ChatMessage[]) ?? null
+      error = directResult.error
+    }
+
+    if (error || !data) {
       console.warn('채팅 메시지를 불러오지 못했습니다. chat_messages 테이블이 아직 없을 수 있습니다.', error)
       setMissingTable(true)
       setMessages([])
@@ -112,7 +144,7 @@ export function ChatRoom({
     }
 
     setMissingTable(false)
-    setMessages((data as ChatMessage[]) ?? [])
+    setMessages(data)
     setLoading(false)
   }
 

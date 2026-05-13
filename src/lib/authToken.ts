@@ -1,3 +1,5 @@
+import { clearUserChatsCache } from './userChatsCache'
+
 const AUTH_SESSION_KEY = 'auth_session'
 const AUTH_TOKEN_KEY = 'auth_token'
 
@@ -52,6 +54,7 @@ export function setAuthToken(token: string, persistent: boolean) {
 }
 
 export function clearAuthStorage() {
+  clearUserChatsCache()
   localStorage.removeItem(AUTH_SESSION_KEY)
   localStorage.removeItem(AUTH_TOKEN_KEY)
   sessionStorage.removeItem(AUTH_SESSION_KEY)
