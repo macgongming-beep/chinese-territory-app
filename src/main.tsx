@@ -3,8 +3,13 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
+import { Analytics } from '@vercel/analytics/react'
 import { preloadNaverMapSDK } from './lib/preloadMap'
+import { initSentry } from './lib/sentry'
 import './lib/pwa' // Service Worker 등록 (사이드 이펙트만)
+
+// Sentry 가장 먼저 (이후 발생하는 모든 에러 캐치)
+initSentry()
 
 // 지도 SDK 미리 로드 (지도 화면 진입 시 즉시 사용 가능)
 preloadNaverMapSDK()
@@ -25,10 +30,31 @@ document.addEventListener('touchmove', (event) => {
   }
 }, { passive: false })
 
+import { Sentry } from './lib/sentry'
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <Sentry.ErrorBoundary
+      fallback={({ resetError }) => (
+        <div style={{ padding: 40, textAlign: 'center' }}>
+          <h2 style={{ marginBottom: 10 }}>오류가 발생했습니다</h2>
+          <p style={{ color: '#64748b', marginBottom: 20 }}>
+            화면을 다시 불러와 주세요. 문제가 계속되면 관리자에게 문의해주세요.
+          </p>
+          <button
+            onClick={() => { resetError(); window.location.reload() }}
+            style={{
+              padding: '10px 20px', background: '#2563eb', color: '#fff',
+              border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700,
+            }}
+          >새로고침</button>
+        </div>
+      )}
+    >
+      <BrowserRouter>
+        <App />
+        <Analytics />
+      </BrowserRouter>
+    </Sentry.ErrorBoundary>
   </StrictMode>,
 )

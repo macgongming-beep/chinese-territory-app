@@ -9,6 +9,7 @@ import {
   setAuthSession,
   setAuthToken,
 } from '../lib/authToken'
+import { setSentryUser, clearSentryUser } from '../lib/sentry'
 import type { Role } from '../types'
 
 export type AuthUser = {
@@ -186,6 +187,7 @@ export function useAuth() {
         token: row.token ?? null,
       })
       setUser(authUser)
+      setSentryUser({ id: authUser.id, name: authUser.name })
 
       localStorage.setItem('currentVisitor', authUser.name)
 
@@ -268,6 +270,7 @@ export function useAuth() {
 
   const logout = () => {
     setUser(null)
+    clearSentryUser()
     clearAuthStorage()
     localStorage.removeItem('currentVisitor')
     showToast('로그아웃 되었습니다.')
