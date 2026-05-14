@@ -175,10 +175,25 @@ export function ChatRoom({
       void markChatRead()
     }
 
-    const interval = window.setInterval(refreshActiveChat, 5_000)
+    const channel = supabase
+      .channel(`chat_signal:${eventId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_message_signals',
+          filter: `event_id=eq.${eventId}`,
+        },
+        refreshActiveChat,
+      )
+      .subscribe()
+
+    const interval = window.setInterval(refreshActiveChat, 15_000)
     document.addEventListener('visibilitychange', refreshActiveChat)
 
     return () => {
+      void supabase.removeChannel(channel)
       window.clearInterval(interval)
       document.removeEventListener('visibilitychange', refreshActiveChat)
       void markChatRead() // 이탈 시 한 번 더 (안전)

@@ -245,8 +245,9 @@ export function useUserChats(
     fetchAll()
   }, [fetchAll])
 
-  // Realtime: 참여/일정/읽음 상태 변경 시 재조회.
-  // chat_messages 본문은 민감 정보라 직접 SELECT/Realtime을 열지 않고 RPC 폴링으로 보완한다.
+  // Realtime: 참여/일정/읽음/채팅 신호 변경 시 재조회.
+  // chat_messages 본문은 민감 정보라 직접 SELECT/Realtime을 열지 않고,
+  // chat_message_signals 신호를 받은 뒤 RPC로 다시 읽는다.
   useEffect(() => {
     if (!userId || !realtimeEnabled) return
     let pending: ReturnType<typeof setTimeout> | null = null
@@ -262,11 +263,12 @@ export function useUserChats(
       .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, trigger)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_card_assignments' }, trigger)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_card_assignment_cards' }, trigger)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_message_signals' }, trigger)
       .subscribe()
 
     const interval = window.setInterval(() => {
       if (!document.hidden) fetchAll({ force: true })
-    }, 15_000)
+    }, 30_000)
 
     return () => {
       if (pending) clearTimeout(pending)
