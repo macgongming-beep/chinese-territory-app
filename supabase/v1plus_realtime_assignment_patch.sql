@@ -105,7 +105,7 @@ begin
               then ' · ' || v_card_name
               else ''
             end;
-  v_link := '/calendar?openChat=' || new.event_id;
+  v_link := '/territory?assignmentEvent=' || new.event_id;
 
   perform public.insert_notifications(
     array[v_recipient_id],

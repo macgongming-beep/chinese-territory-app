@@ -235,7 +235,7 @@ function DesktopLeaderAssignmentView({
     const next = persistDraft(draft, action)
     if (!next) { setSaving(false); return }
     if (action === 'shared') { await persistShared(next); showToast('배정이 공유되었습니다.', 'success') }
-    else showToast('배정이 확정되었습니다.', 'success')
+    else { await persistShared(next); showToast('배정이 확정되었습니다.', 'success') }
     setSaving(false)
   }
 

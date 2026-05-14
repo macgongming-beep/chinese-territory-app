@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Building, CalendarEvent, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t } from '../i18n'
@@ -90,6 +90,8 @@ export function MobileTerritory({
   onUpdateReturnVisitAddress?: (id: number, address: string) => Promise<void>
 }) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const targetAssignmentEventId = Number(searchParams.get('assignmentEvent') ?? 0) || null
   const [filter, setFilter] = useState<'전체' | '미배정' | '내 카드'>('전체')
   const [showRegularDetail, setShowRegularDetail] = useState(false)
   const [showNewService, setShowNewService] = useState(false)
@@ -180,8 +182,14 @@ export function MobileTerritory({
   // 오늘 배정 공유된 내 카드 (event_card_assignments)
   const myTodayAssignments = useMemo(() => {
     const todayEvents = calendarEvents.filter((e) => e.date === today)
+    const targetEvent = targetAssignmentEventId
+      ? calendarEvents.find((event) => event.id === targetAssignmentEventId)
+      : null
+    const visibleEvents = targetEvent && !todayEvents.some((event) => event.id === targetEvent.id)
+      ? [targetEvent, ...todayEvents]
+      : todayEvents
     const result: Array<{ event: CalendarEvent; cards: TerritoryCard[]; teammates: string[] }> = []
-    for (const event of todayEvents) {
+    for (const event of visibleEvents) {
       const assignment = event.cardAssignments.find((a) => a.userName === currentVisitor)
       const isParticipant =
         !!assignment ||
@@ -203,13 +211,19 @@ export function MobileTerritory({
       result.push({ event, cards: assignedCards, teammates })
     }
     return result
-  }, [calendarEvents, today, currentVisitor, cards])
+  }, [calendarEvents, today, targetAssignmentEventId, currentVisitor, cards])
 
   const [expandedEventIds, setExpandedEventIds] = useState<Set<number>>(() => {
+    if (targetAssignmentEventId) return new Set([targetAssignmentEventId])
     const currentSlot = getCurrentTimeSlot()
     const currentEvent = myTodayAssignments.find(({ event }) => getTimeSlotFromTime(event.time) === currentSlot)
     return currentEvent ? new Set([currentEvent.event.id]) : new Set()
   })
+
+  useEffect(() => {
+    if (!targetAssignmentEventId) return
+    setExpandedEventIds((prev) => new Set(prev).add(targetAssignmentEventId))
+  }, [targetAssignmentEventId])
 
   const myTodaySessions = useMemo(
     () =>

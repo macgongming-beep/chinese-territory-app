@@ -380,6 +380,7 @@ export function MobileLeaderAssignment({
       showToast('미배정 인원이 있는 상태로 배정을 공유했습니다')
       return
     }
+    await persistSharedAssignments(nextDraft)
     showToast('미배정 인원이 있는 상태로 배정을 확정했습니다')
   }
 
@@ -720,7 +721,7 @@ export function MobileLeaderAssignment({
                   <div className="leader-confirm-copy">
                     <strong>미배정 인원이 남아 있습니다.</strong>
                     <p>{unassignedParticipants.map((p) => p.name).join(', ')}</p>
-                    <span>{pendingAction === 'shared' ? '공유하면 배정된 참가자 카드만 공개됩니다.' : '확정 상태로만 저장되며, 참가자 앱에는 아직 공개되지 않습니다.'}</span>
+                    <span>{pendingAction === 'shared' ? '공유하면 배정된 참가자 카드만 공개됩니다.' : '확정하면 배정된 참가자 카드가 나의 봉사에 표시됩니다.'}</span>
                   </div>
                 </div>
                 <div className="cal-modal-foot">
