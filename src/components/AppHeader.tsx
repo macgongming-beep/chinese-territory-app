@@ -247,7 +247,7 @@ export function AppHeaderActionButtons({
       {openNotifications ? (
         <HeaderOverlayPortal>
           <HeaderOverlayErrorBoundary onClose={() => setOpenNotifications(false)}>
-            <NotificationCenter userId={userId ?? null} onClose={() => setOpenNotifications(false)} />
+            <NotificationCenter userId={userId ?? null} userName={userName} onClose={() => setOpenNotifications(false)} />
           </HeaderOverlayErrorBoundary>
         </HeaderOverlayPortal>
       ) : null}

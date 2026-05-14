@@ -11,6 +11,7 @@ export type NotificationType =
   | 'chat'
   | 'service_started'
   | 'service_ended'
+  | 'assignment'
 
 export type AppNotification = {
   id: number

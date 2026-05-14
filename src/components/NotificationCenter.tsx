@@ -1,6 +1,7 @@
 // 알림 센터 (헤더 🔔 클릭 시 슬라이드 다운)
 import { useNavigate } from 'react-router-dom'
 import { useNotifications, type AppNotification, type NotificationType } from '../hooks/useNotifications'
+import { useUserChats } from '../hooks/useUserChats'
 import { normalizeAppLink } from '../utils/appNavigation'
 
 const TYPE_LABEL: Record<NotificationType, { icon: NotificationIconName; color: string; bg: string }> = {
@@ -11,6 +12,58 @@ const TYPE_LABEL: Record<NotificationType, { icon: NotificationIconName; color: 
   chat: { icon: 'chat', color: '#0891b2', bg: '#ecfeff' },
   service_started: { icon: 'play', color: '#059669', bg: '#ecfdf5' },
   service_ended: { icon: 'stop', color: '#64748b', bg: '#f3f4f6' },
+  assignment: { icon: 'mention', color: '#0d9488', bg: '#ccfbf1' },
+}
+
+// 채팅 알림 → 카톡 스타일 그룹 (event_id 기준)
+function extractEventIdFromLink(link: string | null): number | null {
+  if (!link) return null
+  const m = link.match(/openChat=(\d+)/)
+  return m ? Number(m[1]) : null
+}
+
+type ChatGroup = {
+  eventId: number
+  notifications: AppNotification[]
+  latest: AppNotification
+  unreadCount: number
+}
+
+function groupChatNotifications(items: AppNotification[]): {
+  groups: ChatGroup[]
+  others: AppNotification[]
+} {
+  const map = new Map<number, AppNotification[]>()
+  const others: AppNotification[] = []
+  for (const n of items) {
+    const isChatKind = n.type === 'chat' || n.type === 'mention'
+    const eventId = isChatKind ? extractEventIdFromLink(n.link) : null
+    if (eventId !== null) {
+      const arr = map.get(eventId) ?? []
+      arr.push(n)
+      map.set(eventId, arr)
+    } else {
+      others.push(n)
+    }
+  }
+  const groups: ChatGroup[] = Array.from(map.entries()).map(([eventId, list]) => {
+    // 최신순 정렬
+    const sorted = [...list].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    const unread = sorted.filter((n) => !n.isRead)
+    return {
+      eventId,
+      notifications: sorted,
+      latest: sorted[0],
+      unreadCount: unread.length,
+    }
+  })
+  // 그룹은 최신 알림 시각으로 정렬
+  groups.sort(
+    (a, b) => new Date(b.latest.createdAt).getTime() - new Date(a.latest.createdAt).getTime()
+  )
+  return { groups, others }
 }
 
 type NotificationIconName = 'notice' | 'calendar' | 'message' | 'mention' | 'chat' | 'play' | 'stop' | 'bell'
@@ -89,16 +142,34 @@ function formatRelativeTime(iso: string): string {
 
 export function NotificationCenter({
   userId,
+  userName,
   onClose,
 }: {
   userId: number | null
+  userName?: string | null
   onClose: () => void
 }) {
   const navigate = useNavigate()
   const { notifications, markRead, markAllRead } = useNotifications(userId)
+  const { chats: userChats } = useUserChats(userId, userName ?? null, { realtime: false })
 
-  const unread = notifications.filter((n) => !n.isRead)
-  const readGroup = notifications.filter((n) => n.isRead)
+  const chatInfoMap = new Map<number, { title: string; participantCount: number }>()
+  userChats.forEach((c) =>
+    chatInfoMap.set(c.eventId, { title: c.eventTitle, participantCount: c.participantCount })
+  )
+
+  // 카톡 스타일: 채팅 알림 그룹화, 나머지는 그대로
+  const { groups: chatGroups, others } = groupChatNotifications(notifications)
+
+  // 표시 순서: 채팅 그룹 → 기타 알림 (안 읽음 우선)
+  const unreadOthers = others.filter((n) => !n.isRead)
+  const readOthers = others.filter((n) => n.isRead)
+  const unreadChatGroups = chatGroups.filter((g) => g.unreadCount > 0)
+  const readChatGroups = chatGroups.filter((g) => g.unreadCount === 0)
+
+  const totalUnread =
+    unreadOthers.length + chatGroups.reduce((sum, g) => sum + g.unreadCount, 0)
+  const hasAny = notifications.length > 0
 
   async function handleClickItem(n: AppNotification) {
     if (!n.isRead) await markRead(n.id)
@@ -107,6 +178,15 @@ export function NotificationCenter({
     if (targetLink) {
       navigate(targetLink)
     }
+  }
+
+  async function handleClickChatGroup(group: ChatGroup) {
+    // 그룹 내 안 읽음 모두 읽음 처리 (낙관적으로 동시 처리)
+    const unreadIds = group.notifications.filter((n) => !n.isRead).map((n) => n.id)
+    await Promise.all(unreadIds.map((id) => markRead(id)))
+    onClose()
+    const targetLink = normalizeAppLink(group.latest.link)
+    if (targetLink) navigate(targetLink)
   }
 
   return (
@@ -143,15 +223,15 @@ export function NotificationCenter({
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#1e293b' }}>알림</h2>
-            {unread.length > 0 && (
+            {totalUnread > 0 && (
               <span style={{
                 fontSize: 11, fontWeight: 700, color: '#fff', background: '#dc2626',
                 borderRadius: 99, padding: '2px 8px',
-              }}>{unread.length}</span>
+              }}>{totalUnread}</span>
             )}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {unread.length > 0 && (
+            {totalUnread > 0 && (
               <button
                 onClick={markAllRead}
                 style={{
@@ -189,7 +269,7 @@ export function NotificationCenter({
               <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#475569' }}>로그인 정보 확인이 필요합니다</p>
               <p style={{ margin: '6px 0 0', fontSize: 12 }}>다시 로그인하면 알림을 불러올 수 있습니다.</p>
             </div>
-          ) : notifications.length === 0 ? (
+          ) : !hasAny ? (
             <div className="header-action-panel__empty" style={{
               padding: '60px 20px', textAlign: 'center', color: '#94a3b8',
             }}>
@@ -203,24 +283,40 @@ export function NotificationCenter({
             </div>
           ) : (
             <>
-              {unread.length > 0 && (
+              {(unreadOthers.length > 0 || unreadChatGroups.length > 0) && (
                 <div>
                   <p style={{
                     margin: 0, padding: '12px 16px 6px', fontSize: 11, fontWeight: 700,
                     color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase',
                   }}>새 알림</p>
-                  {unread.map((n) => (
+                  {unreadChatGroups.map((g) => (
+                    <ChatGroupItem
+                      key={`chatgroup-${g.eventId}`}
+                      group={g}
+                      info={chatInfoMap.get(g.eventId)}
+                      onClick={handleClickChatGroup}
+                    />
+                  ))}
+                  {unreadOthers.map((n) => (
                     <NotificationItem key={n.id} notification={n} onClick={handleClickItem} />
                   ))}
                 </div>
               )}
-              {readGroup.length > 0 && (
+              {(readOthers.length > 0 || readChatGroups.length > 0) && (
                 <div>
                   <p style={{
                     margin: 0, padding: '16px 16px 6px', fontSize: 11, fontWeight: 700,
                     color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase',
                   }}>이전 알림</p>
-                  {readGroup.map((n) => (
+                  {readChatGroups.map((g) => (
+                    <ChatGroupItem
+                      key={`chatgroup-${g.eventId}`}
+                      group={g}
+                      info={chatInfoMap.get(g.eventId)}
+                      onClick={handleClickChatGroup}
+                    />
+                  ))}
+                  {readOthers.map((n) => (
                     <NotificationItem key={n.id} notification={n} onClick={handleClickItem} />
                   ))}
                 </div>
@@ -243,6 +339,83 @@ export function NotificationCenter({
         }
       `}</style>
     </div>
+  )
+}
+
+function ChatGroupItem({
+  group,
+  info,
+  onClick,
+}: {
+  group: ChatGroup
+  info?: { title: string; participantCount: number }
+  onClick: (group: ChatGroup) => void
+}) {
+  const meta = TYPE_LABEL.chat
+  const eventTitle = info?.title ?? '봉사 채팅'
+  const participantCount = info?.participantCount ?? 0
+  const isAllRead = group.unreadCount === 0
+  // 최신 메시지 body 에서 author 분리: "author: content" 형태
+  const latestBody = group.latest.body ?? ''
+  return (
+    <button
+      onClick={() => onClick(group)}
+      style={{
+        display: 'flex', gap: 12, alignItems: 'flex-start',
+        width: '100%', padding: '12px 16px',
+        background: isAllRead ? '#fff' : '#f0f9ff',
+        border: 'none', borderBottom: '1px solid #f1f5f9',
+        cursor: 'pointer', textAlign: 'left',
+      }}
+      type="button"
+    >
+      <div style={{
+        flexShrink: 0, width: 38, height: 38, borderRadius: 12,
+        background: meta.bg, color: meta.color,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontWeight: 700, position: 'relative',
+      }}>
+        <NotificationIcon name={meta.icon} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 13, fontWeight: 700, color: '#1e293b',
+        }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            {eventTitle}
+          </span>
+          {participantCount > 0 && (
+            <span style={{
+              flexShrink: 0, fontSize: 11, fontWeight: 600, color: '#64748b',
+            }}>
+              {participantCount}명
+            </span>
+          )}
+        </div>
+        {latestBody && (
+          <p style={{
+            margin: '3px 0 0', fontSize: 12, color: '#64748b',
+            overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box',
+            WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', lineHeight: 1.4,
+          }}>{latestBody}</p>
+        )}
+        <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>
+          {formatRelativeTime(group.latest.createdAt)}
+        </p>
+      </div>
+      {group.unreadCount > 0 && (
+        <span style={{
+          flexShrink: 0, alignSelf: 'center',
+          minWidth: 22, height: 22, padding: '0 7px',
+          borderRadius: 99, background: '#dc2626', color: '#fff',
+          fontSize: 11, fontWeight: 800,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {group.unreadCount > 99 ? '99+' : group.unreadCount}
+        </span>
+      )}
+    </button>
   )
 }
 

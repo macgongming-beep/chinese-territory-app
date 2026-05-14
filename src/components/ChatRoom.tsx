@@ -87,6 +87,33 @@ export function ChatRoom({
   const [selectMode, setSelectMode] = useState(false)
   const [selectedMessageIds, setSelectedMessageIds] = useState<Set<number>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const atBottomRef = useRef(true)
+  const lastMessageIdRef = useRef<number | null>(null)
+
+  // 자동 스크롤: 사용자가 맨 아래 근처거나 본인이 보낸 메시지일 때만
+  useEffect(() => {
+    const el = messagesContainerRef.current
+    if (!el || messages.length === 0) return
+    const last = messages[messages.length - 1]
+    const isNewMessage = last.id !== lastMessageIdRef.current
+    const isInitialLoad = lastMessageIdRef.current === null
+    const isMine = last.author_name === currentVisitor
+    if (isNewMessage && (isInitialLoad || atBottomRef.current || isMine)) {
+      // 다음 프레임에 스크롤 (DOM 갱신 후)
+      requestAnimationFrame(() => {
+        el.scrollTop = el.scrollHeight
+      })
+    }
+    lastMessageIdRef.current = last.id
+  }, [messages, currentVisitor])
+
+  const handleMessagesScroll = () => {
+    const el = messagesContainerRef.current
+    if (!el) return
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight
+    atBottomRef.current = distance < 100
+  }
 
   const mentionQuery = getMentionQuery(draft)
   const mentionSuggestions = useMemo(() => {
@@ -374,7 +401,7 @@ export function ChatRoom({
         )}
       </div>
 
-      <div className="chat-messages">
+      <div className="chat-messages" ref={messagesContainerRef} onScroll={handleMessagesScroll}>
         {loading && messages.length === 0 ? (
           <div className="chat-empty">채팅을 불러오는 중...</div>
         ) : messages.length === 0 ? (
