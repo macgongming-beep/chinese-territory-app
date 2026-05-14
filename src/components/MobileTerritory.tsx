@@ -179,15 +179,23 @@ export function MobileTerritory({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   }, [])
 
-  // 오늘 배정 공유된 내 카드 (event_card_assignments)
+  // 오늘 봉사 + 앞으로 배정된 내 카드 (event_card_assignments)
   const myTodayAssignments = useMemo(() => {
     const todayEvents = calendarEvents.filter((e) => e.date === today)
+    const upcomingAssignedEvents = calendarEvents.filter((event) =>
+      event.date >= today &&
+      event.cardAssignments.some((assignment) => assignment.userName === currentVisitor) &&
+      !todayEvents.some((todayEvent) => todayEvent.id === event.id)
+    )
     const targetEvent = targetAssignmentEventId
       ? calendarEvents.find((event) => event.id === targetAssignmentEventId)
       : null
-    const visibleEvents = targetEvent && !todayEvents.some((event) => event.id === targetEvent.id)
-      ? [targetEvent, ...todayEvents]
-      : todayEvents
+    const visibleEvents = [
+      ...(targetEvent ? [targetEvent] : []),
+      ...todayEvents,
+      ...upcomingAssignedEvents,
+    ].filter((event, index, list) => list.findIndex((item) => item.id === event.id) === index)
+      .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
     const result: Array<{ event: CalendarEvent; cards: TerritoryCard[]; teammates: string[] }> = []
     for (const event of visibleEvents) {
       const assignment = event.cardAssignments.find((a) => a.userName === currentVisitor)
@@ -399,7 +407,7 @@ export function MobileTerritory({
         <>
           <section className="mobile-territory-section mobile-today-service-section">
             <div className="mobile-section-title mobile-territory-list-title mobile-execution-title">
-              <h2>{t(language, 'territory.todayService')}</h2>
+              <h2>{t(language, 'territory.assignedService')}</h2>
             </div>
             {myTodayAssignments.length === 0 ? (
               <div className="mobile-territory-empty">{t(language, 'territory.noTodayService')}</div>
@@ -411,7 +419,7 @@ export function MobileTerritory({
                     <article className={`mobile-today-service-card${isOpen ? ' open' : ''}`} key={event.id}>
                       <button className="mobile-today-service-toggle" onClick={() => toggleTodayEvent(event.id)} type="button">
                         <span aria-hidden="true">{isOpen ? '⌄' : '›'}</span>
-                        <strong>{event.time} {event.title}</strong>
+                        <strong>{event.date === today ? '' : `${fmtDate(event.date, language)} · `}{event.time} {event.title}</strong>
                         <b>{assignedCards.length}{t(language, 'calendar.countSuffix')}</b>
                       </button>
                       {isOpen && (
