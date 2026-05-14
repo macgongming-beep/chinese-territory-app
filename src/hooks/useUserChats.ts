@@ -283,6 +283,9 @@ export function useUserChats(
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, trigger)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_read_status', filter: `user_id=eq.${userId}` }, trigger)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_participants' }, trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_card_assignments' }, trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_card_assignment_cards' }, trigger)
       .subscribe()
 
     return () => {
