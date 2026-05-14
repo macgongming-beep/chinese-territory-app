@@ -47,13 +47,6 @@ function isLockedByEndedAt(latestEnded: number): boolean {
   return Date.now() - latestEnded > 7 * 24 * 60 * 60 * 1000
 }
 
-function isMissingRpcFunction(error: { code?: string; message?: string } | null) {
-  if (!error) return false
-  return error.code === 'PGRST202'
-    || error.code === '42883'
-    || (error.message ?? '').includes('Could not find the function')
-}
-
 export function useUserChats(
   userId: number | null | undefined,
   userName: string | null | undefined,
@@ -144,8 +137,6 @@ export function useUserChats(
 
       // 3. 채팅 메시지 메타 (참여자 카운트, 최신, 안 읽음 카운트용)
       let messages: MessageMetaRow[] = []
-      let messageMetaLoadedByRpc = false
-      let canUseDirectFallback = false
       if (token) {
         const { data: rpcMessages, error: rpcError } = await supabase.rpc('get_chat_message_meta', {
           p_token: token,
@@ -154,24 +145,9 @@ export function useUserChats(
 
         if (!rpcError) {
           messages = (rpcMessages ?? []) as MessageMetaRow[]
-          messageMetaLoadedByRpc = true
         } else {
-          canUseDirectFallback = isMissingRpcFunction(rpcError)
-          messageMetaLoadedByRpc = !canUseDirectFallback
           console.warn('[user_chats] get_chat_message_meta failed:', rpcError)
         }
-      }
-
-      if (!messageMetaLoadedByRpc && (!token || canUseDirectFallback)) {
-        const { data: directMessages } = await supabase
-          .from('chat_messages')
-          .select('event_id, created_at, author_id')
-          .in('event_id', eventIds)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(1000)
-
-        messages = (directMessages ?? []) as MessageMetaRow[]
       }
 
       const messagesByEvent = new Map<number, MessageMetaRow[]>()
@@ -269,7 +245,8 @@ export function useUserChats(
     fetchAll()
   }, [fetchAll])
 
-  // Realtime: 채팅 메시지 변동 시 재조회 (가벼운 디바운스)
+  // Realtime: 참여/일정/읽음 상태 변경 시 재조회.
+  // chat_messages 본문은 민감 정보라 직접 SELECT/Realtime을 열지 않고 RPC 폴링으로 보완한다.
   useEffect(() => {
     if (!userId || !realtimeEnabled) return
     let pending: ReturnType<typeof setTimeout> | null = null
@@ -280,7 +257,6 @@ export function useUserChats(
 
     const channel = supabase
       .channel(`user_chats:user:${userId}:${channelIdRef.current}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, trigger)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_read_status', filter: `user_id=eq.${userId}` }, trigger)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_participants' }, trigger)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, trigger)
@@ -288,8 +264,13 @@ export function useUserChats(
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_card_assignment_cards' }, trigger)
       .subscribe()
 
+    const interval = window.setInterval(() => {
+      if (!document.hidden) fetchAll({ force: true })
+    }, 15_000)
+
     return () => {
       if (pending) clearTimeout(pending)
+      window.clearInterval(interval)
       supabase.removeChannel(channel)
     }
   }, [userId, realtimeEnabled, fetchAll])

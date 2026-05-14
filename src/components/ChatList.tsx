@@ -18,13 +18,6 @@ type ChatListProps = {
   onSelectEvent?: (eventId: number) => void
 }
 
-function isMissingRpcFunction(error: { code?: string; message?: string } | null | undefined) {
-  if (!error) return false
-  return error.code === 'PGRST202'
-    || error.code === '42883'
-    || (error.message ?? '').includes('Could not find the function')
-}
-
 function formatRelativeTime(value?: string) {
   if (!value) return ''
   const date = new Date(value)
@@ -52,7 +45,6 @@ export function ChatList({ events, activeEventId, onSelectEvent }: ChatListProps
       const token = getAuthToken()
       let data: ChatListMessage[] | null = null
       let error: unknown = null
-      let canUseDirectFallback = false
 
       if (token) {
         const rpcResult = await supabase.rpc('get_chat_message_previews', {
@@ -61,26 +53,12 @@ export function ChatList({ events, activeEventId, onSelectEvent }: ChatListProps
         })
 
         if (rpcResult.error) {
-          canUseDirectFallback = isMissingRpcFunction(rpcResult.error)
           console.warn('채팅 목록 RPC 조회 실패:', rpcResult.error)
           error = rpcResult.error
         } else {
           data = (rpcResult.data as ChatListMessage[]) ?? []
           error = null
         }
-      }
-
-      if (!data && error && canUseDirectFallback) {
-        const directResult = await supabase
-          .from('chat_messages')
-          .select('id, event_id, author_name, message_type, content, created_at')
-          .in('event_id', eventIds)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(200)
-
-        data = (directResult.data as ChatListMessage[]) ?? null
-        error = directResult.error
       }
 
       if (error || !data) {

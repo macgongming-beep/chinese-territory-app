@@ -14,12 +14,10 @@
 --    → chat_messages / chat_read_status / event_participants /
 --      event_card_assignments / event_card_assignment_cards 에 적용.
 --
--- 3) Realtime "permission denied for table chat_messages":
---    이전 보안 패치에서 anon/authenticated 의 SELECT 권한이
---    REVOKE 되어 Realtime 구독이 실패함.
---    → 내부 사용(80명, 비공개 URL) 가정으로 SELECT 권한과
---      open SELECT 정책을 부여한다. INSERT/UPDATE/DELETE 는
---      여전히 RPC 경유 (REVOKE 유지).
+-- 3) Realtime 권한:
+--    chat_read_status / notifications 는 Realtime 조회 권한을 유지한다.
+--    chat_messages 는 민감 본문이므로 직접 SELECT 를 열지 않는다.
+--    메시지 본문/메타는 get_chat_messages 계열 RPC 로만 읽는다.
 -- =============================================================
 
 -- ─── 1. notifications type CHECK 갱신 ──────────────────────────
@@ -45,16 +43,11 @@ alter table public.event_card_assignment_cards replica identity full;
 alter table public.calendar_events replica identity full;
 alter table public.notifications replica identity full;
 
--- ─── 3. Realtime 용 SELECT 권한 복구 ──────────────────────────
--- chat_messages: 읽기만 anon/authenticated 에게 허용.
--- INSERT/UPDATE/DELETE 는 v1plus_security_patch.sql 의 RPC 만 사용.
-grant select on public.chat_messages to anon, authenticated;
+-- ─── 3. Realtime 용 SELECT 권한 정리 ──────────────────────────
+-- chat_messages: 직접 SELECT 금지. 채팅방은 RPC + 짧은 주기 갱신을 사용.
+revoke select on public.chat_messages from anon, authenticated;
 drop policy if exists chat_messages_realtime_select on public.chat_messages;
-create policy chat_messages_realtime_select
-  on public.chat_messages
-  for select
-  to anon, authenticated
-  using (deleted_at is null);
+drop policy if exists chat_messages_read on public.chat_messages;
 
 -- chat_read_status: 읽기만 허용 (본인 것만 보여줘도 무방하나
 -- Realtime 필터링은 클라이언트에서 user_id=eq.X 로 이미 함)

@@ -31,13 +31,6 @@ type ChatRoomProps = {
   role?: Role
 }
 
-function isMissingRpcFunction(error: { code?: string; message?: string } | null | undefined) {
-  if (!error) return false
-  return error.code === 'PGRST202'
-    || error.code === '42883'
-    || (error.message ?? '').includes('Could not find the function')
-}
-
 function getMentionQuery(value: string) {
   const match = value.match(/(^|\s)@([^\s@]*)$/)
   return match ? match[2] : null
@@ -133,7 +126,6 @@ export function ChatRoom({
     const token = getAuthToken()
     let data: ChatMessage[] | null = null
     let error: unknown = null
-    let canUseDirectFallback = false
 
     if (token) {
       const rpcResult = await supabase.rpc('get_chat_messages', {
@@ -141,25 +133,12 @@ export function ChatRoom({
         p_event_id: eventId,
       })
       if (rpcResult.error) {
-        canUseDirectFallback = isMissingRpcFunction(rpcResult.error)
         console.warn('채팅 메시지 RPC 조회 실패:', rpcResult.error)
         error = rpcResult.error
       } else {
         data = (rpcResult.data as ChatMessage[]) ?? []
         error = null
       }
-    }
-
-    if (!data && error && canUseDirectFallback) {
-      const directResult = await supabase
-        .from('chat_messages')
-        .select('id, event_id, author_id, author_name, message_type, content, image_url, image_expired, mention_ids, mention_names, created_at, deleted_at')
-        .eq('event_id', eventId)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: true })
-
-      data = (directResult.data as ChatMessage[]) ?? null
-      error = directResult.error
     }
 
     if (error || !data) {
@@ -190,20 +169,18 @@ export function ChatRoom({
     void fetchMessages()
     void markChatRead() // 진입 시 즉시 읽음 처리
 
-    const channel = supabase
-      .channel(`chat:${eventId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'chat_messages', filter: `event_id=eq.${eventId}` },
-        () => {
-          void fetchMessages()
-          if (!document.hidden) void markChatRead() // 활성 화면이면 즉시 갱신
-        },
-      )
-      .subscribe()
+    const refreshActiveChat = () => {
+      if (document.hidden) return
+      void fetchMessages()
+      void markChatRead()
+    }
+
+    const interval = window.setInterval(refreshActiveChat, 5_000)
+    document.addEventListener('visibilitychange', refreshActiveChat)
 
     return () => {
-      void supabase.removeChannel(channel)
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', refreshActiveChat)
       void markChatRead() // 이탈 시 한 번 더 (안전)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
