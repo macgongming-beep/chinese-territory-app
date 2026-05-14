@@ -357,12 +357,16 @@ export function MobileLeaderAssignment({
       showToast('임시 저장되었습니다')
       return
     }
+    if (nextStatus === 'confirmed') {
+      await persistSharedAssignments(nextDraft)
+      showToast('배정이 확정되었습니다')
+      return
+    }
     if (nextStatus === 'shared') {
       await persistSharedAssignments(nextDraft)
       showToast('배정이 공유되었습니다')
       return
     }
-    showToast('배정이 확정되었습니다')
   }
 
   const continuePendingAction = async () => {
