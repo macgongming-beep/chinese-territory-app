@@ -1,7 +1,64 @@
 # Chinese Territory App — 프로젝트 컨텍스트
 
 > **AI 에이전트 인수인계용. 작업 전 반드시 이 파일을 읽을 것.**
-> 마지막 업데이트: 2026-04-30 — Phase 1 보안 강화 + 백업 시스템 완료
+> 마지막 업데이트: 2026-05-14 — 실시간/알림/PWA UX 개선 라운드 완료
+
+---
+
+## 🆕 최근 변경 사항 (2026-05-14)
+
+이번 라운드에서 작업한 내용. 코덱스 인수인계 시 우선 확인.
+
+### 새 SQL 패치 (Supabase SQL Editor 에 이미 적용됨)
+1. `supabase/v1plus_realtime_assignment_patch.sql`
+   - `supabase_realtime` publication 에 채팅/일정/배정 관련 7개 테이블 추가
+     (`chat_messages`, `chat_read_status`, `notifications`,
+      `event_participants`, `calendar_events`,
+      `event_card_assignments`, `event_card_assignment_cards`)
+   - `event_card_assignments` INSERT 트리거 → `notify_on_card_assignment()`
+     → `insert_notifications` + `dispatch_push_notification`
+     ('assignment' 타입). 본인이 본인에게 배정 시 skip.
+2. `supabase/v1plus_realtime_fixes.sql`
+   - `notifications_type_check` 에 `'assignment'` 추가
+   - 7개 테이블에 `replica identity full` (postgres_changes 필터링용)
+   - `chat_messages` / `chat_read_status` / `notifications` 에 SELECT 권한
+     anon, authenticated 부여 + open SELECT policy
+     (Realtime이 RLS+grant 검사하므로 필요. INSERT/UPDATE/DELETE 는
+      여전히 REVOKE 되어 RPC 로만 가능)
+
+### 클라이언트 변경
+- **PWA 자동 갱신 + 풀-투-리프레시** (commit `35db918`)
+  - `useStore.ts`: visibilitychange/focus 시 fetchAll (10초 디바운스)
+  - `src/components/PullToRefresh.tsx` (모바일 풀투리프레시)
+  - `App.tsx`: `<PullToRefresh onRefresh={refetchAll} />`
+- **Realtime 구독 보강** (commit `b6503b1`)
+  - `useUserChats.ts`: chat_messages + chat_read_status + event_participants
+    에 더해 calendar_events / event_card_assignments / event_card_assignment_cards
+    도 구독 → 일정 만들거나 배정 받으면 헤더 채팅 목록 즉시 반영
+- **채팅 자동 스크롤 + 카톡 스타일 알림 그룹화** (commit `b871f34`)
+  - `ChatRoom.tsx`: `messagesContainerRef` + `atBottomRef` + `requestAnimationFrame` 스크롤.
+    사용자가 맨 아래 근처거나 본인 메시지일 때만 자동으로 맨 아래
+  - `NotificationCenter.tsx`: 채팅/멘션 알림을 `event_id` 별 그룹으로 묶어
+    [방 이름] [N명] [최신 메시지] [안 읽음 카운트 뱃지] 형태 표시
+    (event 제목/인원수는 `useUserChats` 로 enrich)
+  - `useNotifications.ts`: NotificationType 에 `'assignment'` 추가
+  - `AppHeader.tsx`: NotificationCenter 에 `userName` prop 전달
+- **PWA 업데이트 버튼** (commit `cb2d741`)
+  - `src/lib/pwa.ts`: 자동 적용 제거. `checkForUpdate()`, `applyUpdate()` 노출.
+    30분 주기 + visibilitychange/focus(10분 쿨다운) 자동 확인.
+  - `src/hooks/useAppUpdate.ts`
+  - `src/components/AppUpdateCard.tsx` (desktop/mobile variant)
+  - `DesktopSettings.tsx`, `MobileHome.tsx` 설정 탭에 카드 추가
+  - 사용자가 홈화면 PWA 삭제 없이 버튼 한 번으로 새 버전 적용 가능
+
+### 알려진 운영 메모
+- 배정 푸시 알림 정상 동작 확인됨 (사용자가 알림 권한 켜면 옴).
+- 채팅 실시간/배정 알림/일정 즉시 반영 — 위 SQL 두 개가 적용돼 있어야 동작.
+- `chinese-territory-app-rwb7` Vercel 프로젝트는 삭제됨.
+  현재 배포: https://chinese-territory-app-rwb7.vercel.app/ (기존 도메인 유지)
+  실제 프로젝트는 `chinese-territory-app`.
+
+---
 
 ---
 
@@ -276,6 +333,9 @@ App.css          [모바일 공통] 0px~
 - [ ] CSV import (카드/건물/세대)
 - [ ] `useStore.ts`, `DesktopTerritory.tsx` 분할 리팩토링
 - [ ] 자동화 테스트 (vitest)
+- [ ] chat_messages SELECT 를 anon/authenticated 에 다시 부여한 것을 더 좁은
+      RLS policy 로 좁히기 (현재 `using (deleted_at is null)` open).
+      예: 본인이 참가자인 일정만, 또는 token 기반 view.
 
 ---
 
