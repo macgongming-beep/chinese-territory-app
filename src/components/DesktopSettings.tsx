@@ -5,6 +5,7 @@ import { PERIOD_COLORS, roleLabels } from '../types'
 import { supabase } from '../lib/supabase'
 import { PwaInstallSection } from './PwaInstall'
 import { NotificationSettings } from './NotificationSettings'
+import { AppUpdateCard } from './AppUpdateCard'
 
 function formatLoginAt(iso: string): string {
   const d = new Date(iso)
@@ -154,6 +155,8 @@ export function DesktopSettings({
             </div>
           </div>
         </article>
+
+        <AppUpdateCard variant="desktop" />
 
         <article className="desk-card ds-card">
           <div className="desk-card__head">

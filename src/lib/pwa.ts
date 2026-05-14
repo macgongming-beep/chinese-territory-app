@@ -2,6 +2,7 @@
 import { registerSW } from 'virtual:pwa-register'
 
 let _updateAvailable = false
+let _swRegistration: ServiceWorkerRegistration | null = null
 const _updateListeners = new Set<() => void>()
 
 export function isUpdateAvailable() {
@@ -13,22 +14,55 @@ export function onUpdateAvailable(cb: () => void) {
   return () => _updateListeners.delete(cb)
 }
 
+/** 수동 업데이트 확인 — 새 SW가 있는지 즉시 검사 */
+export async function checkForUpdate(): Promise<boolean> {
+  if (!_swRegistration) return false
+  try {
+    await _swRegistration.update()
+  } catch (e) {
+    console.warn('[PWA] update check failed:', e)
+  }
+  return _updateAvailable
+}
+
+/** 새 버전 적용 (SKIP_WAITING + reload) */
+export async function applyUpdate(): Promise<void> {
+  try {
+    await updateApp(true)
+  } catch (e) {
+    console.warn('[PWA] applyUpdate failed, hard reload:', e)
+    window.location.reload()
+  }
+}
+
 export const updateApp = registerSW({
   immediate: true,
   onNeedRefresh() {
     _updateAvailable = true
     _updateListeners.forEach((cb) => cb())
-    setTimeout(() => {
-      void updateApp(true)
-    }, 0)
+    // 자동 적용하지 않음 — 사용자가 설정에서 버튼으로 적용
   },
   onOfflineReady() {
-    // 오프라인 준비 완료 - 별도 안내 X (조용히)
     console.log('[PWA] Offline ready')
   },
   onRegistered(swRegistration) {
     if (swRegistration) {
+      _swRegistration = swRegistration
       console.log('[PWA] Service Worker registered')
+      // 주기적으로 업데이트 확인 (30분마다)
+      setInterval(() => {
+        swRegistration.update().catch(() => {})
+      }, 30 * 60 * 1000)
+      // 포커스/가시성 변경 시에도 확인 (마지막 체크가 10분 넘었으면)
+      let lastCheck = Date.now()
+      const onVisible = () => {
+        if (document.hidden) return
+        if (Date.now() - lastCheck < 10 * 60 * 1000) return
+        lastCheck = Date.now()
+        swRegistration.update().catch(() => {})
+      }
+      document.addEventListener('visibilitychange', onVisible)
+      window.addEventListener('focus', onVisible)
     }
   },
   onRegisterError(error) {
