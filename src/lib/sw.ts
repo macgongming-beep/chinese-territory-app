@@ -54,6 +54,24 @@ interface PushPayload {
   timestamp?: number
 }
 
+const activeChatByClient = new Map<string, number | null>()
+
+function getChatEventIdFromLink(link?: string): number | null {
+  if (!link) return null
+  try {
+    const url = new URL(link, self.location.origin)
+    const value = url.searchParams.get('openChat')
+    if (!value) return null
+    const eventId = Number(value)
+    return Number.isFinite(eventId) ? eventId : null
+  } catch {
+    const match = link.match(/[?&]openChat=(\d+)/)
+    if (!match) return null
+    const eventId = Number(match[1])
+    return Number.isFinite(eventId) ? eventId : null
+  }
+}
+
 self.addEventListener('push', (event: PushEvent) => {
   if (!event.data) return
 
@@ -86,7 +104,16 @@ self.addEventListener('push', (event: PushEvent) => {
   } as NotificationOptions & { renotify?: boolean }
 
   event.waitUntil(
-    self.registration.showNotification(payload.title, options)
+    (async () => {
+      const chatEventId = getChatEventIdFromLink(payload.link)
+      if ((payload.type === 'chat' || payload.type === 'mention') && chatEventId !== null) {
+        const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+        const hasOpenChatClient = clientsList.some((client) => activeChatByClient.get(client.id) === chatEventId)
+        if (hasOpenChatClient) return
+      }
+
+      await self.registration.showNotification(payload.title, options)
+    })()
   )
 })
 
@@ -123,6 +150,19 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting()
+    return
+  }
+
+  if (event.data && event.data.type === 'ACTIVE_CHAT') {
+    const source = event.source
+    const clientId = source && 'id' in source ? source.id : null
+    if (!clientId) return
+    const eventId = Number(event.data.eventId)
+    if (Number.isFinite(eventId) && eventId > 0) {
+      activeChatByClient.set(clientId, eventId)
+    } else {
+      activeChatByClient.delete(clientId)
+    }
   }
 })
 

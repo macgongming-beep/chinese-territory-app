@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getAuthToken } from '../lib/authToken'
+import { isActiveChatLink } from '../lib/activeChat'
 
 export type NotificationType =
   | 'notice'
@@ -53,6 +54,18 @@ function toNotification(raw: RawNotification): AppNotification {
 
 const PAGE_SIZE = 50
 
+async function markReadSilently(notificationId: number) {
+  const token = getAuthToken()
+  if (!token) return
+  const { error } = await supabase.rpc('mark_notification_read', {
+    p_token: token,
+    p_notification_id: notificationId,
+  })
+  if (error) {
+    console.warn('[notifications] silent markRead failed:', error)
+  }
+}
+
 export function useNotifications(userId: number | null | undefined) {
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(false)
@@ -102,6 +115,10 @@ export function useNotifications(userId: number | null | undefined) {
         },
         (payload) => {
           const raw = payload.new as RawNotification
+          if ((raw.type === 'chat' || raw.type === 'mention') && isActiveChatLink(raw.link)) {
+            void markReadSilently(raw.id)
+            return
+          }
           setNotifications((prev) => {
             // 중복 방지
             if (prev.some((n) => n.id === raw.id)) return prev

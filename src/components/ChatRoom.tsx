@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { showToast } from '../lib/toast'
 import { getAuthToken } from '../lib/authToken'
+import { getActiveChatEventId, setActiveChatEventId } from '../lib/activeChat'
 import type { MentionUser } from './CommentSection'
 import type { Role } from '../types'
 
@@ -166,6 +167,15 @@ export function ChatRoom({
   }
 
   useEffect(() => {
+    const syncActiveChat = () => {
+      if (document.hidden || !canAccess) {
+        if (getActiveChatEventId() === eventId) setActiveChatEventId(null)
+        return
+      }
+      setActiveChatEventId(eventId)
+    }
+
+    syncActiveChat()
     void fetchMessages()
     void markChatRead() // 진입 시 즉시 읽음 처리
 
@@ -191,11 +201,14 @@ export function ChatRoom({
 
     const interval = window.setInterval(refreshActiveChat, 15_000)
     document.addEventListener('visibilitychange', refreshActiveChat)
+    document.addEventListener('visibilitychange', syncActiveChat)
 
     return () => {
       void supabase.removeChannel(channel)
       window.clearInterval(interval)
       document.removeEventListener('visibilitychange', refreshActiveChat)
+      document.removeEventListener('visibilitychange', syncActiveChat)
+      if (getActiveChatEventId() === eventId) setActiveChatEventId(null)
       void markChatRead() // 이탈 시 한 번 더 (안전)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
