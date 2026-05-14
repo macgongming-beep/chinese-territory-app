@@ -239,6 +239,25 @@ export function useStore() {
     })
   }, [fetchAll])
 
+  // PWA 백그라운드 → 포어그라운드 복귀 시 자동 갱신
+  // (브라우저 새로고침이 없는 PWA에서 최신 데이터 확보)
+  useEffect(() => {
+    let lastFetchAt = Date.now()
+    const onVisible = () => {
+      if (document.hidden) return
+      // 10초 이내 중복 호출 방지
+      if (Date.now() - lastFetchAt < 10_000) return
+      lastFetchAt = Date.now()
+      void fetchAll()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [fetchAll])
+
   // ── Mutations ─────────────────────────────────────────────
   const { getRecordServiceSession, startServiceSession, endServiceSession } =
     makeServiceSessionMutations({ fetchAll, serviceSessions, buildings })
@@ -328,6 +347,7 @@ export function useStore() {
   } = makeReviewTaskMutations({ fetchAll, setReviewTasks })
 
   return {
+    refetchAll: fetchAll,
     cards,
     buildings,
     visitHistories,

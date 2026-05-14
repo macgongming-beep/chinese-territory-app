@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Toast } from './components/Toast'
 import { PwaInstallBanner } from './components/PwaInstall'
+import { PullToRefresh } from './components/PullToRefresh'
 import { useStore } from './hooks/useStore'
 import { useAuth } from './hooks/useAuth'
 import type { Role } from './types'
@@ -124,6 +125,7 @@ function App() {
     uncompleteReviewTask,
     updateReviewTask,
     deleteReviewTask,
+    refetchAll,
   } = useStore()
 
   // role이 leader 또는 admin인 유저만 인도자 목록으로
@@ -218,6 +220,7 @@ function App() {
     <>
       <Toast />
       <PwaInstallBanner />
+      <PullToRefresh onRefresh={refetchAll} />
       <Suspense
         fallback={
           <div className="app-loading">
