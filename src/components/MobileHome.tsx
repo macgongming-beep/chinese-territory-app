@@ -431,7 +431,7 @@ function MobileZoneView({
 
   return (
     <div className="mobile-zone-page">
-      {/* ── 헤더 ── */}
+      {/* ── 서브 헤더 (지도 토글 + drill 백) ── */}
       <div className="mobile-zone-head">
         {scope === 'all' && level !== 'regions' && (
           <button className="mz-back-btn" onClick={goBack} type="button" aria-label="뒤로">
@@ -440,7 +440,7 @@ function MobileZoneView({
             </svg>
           </button>
         )}
-        <h2>{scope === 'mine' || level === 'regions' ? t(language, 'zone.title') : drillTitle}</h2>
+        {scope === 'all' && level !== 'regions' && <h3 className="mobile-zone-drill-title">{drillTitle}</h3>}
         <div className="mobile-zone-view-toggle" aria-label="보기 전환">
           <span>{t(language, 'zone.list')}</span>
           <button onClick={onShowMapView} type="button">{t(language, 'zone.map')}</button>
@@ -1279,6 +1279,15 @@ export function MobileHome({
               role === 'admin' ? (
                 <Navigate to="/zone" replace />
               ) : (
+                <>
+                <AppHeader
+                  pageTitle={t(language, 'nav.myService')}
+                  userId={currentUser.id}
+                  userName={currentVisitor}
+                  role={role}
+                  chatUsers={headerChatUsers}
+                  onOpenMenu={() => navigate('/settings')}
+                />
                 <MobileTerritory
                   language={language}
                   buildings={buildings}
@@ -1300,11 +1309,21 @@ export function MobileHome({
                   onUpdateReturnVisitNickname={onUpdateReturnVisitNickname}
                   onUpdateReturnVisitAddress={onUpdateReturnVisitAddress}
                 />
+                </>
               )
             } />
 
             {/* 구역 (인도자·관리자용 — 목록↔지도 토글) */}
             <Route path="/zone" element={
+              <>
+              <AppHeader
+                pageTitle={t(language, 'nav.zone')}
+                userId={currentUser.id}
+                userName={currentVisitor}
+                role={role}
+                chatUsers={headerChatUsers}
+                onOpenMenu={() => navigate('/settings')}
+              />
               <MobileZoneView
                 language={language}
                 cards={cards}
@@ -1314,11 +1333,21 @@ export function MobileHome({
                 onOpenAssignedMap={(cardIds) => navigate(`/map?cardIds=${cardIds.join(',')}&scope=mine`)}
                 onShowMapView={() => navigate('/map')}
               />
+              </>
             } />
 
             {/* 배정 */}
             <Route path="/assignment" element={
-              role === 'admin' ? (
+              <>
+              <AppHeader
+                pageTitle={t(language, 'nav.assignment')}
+                userId={currentUser.id}
+                userName={currentVisitor}
+                role={role}
+                chatUsers={headerChatUsers}
+                onOpenMenu={() => navigate('/settings')}
+              />
+              {role === 'admin' ? (
                 <MobileAdminAssignment
                   cards={cards}
                   leaderNames={leaderNames}
@@ -1332,12 +1361,23 @@ export function MobileHome({
                   role={role}
                   onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
                 />
-              )
+              )}
+              </>
             } />
 
             {/* 사용자 */}
             <Route path="/users" element={
+              <>
+              <AppHeader
+                pageTitle="사용자"
+                userId={currentUser.id}
+                userName={currentVisitor}
+                role={role}
+                chatUsers={headerChatUsers}
+                onOpenMenu={() => navigate('/settings')}
+              />
               <MobileUsers />
+              </>
             } />
 
             {/* 가입 신청 관리 */}

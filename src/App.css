@@ -134,7 +134,8 @@ button:focus-visible {
 }
 
 .app-header--mobile {
-  padding: 18px 20px 14px;
+  min-height: 48px;
+  padding: 8px 16px;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-default);
 }
@@ -165,24 +166,31 @@ button:focus-visible {
 }
 
 .app-header__back {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-lg);
-  font-size: 28px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 22px;
   line-height: 1;
 }
 
 .app-header__title-group {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
   min-width: 0;
+  gap: 8px;
+  overflow: hidden;
 }
 
 .app-header__title {
   margin: 0;
   color: var(--gray-900);
-  font-size: 26px;
+  font-size: 17px;
   font-weight: 800;
-  line-height: 1.16;
+  line-height: 1.2;
   letter-spacing: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .app-header--desktop .app-header__title {
@@ -191,11 +199,37 @@ button:focus-visible {
 }
 
 .app-header__subtitle {
-  margin: 4px 0 0;
+  display: inline-flex;
+  align-items: baseline;
+  margin: 0;
   color: var(--gray-500);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header__subtitle::before {
+  content: '·';
+  margin-right: 8px;
+  color: var(--gray-300);
+  font-weight: 700;
+}
+
+.app-header--desktop .app-header__subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.app-header--desktop .app-header__subtitle::before {
+  content: none;
+}
+
+.app-header--desktop .app-header__title-group {
+  display: block;
 }
 
 .app-header__actions {
@@ -213,9 +247,9 @@ button:focus-visible {
 
 .app-header__action {
   position: relative;
-  width: 38px;
-  height: 38px;
-  border-radius: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
 }
 
 .app-header__action:hover {
@@ -252,7 +286,7 @@ button:focus-visible {
 }
 
 .app-shell > .app-header--mobile {
-  margin: 0 -20px 16px;
+  margin: 0 -16px 12px;
 }
 
 .mobile-settings-page > .app-header--mobile {

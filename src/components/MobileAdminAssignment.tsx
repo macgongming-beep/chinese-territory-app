@@ -160,11 +160,8 @@ export function MobileAdminAssignment({
 
   return (
     <section className="maa-page">
-      <header className="maa-header">
-        <div>
-          <h1>관리자 배정</h1>
-          <p>인도자에게 담당 구역을 지정합니다.</p>
-        </div>
+      <header className="maa-header maa-header--subhead">
+        <p>인도자에게 담당 구역을 지정합니다.</p>
         <span>미배정 {unassignedCount}개</span>
       </header>
 

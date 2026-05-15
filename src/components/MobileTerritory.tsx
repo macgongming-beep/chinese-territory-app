@@ -430,12 +430,6 @@ export function MobileTerritory({
 
   return (
     <div className="mobile-territory-page">
-      <div className="mobile-territory-head">
-        <div>
-          <h2>{role === 'admin' ? t(language, 'territory.adminTitle') : t(language, 'territory.title')}</h2>
-        </div>
-      </div>
-
       {role !== 'admin' && (
         <>
           <section className="mobile-territory-section mobile-today-service-section">

@@ -432,13 +432,11 @@ export function MobileLeaderAssignment({
 
   return (
     <section className="mobile-assignment-page">
-      <div className="mobile-assignment-header">
+      <div className="mobile-assignment-header mobile-assignment-header--subhead">
         <button className="mobile-assignment-back" onClick={goBack} type="button">‹</button>
-        <div>
-          <h1>인도자 배정</h1>
-          <p>팀 구성 & 카드 배정</p>
-        </div>
-        <span aria-hidden="true" />
+        <p className="mobile-assignment-subhead-text">
+          {assignmentStarted ? `${stepLabels[currentStep - 1]} (${currentStep}/3)` : '팀 구성 & 카드 배정'}
+        </p>
       </div>
 
       {!assignmentStarted ? (

@@ -10,7 +10,7 @@ const dictionary = {
   ko: {
     'nav.home': '홈',
     'nav.calendar': '캘린더',
-    'nav.myService': '나의봉사',
+    'nav.myService': '활동',
     'nav.zone': '구역',
     'nav.map': '지도',
     'nav.assignment': '배정',
