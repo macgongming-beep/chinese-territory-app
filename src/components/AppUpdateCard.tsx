@@ -32,11 +32,11 @@ export function AppUpdateCard({ variant = 'desktop' }: { variant?: 'desktop' | '
           <span style={{ fontSize: 20 }}>{updateAvailable ? '🆕' : '✅'}</span>
           <div style={{ flex: 1 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
-              {updateAvailable ? '새 버전이 있습니다' : '최신 버전 사용 중'}
+              {updateAvailable ? '새 버전이 준비됐어요' : '최신 버전 사용 중'}
             </p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b' }}>
               {updateAvailable
-                ? '아래 버튼을 누르면 새 버전으로 전환됩니다'
+                ? '새로고침하면 즉시 적용됩니다'
                 : checkedJustNow
                   ? '방금 확인했어요'
                   : '주기적으로 자동 확인합니다'}
@@ -61,7 +61,7 @@ export function AppUpdateCard({ variant = 'desktop' }: { variant?: 'desktop' | '
                 cursor: applying ? 'wait' : 'pointer',
               }}
             >
-              {applying ? '적용 중...' : '🚀 지금 업데이트'}
+              {applying ? '적용 중...' : '🔄 지금 새로고침'}
             </button>
           ) : (
             <button

@@ -44,14 +44,20 @@ export async function checkForUpdate(): Promise<boolean> {
   return _updateAvailable
 }
 
-/** 새 버전 적용 (SKIP_WAITING + reload) */
+/**
+ * 새 버전 적용 = 페이지 새로고침.
+ * SW 는 skipWaiting + clientsClaim 으로 이미 백그라운드 활성화돼 있고,
+ * 페이지는 새로고침 시점에 새 번들을 받음. 그래서 단순 reload 면 충분.
+ */
 export async function applyUpdate(): Promise<void> {
   try {
+    // workbox 의 reload 흐름도 같이 호출 (SKIP_WAITING 메시지 + 자체 reload)
     await updateApp(true)
   } catch (e) {
-    console.warn('[PWA] applyUpdate failed, hard reload:', e)
-    window.location.reload()
+    console.warn('[PWA] applyUpdate via workbox failed, hard reload:', e)
   }
+  // 보장: 어떤 경로든 무조건 새로고침
+  window.location.reload()
 }
 
 export const updateApp = registerSW({
