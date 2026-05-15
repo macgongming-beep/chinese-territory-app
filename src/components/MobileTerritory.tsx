@@ -179,11 +179,18 @@ export function MobileTerritory({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   }, [])
 
-  // 오늘 봉사 + 앞으로 배정된 내 카드 (event_card_assignments)
+  // 오늘 봉사 + 최근/앞으로 배정된 내 카드 (event_card_assignments)
+  // 과거 14일 이내 ~ 미래 일정 중 내 배정이 있는 것 포함
+  // (어제 만들어진 일정이 오늘 날짜 넘어가서 사라지는 문제 방지)
+  const recentCutoff = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 14)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }, [])
   const myTodayAssignments = useMemo(() => {
     const todayEvents = calendarEvents.filter((e) => e.date === today)
-    const upcomingAssignedEvents = calendarEvents.filter((event) =>
-      event.date >= today &&
+    const assignedEvents = calendarEvents.filter((event) =>
+      event.date >= recentCutoff &&
       event.cardAssignments.some((assignment) => assignment.userName === currentVisitor) &&
       !todayEvents.some((todayEvent) => todayEvent.id === event.id)
     )
@@ -193,7 +200,7 @@ export function MobileTerritory({
     const visibleEvents = [
       ...(targetEvent ? [targetEvent] : []),
       ...todayEvents,
-      ...upcomingAssignedEvents,
+      ...assignedEvents,
     ].filter((event, index, list) => list.findIndex((item) => item.id === event.id) === index)
       .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
     const result: Array<{ event: CalendarEvent; cards: TerritoryCard[]; teammates: string[] }> = []
@@ -219,7 +226,7 @@ export function MobileTerritory({
       result.push({ event, cards: assignedCards, teammates })
     }
     return result
-  }, [calendarEvents, today, targetAssignmentEventId, currentVisitor, cards])
+  }, [calendarEvents, today, recentCutoff, targetAssignmentEventId, currentVisitor, cards])
 
   const [expandedEventIds, setExpandedEventIds] = useState<Set<number>>(() => {
     if (targetAssignmentEventId) return new Set([targetAssignmentEventId])
