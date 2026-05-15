@@ -458,14 +458,14 @@ export function MobileTerritory({
                       {isOpen && (
                         <div className="mobile-today-service-body">
                           <p>
-                            🧭 {event.leader ? `${t(language, 'territory.leader')} ${event.leader}` : t(language, 'territory.leaderTbd')}
-                            {teammates.length > 0 ? ` · 👥 ${teammates.join(', ')}` : ''}
+                            {event.leader ? `${t(language, 'territory.leader')} ${event.leader}` : t(language, 'territory.leaderTbd')}
+                            {teammates.length > 0 ? ` · ${t(language, 'territory.members')} ${teammates.join(', ')}` : ''}
                           </p>
                           {assignedCards.length === 0 ? (
                             <div className="mobile-territory-empty compact">{t(language, 'territory.noAssignedCards')}</div>
                           ) : assignedCards.map((card) => (
                             <div className="mobile-today-card-row" key={card.id}>
-                              <span>📍</span>
+                              <span className="mobile-today-card-dot" aria-hidden="true" />
                               <strong>{card.name}</strong>
                               <em>{card.progress}%</em>
                               {role !== 'user' && (

@@ -6729,19 +6729,21 @@ button:focus-visible {
 
 .mobile-today-card-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto auto;
+  grid-template-columns: 6px minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-height: 36px;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border: 1px solid #e1e7f0;
   border-radius: 10px;
   background: #ffffff;
 }
 
-.mobile-today-card-row > span {
-  font-size: 13px;
-  line-height: 1;
+.mobile-today-card-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--brand-700);
 }
 
 .mobile-today-card-row strong {
