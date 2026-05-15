@@ -977,7 +977,7 @@ export function MobileHome({
   }
 
   const visibleTabs: MobileTab[] = role === 'user'
-    ? ['홈', '캘린더', '나의봉사', '지도', '설정']
+    ? ['홈', '캘린더', '나의봉사', '설정']
     : role === 'leader'
       ? ['홈', '캘린더', '나의봉사', '배정', '구역', '설정']
       : ['홈', '캘린더', '구역', '배정', '설정']  // admin
