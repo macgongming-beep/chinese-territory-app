@@ -539,7 +539,7 @@ export function MobileCalendar({
                 />
                 <section className="chat-room chat-room--compact chat-room-summary">
                   <div className="chat-room__head">
-                    <div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                       <strong>채팅</strong>
                       <span>{event.title}</span>
                     </div>

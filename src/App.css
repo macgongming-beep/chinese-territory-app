@@ -745,8 +745,8 @@ button:focus-visible {
 }
 
 .comment-composer textarea {
-  min-height: 76px;
-  padding: 10px 12px;
+  min-height: 44px;
+  padding: 8px 10px;
   resize: vertical;
 }
 
@@ -19171,7 +19171,7 @@ button:focus-visible {
 
 .mobile-cal-event-card {
   display: block;
-  padding: 14px;
+  padding: 14px 18px;
   border: 1px solid #edf1f5;
   border-radius: 14px;
   background: #fbfcfe;
@@ -19290,14 +19290,14 @@ button:focus-visible {
 }
 
 .mobile-cal-apply-btn {
-  min-height: 34px;
-  padding: 0 13px;
+  min-height: 26px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #eef2f7;
   color: #4b5563;
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .mobile-cal-apply-btn.applied {
