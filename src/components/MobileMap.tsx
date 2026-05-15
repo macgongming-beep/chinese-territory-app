@@ -1184,10 +1184,27 @@ export function MobileMap({
                                   onClick={() => {
                                     setBuildingMenuId(null)
                                     const dname = encodeURIComponent(building.name || building.address)
-                                    const url = building.lat && building.lng
-                                      ? `https://map.naver.com/p/directions/-/${building.lng},${building.lat},${dname},,PLACE_POI/-/walk`
-                                      : `https://map.naver.com/p/search/${dname}`
-                                    window.open(url, '_blank', 'noopener,noreferrer')
+                                    const sname = encodeURIComponent('내 위치')
+                                    const openUrl = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
+                                    const fallback = () => {
+                                      const url = building.lat && building.lng
+                                        ? `https://map.naver.com/p/directions/-/${building.lng},${building.lat},${dname},,PLACE_POI/-/walk`
+                                        : `https://map.naver.com/p/search/${dname}`
+                                      openUrl(url)
+                                    }
+                                    if (!navigator.geolocation || !building.lat || !building.lng) {
+                                      fallback()
+                                      return
+                                    }
+                                    navigator.geolocation.getCurrentPosition(
+                                      (pos) => {
+                                        const slat = pos.coords.latitude
+                                        const slng = pos.coords.longitude
+                                        openUrl(`https://map.naver.com/p/directions/${slng},${slat},${sname},,ADDRESS_POI/${building.lng},${building.lat},${dname},,PLACE_POI/-/walk`)
+                                      },
+                                      () => fallback(),
+                                      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
+                                    )
                                   }}
                                 >길찾기</button>
                               </div>
