@@ -183,8 +183,13 @@ export function MobileMap({
   const activeSessionCard = activeServiceSession?.primaryCardId
     ? cards.find((card) => card.id === activeServiceSession.primaryCardId)
     : undefined
-  const canRecordVisits = actualRole !== 'user' || !!todayRecordableSession
   const isUserMap = actualRole === 'user'
+  // territory 화면의 [지도] 버튼으로 진입 → focusedCardId 가 있음
+  // 이 카드는 이미 userVisibleMapCardIds 로 본인 배정 카드만 통과했으므로
+  // 봉사 시작 없이도 즉시 기록 가능
+  const isUserDirectAssignment = isUserMap && (focusedCardId != null || focusedCardIds.length > 0)
+  const canRecordVisits =
+    actualRole !== 'user' || !!todayRecordableSession || isUserDirectAssignment
   const selectedCard = selectedCardId ? cards.find((card) => card.id === selectedCardId) : undefined
   const isViewingActiveCard = !!activeSessionCard && selectedCardId === activeSessionCard.id
   const filteredCardOptions = useMemo(() => {
@@ -708,7 +713,7 @@ export function MobileMap({
               )}
               <h1>
                 {navLevel !== 'map' && drillTitle}
-                {navLevel === 'map' && (isUserMap ? mapHeaderTitle : mapScopeTitle)}
+                {navLevel === 'map' && (isUserMap && !isUserDirectAssignment ? mapHeaderTitle : (selectedCard?.name ?? mapScopeTitle))}
               </h1>
               {navLevel === 'map' && (
                 <div className="mobile-map-type-segment" aria-label="건물 유형 보기">
@@ -729,7 +734,7 @@ export function MobileMap({
                   ))}
                 </div>
               )}
-              {navLevel === 'map' && isUserMap && <span>{mapHeaderSubtitle}</span>}
+              {navLevel === 'map' && isUserMap && !isUserDirectAssignment && <span>{mapHeaderSubtitle}</span>}
             </div>
             {showScopeAllButton && (
               <button
@@ -755,7 +760,7 @@ export function MobileMap({
               </div>
             )}
           </div>
-          {navLevel === 'map' && isUserMap && (
+          {navLevel === 'map' && isUserMap && !isUserDirectAssignment && (
             <div className="mobile-map-field-actions">
               {activeSessionCard && (
                 <button
