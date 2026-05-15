@@ -458,8 +458,8 @@ export function MobileTerritory({
                       {isOpen && (
                         <div className="mobile-today-service-body">
                           <p>
-                            {event.leader ? `${t(language, 'territory.leader')} ${event.leader}` : t(language, 'territory.leaderTbd')}
-                            {teammates.length > 0 ? ` · ${t(language, 'territory.members')} ${teammates.join(', ')}` : ''}
+                            🧭 {event.leader ? `${t(language, 'territory.leader')} ${event.leader}` : t(language, 'territory.leaderTbd')}
+                            {teammates.length > 0 ? ` · 👥 ${teammates.join(', ')}` : ''}
                           </p>
                           {assignedCards.length === 0 ? (
                             <div className="mobile-territory-empty compact">{t(language, 'territory.noAssignedCards')}</div>
@@ -468,7 +468,9 @@ export function MobileTerritory({
                               <span>📍</span>
                               <strong>{card.name}</strong>
                               <em>{card.progress}%</em>
-                              <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
+                              {role !== 'user' && (
+                                <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -518,7 +520,9 @@ export function MobileTerritory({
                                 <span>📍</span>
                                 <strong>{card.name}</strong>
                                 <em>{card.progress}%</em>
+                                {role !== 'user' && (
                                 <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
+                              )}
                               </div>
                             ))}
                           </div>
