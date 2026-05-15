@@ -473,6 +473,7 @@ function NaverMapCanvas({
   const onSelectCardBoundaryRef = useRef(onSelectCardBoundary)
   onSelectCardBoundaryRef.current = onSelectCardBoundary
   const previewMarkerRef = useRef<any>(null)
+  const userLocationMarkerRef = useRef<any>(null)
   const previewPinLatRef = useRef(previewPinLat)
   previewPinLatRef.current = previewPinLat
   const previewPinLngRef = useRef(previewPinLng)
@@ -773,9 +774,33 @@ function NaverMapCanvas({
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const naver = (window as any).naver
+        if (!naver?.maps) return
         const lat = pos.coords.latitude
         const lng = pos.coords.longitude
-        mapInstanceRef.current.morph(new naver.maps.LatLng(lat, lng), 16)
+        const latLng = new naver.maps.LatLng(lat, lng)
+
+        // 네이버지도 스타일: 파란 원 + 흰 테두리 (펄스 애니메이션)
+        const html = `
+          <div style="position:relative;width:22px;height:22px;">
+            <div style="position:absolute;inset:0;border-radius:50%;background:rgba(46,109,255,0.18);animation:userLocPulse 1.6s ease-out infinite;"></div>
+            <div style="position:absolute;inset:5px;border-radius:50%;background:#2e6dff;border:2.5px solid #ffffff;box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>
+          </div>
+        `
+        if (userLocationMarkerRef.current) {
+          userLocationMarkerRef.current.setPosition(latLng)
+        } else {
+          userLocationMarkerRef.current = new naver.maps.Marker({
+            position: latLng,
+            map: mapInstanceRef.current,
+            icon: {
+              content: html,
+              size: new naver.maps.Size(22, 22),
+              anchor: new naver.maps.Point(11, 11),
+            },
+            zIndex: 999,
+          })
+        }
+        mapInstanceRef.current.morph(latLng, 16)
       },
       () => showToast('위치 정보를 가져올 수 없습니다.', 'error')
     )
@@ -1261,6 +1286,11 @@ function NaverMapCanvas({
       </div>
 
       <style>{`
+        @keyframes userLocPulse {
+          0%   { transform: scale(0.7); opacity: 1; }
+          80%  { transform: scale(2.2); opacity: 0; }
+          100% { transform: scale(2.2); opacity: 0; }
+        }
         .map-toolbar-overlay {
           z-index: 10000 !important;
         }

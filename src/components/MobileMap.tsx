@@ -148,6 +148,7 @@ export function MobileMap({
 
   // 건물 수정
   const [editingBuildingId, setEditingBuildingId] = useState<number | null>(null)
+  const [buildingMenuId, setBuildingMenuId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [editAddress, setEditAddress] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -1154,11 +1155,45 @@ export function MobileMap({
                             {regularUnitCount > 0 && <b className="bld-regular-badge">정{regularUnitCount}</b>}
                           </div>
                         </button>
-                        <button
-                          className="bld-edit-btn"
-                          onClick={() => { setEditingBuildingId(building.id); setEditName(building.name || ''); setEditAddress(building.address); setShowDeleteConfirm(false) }}
-                          type="button"
-                        >✏️</button>
+                        <div className="bld-menu-wrap">
+                          <button
+                            className="bld-edit-btn"
+                            onClick={() => setBuildingMenuId((prev) => prev === building.id ? null : building.id)}
+                            type="button"
+                            aria-label="더보기"
+                          >⋯</button>
+                          {buildingMenuId === building.id && (
+                            <>
+                              <div
+                                className="bld-menu-backdrop"
+                                onClick={() => setBuildingMenuId(null)}
+                              />
+                              <div className="bld-menu-popover" role="menu">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBuildingMenuId(null)
+                                    setEditingBuildingId(building.id)
+                                    setEditName(building.name || '')
+                                    setEditAddress(building.address)
+                                    setShowDeleteConfirm(false)
+                                  }}
+                                >설정</button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBuildingMenuId(null)
+                                    const dname = encodeURIComponent(building.name || building.address)
+                                    const url = building.lat && building.lng
+                                      ? `https://map.naver.com/p/directions/-/${building.lng},${building.lat},${dname},,PLACE_POI/-/walk`
+                                      : `https://map.naver.com/p/search/${dname}`
+                                    window.open(url, '_blank', 'noopener,noreferrer')
+                                  }}
+                                >길찾기</button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <div className="building-edit-mode">

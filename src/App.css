@@ -19835,6 +19835,52 @@ button:focus-visible {
   color: #475569;
 }
 
+.bld-menu-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.bld-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: transparent;
+}
+
+.bld-menu-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+.bld-menu-popover button {
+  padding: 10px 14px;
+  border: none;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bld-menu-popover button + button {
+  border-top: 1px solid #f1f5f9;
+}
+
+.bld-menu-popover button:hover {
+  background: #f8fafc;
+}
+
 .bld-body {
   border-top: 1px solid #e8edf3;
   background: #f8fafc;
