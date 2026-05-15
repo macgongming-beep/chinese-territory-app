@@ -4,7 +4,10 @@
 
 .app-shell {
   min-height: 100svh;
-  padding: 0 20px 96px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 16px 96px;
+  overflow-x: hidden;
   background: var(--bg-panel);
   color: var(--ink-900);
 }
@@ -19105,7 +19108,7 @@ button:focus-visible {
 
 /* 일정 상세 */
 .mobile-cal-detail {
-  margin: 8px 16px 0;
+  margin: 8px 0 0;
   padding: 16px;
   border: 1px solid #e0e5df;
   border-radius: var(--r-lg);

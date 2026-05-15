@@ -196,10 +196,15 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100svh;
+  overflow-x: hidden;
   font-family: var(--font-sans);
   font-size: 14px;
   color: var(--gray-800);
