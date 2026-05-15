@@ -179,54 +179,80 @@ export function MobileTerritory({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   }, [])
 
-  // 오늘 봉사 + 최근/앞으로 배정된 내 카드 (event_card_assignments)
-  // 과거 14일 이내 ~ 미래 일정 중 내 배정이 있는 것 포함
-  // (어제 만들어진 일정이 오늘 날짜 넘어가서 사라지는 문제 방지)
-  const recentCutoff = useMemo(() => {
+  // 오늘 봉사 + 미래 배정 + (지난 배정은 펼치기 토글)
+  const [showPastAssignments, setShowPastAssignments] = useState(false)
+  const pastCutoff = useMemo(() => {
+    // 지난 봉사는 최대 30일 전까지만
     const d = new Date()
-    d.setDate(d.getDate() - 14)
+    d.setDate(d.getDate() - 30)
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   }, [])
-  const myTodayAssignments = useMemo(() => {
+  const myAssignmentsSplit = useMemo(() => {
     const todayEvents = calendarEvents.filter((e) => e.date === today)
-    const assignedEvents = calendarEvents.filter((event) =>
-      event.date >= recentCutoff &&
-      event.cardAssignments.some((assignment) => assignment.userName === currentVisitor) &&
-      !todayEvents.some((todayEvent) => todayEvent.id === event.id)
+    // 미래(오늘 제외) 일정 중 내 배정
+    const futureAssigned = calendarEvents.filter((event) =>
+      event.date > today &&
+      event.cardAssignments.some((assignment) => assignment.userName === currentVisitor)
+    )
+    // 과거 일정 중 내 배정 (오늘 제외, 30일 이내)
+    const pastAssigned = calendarEvents.filter((event) =>
+      event.date < today &&
+      event.date >= pastCutoff &&
+      event.cardAssignments.some((assignment) => assignment.userName === currentVisitor)
     )
     const targetEvent = targetAssignmentEventId
       ? calendarEvents.find((event) => event.id === targetAssignmentEventId)
       : null
-    const visibleEvents = [
+    // 활성 영역: 오늘 + 미래 + (targetEvent 강제 주입)
+    const activeEvents = [
       ...(targetEvent ? [targetEvent] : []),
       ...todayEvents,
-      ...assignedEvents,
+      ...futureAssigned,
     ].filter((event, index, list) => list.findIndex((item) => item.id === event.id) === index)
       .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
-    const result: Array<{ event: CalendarEvent; cards: TerritoryCard[]; teammates: string[] }> = []
-    for (const event of visibleEvents) {
-      const assignment = event.cardAssignments.find((a) => a.userName === currentVisitor)
-      const isParticipant =
-        !!assignment ||
-        event.applicants.includes(currentVisitor) ||
-        event.assigned.includes(currentVisitor) ||
-        event.leader === currentVisitor
-      if (!isParticipant) continue
-      const cardIds = assignmentCardIds(assignment)
-      const assignedCards = cardIds
-        .map((id) => cards.find((c) => c.id === id))
-        .filter(Boolean) as TerritoryCard[]
-      const cardIdSet = new Set(assignedCards.map((card) => card.id))
-      const teammates = event.cardAssignments
-        .filter((item) =>
-          item.userName !== currentVisitor &&
-          (cardIdSet.size === 0 || assignmentCardIds(item).some((id) => cardIdSet.has(id)))
-        )
-        .map((item) => item.userName)
-      result.push({ event, cards: assignedCards, teammates })
-    }
-    return result
-  }, [calendarEvents, today, recentCutoff, targetAssignmentEventId, currentVisitor, cards])
+    // 과거 영역: targetEvent 가 과거면 활성에 이미 들어갔으므로 제외
+    const pastEvents = pastAssigned
+      .filter((event) => !activeEvents.some((e) => e.id === event.id))
+      .sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`))
+    return { activeEvents, pastEvents }
+  }, [calendarEvents, today, pastCutoff, targetAssignmentEventId, currentVisitor])
+
+  const buildAssignment = (event: CalendarEvent) => {
+    const assignment = event.cardAssignments.find((a) => a.userName === currentVisitor)
+    const isParticipant =
+      !!assignment ||
+      event.applicants.includes(currentVisitor) ||
+      event.assigned.includes(currentVisitor) ||
+      event.leader === currentVisitor
+    if (!isParticipant) return null
+    const cardIds = assignmentCardIds(assignment)
+    const assignedCards = cardIds
+      .map((id) => cards.find((c) => c.id === id))
+      .filter(Boolean) as TerritoryCard[]
+    const cardIdSet = new Set(assignedCards.map((card) => card.id))
+    const teammates = event.cardAssignments
+      .filter((item) =>
+        item.userName !== currentVisitor &&
+        (cardIdSet.size === 0 || assignmentCardIds(item).some((id) => cardIdSet.has(id)))
+      )
+      .map((item) => item.userName)
+    return { event, cards: assignedCards, teammates }
+  }
+
+  const myTodayAssignments = useMemo(() => {
+    return myAssignmentsSplit.activeEvents
+      .map(buildAssignment)
+      .filter(Boolean) as Array<{ event: CalendarEvent; cards: TerritoryCard[]; teammates: string[] }>
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myAssignmentsSplit, cards, currentVisitor])
+
+  const myPastAssignments = useMemo(() => {
+    return myAssignmentsSplit.pastEvents
+      .map(buildAssignment)
+      .filter(Boolean) as Array<{ event: CalendarEvent; cards: TerritoryCard[]; teammates: string[] }>
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myAssignmentsSplit, cards, currentVisitor])
+
 
   const [expandedEventIds, setExpandedEventIds] = useState<Set<number>>(() => {
     if (targetAssignmentEventId) return new Set([targetAssignmentEventId])
@@ -454,6 +480,57 @@ export function MobileTerritory({
             )}
           </section>
 
+          {myPastAssignments.length > 0 && (
+            <section className="mobile-territory-section">
+              <div className="mobile-section-title">
+                <h2>
+                  <button
+                    className="rv-collapse-btn"
+                    onClick={() => setShowPastAssignments((v) => !v)}
+                    type="button"
+                  >
+                    <span className="rv-collapse-chevron">{showPastAssignments ? '⌄' : '›'}</span>
+                    지난 봉사 <span className="rv-count">{myPastAssignments.length}{t(language, 'calendar.countSuffix')}</span>
+                  </button>
+                </h2>
+              </div>
+              {showPastAssignments && (
+                <div className="mobile-today-service-list">
+                  {myPastAssignments.map(({ event, cards: assignedCards, teammates }) => {
+                    const isOpen = expandedEventIds.has(event.id)
+                    return (
+                      <article className={`mobile-today-service-card${isOpen ? ' open' : ''}`} key={event.id}>
+                        <button className="mobile-today-service-toggle" onClick={() => toggleTodayEvent(event.id)} type="button">
+                          <span aria-hidden="true">{isOpen ? '⌄' : '›'}</span>
+                          <strong>{fmtDate(event.date, language)} · {event.time} {event.title}</strong>
+                          <b>{assignedCards.length}{t(language, 'calendar.countSuffix')}</b>
+                        </button>
+                        {isOpen && (
+                          <div className="mobile-today-service-body">
+                            <p>
+                              {event.leader ? `${t(language, 'territory.leader')} ${event.leader}` : t(language, 'territory.leaderTbd')}
+                              {teammates.length > 0 ? ` · ${t(language, 'territory.members')} ${teammates.join(', ')}` : ''}
+                            </p>
+                            {assignedCards.length === 0 ? (
+                              <div className="mobile-territory-empty compact">{t(language, 'territory.noAssignedCards')}</div>
+                            ) : assignedCards.map((card) => (
+                              <div className="mobile-today-card-row" key={card.id}>
+                                <span>📍</span>
+                                <strong>{card.name}</strong>
+                                <em>{card.progress}%</em>
+                                <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
           {activeSession && (
             <section className="mobile-territory-section">
               <div className="mobile-active-session-card">
@@ -472,6 +549,7 @@ export function MobileTerritory({
             </section>
           )}
 
+          {role !== 'user' && (
           <section className="mobile-territory-section">
             <button className="mobile-new-service-card" onClick={() => setShowNewService((open) => !open)} type="button">
               <span aria-hidden="true">+</span>
@@ -524,6 +602,7 @@ export function MobileTerritory({
               </div>
             )}
           </section>
+          )}
 
           <section className="mobile-territory-section mobile-regular-section" aria-label={t(language, 'territory.regularVisit')}>
             <div className="mobile-section-title">

@@ -918,8 +918,23 @@ export function MobileHome({
       if (session.primaryCardId) ids.add(session.primaryCardId)
       if (session.assignedCardId) ids.add(session.assignedCardId)
     })
+    // 일정별 카드 배정 (event_card_assignments) — 최근 14일 + 미래
+    const eventCutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+      .toISOString().slice(0, 10)
+    calendarEvents.forEach((event) => {
+      if (event.date < eventCutoff) return
+      event.cardAssignments.forEach((assignment) => {
+        if (assignment.userName !== currentVisitor) return
+        const list = assignment.assignedCardIds && assignment.assignedCardIds.length > 0
+          ? assignment.assignedCardIds
+          : [assignment.assignedCardId]
+        list.forEach((cardId) => {
+          if (cardId) ids.add(cardId)
+        })
+      })
+    })
     return ids
-  }, [cards, currentVisitor, serviceSessions])
+  }, [cards, currentVisitor, serviceSessions, calendarEvents])
   const isUserMapScope = role === 'user'
   const mapCards = useMemo(
     () => isUserMapScope ? cards.filter((card) => userVisibleMapCardIds.has(card.id)) : cards,
