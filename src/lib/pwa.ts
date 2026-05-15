@@ -21,6 +21,25 @@ export async function checkForUpdate(): Promise<boolean> {
     await _swRegistration.update()
   } catch (e) {
     console.warn('[PWA] update check failed:', e)
+    return _updateAvailable
+  }
+  // update() 만으로는 새 SW install 완료 보장 안 됨.
+  // installing SW 가 있으면 'installed' 상태까지 최대 5초 대기.
+  // (onNeedRefresh 가 install 후 비동기 fire → _updateAvailable 가 true 가 됨)
+  const installing = _swRegistration.installing
+  if (installing && installing.state !== 'installed' && installing.state !== 'activated') {
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, 5000)
+      const handler = () => {
+        if (installing.state === 'installed' || installing.state === 'activated' || installing.state === 'redundant') {
+          clearTimeout(timer)
+          installing.removeEventListener('statechange', handler)
+          // onNeedRefresh 는 statechange 이후 한 틱 뒤에 fire 될 수 있으므로 작은 여유
+          setTimeout(resolve, 100)
+        }
+      }
+      installing.addEventListener('statechange', handler)
+    })
   }
   return _updateAvailable
 }

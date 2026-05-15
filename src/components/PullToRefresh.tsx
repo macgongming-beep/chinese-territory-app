@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState } from 'react'
 
 const THRESHOLD = 70 // px
+const DEBOUNCE_MS = 5000 // 마지막 새로고침 후 5초 내 재호출 차단
 
 export function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<void> | void }) {
   const startYRef = useRef<number | null>(null)
+  const lastRefreshAtRef = useRef(0)
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -15,6 +17,18 @@ export function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<void> | 
       if (window.scrollY > 0 || refreshing) {
         startYRef.current = null
         return
+      }
+      // 터치 시작점이 자기만의 스크롤 컨테이너 안이고 그 컨테이너가
+      // 위로 더 스크롤 가능하면 풀-투-리프레시 무시 (예: 채팅 메시지 목록)
+      let el = e.target as HTMLElement | null
+      while (el && el !== document.body) {
+        const style = window.getComputedStyle(el)
+        const overflowY = style.overflowY
+        if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollTop > 0) {
+          startYRef.current = null
+          return
+        }
+        el = el.parentElement
       }
       startYRef.current = e.touches[0].clientY
     }
@@ -36,6 +50,9 @@ export function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<void> | 
       startYRef.current = null
       setPullY(0)
       if (shouldRefresh) {
+        // 디바운스: 마지막 새로고침 후 5초 내면 무시
+        if (Date.now() - lastRefreshAtRef.current < DEBOUNCE_MS) return
+        lastRefreshAtRef.current = Date.now()
         setRefreshing(true)
         try {
           await onRefresh()
