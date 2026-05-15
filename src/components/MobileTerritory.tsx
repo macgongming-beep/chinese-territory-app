@@ -468,9 +468,7 @@ export function MobileTerritory({
                               <span className="mobile-today-card-dot" aria-hidden="true" />
                               <strong>{card.name}</strong>
                               <em>{card.progress}%</em>
-                              {role !== 'user' && (
-                                <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
-                              )}
+                              <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
                             </div>
                           ))}
                         </div>
@@ -520,9 +518,7 @@ export function MobileTerritory({
                                 <span>📍</span>
                                 <strong>{card.name}</strong>
                                 <em>{card.progress}%</em>
-                                {role !== 'user' && (
                                 <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
-                              )}
                               </div>
                             ))}
                           </div>
