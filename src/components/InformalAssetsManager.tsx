@@ -7,7 +7,19 @@ import { compressImage } from '../lib/imageCompress'
 
 const MAX_ORIGINAL_SIZE_MB = 30  // 압축 전 허용 최대 (원본이 너무 크면 메모리 부담)
 const TARGET_SIZE_MB = 1.5       // 압축 후 목표 크기
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+
+type QueueStatus = 'pending' | 'compressing' | 'uploading' | 'done' | 'error'
+type QueueItem = {
+  id: string
+  originalFile: File
+  name: string             // 사용자가 수정 가능한 자료 이름
+  status: QueueStatus
+  originalSize: number
+  finalSize: number
+  width?: number
+  height?: number
+  error?: string
+}
 
 function isAdminLike(role: Role | undefined | null): boolean {
   return role === 'admin' || role === 'developer'
@@ -27,12 +39,8 @@ export function InformalAssetsManager({
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showForm, setShowForm] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [originalSize, setOriginalSize] = useState(0)
-  const [compressing, setCompressing] = useState(false)
-  const [compressionInfo, setCompressionInfo] = useState<string>('')
-  const [name, setName] = useState('')
-  const [uploading, setUploading] = useState(false)
+  const [queue, setQueue] = useState<QueueItem[]>([])
+  const [running, setRunning] = useState(false)
   const [preview, setPreview] = useState<InformalAsset | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<InformalAsset | null>(null)
 
@@ -44,80 +52,106 @@ export function InformalAssetsManager({
     return null
   }
 
-  const handleFilePick = async (file: File | null) => {
-    if (!file) {
-      setSelectedFile(null)
-      setOriginalSize(0)
-      setCompressionInfo('')
-      return
-    }
-    if (file.type && !file.type.startsWith('image/')) {
-      showToast('이미지 파일만 업로드 가능합니다.', 'error')
-      return
-    }
-    if (!ACCEPTED_TYPES.includes(file.type) && file.type !== '') {
-      // 알 수 없는 이미지 타입이면 경고만 (HEIC 등은 createImageBitmap 에서 처리)
-      console.warn('[informal] 알 수 없는 이미지 타입:', file.type)
-    }
-    if (file.size > MAX_ORIGINAL_SIZE_MB * 1024 * 1024) {
-      showToast(`원본 파일이 너무 큽니다 (${MAX_ORIGINAL_SIZE_MB}MB 초과).`, 'error')
-      return
-    }
+  const makeId = () =>
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-    setOriginalSize(file.size)
-    setCompressing(true)
-    setCompressionInfo('')
-    try {
-      const result = await compressImage(file, {
-        maxWidth: 1600,
-        maxHeight: 1600,
-        quality: 0.85,
-        maxSizeMB: TARGET_SIZE_MB,
-        outputType: 'image/jpeg',
+  const handleFilesPick = (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    const accepted: QueueItem[] = []
+    const rejected: string[] = []
+    Array.from(files).forEach((file) => {
+      if (file.type && !file.type.startsWith('image/')) {
+        rejected.push(`${file.name} (이미지 아님)`)
+        return
+      }
+      if (file.size > MAX_ORIGINAL_SIZE_MB * 1024 * 1024) {
+        rejected.push(`${file.name} (${MAX_ORIGINAL_SIZE_MB}MB 초과)`)
+        return
+      }
+      const baseName = file.name.replace(/\.[^.]+$/, '').slice(0, 40)
+      accepted.push({
+        id: makeId(),
+        originalFile: file,
+        name: baseName || '비공식 증거 카드',
+        status: 'pending',
+        originalSize: file.size,
+        finalSize: file.size,
       })
-      setSelectedFile(result.file)
-      const origKB = Math.round(file.size / 1024)
-      const finalKB = Math.round(result.finalSize / 1024)
-      const pct = Math.round((1 - result.ratio) * 100)
-      if (file.size === result.finalSize) {
-        setCompressionInfo(`${origKB.toLocaleString()} KB`)
-      } else {
-        setCompressionInfo(
-          `${origKB.toLocaleString()} KB → ${finalKB.toLocaleString()} KB (-${pct}%) · ${result.width}×${result.height}`,
-        )
-      }
-      if (!name.trim()) {
-        const baseName = file.name.replace(/\.[^.]+$/, '')
-        setName(baseName.slice(0, 40))
-      }
-    } catch (e) {
-      console.error('[informal] 압축 실패:', e)
-      showToast('이미지를 처리하지 못했습니다.', 'error')
-    } finally {
-      setCompressing(false)
+    })
+    if (rejected.length > 0) {
+      showToast(`일부 파일 거부됨:\n${rejected.join('\n')}`, 'error')
     }
+    if (accepted.length > 0) {
+      setQueue((prev) => [...prev, ...accepted])
+    }
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const handleUpload = async () => {
-    if (!selectedFile) return
-    setUploading(true)
-    const result = await onUpload({
-      file: selectedFile,
-      name: name.trim() || '비공식 증거 카드',
-      uploadedBy: currentVisitor,
-    })
-    setUploading(false)
-    if (result.ok) {
-      showToast('자료가 등록되었습니다', 'success')
-      resetForm()
+  const updateQueueItem = (id: string, patch: Partial<QueueItem>) => {
+    setQueue((prev) => prev.map((q) => (q.id === id ? { ...q, ...patch } : q)))
+  }
+
+  const removeQueueItem = (id: string) => {
+    setQueue((prev) => prev.filter((q) => q.id !== id))
+  }
+
+  const handleUploadAll = async () => {
+    const items = queue.filter((q) => q.status === 'pending' || q.status === 'error')
+    if (items.length === 0) return
+    setRunning(true)
+    let okCount = 0
+    let failCount = 0
+    for (const item of items) {
+      // 압축
+      updateQueueItem(item.id, { status: 'compressing' })
+      let compressed
+      try {
+        compressed = await compressImage(item.originalFile, {
+          maxWidth: 1600,
+          maxHeight: 1600,
+          quality: 0.85,
+          maxSizeMB: TARGET_SIZE_MB,
+          outputType: 'image/jpeg',
+        })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : '압축 실패'
+        updateQueueItem(item.id, { status: 'error', error: msg })
+        failCount += 1
+        continue
+      }
+      updateQueueItem(item.id, {
+        finalSize: compressed.finalSize,
+        width: compressed.width,
+        height: compressed.height,
+        status: 'uploading',
+      })
+      // 업로드
+      const result = await onUpload({
+        file: compressed.file,
+        name: item.name.trim() || '비공식 증거 카드',
+        uploadedBy: currentVisitor,
+      })
+      if (result.ok) {
+        updateQueueItem(item.id, { status: 'done' })
+        okCount += 1
+      } else {
+        updateQueueItem(item.id, { status: 'error', error: result.error ?? '업로드 실패' })
+        failCount += 1
+      }
     }
+    setRunning(false)
+    if (okCount > 0) showToast(`${okCount}개 자료를 등록했습니다`, 'success')
+    if (failCount > 0) showToast(`${failCount}개 실패`, 'error')
+  }
+
+  const clearDone = () => {
+    setQueue((prev) => prev.filter((q) => q.status !== 'done'))
   }
 
   const resetForm = () => {
-    setSelectedFile(null)
-    setOriginalSize(0)
-    setCompressionInfo('')
-    setName('')
+    setQueue([])
     setShowForm(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -174,7 +208,7 @@ export function InformalAssetsManager({
         )}
       </div>
 
-      {/* 업로드 폼 */}
+      {/* 업로드 폼 (multi-file 큐) */}
       {showForm && (
         <div style={{
           padding: 14, marginBottom: 14, borderRadius: 12,
@@ -184,66 +218,123 @@ export function InformalAssetsManager({
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            onChange={(e) => void handleFilePick(e.target.files?.[0] ?? null)}
-            disabled={compressing || uploading}
+            multiple
+            onChange={(e) => handleFilesPick(e.target.files)}
+            disabled={running}
             style={{ width: '100%', marginBottom: 10, fontSize: 13 }}
           />
-          {compressing && (
-            <div style={{ marginBottom: 10, fontSize: 12, color: '#7c3aed', fontWeight: 700 }}>
-              🌀 이미지 압축 중...
-            </div>
-          )}
-          {!compressing && selectedFile && (
-            <div style={{ marginBottom: 10, fontSize: 12, color: '#6b7280' }}>
-              {compressionInfo || `${(selectedFile.size / 1024).toFixed(0)} KB`}
-            </div>
-          )}
-          {!compressing && originalSize > 0 && selectedFile && originalSize !== selectedFile.size && (
+          <p style={{ margin: '0 0 10px', fontSize: 11, color: '#94a3b8' }}>
+            여러 파일 동시 선택 가능 · 자동 압축 (가로 1600px / ~1.5MB)
+          </p>
+
+          {queue.length > 0 && (
             <div style={{
-              padding: '6px 10px', marginBottom: 10, borderRadius: 8,
-              background: '#ecfdf5', border: '1px solid #a7f3d0',
-              fontSize: 11, color: '#047857', fontWeight: 700,
+              maxHeight: 280, overflowY: 'auto',
+              border: '1px solid #e5e7eb', borderRadius: 10, marginBottom: 10,
+              background: '#fff',
             }}>
-              ✓ 화질 유지하면서 자동 압축됨 (가로 최대 1600px)
+              {queue.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 10px', borderBottom: '1px solid #f1f5f9',
+                  }}
+                >
+                  <span style={{ fontSize: 14, flexShrink: 0 }}>
+                    {item.status === 'pending' && '⏳'}
+                    {item.status === 'compressing' && '🌀'}
+                    {item.status === 'uploading' && '⬆️'}
+                    {item.status === 'done' && '✅'}
+                    {item.status === 'error' && '❌'}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {item.status === 'pending' || item.status === 'error' ? (
+                      <input
+                        type="text"
+                        value={item.name}
+                        onChange={(e) => updateQueueItem(item.id, { name: e.target.value })}
+                        maxLength={50}
+                        disabled={running}
+                        style={{
+                          width: '100%', padding: '4px 6px', borderRadius: 6,
+                          border: '1px solid #e5e7eb', fontSize: 12, fontWeight: 600,
+                        }}
+                      />
+                    ) : (
+                      <p style={{
+                        margin: 0, fontSize: 12, fontWeight: 700, color: '#1e293b',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{item.name}</p>
+                    )}
+                    <p style={{
+                      margin: '2px 0 0', fontSize: 10, color: '#94a3b8',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {item.status === 'done' || item.status === 'uploading'
+                        ? `${Math.round(item.originalSize / 1024).toLocaleString()} KB → ${Math.round(item.finalSize / 1024).toLocaleString()} KB`
+                        : item.status === 'error'
+                          ? item.error ?? '실패'
+                          : `${Math.round(item.originalSize / 1024).toLocaleString()} KB · ${item.originalFile.name}`}
+                    </p>
+                  </div>
+                  {(item.status === 'pending' || item.status === 'error' || item.status === 'done') && !running && (
+                    <button
+                      type="button"
+                      onClick={() => removeQueueItem(item.id)}
+                      aria-label="제거"
+                      style={{
+                        background: 'none', border: 'none', color: '#94a3b8',
+                        fontSize: 14, cursor: 'pointer', padding: 4,
+                      }}
+                    >✕</button>
+                  )}
+                </div>
+              ))}
             </div>
           )}
-          <input
-            type="text"
-            placeholder="자료 이름 (예: QR 카드)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={50}
-            style={{
-              width: '100%', padding: '10px 12px', borderRadius: 10,
-              border: '1px solid #d8dbe0', fontSize: 14, marginBottom: 10,
-            }}
-          />
+
+          {queue.some((q) => q.status === 'done') && !running && (
+            <button
+              type="button"
+              onClick={clearDone}
+              style={{
+                marginBottom: 10, fontSize: 12, color: '#64748b',
+                background: 'none', border: 'none', cursor: 'pointer',
+              }}
+            >
+              완료된 항목 비우기
+            </button>
+          )}
+
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               type="button"
               onClick={resetForm}
-              disabled={uploading}
+              disabled={running}
               style={{
                 flex: 1, padding: '10px', borderRadius: 10,
                 border: '1px solid #d8dbe0', background: '#fff', color: '#4b5563',
-                fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                fontSize: 13, fontWeight: 700, cursor: running ? 'wait' : 'pointer',
               }}
             >
-              취소
+              닫기
             </button>
             <button
               type="button"
-              onClick={handleUpload}
-              disabled={!selectedFile || uploading}
+              onClick={handleUploadAll}
+              disabled={running || queue.filter((q) => q.status === 'pending' || q.status === 'error').length === 0}
               style={{
                 flex: 2, padding: '10px', borderRadius: 10,
                 border: 'none', background: '#7c3aed', color: '#fff',
                 fontSize: 13, fontWeight: 800,
-                cursor: uploading ? 'wait' : 'pointer',
-                opacity: !selectedFile || uploading ? 0.6 : 1,
+                cursor: running ? 'wait' : 'pointer',
+                opacity: running || queue.filter((q) => q.status === 'pending' || q.status === 'error').length === 0 ? 0.6 : 1,
               }}
             >
-              {uploading ? '업로드 중...' : '등록'}
+              {running
+                ? '진행 중...'
+                : `${queue.filter((q) => q.status === 'pending' || q.status === 'error').length}개 업로드`}
             </button>
           </div>
         </div>
