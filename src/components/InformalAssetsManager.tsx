@@ -221,10 +221,46 @@ export function InformalAssetsManager({
             multiple
             onChange={(e) => handleFilesPick(e.target.files)}
             disabled={running}
-            style={{ width: '100%', marginBottom: 10, fontSize: 13 }}
+            style={{ display: 'none' }}
           />
+          {/* 드래그 앤 드롭 + 클릭 영역 */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault()
+              e.currentTarget.style.background = '#ede9fe'
+              e.currentTarget.style.borderColor = '#7c3aed'
+            }}
+            onDragLeave={(e) => {
+              e.currentTarget.style.background = '#fff'
+              e.currentTarget.style.borderColor = '#c4b5fd'
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              e.currentTarget.style.background = '#fff'
+              e.currentTarget.style.borderColor = '#c4b5fd'
+              handleFilesPick(e.dataTransfer.files)
+            }}
+            disabled={running}
+            style={{
+              display: 'block', width: '100%',
+              padding: '22px 16px', marginBottom: 10,
+              border: '2px dashed #c4b5fd', borderRadius: 12,
+              background: '#fff', color: '#6d28d9',
+              fontSize: 13, fontWeight: 700, cursor: running ? 'wait' : 'pointer',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 24, marginBottom: 6 }}>📁</div>
+            <div>여기를 누르거나 파일을 끌어다 놓기</div>
+            <div style={{ marginTop: 4, fontSize: 11, fontWeight: 500, color: '#94a3b8', lineHeight: 1.4 }}>
+              여러 장 동시 선택 가능<br />
+              (Mac: Shift/Cmd+클릭 · Win: Shift/Ctrl+클릭)
+            </div>
+          </button>
           <p style={{ margin: '0 0 10px', fontSize: 11, color: '#94a3b8' }}>
-            여러 파일 동시 선택 가능 · 자동 압축 (가로 1600px / ~1.5MB)
+            자동 압축 (가로 1600px / ~1.5MB)
           </p>
 
           {queue.length > 0 && (
