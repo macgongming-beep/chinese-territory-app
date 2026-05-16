@@ -432,9 +432,28 @@ export function PwaInstallSection() {
           )}
         </div>
 
-        {!installed && (
+        {!installed && isIOS() && (
+          <div style={{ margin: '14px 0 0', padding: '12px 14px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 12 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#92400e' }}>
+              ⚠️ iPhone 은 푸시 알림 받으려면 필수
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#78350f', lineHeight: 1.5, fontWeight: 600 }}>
+              Safari 탭에서는 알림이 안 옵니다.<br />
+              위 <strong>설치 안내</strong> 따라 홈 화면에 추가 → 추가된 앱을 열어야 알림 권한을 켤 수 있어요.
+            </p>
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: '#a16207' }}>
+              iOS 16.4 이상에서 동작
+            </p>
+          </div>
+        )}
+        {!installed && !isIOS() && (
           <p style={{ margin: '14px 0 0', padding: '10px 12px', background: '#eff4fe', borderRadius: 12, fontSize: 12, fontWeight: 700, color: '#1d4ed8', lineHeight: 1.5 }}>
             홈 화면에 추가하면 봉사 알림, 빠른 접근, 자동 로그인 유지가 더 편해집니다.
+          </p>
+        )}
+        {installed && isIOS() && notifPermission === 'default' && (
+          <p style={{ margin: '14px 0 0', padding: '10px 12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, fontSize: 12, fontWeight: 700, color: '#047857', lineHeight: 1.5 }}>
+            ✅ 설치 완료! 위 <strong>"이 기기 푸시 알림" → 켜기</strong> 버튼으로 알림을 허용해 주세요.
           </p>
         )}
       </div>

@@ -19,6 +19,7 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
   const [pin, setPin] = useState('')
   const [rememberMe, setRememberMe] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [signupCompleted, setSignupCompleted] = useState<{ loginId: string; nickname: string } | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,11 +40,17 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
     }
 
     if (isSignup) {
+      // 가입 성공 → 안내 모달 표시 (사용자가 인지 후 닫아야 로그인 화면 복귀)
+      setSignupCompleted({ loginId: loginId.trim(), nickname: nickname.trim() })
       setIsSubmitting(false)
-      setIsSignup(false)
       setNickname('')
       setPin('')
     }
+  }
+
+  const closeSignupModal = () => {
+    setSignupCompleted(null)
+    setIsSignup(false)
   }
 
   return (
@@ -152,6 +159,41 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
           )}
         </div>
       </div>
+
+      {signupCompleted && (
+        <div className="login-modal-backdrop" onClick={closeSignupModal}>
+          <div className="login-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="login-modal-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M9 12l2 2 4-4" />
+              </svg>
+            </div>
+            <h2>가입 신청이 접수되었어요</h2>
+            <p className="login-modal-sub">
+              <strong>{signupCompleted.nickname}</strong> 님,<br />
+              관리자 승인 후 로그인할 수 있습니다.
+            </p>
+            <div className="login-modal-info">
+              <div className="login-modal-info-row">
+                <span>아이디</span>
+                <strong>{signupCompleted.loginId}</strong>
+              </div>
+              <div className="login-modal-info-row">
+                <span>상태</span>
+                <strong className="login-modal-pending">승인 대기 중</strong>
+              </div>
+            </div>
+            <p className="login-modal-hint">
+              승인이 완료되면 이 아이디와 비밀번호로 로그인할 수 있어요. <br />
+              담당 관리자에게 신청 사실을 알려주세요.
+            </p>
+            <button type="button" className="login-modal-btn" onClick={closeSignupModal}>
+              확인
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

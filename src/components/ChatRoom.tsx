@@ -454,18 +454,39 @@ export function ChatRoom({
                   )}
                   {message.message_type === 'image' && message.image_expired && (
                     <div style={{
-                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '14px 16px',
                       background: '#f1f5f9',
-                      borderRadius: 8,
-                      color: '#94a3b8',
-                      fontSize: 13,
-                      fontStyle: 'italic',
-                      textAlign: 'center',
+                      border: '1px dashed #cbd5e1',
+                      borderRadius: 10,
                     }}>
-                      📷 [사진 만료됨]
-                      <div style={{ fontSize: 11, marginTop: 4 }}>
-                        6개월 보관 후 자동 삭제됩니다
-                      </div>
+                      <span style={{ fontSize: 24, lineHeight: 1 }} aria-hidden="true">🗂️</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>사진이 만료되었습니다</span>
+                      <span style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center', lineHeight: 1.4 }}>
+                        보관 기간이 지나 사진이 삭제되었어요.
+                      </span>
+                      {mine && (
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          style={{
+                            marginTop: 4,
+                            padding: '6px 12px',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: 8,
+                            background: '#ffffff',
+                            color: '#334155',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          📷 다시 올리기
+                        </button>
+                      )}
                     </div>
                   )}
                   {message.content && <p>{message.content}</p>}

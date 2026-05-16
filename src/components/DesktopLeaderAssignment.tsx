@@ -313,7 +313,6 @@ function DesktopLeaderAssignmentView({
           {draft && <span className={`dla-status-badge ${draftStatus}`}>{statusLabel}</span>}
           {unassigned.length > 0 && <span className="dla-badge-red">미배정 {unassigned.length}명</span>}
           <button className="dla-btn-ghost" disabled={saving || !selectedEvent} onClick={() => void saveStatus('draft')} type="button">임시 저장</button>
-          <button className="dla-btn-confirm" disabled={saving || !selectedEvent} onClick={() => void saveStatus('confirmed')} type="button">배정 확정</button>
           <button className="dla-btn-primary" disabled={saving || !selectedEvent} onClick={() => void saveStatus('shared')} type="button">{shareButtonLabel}</button>
         </div>
       </div>
@@ -617,7 +616,7 @@ function DesktopLeaderAssignmentView({
         <div className="cal-modal-backdrop" onClick={() => setPendingAction(null)}>
           <div className="cal-modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
             <div className="cal-modal-head">
-              <div className="cal-modal-title"><h2>{pendingAction === 'shared' ? '배정 공유 확인' : '배정 확정 확인'}</h2></div>
+              <div className="cal-modal-title"><h2>배정 공유 확인</h2></div>
               <button className="cal-modal-close" onClick={() => setPendingAction(null)} type="button">✕</button>
             </div>
             <div className="cal-modal-body" style={{ padding: '20px 24px' }}>
@@ -627,7 +626,7 @@ function DesktopLeaderAssignmentView({
             <div className="cal-modal-foot">
               <button className="cal-cancel-btn" onClick={() => setPendingAction(null)} type="button">돌아가기</button>
               <button className="cal-save-btn" onClick={() => void continuePending()} type="button">
-                {pendingAction === 'shared' ? '그래도 공유' : '그래도 확정'}
+                그래도 공유
               </button>
             </div>
           </div>

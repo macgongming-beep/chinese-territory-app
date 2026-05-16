@@ -712,20 +712,20 @@ export function MobileLeaderAssignment({
             <div className="cal-modal-backdrop" onClick={() => setPendingAction(null)}>
               <div className="cal-modal" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
                 <div className="cal-modal-head">
-                  <div className="cal-modal-title"><h2>{pendingAction === 'shared' ? '배정 공유 확인' : '배정 확정 확인'}</h2></div>
+                  <div className="cal-modal-title"><h2>배정 공유 확인</h2></div>
                   <button className="cal-modal-close" onClick={() => setPendingAction(null)} type="button">✕</button>
                 </div>
                 <div className="cal-modal-body">
                   <div className="leader-confirm-copy">
                     <strong>미배정 인원이 남아 있습니다.</strong>
                     <p>{unassignedParticipants.map((p) => p.name).join(', ')}</p>
-                    <span>{pendingAction === 'shared' ? '공유하면 배정된 참가자 카드만 공개됩니다.' : '확정하면 배정된 참가자 카드가 나의 봉사에 표시됩니다.'}</span>
+                    <span>공유하면 배정된 참가자 카드만 공개됩니다.</span>
                   </div>
                 </div>
                 <div className="cal-modal-foot">
                   <button className="cal-cancel-btn" onClick={() => setPendingAction(null)} type="button">돌아가기</button>
                   <button className="cal-save-btn" onClick={() => void continuePendingAction()} type="button">
-                    {pendingAction === 'shared' ? '그래도 공유' : '그래도 확정'}
+                    그래도 공유
                   </button>
                 </div>
               </div>

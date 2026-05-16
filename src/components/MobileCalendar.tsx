@@ -110,6 +110,7 @@ export function MobileCalendar({
   const [selectedDay, setSelectedDay] = useState(today.getDate())
   const [searchParams, setSearchParams] = useSearchParams()
   const [chatEvent, setChatEvent] = useState<CalendarEvent | null>(null)
+  const [deleteConfirmEvent, setDeleteConfirmEvent] = useState<CalendarEvent | null>(null)
 
   // openChat=<eventId> 쿼리 처리: 해당 일정 날짜로 이동 + 채팅방 열기
   useEffect(() => {
@@ -519,9 +520,7 @@ export function MobileCalendar({
                     <button className="mobile-cal-edit-btn" onClick={() => startEdit(event)} type="button">{t(language, 'common.edit')}</button>
                     <button
                       className="mobile-cal-delete-btn"
-                      onClick={() => {
-                        if (confirm(`"${event.title}" ${t(language, 'calendar.deleteConfirmSuffix')}`)) onDeleteEvent?.(event.id)
-                      }}
+                      onClick={() => setDeleteConfirmEvent(event)}
                       type="button"
                     >
                       {t(language, 'common.delete')}
@@ -559,6 +558,53 @@ export function MobileCalendar({
           )
         })}
       </div>
+      {deleteConfirmEvent && (
+        <div className="cal-modal-backdrop" onClick={() => setDeleteConfirmEvent(null)}>
+          <div className="cal-modal" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
+            <div className="cal-modal-head">
+              <div className="cal-modal-title"><h2>일정 삭제</h2></div>
+              <button className="cal-modal-close" onClick={() => setDeleteConfirmEvent(null)} type="button">✕</button>
+            </div>
+            <div className="cal-modal-body" style={{ padding: '16px 20px' }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+                "{deleteConfirmEvent.title}"
+              </p>
+              <p style={{ margin: '4px 0 14px', fontSize: 13, color: '#64748b' }}>
+                {deleteConfirmEvent.date} {deleteConfirmEvent.time}
+              </p>
+              <div style={{ padding: '12px 14px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10 }}>
+                <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#92400e' }}>
+                  ⚠️ 함께 삭제됩니다
+                </p>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 12, color: '#78350f', lineHeight: 1.8 }}>
+                  <li>· 채팅방 (메시지 전체)</li>
+                  <li>· 신청자 {deleteConfirmEvent.applicants.length}명</li>
+                  <li>· 봉사자 카드 배정 {deleteConfirmEvent.cardAssignments.length}건</li>
+                  <li>· 일정에 달린 댓글</li>
+                </ul>
+              </div>
+              <p style={{ margin: '12px 0 0', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>
+                이 작업은 되돌릴 수 없습니다.
+              </p>
+            </div>
+            <div className="cal-modal-foot">
+              <button className="cal-cancel-btn" onClick={() => setDeleteConfirmEvent(null)} type="button">취소</button>
+              <button
+                className="cal-save-btn"
+                style={{ background: '#dc2626', borderColor: '#dc2626' }}
+                onClick={() => {
+                  onDeleteEvent?.(deleteConfirmEvent.id)
+                  setDeleteConfirmEvent(null)
+                }}
+                type="button"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {chatEvent && (
         <div className="chat-room-modal-backdrop" onClick={() => setChatEvent(null)}>
           <div className="chat-room-modal chat-room-modal--mobile" onClick={(event) => event.stopPropagation()}>
