@@ -3,9 +3,11 @@
 import { useRef, useState } from 'react'
 import type { InformalAsset, Role } from '../types'
 import { showToast } from '../lib/toast'
+import { compressImage } from '../lib/imageCompress'
 
-const MAX_SIZE_MB = 5
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_ORIGINAL_SIZE_MB = 30  // 압축 전 허용 최대 (원본이 너무 크면 메모리 부담)
+const TARGET_SIZE_MB = 1.5       // 압축 후 목표 크기
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
 
 function isAdminLike(role: Role | undefined | null): boolean {
   return role === 'admin' || role === 'developer'
@@ -26,6 +28,9 @@ export function InformalAssetsManager({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showForm, setShowForm] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [originalSize, setOriginalSize] = useState(0)
+  const [compressing, setCompressing] = useState(false)
+  const [compressionInfo, setCompressionInfo] = useState<string>('')
   const [name, setName] = useState('')
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState<InformalAsset | null>(null)
@@ -39,24 +44,57 @@ export function InformalAssetsManager({
     return null
   }
 
-  const handleFilePick = (file: File | null) => {
+  const handleFilePick = async (file: File | null) => {
     if (!file) {
       setSelectedFile(null)
+      setOriginalSize(0)
+      setCompressionInfo('')
       return
     }
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      showToast('JPG, PNG, WebP 만 업로드 가능합니다.', 'error')
+    if (file.type && !file.type.startsWith('image/')) {
+      showToast('이미지 파일만 업로드 가능합니다.', 'error')
       return
     }
-    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      showToast(`파일 크기는 ${MAX_SIZE_MB}MB 이하만 가능합니다.`, 'error')
+    if (!ACCEPTED_TYPES.includes(file.type) && file.type !== '') {
+      // 알 수 없는 이미지 타입이면 경고만 (HEIC 등은 createImageBitmap 에서 처리)
+      console.warn('[informal] 알 수 없는 이미지 타입:', file.type)
+    }
+    if (file.size > MAX_ORIGINAL_SIZE_MB * 1024 * 1024) {
+      showToast(`원본 파일이 너무 큽니다 (${MAX_ORIGINAL_SIZE_MB}MB 초과).`, 'error')
       return
     }
-    setSelectedFile(file)
-    if (!name.trim()) {
-      // 파일명에서 확장자 제거해 기본 이름 채움
-      const baseName = file.name.replace(/\.[^.]+$/, '')
-      setName(baseName.slice(0, 40))
+
+    setOriginalSize(file.size)
+    setCompressing(true)
+    setCompressionInfo('')
+    try {
+      const result = await compressImage(file, {
+        maxWidth: 1600,
+        maxHeight: 1600,
+        quality: 0.85,
+        maxSizeMB: TARGET_SIZE_MB,
+        outputType: 'image/jpeg',
+      })
+      setSelectedFile(result.file)
+      const origKB = Math.round(file.size / 1024)
+      const finalKB = Math.round(result.finalSize / 1024)
+      const pct = Math.round((1 - result.ratio) * 100)
+      if (file.size === result.finalSize) {
+        setCompressionInfo(`${origKB.toLocaleString()} KB`)
+      } else {
+        setCompressionInfo(
+          `${origKB.toLocaleString()} KB → ${finalKB.toLocaleString()} KB (-${pct}%) · ${result.width}×${result.height}`,
+        )
+      }
+      if (!name.trim()) {
+        const baseName = file.name.replace(/\.[^.]+$/, '')
+        setName(baseName.slice(0, 40))
+      }
+    } catch (e) {
+      console.error('[informal] 압축 실패:', e)
+      showToast('이미지를 처리하지 못했습니다.', 'error')
+    } finally {
+      setCompressing(false)
     }
   }
 
@@ -77,6 +115,8 @@ export function InformalAssetsManager({
 
   const resetForm = () => {
     setSelectedFile(null)
+    setOriginalSize(0)
+    setCompressionInfo('')
     setName('')
     setShowForm(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -143,13 +183,28 @@ export function InformalAssetsManager({
           <input
             ref={fileInputRef}
             type="file"
-            accept={ACCEPTED_TYPES.join(',')}
-            onChange={(e) => handleFilePick(e.target.files?.[0] ?? null)}
+            accept="image/*"
+            onChange={(e) => void handleFilePick(e.target.files?.[0] ?? null)}
+            disabled={compressing || uploading}
             style={{ width: '100%', marginBottom: 10, fontSize: 13 }}
           />
-          {selectedFile && (
+          {compressing && (
+            <div style={{ marginBottom: 10, fontSize: 12, color: '#7c3aed', fontWeight: 700 }}>
+              🌀 이미지 압축 중...
+            </div>
+          )}
+          {!compressing && selectedFile && (
             <div style={{ marginBottom: 10, fontSize: 12, color: '#6b7280' }}>
-              {selectedFile.name} · {(selectedFile.size / 1024).toFixed(0)} KB
+              {compressionInfo || `${(selectedFile.size / 1024).toFixed(0)} KB`}
+            </div>
+          )}
+          {!compressing && originalSize > 0 && selectedFile && originalSize !== selectedFile.size && (
+            <div style={{
+              padding: '6px 10px', marginBottom: 10, borderRadius: 8,
+              background: '#ecfdf5', border: '1px solid #a7f3d0',
+              fontSize: 11, color: '#047857', fontWeight: 700,
+            }}>
+              ✓ 화질 유지하면서 자동 압축됨 (가로 최대 1600px)
             </div>
           )}
           <input
