@@ -262,12 +262,12 @@ export function DesktopCalendar({
                 <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>수정 범위 선택</h2>
                 <p style={{ fontSize: '13px', color: 'var(--ink-500)', margin: 0 }}>반복 시리즈 일정입니다. 어떤 범위로 수정할까요?</p>
                 <button onClick={() => { onUpdateEvent(scopeModal.id, scopeModal.draft); clearEdit(); setScopeModal(null) }} style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #d1d5db', background: '#f9fafb', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }} type="button">
-                  <strong style={{ display: 'block' }}>이 일정만 수정</strong>
-                  <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 400 }}>{scopeModal.date} 일정만 변경됩니다</span>
+                  <strong style={{ display: 'block' }}>이 일정만 수정 ({scopeModal.date})</strong>
+                  <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 400 }}>나머지 반복 일정은 그대로</span>
                 </button>
                 <button onClick={() => { onUpdateEventSeries(scopeModal.seriesId, scopeModal.date, scopeModal.draft); clearEdit(); setScopeModal(null) }} style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid var(--brand-700)', background: 'var(--brand-50)', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }} type="button">
-                  <strong style={{ display: 'block', color: 'var(--brand-700)' }}>이후 모든 일정 수정</strong>
-                  <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 400 }}>{scopeModal.date} 이후 시리즈 전체가 변경됩니다</span>
+                  <strong style={{ display: 'block', color: 'var(--brand-700)' }}>이 날 포함 이후 모두 수정</strong>
+                  <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 400 }}>{scopeModal.date} 부터 이후 일정만 변경 (지난 일정은 그대로)</span>
                 </button>
               </>
             )}
@@ -276,12 +276,12 @@ export function DesktopCalendar({
                 <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>삭제 범위 선택</h2>
                 <p style={{ fontSize: '13px', color: 'var(--ink-500)', margin: 0 }}>반복 시리즈 일정입니다. 어떤 범위로 삭제할까요?</p>
                 <button onClick={() => { onDeleteEvent(scopeModal.id); clearEdit(); setScopeModal(null) }} style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #d1d5db', background: '#f9fafb', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }} type="button">
-                  <strong style={{ display: 'block' }}>이 일정만 삭제</strong>
-                  <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 400 }}>{scopeModal.date} 한 건만 삭제됩니다</span>
+                  <strong style={{ display: 'block' }}>이 일정만 삭제 ({scopeModal.date})</strong>
+                  <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 400 }}>나머지 반복 일정은 그대로</span>
                 </button>
                 <button onClick={() => { onDeleteEventSeries(scopeModal.seriesId, scopeModal.date); clearEdit(); setScopeModal(null) }} style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid var(--danger-600)', background: '#fef2f2', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }} type="button">
-                  <strong style={{ display: 'block', color: 'var(--danger-600)' }}>이후 반복 일정 모두 삭제</strong>
-                  <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 400 }}>{scopeModal.date} 이후 같은 시리즈 전체가 삭제됩니다</span>
+                  <strong style={{ display: 'block', color: 'var(--danger-600)' }}>이 날 포함 이후 모두 삭제</strong>
+                  <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 400 }}>{scopeModal.date} 부터 이후 일정 모두 (지난 일정은 그대로)</span>
                 </button>
               </>
             )}

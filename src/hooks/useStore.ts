@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type {
   Building,
@@ -76,8 +76,22 @@ export function useStore() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [missingCardLeaderAssignmentsTable, setMissingCardLeaderAssignmentsTable] = useState(false)
+  // 마지막 auto_close 호출 시각 (5분 디바운스)
+  const lastAutoCloseAtRef = useRef(0)
 
   const fetchAll = useCallback(async () => {
+    // 자동 종료 함수 호출 (5분 디바운스, 백그라운드 fire-and-forget)
+    if (Date.now() - lastAutoCloseAtRef.current > 5 * 60 * 1000) {
+      lastAutoCloseAtRef.current = Date.now()
+      void supabase.rpc('auto_close_stale_sessions').then((res) => {
+        if (res.error) {
+          // 함수 없으면 (SQL 적용 전) 조용히 무시
+          if (!res.error.message?.includes('Could not find the function')) {
+            console.warn('[auto_close_stale_sessions] failed:', res.error)
+          }
+        }
+      })
+    }
     const cardsQueryPromise = (async () => {
       const withLeaderAssignments = await supabase
         .from('cards')
