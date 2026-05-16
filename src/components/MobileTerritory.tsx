@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { Building, CalendarEvent, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit } from '../types'
+import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t } from '../i18n'
 import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
@@ -59,6 +59,10 @@ export function MobileTerritory({
   onDeleteReturnVisit,
   onUpdateReturnVisitNickname,
   onUpdateReturnVisitAddress,
+  // v2 신 배정 모델
+  informalAssets = [],
+  eventInformalAssignments = [],
+  eventRestaurantAssignments = [],
 }: {
   language: AppLanguage
   buildings: Building[]
@@ -69,6 +73,9 @@ export function MobileTerritory({
   serviceSessions: ServiceSession[]
   returnVisits?: ReturnVisit[]
   returnVisitLogs?: ReturnVisitLog[]
+  informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
   onOpenMap: (cardId: number) => void
   onStartServiceSession: (input: {
     role: Role
@@ -442,12 +449,20 @@ export function MobileTerritory({
               <div className="mobile-today-service-list">
                 {myTodayAssignments.map(({ event, cards: assignedCards, teammates }) => {
                   const isOpen = expandedEventIds.has(event.id)
+                  // v2: 본인의 비공식/식당 배정
+                  const myInformal = eventInformalAssignments.filter(
+                    (a) => a.eventId === event.id && a.userName === currentVisitor,
+                  )
+                  const myRestaurants = eventRestaurantAssignments.filter(
+                    (a) => a.eventId === event.id && a.userName === currentVisitor,
+                  )
+                  const totalCount = assignedCards.length + myInformal.length + myRestaurants.length
                   return (
                     <article className={`mobile-today-service-card${isOpen ? ' open' : ''}`} key={event.id}>
                       <button className="mobile-today-service-toggle" onClick={() => toggleTodayEvent(event.id)} type="button">
                         <span aria-hidden="true">{isOpen ? '⌄' : '›'}</span>
                         <strong>{event.date === today ? '' : `${fmtDate(event.date, language)} · `}{event.time} {event.title}</strong>
-                        <b>{assignedCards.length}{t(language, 'calendar.countSuffix')}</b>
+                        <b>{totalCount}{t(language, 'calendar.countSuffix')}</b>
                       </button>
                       {isOpen && (
                         <div className="mobile-today-service-body">
@@ -455,16 +470,61 @@ export function MobileTerritory({
                             {event.leader ? `${t(language, 'territory.leader')} ${event.leader}` : t(language, 'territory.leaderTbd')}
                             {teammates.length > 0 ? ` · ${t(language, 'territory.members')} ${teammates.join(', ')}` : ''}
                           </p>
-                          {assignedCards.length === 0 ? (
+                          {totalCount === 0 ? (
                             <div className="mobile-territory-empty compact">{t(language, 'territory.noAssignedCards')}</div>
-                          ) : assignedCards.map((card) => (
-                            <div className="mobile-today-card-row" key={card.id}>
-                              <span className="mobile-today-card-dot" aria-hidden="true" />
-                              <strong>{card.name}</strong>
-                              <em>{card.progress}%</em>
-                              <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
-                            </div>
-                          ))}
+                          ) : (
+                            <>
+                              {assignedCards.map((card) => (
+                                <div className="mobile-today-card-row" key={`card-${card.id}`}>
+                                  <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#2563eb' }} />
+                                  <strong>{card.name}</strong>
+                                  <em>{card.progress}%</em>
+                                  <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
+                                </div>
+                              ))}
+                              {myInformal.map((asn) => {
+                                const asset = informalAssets.find((x) => x.id === asn.assetId)
+                                return (
+                                  <div className="mobile-today-card-row" key={`inf-${asn.id}`}>
+                                    <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#a855f7' }} />
+                                    <strong>{asset?.name ?? '비공식 자료'}</strong>
+                                    <em style={{ color: '#a855f7' }}>비공식</em>
+                                    {asset?.imageUrl && (
+                                      <a href={asset.imageUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
+                                        <img
+                                          src={asset.imageUrl}
+                                          alt={asset.name}
+                                          style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', border: '1px solid #e2e8f0' }}
+                                        />
+                                      </a>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                              {myRestaurants.map((asn) => {
+                                const b = buildings.find((x) => x.id === asn.buildingId)
+                                if (!b) return null
+                                return (
+                                  <div className="mobile-today-card-row" key={`rest-${asn.id}`}>
+                                    <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#ea580c' }} />
+                                    <strong>{b.name || b.address}</strong>
+                                    <em style={{ color: '#ea580c' }}>식당</em>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (b.lat && b.lng) {
+                                          const dname = encodeURIComponent(b.name || b.address)
+                                          window.open(`https://map.naver.com/p/search/${dname}`, '_blank', 'noopener,noreferrer')
+                                        } else {
+                                          onOpenMap(b.cardId)
+                                        }
+                                      }}
+                                    >길찾기</button>
+                                  </div>
+                                )
+                              })}
+                            </>
+                          )}
                         </div>
                       )}
                     </article>

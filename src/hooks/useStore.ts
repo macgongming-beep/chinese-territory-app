@@ -4,6 +4,10 @@ import type {
   Building,
   CalendarEvent,
   CardBoundary,
+  EventInformalAssignment,
+  EventRestaurantAssignment,
+  EventTeam,
+  InformalAsset,
   Notice,
   ReturnVisit,
   ReturnVisitLog,
@@ -19,6 +23,10 @@ import {
   toCard,
   toCalendarEvent,
   toEventCardAssignment,
+  toEventTeam,
+  toInformalAsset,
+  toEventInformalAssignment,
+  toEventRestaurantAssignment,
   mergeEventCardAssignments,
   toVisitHistory,
   toServiceSession,
@@ -37,6 +45,7 @@ import {
   makeRegularVisitMutations,
   makeServiceSessionMutations,
   makeEventAssignmentMutations,
+  makeV2AssignmentMutations,
 } from './storeMutations'
 import type {
   RawBuilding,
@@ -44,6 +53,10 @@ import type {
   RawCalendarEvent,
   RawEventCardAssignment,
   RawEventCardAssignmentCard,
+  RawEventInformalAssignment,
+  RawEventRestaurantAssignment,
+  RawEventTeam,
+  RawInformalAsset,
   RawVisitHistory,
   RawServiceSession,
   RawCardBoundary,
@@ -73,6 +86,10 @@ export function useStore() {
   const [returnVisits, setReturnVisits] = useState<ReturnVisit[]>([])
   const [returnVisitLogs, setReturnVisitLogs] = useState<ReturnVisitLog[]>([])
   const [reviewTasks, setReviewTasks] = useState<ReviewTask[]>([])
+  const [eventTeams, setEventTeams] = useState<EventTeam[]>([])
+  const [informalAssets, setInformalAssets] = useState<InformalAsset[]>([])
+  const [eventInformalAssignments, setEventInformalAssignments] = useState<EventInformalAssignment[]>([])
+  const [eventRestaurantAssignments, setEventRestaurantAssignments] = useState<EventRestaurantAssignment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [missingCardLeaderAssignmentsTable, setMissingCardLeaderAssignmentsTable] = useState(false)
@@ -111,7 +128,12 @@ export function useStore() {
       return withLeaderAssignments
     })()
 
-    const [buildingsRes, cardsRes, visitsRes, sessionsRes, eventsRes, eventCardAssignmentsRes, eventAssignmentCardsRes, boundariesRes, noticesRes, periodsRes, returnVisitsRes, returnVisitLogsRes, reviewTasksRes] = await Promise.all([
+    const [
+      buildingsRes, cardsRes, visitsRes, sessionsRes, eventsRes,
+      eventCardAssignmentsRes, eventAssignmentCardsRes, boundariesRes,
+      noticesRes, periodsRes, returnVisitsRes, returnVisitLogsRes, reviewTasksRes,
+      eventTeamsRes, informalAssetsRes, eventInformalAssignmentsRes, eventRestaurantAssignmentsRes,
+    ] = await Promise.all([
       supabase.from('buildings').select('*, units(*, regular_visits(*))').order('id'),
       cardsQueryPromise,
       supabase.from('visit_histories').select('*').order('created_at', { ascending: false }),
@@ -125,6 +147,10 @@ export function useStore() {
       supabase.from('return_visits').select('*').order('created_at', { ascending: false }),
       supabase.from('return_visit_logs').select('*').order('visited_at', { ascending: false }),
       supabase.from('review_tasks').select('*').neq('status', 'deleted').order('created_at', { ascending: false }),
+      supabase.from('event_teams').select('*').order('position'),
+      supabase.from('informal_assets').select('*').eq('archived', false).order('created_at', { ascending: false }),
+      supabase.from('event_informal_assignments').select('*'),
+      supabase.from('event_restaurant_assignments').select('*'),
     ])
 
     if (buildingsRes.error || cardsRes.error || visitsRes.error || eventsRes.error) {
@@ -228,6 +254,16 @@ export function useStore() {
     if (reviewTasksRes.error) {
       console.warn('검토 항목을 불러오지 못했습니다. review_tasks 테이블이 없을 수 있습니다.', reviewTasksRes.error)
     }
+
+    // v2 신 배정 모델 데이터 (v2_assignment_model.sql 적용 전이면 모두 빈 배열)
+    setEventTeams(eventTeamsRes.error ? [] : (eventTeamsRes.data as RawEventTeam[]).map(toEventTeam))
+    setInformalAssets(informalAssetsRes.error ? [] : (informalAssetsRes.data as RawInformalAsset[]).map(toInformalAsset))
+    setEventInformalAssignments(eventInformalAssignmentsRes.error ? [] : (eventInformalAssignmentsRes.data as RawEventInformalAssignment[]).map(toEventInformalAssignment))
+    setEventRestaurantAssignments(eventRestaurantAssignmentsRes.error ? [] : (eventRestaurantAssignmentsRes.data as RawEventRestaurantAssignment[]).map(toEventRestaurantAssignment))
+    if (eventTeamsRes.error || informalAssetsRes.error || eventInformalAssignmentsRes.error || eventRestaurantAssignmentsRes.error) {
+      console.warn('v2 신 배정 모델 테이블 일부 미적용 — supabase/v2_assignment_model.sql 실행 필요')
+    }
+
     setError(null)
     setLoading(false)
   }, [missingCardLeaderAssignmentsTable])
@@ -360,6 +396,19 @@ export function useStore() {
     deleteReviewTask,
   } = makeReviewTaskMutations({ fetchAll, setReviewTasks })
 
+  const {
+    createEventTeam,
+    updateEventTeam,
+    deleteEventTeam,
+    uploadInformalAsset,
+    deleteInformalAsset,
+    assignInformalToUser,
+    removeInformalAssignment,
+    assignRestaurantToUser,
+    removeRestaurantAssignment,
+    toggleBuildingRestaurant,
+  } = makeV2AssignmentMutations({ fetchAll })
+
   return {
     refetchAll: fetchAll,
     cards,
@@ -436,5 +485,20 @@ export function useStore() {
     uncompleteReviewTask,
     updateReviewTask,
     deleteReviewTask,
+    // v2 신 배정 모델
+    eventTeams,
+    informalAssets,
+    eventInformalAssignments,
+    eventRestaurantAssignments,
+    createEventTeam,
+    updateEventTeam,
+    deleteEventTeam,
+    uploadInformalAsset,
+    deleteInformalAsset,
+    assignInformalToUser,
+    removeInformalAssignment,
+    assignRestaurantToUser,
+    removeRestaurantAssignment,
+    toggleBuildingRestaurant,
   }
 }

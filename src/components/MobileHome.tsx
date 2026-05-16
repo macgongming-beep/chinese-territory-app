@@ -9,7 +9,8 @@ import { MobileTerritory } from './MobileTerritory'
 import { MobileUsers } from './MobileUsers'
 import { MobileSignupRequests } from './MobileSignupRequests'
 import { MobileProfileSettings } from './MobileProfileSettings'
-import type { Building, CalendarEvent, CardBoundary, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, EventTeam, InformalAsset, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import { InformalAssetsManager } from './InformalAssetsManager'
 import type { AuthUser } from '../hooks/useAuth'
 import type { AppLanguage } from '../i18n'
 import { languageLabels, t } from '../i18n'
@@ -774,6 +775,21 @@ export function MobileHome({
   specialPeriods,
   onCreateSpecialPeriod,
   onDeleteSpecialPeriod,
+  // v2 신 배정 모델
+  eventTeams = [],
+  informalAssets = [],
+  eventInformalAssignments = [],
+  eventRestaurantAssignments = [],
+  onCreateEventTeam,
+  onUpdateEventTeam,
+  onDeleteEventTeam,
+  onUploadInformalAsset,
+  onDeleteInformalAsset,
+  onAssignInformalToUser,
+  onRemoveInformalAssignment,
+  onAssignRestaurantToUser,
+  onRemoveRestaurantAssignment,
+  onToggleBuildingRestaurant,
 }: {
   leaderNames?: string[]
   buildings: Building[]
@@ -846,11 +862,32 @@ export function MobileHome({
   specialPeriods?: SpecialPeriod[]
   onCreateSpecialPeriod?: (input: { label: string; startDate: string; endDate: string; color: string }) => Promise<void> | void
   onDeleteSpecialPeriod?: (id: number) => Promise<void> | void
+  // v2 신 배정 모델
+  eventTeams?: EventTeam[]
+  informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
+  onCreateEventTeam?: (input: { eventId: number; name?: string; color?: string; position?: number }) => Promise<number | null>
+  onUpdateEventTeam?: (teamId: number, input: { name?: string; color?: string; position?: number }) => Promise<void>
+  onDeleteEventTeam?: (teamId: number) => Promise<void>
+  onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
+  onDeleteInformalAsset?: (assetId: number) => Promise<void>
+  onAssignInformalToUser?: (input: { eventId: number; teamId: number | null; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
+  onAssignRestaurantToUser?: (input: { eventId: number; teamId: number | null; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
+  onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
 }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const role = actualRole === 'admin' ? viewMode : actualRole
+
+  // 미사용 (향후 phase) — 의도적 unused
+  void eventTeams
+  void onCreateEventTeam
+  void onUpdateEventTeam
+  void onDeleteEventTeam
   const headerChatUsers = useMemo(
     () => allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role as Role })),
     [allUsers],
@@ -1308,6 +1345,9 @@ export function MobileHome({
                   onDeleteReturnVisit={onDeleteReturnVisit}
                   onUpdateReturnVisitNickname={onUpdateReturnVisitNickname}
                   onUpdateReturnVisitAddress={onUpdateReturnVisitAddress}
+                  informalAssets={informalAssets}
+                  eventInformalAssignments={eventInformalAssignments}
+                  eventRestaurantAssignments={eventRestaurantAssignments}
                 />
                 </>
               )
@@ -1356,10 +1396,19 @@ export function MobileHome({
               ) : (
                 <MobileLeaderAssignment
                   cards={cards}
+                  buildings={buildings}
                   calendarEvents={calendarEvents}
                   currentVisitor={currentVisitor}
                   role={role}
                   onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
+                  informalAssets={informalAssets}
+                  eventInformalAssignments={eventInformalAssignments}
+                  eventRestaurantAssignments={eventRestaurantAssignments}
+                  onAssignInformalToUser={onAssignInformalToUser}
+                  onRemoveInformalAssignment={onRemoveInformalAssignment}
+                  onAssignRestaurantToUser={onAssignRestaurantToUser}
+                  onRemoveRestaurantAssignment={onRemoveRestaurantAssignment}
+                  onToggleBuildingRestaurant={onToggleBuildingRestaurant}
                 />
               )}
               </>
@@ -1557,6 +1606,19 @@ export function MobileHome({
                 <div style={{ padding: '0 16px', marginBottom: 16 }}>
                   <AppUpdateCard variant="mobile" />
                 </div>
+
+                {/* 비공식 증거 카드 관리 (admin/developer 전용) */}
+                {(actualRole === 'admin' || actualRole === 'developer') && onUploadInformalAsset && onDeleteInformalAsset && (
+                  <div style={{ padding: '0 16px', marginBottom: 16 }}>
+                    <InformalAssetsManager
+                      role={actualRole}
+                      currentVisitor={currentVisitor}
+                      informalAssets={informalAssets}
+                      onUpload={onUploadInformalAsset}
+                      onDelete={onDeleteInformalAsset}
+                    />
+                  </div>
+                )}
 
                 <button className="mobile-settings-logout" onClick={onLogout} type="button">
                   <span className="mobile-settings-icon mobile-settings-icon-danger" aria-hidden="true">

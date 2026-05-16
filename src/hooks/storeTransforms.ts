@@ -10,7 +10,11 @@ import type {
   CardBoundary,
   CardType,
   EventCardAssignment,
+  EventInformalAssignment,
+  EventRestaurantAssignment,
+  EventTeam,
   GeoPoint,
+  InformalAsset,
   Notice,
   Role,
   ScheduleType,
@@ -53,6 +57,7 @@ export type RawBuilding = {
   warning: boolean
   memo: string | null
   is_chinese_heavy: boolean | null
+  is_restaurant?: boolean | null
   units: RawUnit[]
 }
 
@@ -90,6 +95,48 @@ export type RawEventCardAssignment = {
   event_id: number
   user_name: string
   assigned_card_id: number
+  assigned_by: string | null
+  assigned_at: string
+  memo: string | null
+  team_id?: number | null
+}
+
+export type RawEventTeam = {
+  id: number
+  event_id: number
+  name: string
+  color: string
+  position: number
+  created_at: string
+}
+
+export type RawInformalAsset = {
+  id: number
+  name: string
+  image_url: string
+  image_path: string
+  uploaded_by: string
+  created_at: string
+  archived: boolean
+}
+
+export type RawEventInformalAssignment = {
+  id: number
+  event_id: number
+  team_id: number | null
+  user_name: string
+  asset_id: number
+  assigned_by: string | null
+  assigned_at: string
+  memo: string | null
+}
+
+export type RawEventRestaurantAssignment = {
+  id: number
+  event_id: number
+  team_id: number | null
+  user_name: string
+  building_id: number
   assigned_by: string | null
   assigned_at: string
   memo: string | null
@@ -171,6 +218,7 @@ export function toBuilding(raw: RawBuilding): Building {
     warning: raw.warning,
     memo: raw.memo ?? undefined,
     isChineseHeavy: raw.is_chinese_heavy ?? false,
+    isRestaurant: raw.is_restaurant ?? false,
     units: [...raw.units]
       .sort((a, b) => unitNumberCollator.compare(a.number, b.number))
       .map((u) => ({
@@ -259,6 +307,56 @@ export function toEventCardAssignment(raw: RawEventCardAssignment): EventCardAss
     userName: raw.user_name,
     assignedCardId: raw.assigned_card_id,
     assignedCardIds: [raw.assigned_card_id],
+    assignedBy: raw.assigned_by ?? '',
+    assignedAt: raw.assigned_at,
+    memo: raw.memo ?? '',
+    teamId: raw.team_id ?? null,
+  }
+}
+
+export function toEventTeam(raw: RawEventTeam): EventTeam {
+  return {
+    id: raw.id,
+    eventId: raw.event_id,
+    name: raw.name ?? '',
+    color: raw.color ?? '#2563eb',
+    position: raw.position ?? 0,
+    createdAt: raw.created_at,
+  }
+}
+
+export function toInformalAsset(raw: RawInformalAsset): InformalAsset {
+  return {
+    id: raw.id,
+    name: raw.name,
+    imageUrl: raw.image_url,
+    imagePath: raw.image_path,
+    uploadedBy: raw.uploaded_by ?? '',
+    createdAt: raw.created_at,
+    archived: !!raw.archived,
+  }
+}
+
+export function toEventInformalAssignment(raw: RawEventInformalAssignment): EventInformalAssignment {
+  return {
+    id: raw.id,
+    eventId: raw.event_id,
+    teamId: raw.team_id ?? null,
+    userName: raw.user_name,
+    assetId: raw.asset_id,
+    assignedBy: raw.assigned_by ?? '',
+    assignedAt: raw.assigned_at,
+    memo: raw.memo ?? '',
+  }
+}
+
+export function toEventRestaurantAssignment(raw: RawEventRestaurantAssignment): EventRestaurantAssignment {
+  return {
+    id: raw.id,
+    eventId: raw.event_id,
+    teamId: raw.team_id ?? null,
+    userName: raw.user_name,
+    buildingId: raw.building_id,
     assignedBy: raw.assigned_by ?? '',
     assignedAt: raw.assigned_at,
     memo: raw.memo ?? '',

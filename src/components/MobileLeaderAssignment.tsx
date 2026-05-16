@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { showToast } from '../lib/toast'
-import type { CalendarEvent, Role, TerritoryCard } from '../types'
+import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, Role, TerritoryCard } from '../types'
+import { RestaurantPickerModal } from './RestaurantPickerModal'
+import { InformalPickerModal } from './InformalPickerModal'
 
 type AssignmentMode = 'card' | 'people'
 type AssignmentStatus = 'draft' | 'confirmed' | 'shared'
@@ -90,12 +92,23 @@ function participantAssignedTeam(teams: DraftTeam[], participantName: string) {
 
 export function MobileLeaderAssignment({
   cards,
+  buildings = [],
   calendarEvents,
   currentVisitor,
   role,
   onAssignCardsToEventParticipantsBulk,
+  // v2 신 배정
+  informalAssets = [],
+  eventInformalAssignments = [],
+  eventRestaurantAssignments = [],
+  onAssignInformalToUser,
+  onRemoveInformalAssignment,
+  onAssignRestaurantToUser,
+  onRemoveRestaurantAssignment,
+  onToggleBuildingRestaurant,
 }: {
   cards: TerritoryCard[]
+  buildings?: Building[]
   calendarEvents: CalendarEvent[]
   currentVisitor: string
   role: Role
@@ -104,6 +117,14 @@ export function MobileLeaderAssignment({
     assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
     options?: { silentSuccess?: boolean },
   ) => Promise<void> | void
+  informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
+  onAssignInformalToUser?: (input: { eventId: number; teamId: number | null; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
+  onAssignRestaurantToUser?: (input: { eventId: number; teamId: number | null; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
+  onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
 }) {
   const navigate = useNavigate()
   const today = getTodayString()
@@ -141,6 +162,9 @@ export function MobileLeaderAssignment({
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1)
   const [addMemberTeamId, setAddMemberTeamId] = useState<string | null>(null)
+  // v2: picker 상태
+  const [informalPickerTeamId, setInformalPickerTeamId] = useState<string | null>(null)
+  const [restaurantPickerTeamId, setRestaurantPickerTeamId] = useState<string | null>(null)
   const [assignmentStarted, setAssignmentStarted] = useState(false)
 
   useEffect(() => {
@@ -624,6 +648,108 @@ export function MobileLeaderAssignment({
                             )}
                           </div>
                         )}
+
+                        {/* v2: 비공식 증거 카드 섹션 */}
+                        {selectedEvent && onAssignInformalToUser && (
+                          <>
+                            <p className="ma-team-sub" style={{ marginTop: 12 }}>비공식 증거 카드</p>
+                            <div className="ma-team-cards-grid">
+                              {(() => {
+                                const teamMemberSet = new Set(team.members)
+                                const items = eventInformalAssignments.filter(
+                                  (a) => a.eventId === selectedEvent.id && teamMemberSet.has(a.userName),
+                                )
+                                const uniqueAssetIds = Array.from(new Set(items.map((i) => i.assetId)))
+                                return uniqueAssetIds.map((assetId) => {
+                                  const asset = informalAssets.find((a) => a.id === assetId)
+                                  if (!asset) return null
+                                  const ids = items.filter((i) => i.assetId === assetId).map((i) => i.id)
+                                  return (
+                                    <div className="ma-team-card-item" key={`inf-${assetId}`} style={{ position: 'relative' }}>
+                                      <span style={{ width: 6, height: 6, borderRadius: 99, background: '#a855f7' }} />
+                                      <div>
+                                        <strong>{asset.name}</strong>
+                                        <span>비공식 · {items.filter((i) => i.assetId === assetId).length}명</span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          if (!onRemoveInformalAssignment) return
+                                          for (const id of ids) await onRemoveInformalAssignment(id)
+                                        }}
+                                        aria-label="제거"
+                                        style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#94a3b8', fontSize: 13, cursor: 'pointer' }}
+                                      >✕</button>
+                                    </div>
+                                  )
+                                })
+                              })()}
+                              <button
+                                className="ma-team-add-card"
+                                onClick={() => {
+                                  if (team.members.length === 0) {
+                                    showToast('먼저 팀원을 추가해 주세요.', 'info')
+                                    return
+                                  }
+                                  setInformalPickerTeamId(team.id)
+                                }}
+                                type="button"
+                                style={{ borderColor: '#e9d5ff', color: '#7c3aed' }}
+                              >+ 비공식 추가</button>
+                            </div>
+                          </>
+                        )}
+
+                        {/* v2: 식당 봉사 섹션 */}
+                        {selectedEvent && onAssignRestaurantToUser && (
+                          <>
+                            <p className="ma-team-sub" style={{ marginTop: 12 }}>식당 봉사</p>
+                            <div className="ma-team-cards-grid">
+                              {(() => {
+                                const teamMemberSet = new Set(team.members)
+                                const items = eventRestaurantAssignments.filter(
+                                  (a) => a.eventId === selectedEvent.id && teamMemberSet.has(a.userName),
+                                )
+                                const uniqueBuildingIds = Array.from(new Set(items.map((i) => i.buildingId)))
+                                return uniqueBuildingIds.map((bId) => {
+                                  const b = buildings.find((bb) => bb.id === bId)
+                                  if (!b) return null
+                                  const ids = items.filter((i) => i.buildingId === bId).map((i) => i.id)
+                                  return (
+                                    <div className="ma-team-card-item" key={`rest-${bId}`} style={{ position: 'relative' }}>
+                                      <span style={{ width: 6, height: 6, borderRadius: 99, background: '#ea580c' }} />
+                                      <div>
+                                        <strong>{b.name || b.address}</strong>
+                                        <span>식당 · {items.filter((i) => i.buildingId === bId).length}명</span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          if (!onRemoveRestaurantAssignment) return
+                                          for (const id of ids) await onRemoveRestaurantAssignment(id)
+                                        }}
+                                        aria-label="제거"
+                                        style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#94a3b8', fontSize: 13, cursor: 'pointer' }}
+                                      >✕</button>
+                                    </div>
+                                  )
+                                })
+                              })()}
+                              <button
+                                className="ma-team-add-card"
+                                onClick={() => {
+                                  if (team.members.length === 0) {
+                                    showToast('먼저 팀원을 추가해 주세요.', 'info')
+                                    return
+                                  }
+                                  setRestaurantPickerTeamId(team.id)
+                                }}
+                                type="button"
+                                style={{ borderColor: '#fed7aa', color: '#c2410c' }}
+                              >+ 식당 추가</button>
+                            </div>
+                          </>
+                        )}
                       </article>
                     )
                   })}
@@ -733,6 +859,80 @@ export function MobileLeaderAssignment({
           )}
         </>
       )}
+
+      {/* v2: 비공식 picker */}
+      <InformalPickerModal
+        open={informalPickerTeamId !== null}
+        assets={informalAssets}
+        alreadyAssignedIds={(() => {
+          if (!informalPickerTeamId || !selectedEvent) return new Set()
+          const team = draft?.teams.find((t) => t.id === informalPickerTeamId)
+          if (!team) return new Set()
+          const memberSet = new Set(team.members)
+          return new Set(eventInformalAssignments
+            .filter((a) => a.eventId === selectedEvent.id && memberSet.has(a.userName))
+            .map((a) => a.assetId))
+        })()}
+        onSelect={async (assetId) => {
+          if (!informalPickerTeamId || !selectedEvent || !onAssignInformalToUser) return
+          const team = draft?.teams.find((t) => t.id === informalPickerTeamId)
+          if (!team) return
+          let okCount = 0
+          for (const member of team.members) {
+            const ok = await onAssignInformalToUser({
+              eventId: selectedEvent.id,
+              teamId: null,
+              userName: member,
+              assetId,
+              assignedBy: currentVisitor,
+            })
+            if (ok) okCount += 1
+          }
+          if (okCount > 0) {
+            showToast(`${okCount}명에게 비공식 자료를 배정했습니다.`, 'success')
+          }
+          setInformalPickerTeamId(null)
+        }}
+        onClose={() => setInformalPickerTeamId(null)}
+      />
+
+      {/* v2: 식당 picker */}
+      <RestaurantPickerModal
+        open={restaurantPickerTeamId !== null}
+        role={role}
+        buildings={buildings}
+        alreadyAssignedIds={(() => {
+          if (!restaurantPickerTeamId || !selectedEvent) return new Set()
+          const team = draft?.teams.find((t) => t.id === restaurantPickerTeamId)
+          if (!team) return new Set()
+          const memberSet = new Set(team.members)
+          return new Set(eventRestaurantAssignments
+            .filter((a) => a.eventId === selectedEvent.id && memberSet.has(a.userName))
+            .map((a) => a.buildingId))
+        })()}
+        onSelect={async (buildingId) => {
+          if (!restaurantPickerTeamId || !selectedEvent || !onAssignRestaurantToUser) return
+          const team = draft?.teams.find((t) => t.id === restaurantPickerTeamId)
+          if (!team) return
+          let okCount = 0
+          for (const member of team.members) {
+            const ok = await onAssignRestaurantToUser({
+              eventId: selectedEvent.id,
+              teamId: null,
+              userName: member,
+              buildingId,
+              assignedBy: currentVisitor,
+            })
+            if (ok) okCount += 1
+          }
+          if (okCount > 0) {
+            showToast(`${okCount}명에게 식당을 배정했습니다.`, 'success')
+          }
+          setRestaurantPickerTeamId(null)
+        }}
+        onToggleRestaurantFlag={onToggleBuildingRestaurant}
+        onClose={() => setRestaurantPickerTeamId(null)}
+      />
     </section>
   )
 }

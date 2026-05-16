@@ -42,6 +42,48 @@ export type EventCardAssignment = {
   assignedBy: string
   assignedAt: string
   memo: string
+  teamId?: number | null
+}
+
+export type EventTeam = {
+  id: number
+  eventId: number
+  name: string
+  color: string
+  position: number
+  createdAt: string
+}
+
+export type InformalAsset = {
+  id: number
+  name: string
+  imageUrl: string
+  imagePath: string
+  uploadedBy: string
+  createdAt: string
+  archived: boolean
+}
+
+export type EventInformalAssignment = {
+  id: number
+  eventId: number
+  teamId: number | null
+  userName: string
+  assetId: number
+  assignedBy: string
+  assignedAt: string
+  memo: string
+}
+
+export type EventRestaurantAssignment = {
+  id: number
+  eventId: number
+  teamId: number | null
+  userName: string
+  buildingId: number
+  assignedBy: string
+  assignedAt: string
+  memo: string
 }
 
 export type TerritoryCard = {
@@ -90,6 +132,7 @@ export type Building = {
   warning?: boolean
   memo?: string
   isChineseHeavy?: boolean
+  isRestaurant?: boolean
   units: Unit[]
 }
 

@@ -126,6 +126,21 @@ function App() {
     updateReviewTask,
     deleteReviewTask,
     refetchAll,
+    // v2 신 배정 모델
+    eventTeams,
+    informalAssets,
+    eventInformalAssignments,
+    eventRestaurantAssignments,
+    createEventTeam,
+    updateEventTeam,
+    deleteEventTeam,
+    uploadInformalAsset,
+    deleteInformalAsset,
+    assignInformalToUser,
+    removeInformalAssignment,
+    assignRestaurantToUser,
+    removeRestaurantAssignment,
+    toggleBuildingRestaurant,
   } = useStore()
 
   // role이 leader 또는 admin인 유저만 인도자 목록으로
@@ -365,6 +380,20 @@ function App() {
               specialPeriods={specialPeriods}
               onCreateSpecialPeriod={createSpecialPeriod}
               onDeleteSpecialPeriod={deleteSpecialPeriod}
+              eventTeams={eventTeams}
+              informalAssets={informalAssets}
+              eventInformalAssignments={eventInformalAssignments}
+              eventRestaurantAssignments={eventRestaurantAssignments}
+              onCreateEventTeam={createEventTeam}
+              onUpdateEventTeam={updateEventTeam}
+              onDeleteEventTeam={deleteEventTeam}
+              onUploadInformalAsset={uploadInformalAsset}
+              onDeleteInformalAsset={deleteInformalAsset}
+              onAssignInformalToUser={assignInformalToUser}
+              onRemoveInformalAssignment={removeInformalAssignment}
+              onAssignRestaurantToUser={assignRestaurantToUser}
+              onRemoveRestaurantAssignment={removeRestaurantAssignment}
+              onToggleBuildingRestaurant={toggleBuildingRestaurant}
             />
           </div>
         )}
