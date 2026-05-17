@@ -49,6 +49,7 @@ export function Button({
         fontWeight: 600,
         padding: SIZE_PAD[size],
         height: SIZE_HEIGHT[size],
+        minHeight: SIZE_HEIGHT[size], // 글로벌 button { min-height: 40 } override
         borderRadius: 8,
         cursor: disabled ? 'not-allowed' : 'pointer',
         letterSpacing: '-0.005em',

@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react'
 import type { CalendarEvent, Role } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { Card } from '../ui'
+import { AdminEventDetailSheet } from './AdminEventDetailSheet'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const WEEKDAY_LABELS = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
@@ -87,14 +88,19 @@ function PlusIcon({ size = 12 }: { size?: number }) {
 
 export function AdminMobileCalendar({
   events,
+  role,
+  currentVisitor,
   leaderNames = [],
   onCreateEvent,
+  onDeleteEvent,
 }: Props) {
   const today = useMemo(() => new Date(), [])
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
   const [selectedDay, setSelectedDay] = useState(today.getDate())
   const [addOpen, setAddOpen] = useState(false)
+  const [detailEventId, setDetailEventId] = useState<number | null>(null)
+  const detailEvent = detailEventId !== null ? events.find((e) => e.id === detailEventId) ?? null : null
 
   const cells = useMemo(() => buildCalendarDays(year, month), [year, month])
   const selectedDateStr = toDateStr(year, month, selectedDay)
@@ -173,6 +179,8 @@ export function AdminMobileCalendar({
               fontWeight: 500,
               color: 'var(--muted)',
               padding: '0 10px',
+              height: 32,
+              minHeight: 32,
               cursor: 'pointer',
             }}
           >
@@ -283,6 +291,7 @@ export function AdminMobileCalendar({
                   alignItems: 'center',
                   gap: 4,
                   height: 30,
+                  minHeight: 30,
                   padding: '0 10px',
                   border: '1px solid var(--line-2)',
                   background: 'var(--surface)',
@@ -306,7 +315,7 @@ export function AdminMobileCalendar({
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
             {selectedEvents.map((event) => (
-              <DayEventCard key={event.id} event={event} />
+              <DayEventCard key={event.id} event={event} onClick={() => setDetailEventId(event.id)} />
             ))}
           </div>
         )}
@@ -327,7 +336,7 @@ export function AdminMobileCalendar({
           />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
             {upcomingEvents.map((event) => (
-              <UpcomingEventCard key={event.id} event={event} />
+              <UpcomingEventCard key={event.id} event={event} onClick={() => setDetailEventId(event.id)} />
             ))}
           </div>
         </section>
@@ -343,6 +352,26 @@ export function AdminMobileCalendar({
             onCreateEvent(input)
             setAddOpen(false)
           }}
+        />
+      )}
+
+      {/* ── 일정 상세 시트 ─────────────── */}
+      {detailEvent && (
+        <AdminEventDetailSheet
+          event={detailEvent}
+          role={role}
+          currentVisitor={currentVisitor}
+          onClose={() => setDetailEventId(null)}
+          onDelete={
+            onDeleteEvent
+              ? () => {
+                  if (window.confirm(`"${detailEvent.title}" 일정을 삭제할까요?`)) {
+                    onDeleteEvent(detailEvent.id)
+                    setDetailEventId(null)
+                  }
+                }
+              : undefined
+          }
         />
       )}
     </div>
@@ -376,6 +405,7 @@ function NavButton({ onClick, children }: { onClick: () => void; children: React
       style={{
         width: 32,
         height: 32,
+        minHeight: 32,
         display: 'grid',
         placeItems: 'center',
         background: 'transparent',
@@ -391,7 +421,7 @@ function NavButton({ onClick, children }: { onClick: () => void; children: React
 }
 
 // ── 그 날 일정 카드 ────────────────────
-function DayEventCard({ event }: { event: CalendarEvent }) {
+function DayEventCard({ event, onClick }: { event: CalendarEvent; onClick?: () => void }) {
   const meta: string[] = []
   if (event.place) meta.push(event.place)
   if (event.leader) meta.push(event.leader)
@@ -399,6 +429,20 @@ function DayEventCard({ event }: { event: CalendarEvent }) {
     meta.push(`신청 ${event.applicants.length}명`)
   }
   return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'block',
+        width: '100%',
+        padding: 0,
+        border: 'none',
+        background: 'transparent',
+        cursor: 'pointer',
+        textAlign: 'left',
+        minHeight: 0,
+      }}
+    >
     <Card padding={14}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div
@@ -441,11 +485,12 @@ function DayEventCard({ event }: { event: CalendarEvent }) {
         <ChevR />
       </div>
     </Card>
+    </button>
   )
 }
 
 // ── 다가오는 일정 카드 ─────────────────
-function UpcomingEventCard({ event }: { event: CalendarEvent }) {
+function UpcomingEventCard({ event, onClick }: { event: CalendarEvent; onClick?: () => void }) {
   const d = new Date(event.date)
   const dStr = `${d.getMonth() + 1}/${d.getDate()}`
   const dow = WEEKDAYS[d.getDay()]
@@ -453,6 +498,20 @@ function UpcomingEventCard({ event }: { event: CalendarEvent }) {
   if (event.time) meta.push(event.time)
   if (event.place) meta.push(event.place)
   return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'block',
+        width: '100%',
+        padding: 0,
+        border: 'none',
+        background: 'transparent',
+        cursor: 'pointer',
+        textAlign: 'left',
+        minHeight: 0,
+      }}
+    >
     <Card padding="12px 14px">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ width: 42, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -470,6 +529,7 @@ function UpcomingEventCard({ event }: { event: CalendarEvent }) {
         <ChevR />
       </div>
     </Card>
+    </button>
   )
 }
 
@@ -537,6 +597,7 @@ function EventAddSheet({
             style={{
               width: 36,
               height: 36,
+              minHeight: 36,
               border: 'none',
               background: 'transparent',
               cursor: 'pointer',
@@ -738,6 +799,7 @@ function CheckRow({ checked, onChange, label }: { checked: boolean; onChange: (v
         style={{
           width: 18,
           height: 18,
+          minHeight: 18,
           borderRadius: 5,
           background: checked ? 'var(--ink)' : 'var(--surface)',
           border: checked ? 'none' : '1px solid var(--line-2)',

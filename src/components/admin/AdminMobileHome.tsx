@@ -286,6 +286,7 @@ function SectionHeader({ title, onAll }: { title: React.ReactNode; onAll?: () =>
             gap: 2,
             cursor: 'pointer',
             padding: 0,
+            minHeight: 0,
           }}
         >
           전체보기 <ChevR size={12} color="var(--muted)" />
