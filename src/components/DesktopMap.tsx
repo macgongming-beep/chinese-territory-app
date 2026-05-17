@@ -547,9 +547,11 @@ export function DesktopMap({
     [contextBuildings, hiddenMapStatuses],
   )
 
-  // 집계 마커 (모바일과 동일 패턴) — 카드/동 미선택 + 그리기 모드 X 일 때 구/동 단위로 묶기
+  // 집계 마커 (항상 동 단위) — 동 미선택 + 카드 미선택 + 그리기 모드 X 일 때 활성
+  // 구 단위 클러스터는 건너뜀 — 처음부터 동별 묶음을 보고, 동 클릭 시 개별 마커
   const shouldUseAggregateMap =
     cardFilter === '전체' &&
+    areaFilter === '전체' &&
     !focusedBuildingId &&
     !drawingBoundary &&
     !addingBuilding &&
@@ -559,15 +561,16 @@ export function DesktopMap({
     if (!shouldUseAggregateMap) return []
     type Acc = MapAggregateMarker & { latSum: number; lngSum: number; pointCount: number }
     const groups = new Map<string, Acc>()
-    const groupByArea = regionFilter !== '전체'
     mapBuildings.forEach((building) => {
       const card = cardMap.get(building.cardId)
       if (!card) return
-      const label = groupByArea ? card.area : String(card.region)
-      if (!label) return
-      const id = `${groupByArea ? 'area' : 'region'}:${label}`
+      const region = String(card.region)
+      const area = card.area
+      if (!area) return
+      // region+area 복합 키 (다른 구에 같은 동 이름이 있을 수도 있어 분리)
+      const id = `area:${region}::${area}`
       const current = groups.get(id) ?? {
-        id, label,
+        id, label: area,
         count: 0, unitCount: 0, houseCount: 0, shopCount: 0,
         lat: 0, lng: 0, latSum: 0, lngSum: 0, pointCount: 0,
       }
@@ -591,18 +594,18 @@ export function DesktopMap({
         lat: g.latSum / g.pointCount, lng: g.lngSum / g.pointCount,
       }))
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'))
-  }, [mapBuildings, cardMap, regionFilter, shouldUseAggregateMap])
+  }, [mapBuildings, cardMap, shouldUseAggregateMap])
 
   const aggregateMapBuildings = shouldUseAggregateMap ? [] : mapBuildings
 
   const handleSelectAggregateMarker = (id: string) => {
-    const [kind, label] = id.split(':')
-    if (kind === 'region') {
-      setRegionFilter(label as TerritoryRegion | '전체')
-      setAreaFilter('전체')
-    } else if (kind === 'area') {
-      setAreaFilter(label)
-    }
+    // id 형식: "area:{region}::{area}"
+    const m = id.match(/^area:(.+?)::(.+)$/)
+    if (!m) return
+    const [, region, area] = m
+    // 구 + 동 동시 설정 → 그 동의 개별 마커로 진입
+    setRegionFilter(region as TerritoryRegion | '전체')
+    setAreaFilter(area)
   }
   const panelBuildingGroups = useMemo(() => {
     const order: BuildingStatus[] = ['방문금지', '방문필요', '정기방문', '방문완료']
