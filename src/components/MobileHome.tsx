@@ -913,7 +913,6 @@ export function MobileHome({
   onApplyToEvent,
   onAddParticipantToEvent,
   onToggleUser: _onToggleUser,
-  onStartServiceSession,
   onEndServiceSession,
   onAssignCardToEventParticipant: _onAssignCardToEventParticipant,
   onAssignCardsToEventParticipantsBulk,
@@ -988,16 +987,6 @@ export function MobileHome({
   onApplyToEvent: (eventId: number) => void
   onAddParticipantToEvent?: (eventId: number, userName: string) => void
   onToggleUser: (cardId: number, userName: string) => void
-  onStartServiceSession: (input: {
-    role: Role
-    timeSlot: TimeSlot
-    primaryCardId?: number | null
-    calendarEventId?: number | null
-    assignedCardId?: number | null
-    assignmentId?: number | null
-    source?: ServiceSession['source']
-    memo?: string
-  }) => Promise<number | null>
   onEndServiceSession: (sessionId: number) => void
   onAssignCardToEventParticipant: (eventId: number, userName: string, cardId: number | null) => void
   onAssignCardsToEventParticipantsBulk: (
@@ -1507,7 +1496,6 @@ export function MobileHome({
                   returnVisits={returnVisits}
                   returnVisitLogs={returnVisitLogs}
                   onOpenMap={(cardId) => navigate(`/map?cardId=${cardId}`)}
-                  onStartServiceSession={onStartServiceSession}
                   onEndServiceSession={onEndServiceSession}
                   onCreateManualReturnVisit={onCreateManualReturnVisit}
                   onAddReturnVisitLog={onAddReturnVisitLog}

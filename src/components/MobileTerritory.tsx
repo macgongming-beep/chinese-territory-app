@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t } from '../i18n'
-import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
   if (!assignment) return []
@@ -50,7 +49,6 @@ export function MobileTerritory({
   returnVisits = [],
   returnVisitLogs = [],
   onOpenMap,
-  onStartServiceSession,
   onEndServiceSession,
   onCreateManualReturnVisit,
   onAddReturnVisitLog,
@@ -77,16 +75,6 @@ export function MobileTerritory({
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   onOpenMap: (cardId: number) => void
-  onStartServiceSession: (input: {
-    role: Role
-    timeSlot: TimeSlot
-    primaryCardId?: number | null
-    calendarEventId?: number | null
-    assignedCardId?: number | null
-    assignmentId?: number | null
-    source?: ServiceSession['source']
-    memo?: string
-  }) => Promise<number | null>
   onEndServiceSession: (sessionId: number) => void
   onCreateManualReturnVisit?: (input: { displayName: string; address: string; memo: string; unitId?: number | null; buildingId?: number | null }) => Promise<void>
   onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
@@ -101,7 +89,6 @@ export function MobileTerritory({
   const targetAssignmentEventId = Number(searchParams.get('assignmentEvent') ?? 0) || null
   const [filter, setFilter] = useState<'전체' | '미배정' | '내 카드'>('전체')
   const [showRegularDetail, setShowRegularDetail] = useState(false)
-  const [showNewService, setShowNewService] = useState(false)
   const [rvCollapsed, setRvCollapsed] = useState(false)
   const [colorPickId, setColorPickId] = useState<number | null>(null)
   const [rvColors, setRvColors] = useState<Record<number, string>>(() => {
@@ -148,9 +135,6 @@ export function MobileTerritory({
   const [logEditResult, setLogEditResult] = useState<'만남' | '부재' | null>(null)
   const [logEditMemo, setLogEditMemo] = useState('')
   const [logEditSaving, setLogEditSaving] = useState(false)
-  const [newServiceCardId, setNewServiceCardId] = useState<number | ''>('')
-  const [newServiceSearch, setNewServiceSearch] = useState('')
-  const [newServiceSlot, setNewServiceSlot] = useState<TimeSlot>(getCurrentTimeSlot)
   const timeSlotLabel = (slot: TimeSlot) => {
     if (slot === '오전') return t(language, 'map.morning')
     if (slot === '오후') return t(language, 'map.afternoon')
@@ -360,15 +344,6 @@ export function MobileTerritory({
   const fallbackCard = myCards[0]
   const _quickMapCardId = activeCard?.id ?? fallbackCard?.id
   void _quickMapCardId
-  const newServiceCard = newServiceCardId ? cards.find((card) => card.id === newServiceCardId) : undefined
-  const newServiceOptions = useMemo(() => {
-    const query = normalizeCardSearch(newServiceSearch)
-    if (!query) return []
-    return sortTerritoryCards(cards.filter((card) =>
-      normalizeCardSearch(`${card.name}${card.region}${card.area}`).includes(query)
-    ))
-  }, [cards, newServiceSearch])
-
   const toggleTodayEvent = (eventId: number) => {
     setExpandedEventIds((prev) => {
       const next = new Set(prev)
@@ -376,23 +351,6 @@ export function MobileTerritory({
       else next.add(eventId)
       return next
     })
-  }
-
-  const startNewService = async () => {
-    if (!newServiceCardId) return
-    const id = await onStartServiceSession({
-      role,
-      timeSlot: newServiceSlot,
-      primaryCardId: newServiceCardId,
-      calendarEventId: null,
-      assignedCardId: null,
-      assignmentId: null,
-      source: 'manual',
-    })
-    if (id) {
-      setShowNewService(false)
-      onOpenMap(newServiceCardId)
-    }
   }
 
   if (showRegularDetail) {
@@ -601,61 +559,6 @@ export function MobileTerritory({
                 </div>
               </div>
             </section>
-          )}
-
-          {role !== 'user' && (
-          <section className="mobile-territory-section">
-            <button className="mobile-new-service-card" onClick={() => setShowNewService((open) => !open)} type="button">
-              <span aria-hidden="true">+</span>
-              <div>
-                <strong>{t(language, 'territory.newService')}</strong>
-                <small>{t(language, 'territory.newServiceDesc')}</small>
-              </div>
-              <b aria-hidden="true">›</b>
-            </button>
-            {showNewService && (
-              <div className="mobile-service-launcher compact">
-                <div className="mobile-card-search">
-                  <input
-                    placeholder={t(language, 'territory.cardSearchPlaceholder')}
-                    value={newServiceSearch}
-                    onChange={(event) => {
-                      setNewServiceSearch(event.target.value)
-                      setNewServiceCardId('')
-                    }}
-                  />
-                  {newServiceCard && <span>{newServiceCard.name}</span>}
-                  {newServiceSearch && !newServiceCard && (
-                    <div className="mobile-card-search-results">
-                      {newServiceOptions.length === 0 && <span>{t(language, 'map.noSearchResults')}</span>}
-                      {newServiceOptions.map((card) => (
-                        <button
-                          key={card.id}
-                          onClick={() => {
-                            setNewServiceCardId(card.id)
-                            setNewServiceSearch(card.name)
-                          }}
-                          type="button"
-                        >
-                          {card.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="mobile-session-slot" role="group" aria-label={t(language, 'map.timeSlot')}>
-                  {(['오전', '오후', '저녁'] as TimeSlot[]).map((slot) => (
-                    <button className={newServiceSlot === slot ? 'active' : ''} key={slot} onClick={() => setNewServiceSlot(slot)} type="button">
-                      {timeSlotLabel(slot)}
-                    </button>
-                  ))}
-                </div>
-                <div className="mobile-service-actions">
-                  <button disabled={!newServiceCardId} onClick={startNewService} type="button">{t(language, 'territory.start')}</button>
-                </div>
-              </div>
-            )}
-          </section>
           )}
 
           <section className="mobile-territory-section mobile-regular-section" aria-label={t(language, 'territory.regularVisit')}>

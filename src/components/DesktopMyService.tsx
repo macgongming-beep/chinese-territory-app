@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Building, CalendarEvent, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot } from '../types'
-import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
   if (!assignment) return []
@@ -65,7 +64,6 @@ export function DesktopMyService({
   returnVisits = [],
   returnVisitLogs = [],
   onOpenMap,
-  onStartServiceSession,
   onEndServiceSession,
   onAddReturnVisitLog,
 }: {
@@ -78,24 +76,10 @@ export function DesktopMyService({
   returnVisits?: ReturnVisit[]
   returnVisitLogs?: ReturnVisitLog[]
   onOpenMap: (cardId: number) => void
-  onStartServiceSession: (input: {
-    role: Role
-    timeSlot: TimeSlot
-    primaryCardId?: number | null
-    calendarEventId?: number | null
-    assignedCardId?: number | null
-    assignmentId?: number | null
-    source?: ServiceSession['source']
-    memo?: string
-  }) => Promise<number | null>
   onEndServiceSession: (sessionId: number) => void
   onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
 }) {
   const [expandedEventIds, setExpandedEventIds] = useState<Set<number>>(new Set())
-  const [showNewService, setShowNewService] = useState(false)
-  const [newServiceCardId, setNewServiceCardId] = useState<number | ''>('')
-  const [newServiceSearch, setNewServiceSearch] = useState('')
-  const [newServiceSlot, setNewServiceSlot] = useState<TimeSlot>(getCurrentTimeSlot)
   const [regularLogTarget, setRegularLogTarget] = useState<ReturnVisit | null>(null)
   const [regularLogResult, setRegularLogResult] = useState<'만남' | '부재' | null>(null)
   const [regularLogMemo, setRegularLogMemo] = useState('')
@@ -163,14 +147,6 @@ export function DesktopMyService({
     return [...assigned, ...fromSession]
   }, [activeSessionCardIds, cards, currentVisitor, role])
 
-  const newServiceCards = useMemo(() => {
-    const query = normalizeCardSearch(newServiceSearch)
-    return sortTerritoryCards(cards.filter((card) => {
-      if (!query) return true
-      return normalizeCardSearch(card.name).includes(query) || normalizeCardSearch(card.area).includes(query)
-    })).slice(0, 16)
-  }, [cards, newServiceSearch])
-
   const myReturnVisits = useMemo(() =>
     returnVisits.filter((rv) => rv.assignedUserName === currentVisitor || rv.createdBy === currentVisitor),
     [currentVisitor, returnVisits],
@@ -178,17 +154,6 @@ export function DesktopMyService({
 
   const regularVisitPreview = myReturnVisits.slice(0, 6)
   const hasMoreRegularVisits = myReturnVisits.length > regularVisitPreview.length
-
-  const startNewService = async () => {
-    if (!newServiceCardId) return
-    await onStartServiceSession({
-      role,
-      timeSlot: newServiceSlot,
-      primaryCardId: newServiceCardId,
-      source: 'manual',
-      memo: 'PC 나의 봉사에서 시작',
-    })
-  }
 
   const saveRegularLog = async () => {
     if (!regularLogTarget || (!regularLogResult && !regularLogMemo.trim()) || !onAddReturnVisitLog) return
@@ -271,52 +236,6 @@ export function DesktopMyService({
             )}
           </section>
 
-          <section className="desk-card dms-section">
-            <div className="desk-card__head">
-              <h2 className="desk-card__title"><span className="desk-card__title-dot" />새 봉사</h2>
-              <button className="ds-btn ds-btn-secondary ds-btn-sm" onClick={() => setShowNewService((open) => !open)} type="button">
-                {showNewService ? '닫기' : '+ 새 봉사'}
-              </button>
-            </div>
-            <button className="dms-new-service-summary" onClick={() => setShowNewService(true)} type="button">
-              <span>+</span>
-              <div>
-                <strong>새 봉사</strong>
-                <small>배정 외 카드로 봉사 시작</small>
-              </div>
-              <b>›</b>
-            </button>
-            {showNewService && (
-              <div className="dms-new-service-panel">
-                <div className="dms-new-service-controls">
-                  <input
-                    placeholder="카드명 또는 동 검색"
-                    value={newServiceSearch}
-                    onChange={(event) => setNewServiceSearch(event.target.value)}
-                  />
-                  <select value={newServiceSlot} onChange={(event) => setNewServiceSlot(event.target.value as TimeSlot)}>
-                    <option value="오전">오전</option>
-                    <option value="오후">오후</option>
-                    <option value="저녁">저녁</option>
-                  </select>
-                  <button disabled={!newServiceCardId} onClick={startNewService} type="button">시작</button>
-                </div>
-                <div className="dms-card-picker">
-                  {newServiceCards.map((card) => (
-                    <button
-                      className={newServiceCardId === card.id ? 'active' : ''}
-                      key={card.id}
-                      onClick={() => setNewServiceCardId(card.id)}
-                      type="button"
-                    >
-                      <strong>{card.name}</strong>
-                      <span>{card.area} · {card.units}세대 · {card.progress}%</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
         </main>
 
         <aside className="dms-side">

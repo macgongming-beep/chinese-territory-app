@@ -555,7 +555,6 @@ export function DesktopApp({
               returnVisits={returnVisits}
               returnVisitLogs={returnVisitLogs}
               onOpenMap={openCardOnMap}
-              onStartServiceSession={(input) => startServiceSessionAndOpenMap({ ...input, role: viewMode })}
               onEndServiceSession={onEndServiceSession}
               onAddReturnVisitLog={onAddReturnVisitLog}
             />

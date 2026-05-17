@@ -369,7 +369,6 @@ function App() {
               onUpdateBuilding={updateBuilding}
               onDeleteUnit={deleteUnitFromBuilding}
               onToggleUser={toggleUserOnCard}
-              onStartServiceSession={startServiceSession}
               onEndServiceSession={endServiceSession}
               onAssignCardToEventParticipant={assignCardToEventParticipant}
               onAssignCardsToEventParticipantsBulk={assignCardsToEventParticipantsBulk}
