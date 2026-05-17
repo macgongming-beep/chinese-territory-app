@@ -381,17 +381,58 @@ function MobileZoneView({
     return { total, assigned, unassigned: total - assigned }
   }, [cards])
 
+  // 카드별 주택/상가 카운트 (한 번 계산 후 재사용)
+  const cardBuildingCounts = useMemo(() => {
+    const map = new Map<number, { house: number; shop: number }>()
+    for (const card of cards) map.set(card.id, { house: 0, shop: 0 })
+    for (const b of buildings) {
+      const entry = map.get(b.cardId)
+      if (!entry) continue
+      if (b.type === '주택') entry.house += 1
+      else if (b.type === '상가') entry.shop += 1
+    }
+    return map
+  }, [cards, buildings])
+
+  // 카드 그룹 집계 헬퍼 (지역/동 row 에 표시할 종합 정보)
+  type GroupAgg = {
+    count: number
+    house: number
+    shop: number
+    progress: number // 평균
+  }
+  const aggregateCards = (cardSubset: TerritoryCard[]): GroupAgg => {
+    let house = 0
+    let shop = 0
+    let totalProgress = 0
+    for (const c of cardSubset) {
+      const bc = cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }
+      house += bc.house
+      shop += bc.shop
+      totalProgress += c.progress
+    }
+    return {
+      count: cardSubset.length,
+      house,
+      shop,
+      progress: cardSubset.length > 0 ? Math.round(totalProgress / cardSubset.length) : 0,
+    }
+  }
+
   const regionList = useMemo(() => {
-    const map = new Map<string, number>()
+    const map = new Map<string, TerritoryCard[]>()
     for (const card of cards) {
       const key = REGION_ORDER.includes(card.region as string) ? (card.region as string) : '기타'
-      map.set(key, (map.get(key) ?? 0) + 1)
+      const list = map.get(key) ?? []
+      list.push(card)
+      map.set(key, list)
     }
-    const result: [string, number][] = []
-    for (const r of REGION_ORDER) { if (map.has(r)) result.push([r, map.get(r)!]) }
-    if (map.has('기타')) result.push(['기타', map.get('기타')!])
+    const result: Array<[string, GroupAgg]> = []
+    for (const r of REGION_ORDER) { if (map.has(r)) result.push([r, aggregateCards(map.get(r)!)]) }
+    if (map.has('기타')) result.push(['기타', aggregateCards(map.get('기타')!)])
     return result
-  }, [cards])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards, cardBuildingCounts])
 
   // 동 이름 검색 결과 (전체 구 横断)
   const dongSearchResults = useMemo(() => {
@@ -414,20 +455,24 @@ function MobileZoneView({
       const key = REGION_ORDER.includes(c.region as string) ? (c.region as string) : '기타'
       return key === selectedRegion
     })
-    const map = new Map<string, number>()
+    const map = new Map<string, TerritoryCard[]>()
     for (const card of regionCards) {
       const dong = extractDong(card.name, selectedRegion)
-      map.set(dong, (map.get(dong) ?? 0) + 1)
+      const list = map.get(dong) ?? []
+      list.push(card)
+      map.set(dong, list)
     }
     const q = query.trim()
     return [...map.entries()]
       .filter(([d]) => !q || d.includes(q))
+      .map(([dong, list]): [string, GroupAgg] => [dong, aggregateCards(list)])
       .sort((a, b) => {
         if (a[0] === '기타') return 1
         if (b[0] === '기타') return -1
         return a[0].localeCompare(b[0], 'ko')
       })
-  }, [cards, selectedRegion, query])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards, selectedRegion, query, cardBuildingCounts])
 
   const cardList = useMemo(() => {
     return cards
@@ -701,10 +746,21 @@ function MobileZoneView({
               {/* 검색어 없으면 구 목록, 있으면 동 검색 결과 */}
               {query.trim() === '' ? (
                 <div className="mz-list">
-                  {regionList.map(([region, count]) => (
-                    <button key={region} className="mz-nav-row" onClick={() => goToRegion(region)} type="button">
-                      <span className="mz-nav-name">{region}</span>
-                      <span className="mz-nav-count">{count}{t(language, 'calendar.countSuffix')}</span>
+                  {regionList.map(([region, agg]) => (
+                    <button key={region} className="mz-nav-row mz-nav-row--rich" onClick={() => goToRegion(region)} type="button">
+                      <div className="mz-nav-row-body">
+                        <div className="mz-nav-row-line1">
+                          <strong className="mz-nav-name">{region}</strong>
+                          <span className="mz-nav-count">{agg.count}{t(language, 'calendar.countSuffix')}</span>
+                        </div>
+                        <div className="mz-nav-row-sub">
+                          주택 {agg.house} · 상가 {agg.shop}
+                        </div>
+                        <div className="mz-nav-row-bar">
+                          <div className="mz-nav-row-bar-fill" style={{ width: `${agg.progress}%` }} />
+                          <span>{agg.progress}%</span>
+                        </div>
+                      </div>
                       <svg className="mz-nav-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M7 4l6 6-6 6" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -761,10 +817,21 @@ function MobileZoneView({
                 onChange={(e) => setQuery(e.target.value)}
               />
               <div className="mz-list">
-                {dongList.map(([dong, count]) => (
-                  <button key={dong} className="mz-nav-row" onClick={() => goToDong(dong)} type="button">
-                    <span className="mz-nav-name">{dong}</span>
-                    <span className="mz-nav-count">{count}{t(language, 'calendar.countSuffix')}</span>
+                {dongList.map(([dong, agg]) => (
+                  <button key={dong} className="mz-nav-row mz-nav-row--rich" onClick={() => goToDong(dong)} type="button">
+                    <div className="mz-nav-row-body">
+                      <div className="mz-nav-row-line1">
+                        <strong className="mz-nav-name">{dong}</strong>
+                        <span className="mz-nav-count">{agg.count}{t(language, 'calendar.countSuffix')}</span>
+                      </div>
+                      <div className="mz-nav-row-sub">
+                        주택 {agg.house} · 상가 {agg.shop}
+                      </div>
+                      <div className="mz-nav-row-bar">
+                        <div className="mz-nav-row-bar-fill" style={{ width: `${agg.progress}%` }} />
+                        <span>{agg.progress}%</span>
+                      </div>
+                    </div>
                     <svg className="mz-nav-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M7 4l6 6-6 6" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
@@ -786,12 +853,15 @@ function MobileZoneView({
                   const leader =
                     (card.assignedLeaders?.length ? card.assignedLeaders[0] : null) ??
                     card.assignedLeader ?? t(language, 'zone.unassigned')
+                  const bc = cardBuildingCounts.get(card.id) ?? { house: 0, shop: 0 }
                   return (
                     <div key={card.id} className="mz-card-item">
                       <div className="mz-card-top">
                         <div className="mz-card-info">
                           <span className="mz-card-name">{displayName}</span>
-                          <span className={`mz-card-leader${leader === t(language, 'zone.unassigned') ? ' unassigned' : ''}`}>{t(language, 'zone.leader')}: {leader}</span>
+                          <span className={`mz-card-leader${leader === t(language, 'zone.unassigned') ? ' unassigned' : ''}`}>
+                            {t(language, 'zone.leader')}: {leader} · 주택 {bc.house} · 상가 {bc.shop}
+                          </span>
                         </div>
                         <button className="mz-card-map-btn" onClick={() => onOpenMap(card.id)} type="button">
                           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7">
