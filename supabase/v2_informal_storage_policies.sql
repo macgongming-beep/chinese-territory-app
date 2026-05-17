@@ -5,7 +5,7 @@
 -- 증상: 업로드 시 "new row violates row-level security policy"
 -- 원인: Supabase Storage 의 storage.objects 테이블에 RLS 가 켜져
 --       있고, anon role 에 대한 INSERT 정책이 없음
--- 해결: 아래 정책 4개 추가 (SELECT/INSERT/UPDATE/DELETE)
+-- 해결: SELECT/INSERT/UPDATE 정책 추가. DELETE 는 delete_informal_asset_secure RPC 로 제한.
 --
 -- ⚠️ 주의: informal-assets 버킷을 먼저 Dashboard 에서 만들었어야 함
 --   - Storage → New bucket
@@ -41,12 +41,9 @@ create policy "informal_assets_anon_update"
   using (bucket_id = 'informal-assets')
   with check (bucket_id = 'informal-assets');
 
--- 4) 삭제 (관리자가 자료 삭제 시 storage 파일도 함께 제거)
-create policy "informal_assets_anon_delete"
-  on storage.objects
-  for delete
-  to anon, authenticated
-  using (bucket_id = 'informal-assets');
+-- 4) 삭제
+-- anon DELETE 는 열지 않는다. 자료 삭제는 supabase/v2_informal_delete_rpc.sql 의
+-- delete_informal_asset_secure RPC 를 통해 admin/developer 만 수행한다.
 
 -- ─── 검증 ───────────────────────────────────────────────────
 -- select policyname from pg_policies

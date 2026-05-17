@@ -4,6 +4,7 @@
 // - buildings.is_restaurant 마킹
 import { supabase } from '../../lib/supabase'
 import { showToast } from '../../lib/toast'
+import { getAuthToken } from '../../lib/authToken'
 
 export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> }) {
   const { fetchAll } = deps
@@ -101,16 +102,15 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
   }
 
   const deleteInformalAsset = async (assetId: number) => {
-    // 자료 행 + storage 파일 둘 다 삭제
-    const { data: row } = await supabase
-      .from('informal_assets')
-      .select('image_path')
-      .eq('id', assetId)
-      .maybeSingle()
-    if (row?.image_path) {
-      await supabase.storage.from('informal-assets').remove([row.image_path]).catch(() => {})
+    const token = getAuthToken()
+    if (!token) {
+      showToast('로그인 세션을 확인할 수 없습니다.', 'error')
+      return
     }
-    const { error } = await supabase.from('informal_assets').delete().eq('id', assetId)
+    const { error } = await supabase.rpc('delete_informal_asset_secure', {
+      p_token: token,
+      p_asset_id: assetId,
+    })
     if (error) showToast(`자료 삭제 실패: ${error.message}`, 'error')
     else await fetchAll()
   }
