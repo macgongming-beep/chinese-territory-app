@@ -128,7 +128,16 @@ export function DesktopSettings({
               }}
               type="button"
             >
-              <span style={{ fontSize: 22 }}>📋</span>
+              <span style={{
+                display: 'grid', width: 36, height: 36, placeItems: 'center',
+                borderRadius: 10, background: 'var(--gray-100)', color: 'var(--gray-700)',
+                flexShrink: 0,
+              }} aria-hidden>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="16" rx="2" />
+                  <path d="M7 8h10M7 12h10M7 16h6" />
+                </svg>
+              </span>
               <div style={{ flex: 1 }}>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>봉사 로그</p>
                 <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b' }}>

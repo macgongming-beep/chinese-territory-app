@@ -61,7 +61,16 @@ export function PwaInstallBanner() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-          <div style={{ fontSize: 28, lineHeight: 1 }}>📱</div>
+          <div style={{
+            display: 'grid', width: 40, height: 40, placeItems: 'center',
+            borderRadius: 12, background: 'var(--primary-50)', color: 'var(--primary-600)',
+            flexShrink: 0,
+          }} aria-hidden>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="7" y="3" width="10" height="18" rx="2" />
+              <path d="M11 18h2" />
+            </svg>
+          </div>
           <div style={{ flex: 1 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
               봉사 알림 받으시려면
@@ -435,7 +444,7 @@ export function PwaInstallSection() {
         {!installed && isIOS() && (
           <div style={{ margin: '14px 0 0', padding: '12px 14px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 12 }}>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#92400e' }}>
-              ⚠️ iPhone 은 푸시 알림 받으려면 필수
+              iPhone 은 푸시 알림 받으려면 필수
             </p>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: '#78350f', lineHeight: 1.5, fontWeight: 600 }}>
               Safari 탭에서는 알림이 안 옵니다.<br />
@@ -453,7 +462,7 @@ export function PwaInstallSection() {
         )}
         {installed && isIOS() && notifPermission === 'default' && (
           <p style={{ margin: '14px 0 0', padding: '10px 12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, fontSize: 12, fontWeight: 700, color: '#047857', lineHeight: 1.5 }}>
-            ✅ 설치 완료! 위 <strong>"이 기기 푸시 알림" → 켜기</strong> 버튼으로 알림을 허용해 주세요.
+            설치 완료! 위 <strong>"이 기기 푸시 알림" → 켜기</strong> 버튼으로 알림을 허용해 주세요.
           </p>
         )}
       </div>

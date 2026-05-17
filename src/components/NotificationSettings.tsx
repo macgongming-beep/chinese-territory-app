@@ -12,7 +12,6 @@ type Group = {
   id: 'activity' | 'social' | 'notice'
   label: string
   desc: string
-  emoji: string
   items: SubItem[]
 }
 
@@ -21,7 +20,6 @@ const GROUPS: Group[] = [
     id: 'activity',
     label: '봉사 활동',
     desc: '일정 변경 · 카드 배정 · 봉사 시작/종료',
-    emoji: '📅',
     items: [
       { key: 'pushEventChange', label: '일정 변경', desc: '봉사 시간/장소가 바뀔 때 (참여한 일정만)' },
       { key: 'pushServiceStatus', label: '봉사 시작/종료', desc: '참여 봉사가 시작되거나 종료될 때' },
@@ -31,7 +29,6 @@ const GROUPS: Group[] = [
     id: 'social',
     label: '소통',
     desc: '채팅 · 멘션 · 댓글',
-    emoji: '💬',
     items: [
       { key: 'pushChat', label: '채팅 메시지', desc: '봉사 채팅방에 새 메시지가 올 때' },
       { key: 'pushMention', label: '@멘션', desc: '누군가 회원님을 언급할 때' },
@@ -42,7 +39,6 @@ const GROUPS: Group[] = [
     id: 'notice',
     label: '공지',
     desc: '관리자가 새 공지를 올릴 때',
-    emoji: '📢',
     items: [
       { key: 'pushNewNotice', label: '새 공지', desc: '관리자가 새 공지를 올릴 때' },
     ],
@@ -113,7 +109,13 @@ export function NotificationSettings({ userId }: { userId: number }) {
                     cursor: 'pointer',
                   }}
                 >
-                  <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>{group.emoji}</span>
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 6, height: 6, borderRadius: 99,
+                      background: 'var(--brand-700)', flexShrink: 0,
+                    }}
+                  />
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1.25 }}>
                       {group.label}

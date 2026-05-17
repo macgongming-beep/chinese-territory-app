@@ -29,7 +29,14 @@ export function AppUpdateCard({ variant = 'desktop' }: { variant?: 'desktop' | '
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 20 }}>{updateAvailable ? '🆕' : '✅'}</span>
+          <span
+            aria-hidden
+            style={{
+              width: 8, height: 8, borderRadius: 99,
+              background: updateAvailable ? 'var(--danger-600)' : 'var(--success-600)',
+              flexShrink: 0,
+            }}
+          />
           <div style={{ flex: 1 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
               {updateAvailable ? '새 버전이 준비됐어요' : '최신 버전 사용 중'}
@@ -61,7 +68,7 @@ export function AppUpdateCard({ variant = 'desktop' }: { variant?: 'desktop' | '
                 cursor: applying ? 'wait' : 'pointer',
               }}
             >
-              {applying ? '적용 중...' : '🔄 지금 새로고침'}
+              {applying ? '적용 중...' : '지금 새로고침'}
             </button>
           ) : (
             <button
@@ -127,7 +134,7 @@ export function AppUpdateCard({ variant = 'desktop' }: { variant?: 'desktop' | '
               cursor: applying ? 'wait' : 'pointer',
             }}
           >
-            {applying ? '적용 중...' : '🚀 지금 업데이트'}
+            {applying ? '적용 중...' : '지금 새로고침'}
           </button>
         ) : (
           <button
