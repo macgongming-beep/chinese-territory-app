@@ -333,10 +333,11 @@ export function DesktopStats({
 
   return (
     <section className="desktop-content" style={{ padding: '32px', maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ marginBottom: 20 }}>
-        <p style={{ fontSize: 13, color: 'var(--ink-500)', margin: '0 0 4px' }}>분석</p>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>통계 대시보드</h1>
-      </div>
+      <header className="page-header">
+        <div className="page-header-text">
+          <h1 className="page-header-title">통계 대시보드</h1>
+        </div>
+      </header>
 
       {/* ── 분석 범위 ── */}
       <div style={card}>

@@ -259,12 +259,11 @@ export function DesktopUsers({
       <section className="desktop-content calendar-layout">
         {/* ── 좌측: 사용자 목록 ── */}
         <div className="calendar-pane">
-          <div className="calendar-toolbar" style={{ alignItems: 'center' }}>
-            <div>
-              <p style={{ margin: 0 }}>봉사자 관리</p>
-              <h1 style={{ margin: 0 }}>사용자 목록 ({users.length}명)</h1>
+          <header className="page-header">
+            <div className="page-header-text">
+              <h1 className="page-header-title">사용자 목록 ({users.length}명)</h1>
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div className="page-header-actions">
               <input
                 aria-label="사용자 검색"
                 placeholder="이름 검색..."
@@ -288,7 +287,7 @@ export function DesktopUsers({
                 </button>
               )}
             </div>
-          </div>
+          </header>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px' }}>
             {filtered.length === 0 && (

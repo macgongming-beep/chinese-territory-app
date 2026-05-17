@@ -308,15 +308,16 @@ export function DesktopHome({
 
     return (
       <div className="home-layout leader-home-layout">
-        <div className="home-page-head service-home-head">
-          <div>
-            <p className="home-page-eyebrow">인도자 홈</p>
-            <h1 className="home-page-title">{formatHeader()}</h1>
+        <header className="page-header">
+          <div className="page-header-text">
+            <h1 className="page-header-title">{formatHeader()}</h1>
           </div>
           {specialPeriods && specialPeriods.length > 0 && (
-            <SpecialPeriodBanner specialPeriods={specialPeriods} variant="inline" onClick={onOpenSettings} />
+            <div className="page-header-actions">
+              <SpecialPeriodBanner specialPeriods={specialPeriods} variant="inline" onClick={onOpenSettings} />
+            </div>
           )}
-        </div>
+        </header>
 
         <div className="leader-home-grid">
           <HomeTodayEvents
@@ -416,15 +417,16 @@ export function DesktopHome({
       )}
 
       {role === 'user' && (
-        <div className="home-page-head service-home-head">
-          <div>
-            <p className="home-page-eyebrow">봉사자 홈</p>
-            <h1 className="home-page-title">{formatHeader()}</h1>
+        <header className="page-header">
+          <div className="page-header-text">
+            <h1 className="page-header-title">{formatHeader()}</h1>
           </div>
           {specialPeriods && specialPeriods.length > 0 && (
-            <SpecialPeriodBanner specialPeriods={specialPeriods} variant="inline" onClick={onOpenSettings} />
+            <div className="page-header-actions">
+              <SpecialPeriodBanner specialPeriods={specialPeriods} variant="inline" onClick={onOpenSettings} />
+            </div>
           )}
-        </div>
+        </header>
       )}
 
       {role !== 'admin' && showServiceStart && (
@@ -521,15 +523,16 @@ export function DesktopHome({
       {role === 'admin' && (
         <>
           {/* ── Page Head ── */}
-          <div className="home-page-head">
-            <div>
-              <p className="home-page-eyebrow">대시보드</p>
-              <h1 className="home-page-title">{formatHeader()}</h1>
+          <header className="page-header">
+            <div className="page-header-text">
+              <h1 className="page-header-title">{formatHeader()}</h1>
             </div>
             {specialPeriods && specialPeriods.length > 0 && (
-              <SpecialPeriodBanner specialPeriods={specialPeriods} variant="inline" onClick={onOpenSettings} />
+              <div className="page-header-actions">
+                <SpecialPeriodBanner specialPeriods={specialPeriods} variant="inline" onClick={onOpenSettings} />
+              </div>
             )}
-          </div>
+          </header>
 
           {/* ── Content Grid 1행 ── */}
           <div className="desk-grid-12">

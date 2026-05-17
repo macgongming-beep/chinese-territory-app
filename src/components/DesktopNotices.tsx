@@ -57,21 +57,22 @@ export function DesktopNotices({
   return (
     <div className="notice-page">
       {/* ── 페이지 헤더 ── */}
-      <div className="notice-page-head">
-        <div className="notice-page-head__title-group">
-          <p className="notice-page-head__eyebrow">공지사항</p>
-          <h1 className="notice-page-head__title">
-            공지 목록&nbsp;<span className="notice-count">{notices.length}</span>
+      <header className="page-header">
+        <div className="page-header-text">
+          <h1 className="page-header-title">
+            공지사항&nbsp;<span className="notice-count">{notices.length}</span>
           </h1>
         </div>
-        <button
-          className={`notice-write-btn${showForm ? ' is-cancel' : ''}`}
-          onClick={() => setShowForm((v) => !v)}
-          type="button"
-        >
-          {showForm ? '취소' : '+ 공지 작성'}
-        </button>
-      </div>
+        <div className="page-header-actions">
+          <button
+            className={`notice-write-btn${showForm ? ' is-cancel' : ''}`}
+            onClick={() => setShowForm((v) => !v)}
+            type="button"
+          >
+            {showForm ? '취소' : '+ 공지 작성'}
+          </button>
+        </div>
+      </header>
 
       {/* ── 본문 그리드 ── */}
       <div className="notice-grid">

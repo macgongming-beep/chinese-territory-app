@@ -292,51 +292,50 @@ function DesktopLeaderAssignmentView({
   return (
     <section className="dla-page">
       {/* ── 헤더 ── */}
-      <div className="dla-header">
-        <div className="dla-header-left">
-          <div>
-            <h1>인도자 배정</h1>
-            <p>팀 구성 & 카드 배정</p>
-          </div>
-          <div className="dla-event-select-wrap">
-            <div className="dla-event-picker">
-              <label className="dla-event-label">오늘 봉사</label>
-              {todayEvents.length === 0 ? (
-                <span className="dla-no-event">오늘 일정 없음</span>
-              ) : (
-                <select
-                  className="dla-event-select"
-                  value={selectedEventId}
-                  onChange={(e) => setSelectedEventId(Number(e.target.value))}
-                >
-                  {todayEvents.map((event) => (
-                    <option key={event.id} value={event.id}>{event.time} {event.title} ({event.place})</option>
-                  ))}
-                </select>
-              )}
-            </div>
-            {selectedEvent && (
-              <div className="dla-selected-event-card">
-                <div>
-                  <strong>{today} {selectedEvent.title}</strong>
-                  <span>{selectedEvent.time}</span>
-                </div>
-                <small>
-                  {(() => {
-                    const summary = getEventSummary(selectedEvent)
-                    return `참가자 ${summary.participants}명 · 팀 ${summary.teams}개 · 배정 카드 ${summary.cards}개 · 미배정 ${summary.unassigned}명`
-                  })()}
-                </small>
-              </div>
-            )}
-          </div>
+      <header className="page-header">
+        <div className="page-header-text">
+          <h1 className="page-header-title">인도자 배정</h1>
         </div>
-        <div className="dla-header-right">
+        <div className="page-header-actions">
           {draft && <span className={`dla-status-badge ${draftStatus}`}>{statusLabel}</span>}
           {unassigned.length > 0 && <span className="dla-badge-red">미배정 {unassigned.length}명</span>}
           <button className="dla-btn-ghost" disabled={saving || !selectedEvent} onClick={() => void saveStatus('draft')} type="button">임시 저장</button>
           <button className="dla-btn-primary" disabled={saving || !selectedEvent} onClick={() => void saveStatus('shared')} type="button">{shareButtonLabel}</button>
         </div>
+      </header>
+
+      {/* ── 이벤트 선택/컨텍스트 행 ── */}
+      <div className="dla-context-row">
+        <div className="dla-event-picker">
+          <label className="dla-event-label">오늘 봉사</label>
+          {todayEvents.length === 0 ? (
+            <span className="dla-no-event">오늘 일정 없음</span>
+          ) : (
+            <select
+              className="dla-event-select"
+              value={selectedEventId}
+              onChange={(e) => setSelectedEventId(Number(e.target.value))}
+            >
+              {todayEvents.map((event) => (
+                <option key={event.id} value={event.id}>{event.time} {event.title} ({event.place})</option>
+              ))}
+            </select>
+          )}
+        </div>
+        {selectedEvent && (
+          <div className="dla-selected-event-card">
+            <div>
+              <strong>{today} {selectedEvent.title}</strong>
+              <span>{selectedEvent.time}</span>
+            </div>
+            <small>
+              {(() => {
+                const summary = getEventSummary(selectedEvent)
+                return `참가자 ${summary.participants}명 · 팀 ${summary.teams}개 · 배정 카드 ${summary.cards}개 · 미배정 ${summary.unassigned}명`
+              })()}
+            </small>
+          </div>
+        )}
       </div>
 
       {/* ── 3컬럼 본문 ── */}

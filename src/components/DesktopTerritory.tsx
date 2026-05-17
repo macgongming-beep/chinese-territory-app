@@ -1327,12 +1327,11 @@ export function DesktopTerritory({
         {zoneKind === 'territory' && (<>
 
         {/* ── Page Head ── */}
-        <div className="home-page-head" style={{ marginBottom: 20, alignItems: 'center' }}>
-          <div>
-            <p className="home-page-eyebrow">구역 관리</p>
-            <h1 className="home-page-title">{activeTab}</h1>
+        <header className="page-header">
+          <div className="page-header-text">
+            <h1 className="page-header-title">{activeTab}</h1>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="page-header-actions">
             {activeTab === '카드 관리' ? (
               <>
                 <button
@@ -1382,7 +1381,7 @@ export function DesktopTerritory({
               </>
             )}
           </div>
-        </div>
+        </header>
 
         {/* ── Segment Tab + 지도 전환 ── */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>

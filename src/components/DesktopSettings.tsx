@@ -140,10 +140,9 @@ export function DesktopSettings({
 
   return (
     <section className="desk-settings-page">
-      <header className="desk-settings-head">
-        <div>
-          <p>설정</p>
-          <h1>앱 설정</h1>
+      <header className="page-header">
+        <div className="page-header-text">
+          <h1 className="page-header-title">앱 설정</h1>
         </div>
       </header>
 

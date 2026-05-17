@@ -166,11 +166,10 @@ export function DesktopMyService({
 
   return (
     <section className="desktop-my-service-page">
-      <header className="desk-page-head dms-head">
-        <div>
-          <p className="desk-page-head__eyebrow">MY SERVICE</p>
-          <h1 className="desk-page-head__title">나의 봉사</h1>
-          <span>{formatToday()} · 오늘 배정 확인과 봉사 실행</span>
+      <header className="page-header">
+        <div className="page-header-text">
+          <h1 className="page-header-title">나의 봉사</h1>
+          <p className="page-header-subtitle">{formatToday()} · 오늘 배정 확인과 봉사 실행</p>
         </div>
       </header>
 

@@ -250,16 +250,15 @@ export function DesktopAdminAssignment({
 
   return (
     <section className="la-page">
-      <div className="la-header">
-        <div>
-          <h1>관리자 배정</h1>
-          <p>인도자에게 담당 구역을 지정합니다.</p>
+      <header className="page-header">
+        <div className="page-header-text">
+          <h1 className="page-header-title">관리자 배정</h1>
         </div>
-        <div className="la-header-right">
+        <div className="page-header-actions">
           <button className="la-header-btn" type="button" onClick={() => setShowStatusModal(true)}>배정 현황 보기</button>
           <span className="la-badge-red">미배정 {unassignedCount}개</span>
         </div>
-      </div>
+      </header>
 
       <div className="la-grid">
         <aside className="la-col la-col-leaders">

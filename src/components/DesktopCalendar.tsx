@@ -375,12 +375,11 @@ export function DesktopCalendar({
 
       <section className="desktop-content calendar-layout">
         <div className="calendar-pane">
-          <div className="cal-page-head">
-            <div className="cal-page-head__title-group">
-              <p className="cal-page-head__eyebrow">운영 캘린더</p>
-              <h1 className="cal-page-head__title">{year}년 {month}월</h1>
+          <header className="page-header">
+            <div className="page-header-text">
+              <h1 className="page-header-title">{year}년 {month}월</h1>
             </div>
-            <div className="cal-page-head__actions">
+            <div className="page-header-actions">
               <button className="cal-today-btn" type="button">신청내역</button>
               <button className="cal-today-btn" type="button">일괄 업로드</button>
               <button className="cal-nav-btn" onClick={prevMonth} type="button">‹</button>
@@ -390,7 +389,7 @@ export function DesktopCalendar({
                 <button className="cal-add-event-btn" onClick={openCreate} type="button">+ 일정 추가</button>
               )}
             </div>
-          </div>
+          </header>
 
           {/* ── Special period management ── */}
           <div style={{ padding: '2px 16px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minHeight: '22px' }}>
