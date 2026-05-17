@@ -182,6 +182,12 @@ button:focus-visible {
   overflow: hidden;
 }
 
+.app-header--mobile .app-header__title-group {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
 .app-header__title {
   margin: 0;
   color: var(--ink);
@@ -218,6 +224,10 @@ button:focus-visible {
   margin-right: 8px;
   color: var(--muted-3);
   font-weight: 500;
+}
+
+.app-header--mobile .app-header__subtitle::before {
+  content: none;
 }
 
 .app-header--desktop .app-header__subtitle {
