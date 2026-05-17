@@ -7,6 +7,7 @@ import { MobileMap } from './MobileMap'
 import { MobileNotices } from './MobileNotices'
 import { MobileTerritory } from './MobileTerritory'
 import { AdminMobileHome } from './admin/AdminMobileHome'
+import { AdminMobileCalendar } from './admin/AdminMobileCalendar'
 import { MobileUsers } from './MobileUsers'
 import { MobileSignupRequests } from './MobileSignupRequests'
 import { MobileProfileSettings } from './MobileProfileSettings'
@@ -1445,28 +1446,47 @@ export function MobileHome({
               <>
                 <AppHeader
                   pageTitle={t(language, 'nav.calendar')}
+                  subtitle={(() => {
+                    const now = new Date()
+                    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+                    const count = calendarEvents.filter((e) => e.date.startsWith(ym)).length
+                    return `${now.getFullYear()}년 ${now.getMonth() + 1}월 · 일정 ${count}개`
+                  })()}
                   userId={currentUser.id}
                   userName={currentVisitor}
                   role={role}
                   chatUsers={headerChatUsers}
                   onOpenMenu={() => navigate('/settings')}
                 />
-                <MobileCalendar
-                  language={language}
-                  currentVisitor={currentVisitor}
-                  currentUserId={currentUser.id}
-                  leaderNames={leaderNames}
-                  leaderPhones={Object.fromEntries(allUsers.filter((u) => u.phone).map((u) => [u.name, u.phone]))}
-                  events={calendarEvents}
-                  role={role}
-                  allUserNames={allUsers.map((u) => u.name)}
-                  mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
-                  onApplyToEvent={onApplyToEvent}
-                  onAddParticipant={onAddParticipantToEvent}
-                  onCreateEvent={onCreateCalendarEvent}
-                  onDeleteEvent={onDeleteCalendarEvent}
-                  onUpdateEvent={onUpdateCalendarEvent}
-                />
+                {role === 'admin' ? (
+                  <AdminMobileCalendar
+                    language={language}
+                    currentVisitor={currentVisitor}
+                    role={role}
+                    events={calendarEvents}
+                    leaderNames={leaderNames}
+                    onCreateEvent={onCreateCalendarEvent}
+                    onDeleteEvent={onDeleteCalendarEvent}
+                    onUpdateEvent={onUpdateCalendarEvent}
+                  />
+                ) : (
+                  <MobileCalendar
+                    language={language}
+                    currentVisitor={currentVisitor}
+                    currentUserId={currentUser.id}
+                    leaderNames={leaderNames}
+                    leaderPhones={Object.fromEntries(allUsers.filter((u) => u.phone).map((u) => [u.name, u.phone]))}
+                    events={calendarEvents}
+                    role={role}
+                    allUserNames={allUsers.map((u) => u.name)}
+                    mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
+                    onApplyToEvent={onApplyToEvent}
+                    onAddParticipant={onAddParticipantToEvent}
+                    onCreateEvent={onCreateCalendarEvent}
+                    onDeleteEvent={onDeleteCalendarEvent}
+                    onUpdateEvent={onUpdateCalendarEvent}
+                  />
+                )}
               </>
             } />
 
