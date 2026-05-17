@@ -8,6 +8,7 @@ import { MobileNotices } from './MobileNotices'
 import { MobileTerritory } from './MobileTerritory'
 import { AdminMobileHome } from './admin/AdminMobileHome'
 import { AdminMobileCalendar } from './admin/AdminMobileCalendar'
+import { AdminMobileZone } from './admin/AdminMobileZone'
 import { MobileUsers } from './MobileUsers'
 import { MobileSignupRequests } from './MobileSignupRequests'
 import { MobileProfileSettings } from './MobileProfileSettings'
@@ -1536,31 +1537,59 @@ export function MobileHome({
               <>
               <AppHeader
                 pageTitle={t(language, 'nav.zone')}
+                subtitle={(() => {
+                  const total = cards.length
+                  const unassigned = cards.filter((c) => c.status === '미배정').length
+                  return role === 'admin'
+                    ? `구역 카드 ${total} · 미배정 ${unassigned}`
+                    : undefined
+                })()}
                 userId={currentUser.id}
                 userName={currentVisitor}
                 role={role}
                 chatUsers={headerChatUsers}
                 onOpenMenu={() => navigate('/settings')}
               />
-              <MobileZoneView
-                language={language}
-                cards={cards}
-                buildings={buildings}
-                currentVisitor={currentVisitor}
-                role={role}
-                onOpenMap={(cardId) => navigate(`/map?cardId=${cardId}`)}
-                onOpenAssignedMap={(cardIds) => navigate(`/map?cardIds=${cardIds.join(',')}&scope=mine`)}
-                onShowMapView={() => navigate('/map')}
-                informalAssets={informalAssets}
-                informalGroups={informalGroups}
-                onUploadInformalAsset={onUploadInformalAsset}
-                onDeleteInformalAsset={onDeleteInformalAsset}
-                onCreateInformalGroup={onCreateInformalGroup}
-                onRenameInformalGroup={onRenameInformalGroup}
-                onDeleteInformalGroup={onDeleteInformalGroup}
-                onMoveAssetToGroup={onMoveAssetToGroup}
-                onToggleBuildingRestaurant={onToggleBuildingRestaurant}
-              />
+              {role === 'admin' ? (
+                <AdminMobileZone
+                  cards={cards}
+                  buildings={buildings}
+                  currentVisitor={currentVisitor}
+                  role={role}
+                  informalAssets={informalAssets}
+                  informalGroups={informalGroups}
+                  onOpenMap={(cardId) => navigate(`/map?cardId=${cardId}`)}
+                  onOpenAssignedMap={(cardIds) => navigate(`/map?cardIds=${cardIds.join(',')}&scope=mine`)}
+                  onShowMapView={() => navigate('/map')}
+                  onUploadInformalAsset={onUploadInformalAsset}
+                  onDeleteInformalAsset={onDeleteInformalAsset}
+                  onCreateInformalGroup={onCreateInformalGroup}
+                  onRenameInformalGroup={onRenameInformalGroup}
+                  onDeleteInformalGroup={onDeleteInformalGroup}
+                  onMoveAssetToGroup={onMoveAssetToGroup}
+                  onToggleBuildingRestaurant={onToggleBuildingRestaurant}
+                />
+              ) : (
+                <MobileZoneView
+                  language={language}
+                  cards={cards}
+                  buildings={buildings}
+                  currentVisitor={currentVisitor}
+                  role={role}
+                  onOpenMap={(cardId) => navigate(`/map?cardId=${cardId}`)}
+                  onOpenAssignedMap={(cardIds) => navigate(`/map?cardIds=${cardIds.join(',')}&scope=mine`)}
+                  onShowMapView={() => navigate('/map')}
+                  informalAssets={informalAssets}
+                  informalGroups={informalGroups}
+                  onUploadInformalAsset={onUploadInformalAsset}
+                  onDeleteInformalAsset={onDeleteInformalAsset}
+                  onCreateInformalGroup={onCreateInformalGroup}
+                  onRenameInformalGroup={onRenameInformalGroup}
+                  onDeleteInformalGroup={onDeleteInformalGroup}
+                  onMoveAssetToGroup={onMoveAssetToGroup}
+                  onToggleBuildingRestaurant={onToggleBuildingRestaurant}
+                />
+              )}
               </>
             } />
 
