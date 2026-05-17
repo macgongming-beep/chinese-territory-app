@@ -2931,7 +2931,69 @@ button:focus-visible {
 
 .desk-settings-stack {
   display: grid;
-  gap: 16px;
+  gap: 12px;
+}
+
+/* 아코디언 그룹 */
+.ds-group {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.ds-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  background: var(--bg-card);
+  color: var(--gray-900);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.ds-group-head:hover {
+  background: var(--gray-50);
+}
+
+.ds-group-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ds-group-head strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--gray-900);
+}
+
+.ds-group-head span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+
+.ds-group-head svg {
+  color: var(--gray-500);
+  flex-shrink: 0;
+}
+
+.ds-group-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ds-group-body .desk-card.ds-card {
+  margin: 0;
 }
 
 .desk-card.ds-card {
