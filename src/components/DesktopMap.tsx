@@ -856,15 +856,39 @@ export function DesktopMap({
             </em>
           </div>
         )}
+        {/* 지역 칩 (모바일과 패러티) */}
+        <div className="desk-map-area-chips" role="tablist" aria-label="지역 필터">
+          {(() => {
+            const regionCounts = new Map<string, number>()
+            for (const c of cards) {
+              const k = c.region as string
+              regionCounts.set(k, (regionCounts.get(k) ?? 0) + 1)
+            }
+            const renderChip = (region: TerritoryRegion | '전체', label: string, count: number) => {
+              const active = regionFilter === region
+              return (
+                <button
+                  key={String(region)}
+                  role="tab"
+                  aria-selected={active}
+                  className={active ? 'active' : ''}
+                  onClick={() => { setRegionFilter(region); setAreaFilter('전체') }}
+                  type="button"
+                >
+                  {label}
+                  {region !== '전체' && <em>{count}</em>}
+                </button>
+              )
+            }
+            return (
+              <>
+                {renderChip('전체', '전체', cards.length)}
+                {territoryRegions.map((r) => renderChip(r, r, regionCounts.get(r) ?? 0))}
+              </>
+            )
+          })()}
+        </div>
         <div className="map-toolbar" aria-label="지도 필터">
-          {/* 지역 */}
-          <div className="map-toolbar-item">
-            <span className="map-toolbar-label">지역</span>
-            <select className="map-toolbar-select" value={regionFilter} onChange={(e) => { setRegionFilter(e.target.value as TerritoryRegion | '전체'); setAreaFilter('전체') }}>
-              <option value="전체">전체</option>
-              {territoryRegions.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
           {/* 동 */}
           <div className="map-toolbar-item">
             <span className="map-toolbar-label">동</span>
