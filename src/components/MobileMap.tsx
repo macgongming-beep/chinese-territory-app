@@ -111,9 +111,10 @@ export function MobileMap({
   }, [addrParam, language])
 
   // 내비게이션 상태 머신
-  const [navLevel, setNavLevel] = useState<NavLevel>(
-    addrParam != null || focusedCardId != null || focusedCardIds.length > 0 || actualRole === 'user' ? 'map' : 'area'
-  )
+  // (구) area → region → card → map 4단계 drill
+  // (신) 항상 'map' 으로 시작 + 지역 칩 필터 (drill 폐기)
+  //      과거 drill 함수들은 코드 호환 위해 남겨둠 (도달 안 됨)
+  const [navLevel, setNavLevel] = useState<NavLevel>('map')
   const [selectedArea, setSelectedArea] = useState<string | null>(null)
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
   const [selectedCardId, setSelectedCardId] = useState<number | null>(
@@ -867,6 +868,29 @@ export function MobileMap({
       {/* Level 4: 지도 화면 */}
       {navLevel === 'map' && (
         <>
+          {/* 지역 칩 필터 (drill 폐기 후 신규) — admin/leader 만 */}
+          {!isUserMap && !enteredDirectly && areas.length > 1 && (
+            <div className="mobile-map-area-chips" role="tablist" aria-label="지역 필터">
+              <button
+                role="tab"
+                aria-selected={selectedArea === null}
+                className={selectedArea === null ? 'active' : ''}
+                onClick={() => { setSelectedArea(null); setSelectedRegion(null); setSelectedCardId(null) }}
+                type="button"
+              >전체</button>
+              {areas.map((area) => (
+                <button
+                  key={area}
+                  role="tab"
+                  aria-selected={selectedArea === area}
+                  className={selectedArea === area ? 'active' : ''}
+                  onClick={() => { setSelectedArea(area); setSelectedRegion(null); setSelectedCardId(null) }}
+                  type="button"
+                >{area} <em>{areaCardCount(area)}</em></button>
+              ))}
+            </div>
+          )}
+
           {isUserMap && showCardFinder && (
             <div className="mobile-map-card-finder">
               <input

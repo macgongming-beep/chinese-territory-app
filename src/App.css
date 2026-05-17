@@ -5991,6 +5991,54 @@ button:focus-visible {
   background: #f8fafc;
 }
 
+/* 지도 모드 — 지역 칩 필터 (drill 대체) */
+.mobile-map-area-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-default);
+  background: #ffffff;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mobile-map-area-chips::-webkit-scrollbar { display: none; }
+
+.mobile-map-area-chips button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 99px;
+  background: #ffffff;
+  color: var(--ink-600);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.mobile-map-area-chips button em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-400, #94a3b8);
+}
+
+.mobile-map-area-chips button.active {
+  background: var(--brand-700, #2563eb);
+  border-color: var(--brand-700, #2563eb);
+  color: #ffffff;
+}
+
+.mobile-map-area-chips button.active em {
+  color: rgba(255, 255, 255, 0.85);
+}
+
 /* 종류 sub-tab (구역 카드 / 비공식 카드 / 식당) */
 .mobile-zone-kind-tabs {
   display: grid;
