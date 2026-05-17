@@ -35,8 +35,8 @@ function getInitialExpanded(): Set<GroupId> {
       return new Set(ids)
     }
   } catch { /* ignore */ }
-  // 기본: 알림 & 디바이스, 환경 펼침. 계정/관리는 접힘
-  return new Set<GroupId>(['notifications', 'env'])
+  // 기본: 알림 & 디바이스만 펼침. 나머지는 접힘 (자주 안 봄)
+  return new Set<GroupId>(['notifications'])
 }
 
 function ChevronIcon({ open }: { open: boolean }) {
@@ -257,45 +257,6 @@ export function DesktopSettings({
           )}
         </section>
 
-        {/* ──────────────────────────── GROUP: 환경 ─── */}
-        <section className="ds-group">
-          <button
-            className="ds-group-head"
-            onClick={() => toggleGroup('env')}
-            aria-expanded={expanded.has('env')}
-            type="button"
-          >
-            <div>
-              <strong>환경</strong>
-              <span>앱 정보</span>
-            </div>
-            <ChevronIcon open={expanded.has('env')} />
-          </button>
-          {expanded.has('env') && (
-            <div className="ds-group-body">
-              <article className="desk-card ds-card">
-                <div className="desk-card__head">
-                  <h2 className="desk-card__title"><span className="desk-card__title-dot" />앱 정보</h2>
-                </div>
-                <dl className="ds-info-grid">
-                  <div>
-                    <dt>앱 이름</dt>
-                    <dd>Chinese Territory Manager</dd>
-                  </div>
-                  <div>
-                    <dt>버전</dt>
-                    <dd className="tnum">1.0.0</dd>
-                  </div>
-                  <div>
-                    <dt>현재 사용자</dt>
-                    <dd>{currentVisitor}</dd>
-                  </div>
-                </dl>
-              </article>
-            </div>
-          )}
-        </section>
-
         {/* ──────────────────────────── GROUP: 관리 도구 (leader/admin/dev) ─── */}
         {(actualRole === 'leader' || isAdminLike(actualRole)) && (
           <section className="ds-group">
@@ -442,6 +403,45 @@ export function DesktopSettings({
             )}
           </section>
         )}
+
+        {/* ──────────────────────────── GROUP: 환경 (맨 아래) ─── */}
+        <section className="ds-group">
+          <button
+            className="ds-group-head"
+            onClick={() => toggleGroup('env')}
+            aria-expanded={expanded.has('env')}
+            type="button"
+          >
+            <div>
+              <strong>환경</strong>
+              <span>앱 정보</span>
+            </div>
+            <ChevronIcon open={expanded.has('env')} />
+          </button>
+          {expanded.has('env') && (
+            <div className="ds-group-body">
+              <article className="desk-card ds-card">
+                <div className="desk-card__head">
+                  <h2 className="desk-card__title"><span className="desk-card__title-dot" />앱 정보</h2>
+                </div>
+                <dl className="ds-info-grid">
+                  <div>
+                    <dt>앱 이름</dt>
+                    <dd>Chinese Territory Manager</dd>
+                  </div>
+                  <div>
+                    <dt>버전</dt>
+                    <dd className="tnum">1.0.0</dd>
+                  </div>
+                  <div>
+                    <dt>현재 사용자</dt>
+                    <dd>{currentVisitor}</dd>
+                  </div>
+                </dl>
+              </article>
+            </div>
+          )}
+        </section>
       </div>
 
       {showCreateModal && (
