@@ -81,6 +81,7 @@ export function MobileAdminAssignment({
 }) {
   const [step, setStep] = useState<1 | 2>(1)
   const [selectedLeader, setSelectedLeader] = useState<string | null>(null)
+  const [leaderFilter, setLeaderFilter] = useState<'all' | 'active' | 'new'>('all')
   const [leaderSearch, setLeaderSearch] = useState('')
   const [cardQuery, setCardQuery] = useState('')
   const [regionPill, setRegionPill] = useState<string>('전체')
@@ -208,11 +209,18 @@ export function MobileAdminAssignment({
       {/* ── Step 1: 인도자 선택 ───────────── */}
       {step === 1 && (
         <>
+          {/* 필터 pills (전체/활성/신규) */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 12, padding: '0 2px' }}>
+            <FilterPill label={`전체 ${leaders.length}`} active={leaderFilter === 'all'} onClick={() => setLeaderFilter('all')} />
+            <FilterPill label={`활성 ${activeLeaders.length}`} active={leaderFilter === 'active'} onClick={() => setLeaderFilter('active')} />
+            <FilterPill label={`신규 ${newLeaders.length}`} active={leaderFilter === 'new'} onClick={() => setLeaderFilter('new')} />
+          </div>
+
           {/* 검색 */}
           <SearchInput value={leaderSearch} onChange={setLeaderSearch} placeholder="인도자 검색" />
 
           {/* 활성 인도자 */}
-          {filteredActive.length > 0 && (
+          {(leaderFilter === 'all' || leaderFilter === 'active') && filteredActive.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
               {filteredActive.map((leader) => (
                 <LeaderCard
@@ -227,9 +235,9 @@ export function MobileAdminAssignment({
           )}
 
           {/* 신규 인도자 섹션 divider */}
-          {filteredNew.length > 0 && (
+          {(leaderFilter === 'all' || leaderFilter === 'new') && filteredNew.length > 0 && (
             <>
-              <SectionDivider label="신규 인도자 (담당 없음)" count={filteredNew.length} marginTop={filteredActive.length > 0 ? 20 : 14} />
+              <SectionDivider label="신규 인도자 (담당 없음)" count={filteredNew.length} marginTop={leaderFilter === 'all' && filteredActive.length > 0 ? 20 : 14} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
                 {filteredNew.map((leader) => (
                   <LeaderCard
@@ -245,8 +253,8 @@ export function MobileAdminAssignment({
             </>
           )}
 
-          {/* 나 섹션 */}
-          {filteredMe && (
+          {/* 나 섹션 (전체일 때만 노출) */}
+          {leaderFilter === 'all' && filteredMe && (
             <>
               <SectionDivider label="나" marginTop={filteredActive.length > 0 || filteredNew.length > 0 ? 20 : 14} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
@@ -263,16 +271,22 @@ export function MobileAdminAssignment({
           )}
 
           {/* 빈 상태 */}
-          {filteredActive.length === 0 && filteredNew.length === 0 && !filteredMe && (
-            <div style={{
-              padding: '32px 16px', textAlign: 'center', fontSize: 13,
-              color: 'var(--muted)',
-              background: 'var(--surface)', border: '1px solid var(--line)',
-              borderRadius: 12, marginTop: 14,
-            }}>
-              {leaderSearch ? '검색 결과가 없습니다' : '인도자가 없습니다'}
-            </div>
-          )}
+          {(() => {
+            const showActive = (leaderFilter === 'all' || leaderFilter === 'active') && filteredActive.length > 0
+            const showNew = (leaderFilter === 'all' || leaderFilter === 'new') && filteredNew.length > 0
+            const showMe = leaderFilter === 'all' && filteredMe
+            if (showActive || showNew || showMe) return null
+            return (
+              <div style={{
+                padding: '32px 16px', textAlign: 'center', fontSize: 13,
+                color: 'var(--muted)',
+                background: 'var(--surface)', border: '1px solid var(--line)',
+                borderRadius: 12, marginTop: 14,
+              }}>
+                {leaderSearch ? '검색 결과가 없습니다' : leaderFilter === 'active' ? '활성 인도자가 없습니다' : leaderFilter === 'new' ? '신규 인도자가 없습니다' : '인도자가 없습니다'}
+              </div>
+            )
+          })()}
 
           {/* sticky 하단: 다음 단계 */}
           {selectedLeader && (
@@ -513,20 +527,20 @@ function LeaderCard({
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{name}</span>
           {isMe && (
-            <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>(나)</span>
+            <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500 }}>(나)</span>
           )}
         </div>
         {!muted && (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 12, color: 'var(--muted)' }}>
-            <span><span style={{ color: 'var(--muted)' }}>담당</span> <b style={{ color: 'var(--ink)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{stats.assigned}</b></span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 12.5, color: 'var(--muted)' }}>
+            <span><span style={{ color: 'var(--muted)' }}>담당</span> <b style={{ color: 'var(--ink)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', marginLeft: 3 }}>{stats.assigned}</b></span>
             <span style={{ color: 'var(--muted-3)' }}>·</span>
-            <span><span style={{ color: 'var(--muted)' }}>진행</span> <b style={{ color: 'var(--ink)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{stats.inProgress}</b></span>
+            <span><span style={{ color: 'var(--muted)' }}>진행</span> <b style={{ color: 'var(--ink)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', marginLeft: 3 }}>{stats.inProgress}</b></span>
             <span style={{ color: 'var(--muted-3)' }}>·</span>
-            <span><span style={{ color: 'var(--muted)' }}>완료</span> <b style={{ color: 'var(--ink)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{stats.done}</b></span>
+            <span><span style={{ color: 'var(--muted)' }}>완료</span> <b style={{ color: 'var(--ink)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', marginLeft: 3 }}>{stats.done}</b></span>
           </div>
         )}
         {muted && (
-          <span style={{ fontSize: 12, color: 'var(--muted)' }}>담당 없음</span>
+          <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>담당 없음</span>
         )}
       </div>
       {isSelected && (
