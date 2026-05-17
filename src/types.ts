@@ -42,16 +42,6 @@ export type EventCardAssignment = {
   assignedBy: string
   assignedAt: string
   memo: string
-  teamId?: number | null
-}
-
-export type EventTeam = {
-  id: number
-  eventId: number
-  name: string
-  color: string
-  position: number
-  createdAt: string
 }
 
 export type InformalAsset = {
@@ -76,7 +66,6 @@ export type InformalGroup = {
 export type EventInformalAssignment = {
   id: number
   eventId: number
-  teamId: number | null
   userName: string
   assetId: number
   assignedBy: string
@@ -87,7 +76,6 @@ export type EventInformalAssignment = {
 export type EventRestaurantAssignment = {
   id: number
   eventId: number
-  teamId: number | null
   userName: string
   buildingId: number
   assignedBy: string

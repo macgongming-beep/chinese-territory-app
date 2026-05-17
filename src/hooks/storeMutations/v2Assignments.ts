@@ -1,5 +1,4 @@
 // v2 신 배정 모델 mutations
-// - event_teams 관리
 // - 비공식 자료 풀 관리 (informal_assets)
 // - event_informal_assignments / event_restaurant_assignments
 // - buildings.is_restaurant 마킹
@@ -8,51 +7,6 @@ import { showToast } from '../../lib/toast'
 
 export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> }) {
   const { fetchAll } = deps
-
-  // ── 팀 ──────────────────────────────────────────────
-  const createEventTeam = async (input: {
-    eventId: number
-    name?: string
-    color?: string
-    position?: number
-  }) => {
-    const { data, error } = await supabase
-      .from('event_teams')
-      .insert({
-        event_id: input.eventId,
-        name: input.name ?? '',
-        color: input.color ?? '#2563eb',
-        position: input.position ?? 0,
-      })
-      .select('*')
-      .single()
-    if (error) {
-      showToast(`팀 생성 실패: ${error.message}`, 'error')
-      return null
-    }
-    await fetchAll()
-    return data?.id ?? null
-  }
-
-  const updateEventTeam = async (
-    teamId: number,
-    input: { name?: string; color?: string; position?: number },
-  ) => {
-    const patch: Record<string, unknown> = {}
-    if (input.name !== undefined) patch.name = input.name
-    if (input.color !== undefined) patch.color = input.color
-    if (input.position !== undefined) patch.position = input.position
-    if (Object.keys(patch).length === 0) return
-    const { error } = await supabase.from('event_teams').update(patch).eq('id', teamId)
-    if (error) showToast(`팀 수정 실패: ${error.message}`, 'error')
-    else await fetchAll()
-  }
-
-  const deleteEventTeam = async (teamId: number) => {
-    const { error } = await supabase.from('event_teams').delete().eq('id', teamId)
-    if (error) showToast(`팀 삭제 실패: ${error.message}`, 'error')
-    else await fetchAll()
-  }
 
   // ── 비공식 자료 풀 ────────────────────────────────
   const uploadInformalAsset = async (input: {
@@ -164,14 +118,12 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
   // ── 비공식 배정 ────────────────────────────────────
   const assignInformalToUser = async (input: {
     eventId: number
-    teamId: number | null
     userName: string
     assetId: number
     assignedBy: string
   }) => {
     const { error } = await supabase.from('event_informal_assignments').insert({
       event_id: input.eventId,
-      team_id: input.teamId,
       user_name: input.userName,
       asset_id: input.assetId,
       assigned_by: input.assignedBy,
@@ -200,14 +152,12 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
   // ── 식당 배정 ──────────────────────────────────────
   const assignRestaurantToUser = async (input: {
     eventId: number
-    teamId: number | null
     userName: string
     buildingId: number
     assignedBy: string
   }) => {
     const { error } = await supabase.from('event_restaurant_assignments').insert({
       event_id: input.eventId,
-      team_id: input.teamId,
       user_name: input.userName,
       building_id: input.buildingId,
       assigned_by: input.assignedBy,
@@ -240,9 +190,6 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
   }
 
   return {
-    createEventTeam,
-    updateEventTeam,
-    deleteEventTeam,
     uploadInformalAsset,
     deleteInformalAsset,
     createInformalGroup,

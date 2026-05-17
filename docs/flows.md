@@ -211,7 +211,7 @@ informal_assets (
 )
 
 event_informal_assignments (
-  id, event_id, team_id, user_name,
+  id, event_id, user_name,
   asset_id, assigned_by, assigned_at, memo
 )
 ```
@@ -221,31 +221,24 @@ event_informal_assignments (
 ### 4.4 식당 봉사 배정 ✅ v2 구현 완료
 - **결정 사항**:
   - 식당 = 기존 `buildings` (type='상가') 재활용 — 새 테이블 X
-  - 인도자가 전체 상가에서 1개 검색 선택 + 인원수 설정
-  - 봉사자: 활동 화면에 "식당 봉사 - {식당명} (N명)" 표시
+  - 인도자가 전체 상가에서 1개 검색 선택
+  - 인원수: 받지 않음 — 배정 받은 팀원 각자가 한 줄로 INSERT 됨
+  - 봉사자: 활동 화면에 "식당 봉사 - {식당명}" 표시
 - **데이터 모델**:
 ```sql
 event_restaurant_assignments (
-  id, event_id, team_id, user_name,
+  id, event_id, user_name,
   building_id,            -- buildings.id 참조
-  party_size int,
   assigned_by, assigned_at, memo
 )
 ```
 - **UI 위치**: 구역 탭 → 식당 서브탭 (4.2.2)
 - **봉사자 표시**: 활동 카드 안 "구역" 섹션에 🟧 색 태그 + 길찾기 버튼
 
-### 4.5 [공통] 팀 (event_teams) ✅ 테이블 생성 완료
-- 4.2의 팀 단위가 DB 에 명시 (event_teams 테이블)
-- **데이터 모델**:
-```sql
-event_teams (
-  id, event_id, name, color, position, created_at
-)
-```
-- 기존 `event_card_assignments` 에 `team_id` 추가 (nullable, 마이그레이션 시 NULL 허용)
-- 신규 `event_informal_assignments`, `event_restaurant_assignments` 도 `team_id` 가짐
-- v2 현재 단계: UI 의 팀(localStorage 기반 draft.teams) 과 DB event_teams 미연결 — 향후 폴리시 작업에서 연결 예정
+### 4.5 [공통] 팀 DB 모델 보류
+- 현재 팀 구성은 UI 의 `draft.teams`(localStorage 기반) 만 사용한다.
+- `event_teams` 와 각 배정 테이블의 `team_id` 는 UI 와 미연결이므로 폐기했다.
+- 추후 DB 팀 모델이 필요하면 별도 설계/권한 정책을 다시 결정한다.
 
 ### 4.6 [향후 별도 작업] 마찰 포인트 개선
 - "공유" vs "확정" 차이 명료화 또는 단일 액션으로 통합
@@ -475,7 +468,7 @@ event_teams (
 | 구역 카드 배정 | ✅ 운영 중 → 🛠 신 모델 적용 | 4.2.2 (구역) |
 | 비공식 (이미지) 배정 | 🛠 구현 예정 | 4.3 |
 | 식당 봉사 배정 | 🛠 구현 예정 | 4.4 |
-| event_teams 도입 | 🛠 구현 예정 | 4.5 |
+| 팀 DB 모델 | 보류 — UI draft.teams 만 사용 | 4.5 |
 
 **확정된 의사결정 요약**:
 
@@ -484,13 +477,13 @@ event_teams (
 | 흐름 순서 | 탭 자유 (강제 1→2→3 폐기) |
 | 비공식 자료 형식 | 이미지 파일 (PDF 등 포함) — 별도 비공식 카드 타입은 향후 |
 | 식당 데이터 | 기존 buildings(상가) 재활용, 새 테이블 없음 |
-| 식당 선택 방식 | 전체 상가에서 단일 검색 선택 + 인원수 |
+| 식당 선택 방식 | 전체 상가에서 단일 검색 선택, 인원수는 받지 않음 |
 | 비-팀 컨텍스트 진입 | 미배정 풀에 쌓고 팀 구성에서 분배 (B-1) |
-| 팀 | 새 `event_teams` 테이블 + 각 배정 테이블에 `team_id` |
+| 팀 | UI 의 `draft.teams` 만 사용, DB 팀 모델은 보류 |
 
 **공통 패턴 (재사용)**:
 - `event_card_assignments`, `event_informal_assignments`, `event_restaurant_assignments` 셋 다 동일 패턴:
-  `(event_id, team_id, user_name, [대상 id], assigned_by, assigned_at, memo)`
+  `(event_id, user_name, [대상 id], assigned_by, assigned_at, memo)`
 - 알림 트리거 함수도 동일 구조 (`notify_on_*_assignment`)
 - 봉사자 활동 화면은 셋을 합쳐서 색 태그로만 구분 표시
 
@@ -507,4 +500,3 @@ event_teams (
 - **AI 인수인계** 시 "이 흐름 개선해줘" 식으로 정확히 지칭 가능
 - **디자인 시각 작업** 시 우선순위 섹션 참고
 - **버그 리포트** 시 "흐름 X.Y 에서 ..." 식으로 명확히 위치 표기
-

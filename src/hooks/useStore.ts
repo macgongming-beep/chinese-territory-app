@@ -6,7 +6,6 @@ import type {
   CardBoundary,
   EventInformalAssignment,
   EventRestaurantAssignment,
-  EventTeam,
   InformalAsset,
   InformalGroup,
   Notice,
@@ -24,7 +23,6 @@ import {
   toCard,
   toCalendarEvent,
   toEventCardAssignment,
-  toEventTeam,
   toInformalAsset,
   toInformalGroup,
   toEventInformalAssignment,
@@ -57,7 +55,6 @@ import type {
   RawEventCardAssignmentCard,
   RawEventInformalAssignment,
   RawEventRestaurantAssignment,
-  RawEventTeam,
   RawInformalAsset,
   RawInformalGroup,
   RawVisitHistory,
@@ -89,7 +86,6 @@ export function useStore() {
   const [returnVisits, setReturnVisits] = useState<ReturnVisit[]>([])
   const [returnVisitLogs, setReturnVisitLogs] = useState<ReturnVisitLog[]>([])
   const [reviewTasks, setReviewTasks] = useState<ReviewTask[]>([])
-  const [eventTeams, setEventTeams] = useState<EventTeam[]>([])
   const [informalAssets, setInformalAssets] = useState<InformalAsset[]>([])
   const [eventInformalAssignments, setEventInformalAssignments] = useState<EventInformalAssignment[]>([])
   const [eventRestaurantAssignments, setEventRestaurantAssignments] = useState<EventRestaurantAssignment[]>([])
@@ -136,7 +132,7 @@ export function useStore() {
       buildingsRes, cardsRes, visitsRes, sessionsRes, eventsRes,
       eventCardAssignmentsRes, eventAssignmentCardsRes, boundariesRes,
       noticesRes, periodsRes, returnVisitsRes, returnVisitLogsRes, reviewTasksRes,
-      eventTeamsRes, informalAssetsRes, eventInformalAssignmentsRes, eventRestaurantAssignmentsRes,
+      informalAssetsRes, eventInformalAssignmentsRes, eventRestaurantAssignmentsRes,
       informalGroupsRes,
     ] = await Promise.all([
       supabase.from('buildings').select('*, units(*, regular_visits(*))').order('id'),
@@ -152,7 +148,6 @@ export function useStore() {
       supabase.from('return_visits').select('*').order('created_at', { ascending: false }),
       supabase.from('return_visit_logs').select('*').order('visited_at', { ascending: false }),
       supabase.from('review_tasks').select('*').neq('status', 'deleted').order('created_at', { ascending: false }),
-      supabase.from('event_teams').select('*').order('position'),
       supabase.from('informal_assets').select('*').eq('archived', false).order('created_at', { ascending: false }),
       supabase.from('event_informal_assignments').select('*'),
       supabase.from('event_restaurant_assignments').select('*'),
@@ -262,12 +257,11 @@ export function useStore() {
     }
 
     // v2 신 배정 모델 데이터 (v2_assignment_model.sql 적용 전이면 모두 빈 배열)
-    setEventTeams(eventTeamsRes.error ? [] : (eventTeamsRes.data as RawEventTeam[]).map(toEventTeam))
     setInformalAssets(informalAssetsRes.error ? [] : (informalAssetsRes.data as RawInformalAsset[]).map(toInformalAsset))
     setEventInformalAssignments(eventInformalAssignmentsRes.error ? [] : (eventInformalAssignmentsRes.data as RawEventInformalAssignment[]).map(toEventInformalAssignment))
     setEventRestaurantAssignments(eventRestaurantAssignmentsRes.error ? [] : (eventRestaurantAssignmentsRes.data as RawEventRestaurantAssignment[]).map(toEventRestaurantAssignment))
     setInformalGroups(informalGroupsRes.error ? [] : (informalGroupsRes.data as RawInformalGroup[]).map(toInformalGroup))
-    if (eventTeamsRes.error || informalAssetsRes.error || eventInformalAssignmentsRes.error || eventRestaurantAssignmentsRes.error || informalGroupsRes.error) {
+    if (informalAssetsRes.error || eventInformalAssignmentsRes.error || eventRestaurantAssignmentsRes.error || informalGroupsRes.error) {
       console.warn('v2 신 배정 모델 테이블 일부 미적용 — supabase/v2_assignment_model.sql 실행 필요')
     }
 
@@ -404,9 +398,6 @@ export function useStore() {
   } = makeReviewTaskMutations({ fetchAll, setReviewTasks })
 
   const {
-    createEventTeam,
-    updateEventTeam,
-    deleteEventTeam,
     uploadInformalAsset,
     deleteInformalAsset,
     createInformalGroup,
@@ -497,14 +488,10 @@ export function useStore() {
     updateReviewTask,
     deleteReviewTask,
     // v2 신 배정 모델
-    eventTeams,
     informalAssets,
     eventInformalAssignments,
     eventRestaurantAssignments,
     informalGroups,
-    createEventTeam,
-    updateEventTeam,
-    deleteEventTeam,
     uploadInformalAsset,
     deleteInformalAsset,
     createInformalGroup,

@@ -120,9 +120,9 @@ export function MobileLeaderAssignment({
   informalAssets?: InformalAsset[]
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
-  onAssignInformalToUser?: (input: { eventId: number; teamId: number | null; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
+  onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
   onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
-  onAssignRestaurantToUser?: (input: { eventId: number; teamId: number | null; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
+  onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
   onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
 }) {
@@ -881,7 +881,6 @@ export function MobileLeaderAssignment({
           for (const member of team.members) {
             const ok = await onAssignInformalToUser({
               eventId: selectedEvent.id,
-              teamId: null,
               userName: member,
               assetId,
               assignedBy: currentVisitor,
@@ -918,7 +917,6 @@ export function MobileLeaderAssignment({
           for (const member of team.members) {
             const ok = await onAssignRestaurantToUser({
               eventId: selectedEvent.id,
-              teamId: null,
               userName: member,
               buildingId,
               assignedBy: currentVisitor,

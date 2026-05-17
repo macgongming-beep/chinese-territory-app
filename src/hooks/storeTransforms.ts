@@ -12,7 +12,6 @@ import type {
   EventCardAssignment,
   EventInformalAssignment,
   EventRestaurantAssignment,
-  EventTeam,
   GeoPoint,
   InformalAsset,
   InformalGroup,
@@ -99,16 +98,6 @@ export type RawEventCardAssignment = {
   assigned_by: string | null
   assigned_at: string
   memo: string | null
-  team_id?: number | null
-}
-
-export type RawEventTeam = {
-  id: number
-  event_id: number
-  name: string
-  color: string
-  position: number
-  created_at: string
 }
 
 export type RawInformalAsset = {
@@ -133,7 +122,6 @@ export type RawInformalGroup = {
 export type RawEventInformalAssignment = {
   id: number
   event_id: number
-  team_id: number | null
   user_name: string
   asset_id: number
   assigned_by: string | null
@@ -144,7 +132,6 @@ export type RawEventInformalAssignment = {
 export type RawEventRestaurantAssignment = {
   id: number
   event_id: number
-  team_id: number | null
   user_name: string
   building_id: number
   assigned_by: string | null
@@ -320,18 +307,6 @@ export function toEventCardAssignment(raw: RawEventCardAssignment): EventCardAss
     assignedBy: raw.assigned_by ?? '',
     assignedAt: raw.assigned_at,
     memo: raw.memo ?? '',
-    teamId: raw.team_id ?? null,
-  }
-}
-
-export function toEventTeam(raw: RawEventTeam): EventTeam {
-  return {
-    id: raw.id,
-    eventId: raw.event_id,
-    name: raw.name ?? '',
-    color: raw.color ?? '#2563eb',
-    position: raw.position ?? 0,
-    createdAt: raw.created_at,
   }
 }
 
@@ -362,7 +337,6 @@ export function toEventInformalAssignment(raw: RawEventInformalAssignment): Even
   return {
     id: raw.id,
     eventId: raw.event_id,
-    teamId: raw.team_id ?? null,
     userName: raw.user_name,
     assetId: raw.asset_id,
     assignedBy: raw.assigned_by ?? '',
@@ -375,7 +349,6 @@ export function toEventRestaurantAssignment(raw: RawEventRestaurantAssignment): 
   return {
     id: raw.id,
     eventId: raw.event_id,
-    teamId: raw.team_id ?? null,
     userName: raw.user_name,
     buildingId: raw.building_id,
     assignedBy: raw.assigned_by ?? '',

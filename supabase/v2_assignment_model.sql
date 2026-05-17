@@ -1,46 +1,23 @@
 -- =============================================================
--- v2 신 배정 모델 — 비공식 + 식당 + 팀
+-- v2 신 배정 모델 — 비공식 + 식당
 -- 작성일: 2026-05-16
 --
 -- 추가 사항:
 --  1) buildings.is_restaurant boolean (식당 마킹)
---  2) event_teams (일정 단위 팀)
---  3) event_card_assignments.team_id (nullable, 기존 데이터 호환)
---  4) informal_assets (자료 풀)
---  5) event_informal_assignments
---  6) event_restaurant_assignments
---  7) notifications.type CHECK 확장 (assignment_informal, assignment_restaurant)
---  8) 알림 트리거 (notify_on_informal/restaurant_assignment)
---  9) Realtime publication + REPLICA IDENTITY FULL
--- 10) Storage 버킷 informal-assets (수동 생성 필요 — 가이드 주석)
+--  2) informal_assets (자료 풀)
+--  3) event_informal_assignments
+--  4) event_restaurant_assignments
+--  5) notifications.type CHECK 확장 (assignment_informal, assignment_restaurant)
+--  6) 알림 트리거 (notify_on_informal/restaurant_assignment)
+--  7) Realtime publication + REPLICA IDENTITY FULL
+--  8) Storage 버킷 informal-assets (수동 생성 필요 — 가이드 주석)
 -- =============================================================
 
 -- ─── 1. buildings 식당 마킹 ────────────────────────────────
 alter table public.buildings
   add column if not exists is_restaurant boolean not null default false;
 
--- ─── 2. event_teams ────────────────────────────────────────
-create table if not exists public.event_teams (
-  id          serial primary key,
-  event_id    integer references public.calendar_events(id) on delete cascade not null,
-  name        text not null default '',
-  color       text not null default '#2563eb',
-  position    integer not null default 0,
-  created_at  timestamptz default now()
-);
-
-alter table public.event_teams enable row level security;
-drop policy if exists open_access on public.event_teams;
-create policy open_access on public.event_teams
-  for all to anon using (true) with check (true);
-
-create index if not exists event_teams_event_id_idx on public.event_teams(event_id);
-
--- ─── 3. event_card_assignments에 team_id 추가 ──────────────
-alter table public.event_card_assignments
-  add column if not exists team_id integer references public.event_teams(id) on delete set null;
-
--- ─── 4. informal_assets (자료 풀) ──────────────────────────
+-- ─── 2. informal_assets (자료 풀) ──────────────────────────
 create table if not exists public.informal_assets (
   id           serial primary key,
   name         text not null,
@@ -56,11 +33,10 @@ drop policy if exists open_access on public.informal_assets;
 create policy open_access on public.informal_assets
   for all to anon using (true) with check (true);
 
--- ─── 5. event_informal_assignments ─────────────────────────
+-- ─── 3. event_informal_assignments ─────────────────────────
 create table if not exists public.event_informal_assignments (
   id            serial primary key,
   event_id      integer references public.calendar_events(id) on delete cascade not null,
-  team_id       integer references public.event_teams(id) on delete set null,
   user_name     text not null,
   asset_id      integer references public.informal_assets(id) on delete cascade not null,
   assigned_by   text not null default '',
@@ -77,11 +53,10 @@ create policy open_access on public.event_informal_assignments
 create index if not exists event_informal_assignments_event_idx
   on public.event_informal_assignments(event_id);
 
--- ─── 6. event_restaurant_assignments ───────────────────────
+-- ─── 4. event_restaurant_assignments ───────────────────────
 create table if not exists public.event_restaurant_assignments (
   id            serial primary key,
   event_id      integer references public.calendar_events(id) on delete cascade not null,
-  team_id       integer references public.event_teams(id) on delete set null,
   user_name     text not null,
   building_id   integer references public.buildings(id) on delete cascade not null,
   assigned_by   text not null default '',
@@ -97,7 +72,7 @@ create policy open_access on public.event_restaurant_assignments
 create index if not exists event_restaurant_assignments_event_idx
   on public.event_restaurant_assignments(event_id);
 
--- ─── 7. notifications.type CHECK 확장 ─────────────────────
+-- ─── 5. notifications.type CHECK 확장 ─────────────────────
 alter table public.notifications drop constraint if exists notifications_type_check;
 alter table public.notifications add constraint notifications_type_check
   check (type in (
@@ -106,7 +81,7 @@ alter table public.notifications add constraint notifications_type_check
     'assignment_informal', 'assignment_restaurant'
   ));
 
--- ─── 8. 알림 트리거 ─────────────────────────────────────────
+-- ─── 6. 알림 트리거 ─────────────────────────────────────────
 
 -- 8-A. 비공식 자료 배정
 create or replace function public.notify_on_informal_assignment()
@@ -245,11 +220,10 @@ create trigger on_restaurant_assignment_insert
 after insert on public.event_restaurant_assignments
 for each row execute function public.notify_on_restaurant_assignment();
 
--- ─── 9. Realtime publication + REPLICA IDENTITY FULL ────────
+-- ─── 7. Realtime publication + REPLICA IDENTITY FULL ────────
 do $$
 declare
   v_tables text[] := array[
-    'event_teams',
     'informal_assets',
     'event_informal_assignments',
     'event_restaurant_assignments'
@@ -269,12 +243,11 @@ begin
 end
 $$;
 
-alter table public.event_teams replica identity full;
 alter table public.informal_assets replica identity full;
 alter table public.event_informal_assignments replica identity full;
 alter table public.event_restaurant_assignments replica identity full;
 
--- ─── 10. Storage 버킷 (수동 생성 필요) ────────────────────
+-- ─── 8. Storage 버킷 (수동 생성 필요) ────────────────────
 -- Supabase Dashboard → Storage → New bucket:
 --   - Name: informal-assets
 --   - Public: YES (이미지 직접 표시 위해)
@@ -284,19 +257,17 @@ alter table public.event_restaurant_assignments replica identity full;
 -- 또는 Storage 정책 SQL 로 만들기 (대시보드 권장):
 -- insert into storage.buckets (id, name, public) values ('informal-assets','informal-assets', true);
 --
--- 정책 (anon SELECT 허용 + admin INSERT/DELETE 는 RPC 통해서):
+-- 정책 (anon SELECT/INSERT 허용 + DELETE 는 delete_informal_asset_secure RPC 통해서):
 -- create policy "informal_assets_public_read" on storage.objects
 --   for select to anon using (bucket_id = 'informal-assets');
 -- create policy "informal_assets_anon_write" on storage.objects
 --   for insert to anon with check (bucket_id = 'informal-assets');
--- create policy "informal_assets_anon_delete" on storage.objects
---   for delete to anon using (bucket_id = 'informal-assets');
 
 -- ─── 검증 ────────────────────────────────────────────────────
 -- 1) 테이블 확인:
 --    select table_name from information_schema.tables
 --    where table_schema='public' and table_name in (
---      'event_teams','informal_assets',
+--      'informal_assets',
 --      'event_informal_assignments','event_restaurant_assignments'
 --    );
 -- 2) 트리거 확인:

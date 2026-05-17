@@ -127,14 +127,10 @@ function App() {
     deleteReviewTask,
     refetchAll,
     // v2 신 배정 모델
-    eventTeams,
     informalAssets,
     eventInformalAssignments,
     eventRestaurantAssignments,
     informalGroups,
-    createEventTeam,
-    updateEventTeam,
-    deleteEventTeam,
     uploadInformalAsset,
     deleteInformalAsset,
     createInformalGroup,
@@ -394,14 +390,10 @@ function App() {
               specialPeriods={specialPeriods}
               onCreateSpecialPeriod={createSpecialPeriod}
               onDeleteSpecialPeriod={deleteSpecialPeriod}
-              eventTeams={eventTeams}
               informalAssets={informalAssets}
               eventInformalAssignments={eventInformalAssignments}
               eventRestaurantAssignments={eventRestaurantAssignments}
               informalGroups={informalGroups}
-              onCreateEventTeam={createEventTeam}
-              onUpdateEventTeam={updateEventTeam}
-              onDeleteEventTeam={deleteEventTeam}
               onUploadInformalAsset={uploadInformalAsset}
               onDeleteInformalAsset={deleteInformalAsset}
               onCreateInformalGroup={createInformalGroup}

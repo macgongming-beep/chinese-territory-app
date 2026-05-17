@@ -9,7 +9,7 @@ import { MobileTerritory } from './MobileTerritory'
 import { MobileUsers } from './MobileUsers'
 import { MobileSignupRequests } from './MobileSignupRequests'
 import { MobileProfileSettings } from './MobileProfileSettings'
-import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, EventTeam, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import { InformalCardsTab } from './InformalCardsTab'
 import { RestaurantsTab } from './RestaurantsTab'
 import type { AuthUser } from '../hooks/useAuth'
@@ -950,14 +950,10 @@ export function MobileHome({
   onCreateSpecialPeriod,
   onDeleteSpecialPeriod,
   // v2 신 배정 모델
-  eventTeams = [],
   informalAssets = [],
   eventInformalAssignments = [],
   eventRestaurantAssignments = [],
   informalGroups = [],
-  onCreateEventTeam,
-  onUpdateEventTeam,
-  onDeleteEventTeam,
   onUploadInformalAsset,
   onDeleteInformalAsset,
   onCreateInformalGroup,
@@ -1042,23 +1038,19 @@ export function MobileHome({
   onCreateSpecialPeriod?: (input: { label: string; startDate: string; endDate: string; color: string }) => Promise<void> | void
   onDeleteSpecialPeriod?: (id: number) => Promise<void> | void
   // v2 신 배정 모델
-  eventTeams?: EventTeam[]
   informalAssets?: InformalAsset[]
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   informalGroups?: InformalGroup[]
-  onCreateEventTeam?: (input: { eventId: number; name?: string; color?: string; position?: number }) => Promise<number | null>
-  onUpdateEventTeam?: (teamId: number, input: { name?: string; color?: string; position?: number }) => Promise<void>
-  onDeleteEventTeam?: (teamId: number) => Promise<void>
   onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
   onDeleteInformalAsset?: (assetId: number) => Promise<void>
   onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
   onRenameInformalGroup?: (groupId: number, name: string) => Promise<void>
   onDeleteInformalGroup?: (groupId: number) => Promise<void>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
-  onAssignInformalToUser?: (input: { eventId: number; teamId: number | null; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
+  onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
   onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
-  onAssignRestaurantToUser?: (input: { eventId: number; teamId: number | null; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
+  onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
   onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
 }) {
@@ -1067,11 +1059,6 @@ export function MobileHome({
   const [searchParams] = useSearchParams()
   const role = actualRole === 'admin' ? viewMode : actualRole
 
-  // 미사용 (향후 phase) — 의도적 unused
-  void eventTeams
-  void onCreateEventTeam
-  void onUpdateEventTeam
-  void onDeleteEventTeam
   const headerChatUsers = useMemo(
     () => allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role as Role })),
     [allUsers],
