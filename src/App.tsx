@@ -320,6 +320,8 @@ function App() {
             onUpdateReviewTask={updateReviewTask}
             onDeleteReviewTask={deleteReviewTask}
             informalAssets={informalAssets}
+            eventInformalAssignments={eventInformalAssignments}
+            eventRestaurantAssignments={eventRestaurantAssignments}
             informalGroups={informalGroups}
             onUploadInformalAsset={uploadInformalAsset}
             onDeleteInformalAsset={deleteInformalAsset}
@@ -327,6 +329,10 @@ function App() {
             onRenameInformalGroup={renameInformalGroup}
             onDeleteInformalGroup={deleteInformalGroup}
             onMoveAssetToGroup={moveAssetToGroup}
+            onAssignInformalToUser={assignInformalToUser}
+            onRemoveInformalAssignment={removeInformalAssignment}
+            onAssignRestaurantToUser={assignRestaurantToUser}
+            onRemoveRestaurantAssignment={removeRestaurantAssignment}
             onToggleBuildingRestaurant={toggleBuildingRestaurant}
           />
         ) : (

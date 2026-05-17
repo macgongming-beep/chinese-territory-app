@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { CalendarEvent, Role, TerritoryCard } from '../types'
+import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, Role, TerritoryCard } from '../types'
 import { showToast } from '../lib/toast'
+import { InformalPickerModal } from './InformalPickerModal'
+import { RestaurantPickerModal } from './RestaurantPickerModal'
 
 // ── 공유 타입 ──────────────────────────────────────────────────────
 type AssignmentStatus = 'draft' | 'confirmed' | 'shared'
@@ -35,12 +37,30 @@ function DesktopLeaderAssignmentView({
   currentVisitor,
   role,
   onAssignCardsToEventParticipantsBulk,
+  buildings = [],
+  informalAssets = [],
+  eventInformalAssignments = [],
+  eventRestaurantAssignments = [],
+  onAssignInformalToUser,
+  onRemoveInformalAssignment,
+  onAssignRestaurantToUser,
+  onRemoveRestaurantAssignment,
+  onToggleBuildingRestaurant,
 }: {
+  buildings?: Building[]
   cards: TerritoryCard[]
   calendarEvents: CalendarEvent[]
   currentVisitor: string
   role: Role
   onAssignCardsToEventParticipantsBulk: (eventId: number, assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>, options?: { silentSuccess?: boolean }) => Promise<void> | void
+  informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
+  onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
+  onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
+  onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
 }) {
   const today = new Date().toISOString().slice(0, 10)
 
@@ -67,6 +87,8 @@ function DesktopLeaderAssignmentView({
   // 카드 추가 모드: 어느 팀에 추가할지 (null이면 새 팀 생성 모드)
   const [addCardToTeamId, setAddCardToTeamId] = useState<string | null>(null)
   const [addMemberTeamId, setAddMemberTeamId] = useState<string | null>(null)
+  const [informalPickerTeamId, setInformalPickerTeamId] = useState<string | null>(null)
+  const [restaurantPickerTeamId, setRestaurantPickerTeamId] = useState<string | null>(null)
 
   // 카드 필터
   const [cardQuery, setCardQuery] = useState('')
@@ -536,6 +558,110 @@ function DesktopLeaderAssignmentView({
                       )}
                     </div>
 
+                    {/* ── v2: 비공식 증거 카드 ── */}
+                    {selectedEvent && onAssignInformalToUser && (
+                      <div className="dla-team-section">
+                        <span className="dla-team-section-label">비공식 증거 카드</span>
+                        <div className="dla-team-card-tiles">
+                          {(() => {
+                            const teamMemberSet = new Set(team.members)
+                            const items = eventInformalAssignments.filter(
+                              (assignment) => assignment.eventId === selectedEvent.id && teamMemberSet.has(assignment.userName),
+                            )
+                            const uniqueAssetIds = Array.from(new Set(items.map((item) => item.assetId)))
+                            return uniqueAssetIds.map((assetId) => {
+                              const asset = informalAssets.find((entry) => entry.id === assetId)
+                              if (!asset) return null
+                              const ids = items.filter((item) => item.assetId === assetId).map((item) => item.id)
+                              return (
+                                <div key={`informal-${assetId}`} className="dla-team-card-tile">
+                                  <div className="dla-team-card-tile-info">
+                                    <strong>{asset.name}</strong>
+                                    <span>비공식 · {ids.length}명</span>
+                                  </div>
+                                  <button
+                                    className="dla-tile-remove"
+                                    onClick={async () => {
+                                      if (!onRemoveInformalAssignment) return
+                                      for (const id of ids) await onRemoveInformalAssignment(id)
+                                    }}
+                                    type="button"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              )
+                            })
+                          })()}
+                          <button
+                            className="dla-add-card-tile"
+                            onClick={() => {
+                              if (team.members.length === 0) {
+                                showToast('먼저 팀원을 추가해 주세요.', 'info')
+                                return
+                              }
+                              setInformalPickerTeamId(team.id)
+                            }}
+                            type="button"
+                          >
+                            + 비공식 추가
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── v2: 식당 봉사 ── */}
+                    {selectedEvent && onAssignRestaurantToUser && (
+                      <div className="dla-team-section">
+                        <span className="dla-team-section-label">식당 봉사</span>
+                        <div className="dla-team-card-tiles">
+                          {(() => {
+                            const teamMemberSet = new Set(team.members)
+                            const items = eventRestaurantAssignments.filter(
+                              (assignment) => assignment.eventId === selectedEvent.id && teamMemberSet.has(assignment.userName),
+                            )
+                            const uniqueBuildingIds = Array.from(new Set(items.map((item) => item.buildingId)))
+                            return uniqueBuildingIds.map((buildingId) => {
+                              const building = buildings.find((entry) => entry.id === buildingId)
+                              if (!building) return null
+                              const ids = items.filter((item) => item.buildingId === buildingId).map((item) => item.id)
+                              return (
+                                <div key={`restaurant-${buildingId}`} className="dla-team-card-tile">
+                                  <div className="dla-team-card-tile-info">
+                                    <strong>{building.name || building.address}</strong>
+                                    <span>식당 · {ids.length}명</span>
+                                  </div>
+                                  <button
+                                    className="dla-tile-remove"
+                                    onClick={async () => {
+                                      if (!onRemoveRestaurantAssignment) return
+                                      for (const id of ids) await onRemoveRestaurantAssignment(id)
+                                    }}
+                                    type="button"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              )
+                            })
+                          })()}
+                          <button
+                            className="dla-add-card-tile"
+                            onClick={() => {
+                              if (team.members.length === 0) {
+                                showToast('먼저 팀원을 추가해 주세요.', 'info')
+                                return
+                              }
+                              setRestaurantPickerTeamId(team.id)
+                            }}
+                            type="button"
+                          >
+                            + 식당 추가
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* ── 선택 참가자 배정 버튼 ── */}
                     {canAssign && (
                       <button className="dla-assign-zone" onClick={() => assignSelectedToTeam(team.id)} type="button">
@@ -632,6 +758,72 @@ function DesktopLeaderAssignmentView({
           </div>
         </div>
       )}
+
+      <InformalPickerModal
+        open={informalPickerTeamId !== null}
+        assets={informalAssets}
+        alreadyAssignedIds={(() => {
+          if (!informalPickerTeamId || !selectedEvent) return new Set<number>()
+          const team = draft?.teams.find((entry) => entry.id === informalPickerTeamId)
+          if (!team) return new Set<number>()
+          const memberSet = new Set(team.members)
+          return new Set(eventInformalAssignments
+            .filter((assignment) => assignment.eventId === selectedEvent.id && memberSet.has(assignment.userName))
+            .map((assignment) => assignment.assetId))
+        })()}
+        onSelect={async (assetId) => {
+          if (!informalPickerTeamId || !selectedEvent || !onAssignInformalToUser) return
+          const team = draft?.teams.find((entry) => entry.id === informalPickerTeamId)
+          if (!team) return
+          let okCount = 0
+          for (const member of team.members) {
+            const ok = await onAssignInformalToUser({
+              eventId: selectedEvent.id,
+              userName: member,
+              assetId,
+              assignedBy: currentVisitor,
+            })
+            if (ok) okCount += 1
+          }
+          if (okCount > 0) showToast(`${okCount}명에게 비공식 자료를 배정했습니다.`, 'success')
+          setInformalPickerTeamId(null)
+        }}
+        onClose={() => setInformalPickerTeamId(null)}
+      />
+
+      <RestaurantPickerModal
+        open={restaurantPickerTeamId !== null}
+        role={role}
+        buildings={buildings}
+        alreadyAssignedIds={(() => {
+          if (!restaurantPickerTeamId || !selectedEvent) return new Set<number>()
+          const team = draft?.teams.find((entry) => entry.id === restaurantPickerTeamId)
+          if (!team) return new Set<number>()
+          const memberSet = new Set(team.members)
+          return new Set(eventRestaurantAssignments
+            .filter((assignment) => assignment.eventId === selectedEvent.id && memberSet.has(assignment.userName))
+            .map((assignment) => assignment.buildingId))
+        })()}
+        onSelect={async (buildingId) => {
+          if (!restaurantPickerTeamId || !selectedEvent || !onAssignRestaurantToUser) return
+          const team = draft?.teams.find((entry) => entry.id === restaurantPickerTeamId)
+          if (!team) return
+          let okCount = 0
+          for (const member of team.members) {
+            const ok = await onAssignRestaurantToUser({
+              eventId: selectedEvent.id,
+              userName: member,
+              buildingId,
+              assignedBy: currentVisitor,
+            })
+            if (ok) okCount += 1
+          }
+          if (okCount > 0) showToast(`${okCount}명에게 식당을 배정했습니다.`, 'success')
+          setRestaurantPickerTeamId(null)
+        }}
+        onToggleRestaurantFlag={onToggleBuildingRestaurant}
+        onClose={() => setRestaurantPickerTeamId(null)}
+      />
     </section>
   )
 }
@@ -790,7 +982,17 @@ export function DesktopLeaderAssignment({
   onSetCardLeaders,
   onSetMultipleCardLeaders: _onSetMultipleCardLeaders,
   onAssignCardsToEventParticipantsBulk,
+  buildings = [],
+  informalAssets = [],
+  eventInformalAssignments = [],
+  eventRestaurantAssignments = [],
+  onAssignInformalToUser,
+  onRemoveInformalAssignment,
+  onAssignRestaurantToUser,
+  onRemoveRestaurantAssignment,
+  onToggleBuildingRestaurant,
 }: {
+  buildings?: Building[]
   cards: TerritoryCard[]
   calendarEvents: CalendarEvent[]
   currentVisitor: string
@@ -803,6 +1005,14 @@ export function DesktopLeaderAssignment({
     assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
     options?: { silentSuccess?: boolean },
   ) => Promise<void> | void
+  informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
+  onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
+  onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
+  onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
 }) {
   const isAdmin = role === 'admin'
 
@@ -935,6 +1145,15 @@ export function DesktopLeaderAssignment({
         currentVisitor={currentVisitor}
         role={role}
         onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
+        buildings={buildings}
+        informalAssets={informalAssets}
+        eventInformalAssignments={eventInformalAssignments}
+        eventRestaurantAssignments={eventRestaurantAssignments}
+        onAssignInformalToUser={onAssignInformalToUser}
+        onRemoveInformalAssignment={onRemoveInformalAssignment}
+        onAssignRestaurantToUser={onAssignRestaurantToUser}
+        onRemoveRestaurantAssignment={onRemoveRestaurantAssignment}
+        onToggleBuildingRestaurant={onToggleBuildingRestaurant}
       />
     )
   }
