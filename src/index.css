@@ -60,11 +60,11 @@
   --info-600: #2563EB;
   --info-700: #1D4ED8;
 
-  /* ── Surfaces (Notion light tones) ── */
-  --bg-app:    #FAFAF9;  /* surface-soft — 앱 전체 배경 */
+  /* ── Surfaces — 디자인 핸드오프 톤 B 와 통일 ── */
+  --bg-app:    #F8F8F7;  /* = --bg, 앱 전체 배경 */
   --bg-card:   #FFFFFF;  /* canvas — 카드 흰 배경 */
-  --bg-muted:  #F6F5F4;  /* surface — 비활성 / 채워진 영역 */
-  --bg-subtle: #FAFAF9;  /* surface-soft */
+  --bg-muted:  #EFEFED;  /* = --tint, 비활성 / 채워진 영역 */
+  --bg-subtle: #F1F1EF;  /* = --paper */
 
   /* ── Borders (Notion warm hairlines) ── */
   --border-subtle:  #EDE9E4;  /* hairline-soft */
@@ -239,14 +239,15 @@ body {
   min-height: 100svh;
   overflow-x: hidden;
   font-family: var(--font-sans);
-  font-size: 14px;
-  color: var(--gray-800);
-  background: var(--bg-app);
-  letter-spacing: -0.01em;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--bg);
+  letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  font-feature-settings: "ss03";
 }
 
 body.mobile-map-scroll-lock {
