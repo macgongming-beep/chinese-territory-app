@@ -13,6 +13,13 @@
 
 - [ ] (없음 — 일단 완성)
 
+## 배정 (Phase 3e)
+
+- [ ] 인도자 카드에 "마지막 활동" 우측 표시 — visit_histories 또는
+  service_sessions 의 latest 계산 필요 (현재 데이터 prop 으로 안 받음)
+- [ ] Step 2 에서 이미 배정된 카드도 "배정됨 (by 김휘민)" 으로 보이게
+  (디자인 08 의 taken 상태) — 현재는 미배정만 필터링됨
+
 ## 일반
 
 - [ ] 글로벌 `button { min-height: 40px }` 제거 검토 — 모든 작은 버튼이 영향받음. 현재는 컴포넌트별 `minHeight` override 로 대응 중.
