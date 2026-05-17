@@ -806,19 +806,6 @@ export function DesktopLeaderAssignment({
 }) {
   const isAdmin = role === 'admin'
 
-  // 인도자 role이면 팀 구성 & 카드 배정 화면을 렌더링
-  if (role === 'leader') {
-    return (
-      <DesktopLeaderAssignmentView
-        cards={cards}
-        calendarEvents={calendarEvents}
-        currentVisitor={currentVisitor}
-        role={role}
-        onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
-      />
-    )
-  }
-
   // ── 인도자 목록 ───────────────────────────────────────────────
   const [leaderSearch, setLeaderSearch] = useState('')
   const [selectedLeader, setSelectedLeader] = useState<string | null>(null)
@@ -937,6 +924,19 @@ export function DesktopLeaderAssignment({
     setSelectedCardIds(new Set())
     setSelectMode(false)
     setBulkAssigning(false)
+  }
+
+  // 인도자 role이면 팀 구성 & 카드 배정 화면을 렌더링
+  if (role === 'leader') {
+    return (
+      <DesktopLeaderAssignmentView
+        cards={cards}
+        calendarEvents={calendarEvents}
+        currentVisitor={currentVisitor}
+        role={role}
+        onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
+      />
+    )
   }
 
   if (!isAdmin) {
