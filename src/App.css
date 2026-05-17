@@ -134,10 +134,10 @@ button:focus-visible {
 }
 
 .app-header--mobile {
-  min-height: 48px;
-  padding: 8px 16px;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border-default);
+  min-height: 56px;
+  padding: 0 16px 0 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
 }
 
 .app-header--desktop {
@@ -184,11 +184,11 @@ button:focus-visible {
 
 .app-header__title {
   margin: 0;
-  color: var(--gray-900);
-  font-size: 17px;
-  font-weight: 800;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 700;
   line-height: 1.2;
-  letter-spacing: 0;
+  letter-spacing: -0.015em;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -202,21 +202,22 @@ button:focus-visible {
   display: inline-flex;
   align-items: baseline;
   margin: 0;
-  color: var(--gray-500);
-  font-size: 12px;
-  font-weight: 600;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
   line-height: 1.2;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: 0;
 }
 
 .app-header__subtitle::before {
   content: '·';
   margin-right: 8px;
-  color: var(--gray-300);
-  font-weight: 700;
+  color: var(--muted-3);
+  font-weight: 500;
 }
 
 .app-header--desktop .app-header__subtitle {
@@ -247,14 +248,17 @@ button:focus-visible {
 
 .app-header__action {
   position: relative;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text);
 }
 
 .app-header__action:hover {
-  background: var(--gray-100);
-  color: var(--gray-900);
+  background: var(--tint);
+  color: var(--ink);
 }
 
 .app-header__action svg,
@@ -271,18 +275,19 @@ button:focus-visible {
 
 .app-header__badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 5px;
-  border: 2px solid var(--bg-card);
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 1px 5px;
+  border: 1.5px solid var(--bg);
   border-radius: var(--radius-full);
-  background: var(--danger-500);
+  background: var(--status-danger);
   color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 13px;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
 .app-shell > .app-header--mobile {
@@ -4289,10 +4294,9 @@ button:focus-visible {
   z-index: 120;
   overflow-x: hidden;
   gap: 0;
-  padding: 8px 10px max(10px, env(safe-area-inset-bottom));
-  border-top: 1px solid #d9dee7;
-  background: rgba(248, 250, 252, 0.96);
-  backdrop-filter: blur(14px);
+  padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--bg);
 }
 
 .bottom-nav::-webkit-scrollbar {
@@ -4302,12 +4306,12 @@ button:focus-visible {
 .bottom-nav button {
   flex: 1 1 0;
   min-width: 0;
-  min-height: 56px;
+  min-height: 48px;
   padding: 4px 2px 2px;
   background: transparent;
-  color: #6f7785;
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--muted-2);
+  font-size: 11px;
+  font-weight: 500;
   border-radius: 0;
   white-space: nowrap;
 }
@@ -4322,14 +4326,15 @@ button:focus-visible {
 
 .bottom-nav button > svg {
   display: block;
-  margin: 0 auto 4px;
+  margin: 0 auto 3px;
   color: inherit;
   font-size: 24px;
 }
 
 .bottom-nav .active {
   background: transparent;
-  color: var(--brand-700);
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .mobile-map-shell {
