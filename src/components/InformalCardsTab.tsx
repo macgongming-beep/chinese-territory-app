@@ -388,7 +388,7 @@ export function InformalCardsTab({
                         }}
                         loading="lazy"
                       />
-                      {isSelectionMode ? (
+                      {isSelectionMode && (
                         <span
                           aria-hidden
                           style={{
@@ -406,33 +406,6 @@ export function InformalCardsTab({
                             </svg>
                           )}
                         </span>
-                      ) : admin && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setMoveTargetAsset(asset) }}
-                            aria-label="그룹 이동"
-                            style={{
-                              position: 'absolute', top: 6, left: 6,
-                              width: 24, height: 24, minHeight: 24, borderRadius: 6, border: 'none',
-                              background: 'rgba(26,26,24,0.6)', color: '#fff',
-                              fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0,
-                              display: 'grid', placeItems: 'center',
-                            }}
-                          >↔</button>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setConfirmDelete(asset) }}
-                            aria-label="삭제"
-                            style={{
-                              position: 'absolute', top: 6, right: 6,
-                              width: 24, height: 24, minHeight: 24, borderRadius: 6, border: 'none',
-                              background: 'rgba(26,26,24,0.6)', color: '#fff',
-                              fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0,
-                              display: 'grid', placeItems: 'center',
-                            }}
-                          >✕</button>
-                        </>
                       )}
                     </div>
                     <div style={{
