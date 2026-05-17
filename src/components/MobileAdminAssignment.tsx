@@ -43,6 +43,15 @@ function ChevD({ size = 14 }: { size?: number }) {
     </svg>
   )
 }
+function MapIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="3 6 9 3 15 6 21 3 21 21 15 18 9 21 3 18 3 6" />
+      <line x1="9" y1="3" x2="9" y2="21" />
+      <line x1="15" y1="6" x2="15" y2="18" />
+    </svg>
+  )
+}
 function SearchIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
@@ -87,6 +96,9 @@ export function MobileAdminAssignment({
   const [regionPill, setRegionPill] = useState<string>('전체')
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [sessionAssigned, setSessionAssigned] = useState<Set<number>>(new Set())
+  const [unassignedOnly, setUnassignedOnly] = useState(true)
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [actionTarget, setActionTarget] = useState<TerritoryCard | null>(null)
 
   const leaders = useMemo(() => {
     const names = leaderNames.length > 0
@@ -123,33 +135,48 @@ export function MobileAdminAssignment({
   const filteredNew = filterByQuery(newLeaders)
   const filteredMe = meLeader && (!leaderSearch.trim() || meLeader.includes(leaderSearch.trim())) ? meLeader : null
 
-  const unassignedCount = cards.filter((card) => getCardLeaders(card).length === 0).length
-  const regions = useMemo(() => {
-    return Array.from(new Set(cards.filter((c) => getCardLeaders(c).length === 0).map((c) => c.region))).sort((a, b) => a.localeCompare(b, 'ko'))
-  }, [cards])
+  // 카드 풀: 미배정만 토글 따라 다름
+  const cardPool = useMemo(() => {
+    return unassignedOnly ? cards.filter((c) => getCardLeaders(c).length === 0) : cards
+  }, [cards, unassignedOnly])
 
-  // ── Step 2: 미배정 카드 + 검색 + 지역 pill 필터 ────────
-  const unassignedFiltered = useMemo(() => {
+  const regions = useMemo(() => {
+    return Array.from(new Set(cardPool.map((c) => c.region))).sort((a, b) => a.localeCompare(b, 'ko'))
+  }, [cardPool])
+
+  // 지역별 카운트 (pills 표시용)
+  const regionCounts = useMemo(() => {
+    const m = new Map<string, number>()
+    cardPool.forEach((c) => m.set(c.region, (m.get(c.region) ?? 0) + 1))
+    return m
+  }, [cardPool])
+
+  // ── Step 2: 검색 + 지역 pill 필터 ────────
+  const filteredCards = useMemo(() => {
     const q = cardQuery.trim()
-    return cards
-      .filter((c) => getCardLeaders(c).length === 0)
+    return cardPool
       .filter((c) => regionPill === '전체' || c.region === regionPill)
       .filter((c) => !q || `${c.name} ${c.region} ${c.area}`.includes(q))
-  }, [cards, cardQuery, regionPill])
+  }, [cardPool, cardQuery, regionPill])
 
   // ── Step 2: 그룹화 (region · area) ─────────────────
   const grouped = useMemo(() => {
     const m = new Map<string, TerritoryCard[]>()
-    unassignedFiltered.forEach((c) => {
+    filteredCards.forEach((c) => {
       const key = `${c.region} · ${c.area}`
       const list = m.get(key) ?? []
       list.push(c)
       m.set(key, list)
     })
     return Array.from(m.entries())
-      .map(([key, cs]) => ({ key, cards: cs }))
+      .map(([key, cs]) => ({
+        key,
+        cards: cs,
+        totalInArea: cards.filter((cc) => `${cc.region} · ${cc.area}` === key).length,
+        unassignedInArea: cards.filter((cc) => `${cc.region} · ${cc.area}` === key && getCardLeaders(cc).length === 0).length,
+      }))
       .sort((a, b) => a.key.localeCompare(b.key, 'ko'))
-  }, [unassignedFiltered])
+  }, [filteredCards, cards])
 
   const assignCard = async (card: TerritoryCard) => {
     if (!selectedLeader) {
@@ -161,6 +188,24 @@ export function MobileAdminAssignment({
     await Promise.resolve(onSetCardLeaders(card.id, [...cardLeaders, selectedLeader], { silentSuccess: true }))
     setSessionAssigned((prev) => new Set([...prev, card.id]))
     showToast(`${card.name} 배정 완료`)
+  }
+
+  // 이미 다른 사람한테 배정된 카드: 추가 / 변경 / 해제
+  const handleAddToAssignment = async (card: TerritoryCard) => {
+    if (!selectedLeader) return
+    const cardLeaders = getCardLeaders(card)
+    if (cardLeaders.includes(selectedLeader)) return
+    await Promise.resolve(onSetCardLeaders(card.id, [...cardLeaders, selectedLeader], { silentSuccess: true }))
+    setSessionAssigned((prev) => new Set([...prev, card.id]))
+    setActionTarget(null)
+    showToast(`${card.name} 에 ${selectedLeader} 추가 배정`)
+  }
+  const handleReplaceAssignment = async (card: TerritoryCard) => {
+    if (!selectedLeader) return
+    await Promise.resolve(onSetCardLeaders(card.id, [selectedLeader], { silentSuccess: true }))
+    setSessionAssigned((prev) => new Set([...prev, card.id]))
+    setActionTarget(null)
+    showToast(`${card.name} 인도자를 ${selectedLeader} 로 변경`)
   }
 
   const assignWholeGroup = async (group: { key: string; cards: TerritoryCard[] }) => {
@@ -314,32 +359,66 @@ export function MobileAdminAssignment({
       {/* ── Step 2: 구역 배정 ───────────── */}
       {step === 2 && selectedLeader && (
         <>
-          {/* 헤더 텍스트 */}
-          <div style={{ padding: '0 4px', marginBottom: 12 }}>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)' }}>
-              <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{selectedLeader}</span> 에게 배정 ·
-              미배정 <span style={{ fontWeight: 600, color: 'var(--status-danger)' }}>{unassignedCount}</span>
-            </p>
+          {/* 검색 + 지도 버튼 */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+            <div style={{ flex: 1 }}>
+              <SearchInput value={cardQuery} onChange={setCardQuery} placeholder="구·동 검색" />
+            </div>
+            <button
+              type="button"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                height: 42, minHeight: 42, padding: '0 12px',
+                border: '1px solid var(--line-2)', background: 'var(--surface)',
+                color: 'var(--text)', borderRadius: 10,
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
+              onClick={() => showToast('지도 보기는 다음 라운드', 'info')}
+            >
+              <MapIcon size={16} /> 지도
+            </button>
           </div>
 
-          {/* 검색 */}
-          <SearchInput value={cardQuery} onChange={setCardQuery} placeholder="구역명 또는 동 검색" />
-
-          {/* 지역 pills */}
+          {/* 지역 pills (compact) + 미배정만 토글 */}
           <div style={{
-            display: 'flex', gap: 6, marginTop: 12,
-            overflowX: 'auto',
-            paddingBottom: 4,
-            marginLeft: -16, marginRight: -16,
-            paddingLeft: 16, paddingRight: 16,
+            display: 'flex', gap: 6, marginTop: 12, alignItems: 'center',
+            padding: '0 2px', flexWrap: 'wrap',
           }}>
-            <FilterPill label={`전체 ${unassignedCount}`} active={regionPill === '전체'} onClick={() => setRegionPill('전체')} />
-            {regions.map((r) => {
-              const count = cards.filter((c) => c.region === r && getCardLeaders(c).length === 0).length
+            <CompactPill label={`전체 ${cardPool.length}`} active={regionPill === '전체'} onClick={() => setRegionPill('전체')} />
+            {(() => {
+              const sorted = regions.slice().sort((a, b) => (regionCounts.get(b) ?? 0) - (regionCounts.get(a) ?? 0))
+              const visible = sorted.slice(0, 3)
+              const overflow = sorted.length - visible.length
               return (
-                <FilterPill key={r} label={`${r} ${count}`} active={regionPill === r} onClick={() => setRegionPill(r)} />
+                <>
+                  {visible.map((r) => (
+                    <CompactPill key={r} label={`${r} ${regionCounts.get(r) ?? 0}`} active={regionPill === r} onClick={() => setRegionPill(r)} />
+                  ))}
+                  {overflow > 0 && (
+                    <CompactPill label={`+ ${overflow}`} active={false} onClick={() => {
+                      // 다음 region 으로 cycle
+                      const idx = sorted.indexOf(regionPill)
+                      const nextIdx = idx === -1 || idx >= visible.length - 1 ? visible.length : idx + 1
+                      setRegionPill(sorted[nextIdx] ?? '전체')
+                    }} />
+                  )}
+                </>
               )
-            })}
+            })()}
+            <span style={{ flex: 1 }} />
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontSize: 12, color: 'var(--muted)', cursor: 'pointer',
+              padding: '4px 2px',
+            }}>
+              <input
+                type="checkbox"
+                checked={unassignedOnly}
+                onChange={(e) => setUnassignedOnly(e.target.checked)}
+                style={{ width: 14, height: 14, accentColor: 'var(--ink)' }}
+              />
+              미배정만
+            </label>
           </div>
 
           {/* 그룹 카드 리스트 */}
@@ -351,29 +430,29 @@ export function MobileAdminAssignment({
                 background: 'var(--surface)', border: '1px solid var(--line)',
                 borderRadius: 12,
               }}>
-                {cardQuery ? '검색 결과가 없습니다' : '미배정 구역이 없습니다'}
+                {cardQuery ? '검색 결과가 없습니다' : unassignedOnly ? '미배정 구역이 없습니다' : '구역이 없습니다'}
               </div>
             ) : grouped.map((g) => {
               const isExpanded = expandedGroups.has(g.key)
+              const isRowExpanded = expandedRows.has(g.key)
+              const visibleCards = isRowExpanded ? g.cards : g.cards.slice(0, 5)
+              const hiddenCount = g.cards.length - visibleCards.length
               return (
                 <div
                   key={g.key}
                   style={{
                     background: 'var(--surface)', border: '1px solid var(--line)',
-                    borderRadius: 12, overflow: 'hidden',
+                    borderRadius: 12, padding: '12px 14px',
                   }}
                 >
                   {/* 그룹 헤더 */}
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: 14,
-                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <button
                       type="button"
                       onClick={() => toggleGroup(g.key)}
                       style={{
                         flex: 1, minHeight: 0, padding: 0,
-                        display: 'flex', alignItems: 'center', gap: 10,
+                        display: 'flex', alignItems: 'center', gap: 8,
                         background: 'transparent', border: 'none', cursor: 'pointer',
                         textAlign: 'left',
                       }}
@@ -385,12 +464,12 @@ export function MobileAdminAssignment({
                       }}>
                         <ChevD />
                       </span>
-                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
                           {g.key}
                         </span>
                         <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                          미배정 {g.cards.length}개
+                          전체 {g.totalInArea} · 미배정 {g.unassignedInArea}
                         </span>
                       </div>
                     </button>
@@ -398,7 +477,7 @@ export function MobileAdminAssignment({
                       type="button"
                       onClick={() => void assignWholeGroup(g)}
                       style={{
-                        height: 32, minHeight: 32, padding: '0 12px',
+                        height: 28, minHeight: 28, padding: '0 10px',
                         border: 'none', borderRadius: 8,
                         background: 'var(--tint)', color: 'var(--text)',
                         fontSize: 12, fontWeight: 600, cursor: 'pointer',
@@ -410,52 +489,87 @@ export function MobileAdminAssignment({
 
                   {/* 그룹 내 카드들 */}
                   {isExpanded && (
-                    <div style={{ borderTop: '1px solid var(--line)' }}>
-                      {g.cards.map((card, idx) => {
-                        const justAssigned = sessionAssigned.has(card.id)
-                        return (
-                          <div
-                            key={card.id}
+                    <>
+                      <div style={{ height: 1, background: 'var(--line)', margin: '10px -4px' }} />
+                      <div>
+                        {visibleCards.map((card) => {
+                          const cardLeaders = getCardLeaders(card)
+                          const isFree = cardLeaders.length === 0
+                          const isMine = cardLeaders.includes(selectedLeader)
+                          const justAssigned = sessionAssigned.has(card.id)
+                          return (
+                            <div
+                              key={card.id}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '8px 4px', gap: 8,
+                              }}
+                            >
+                              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
+                                  {card.name}
+                                </span>
+                                {!isFree && (
+                                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+                                    {isMine ? '내가 담당' : `${cardLeaders.join(', ')}에게 배정됨`}
+                                  </span>
+                                )}
+                              </div>
+                              {isFree ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void assignCard(card)}
+                                  style={{
+                                    height: 30, minHeight: 30, padding: '0 12px',
+                                    border: 'none', borderRadius: 8,
+                                    background: 'var(--ink)', color: '#fff',
+                                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                  }}
+                                >
+                                  배정
+                                </button>
+                              ) : isMine ? (
+                                <span style={{
+                                  fontSize: 11.5, fontWeight: 600,
+                                  padding: '3px 9px', borderRadius: 999,
+                                  background: justAssigned ? 'var(--status-ok-bg)' : 'var(--tint)',
+                                  color: justAssigned ? 'var(--status-ok)' : 'var(--muted)',
+                                }}>
+                                  배정됨
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setActionTarget(card)}
+                                  style={{
+                                    height: 30, minHeight: 30, padding: '0 12px',
+                                    border: '1px solid var(--line-2)', borderRadius: 8,
+                                    background: 'var(--surface)', color: 'var(--text)',
+                                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                  }}
+                                >
+                                  관리
+                                </button>
+                              )}
+                            </div>
+                          )
+                        })}
+                        {hiddenCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedRows((prev) => new Set([...prev, g.key]))}
                             style={{
-                              display: 'flex', alignItems: 'center', gap: 12,
-                              padding: '12px 14px',
-                              borderTop: idx === 0 ? 'none' : '1px solid var(--line)',
+                              padding: '8px 0', minHeight: 0,
+                              background: 'transparent', border: 'none',
+                              fontSize: 12, fontWeight: 500, color: 'var(--muted)',
+                              cursor: 'pointer', width: '100%', textAlign: 'left',
                             }}
                           >
-                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
-                                {card.name}
-                              </span>
-                              <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                                세대 {card.units}
-                              </span>
-                            </div>
-                            {justAssigned ? (
-                              <span style={{
-                                fontSize: 11.5, fontWeight: 600,
-                                padding: '4px 10px', borderRadius: 999,
-                                background: 'var(--status-ok-bg)', color: 'var(--status-ok)',
-                              }}>
-                                배정됨
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => void assignCard(card)}
-                                style={{
-                                  height: 30, minHeight: 30, padding: '0 14px',
-                                  border: 'none', borderRadius: 8,
-                                  background: 'var(--ink)', color: '#fff',
-                                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                                }}
-                              >
-                                배정
-                              </button>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
+                            {hiddenCount}개 더 보기
+                          </button>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               )
@@ -489,7 +603,84 @@ export function MobileAdminAssignment({
           </StickyBottom>
         </>
       )}
+
+      {/* ── 추가 / 변경 / 해제 액션 시트 (이미 배정된 카드) ────── */}
+      {actionTarget && (
+        <div
+          onClick={() => setActionTarget(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(26,26,24,0.34)',
+            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg)',
+              borderTopLeftRadius: 18, borderTopRightRadius: 18,
+              padding: '8px 16px max(18px, env(safe-area-inset-bottom))',
+              display: 'flex', flexDirection: 'column',
+            }}
+          >
+            <div style={{ width: 32, height: 4, borderRadius: 99, background: 'var(--line-2)', margin: '4px auto 14px' }} />
+            <div style={{ marginBottom: 12 }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>{actionTarget.name}</span>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--muted)' }}>
+                현재 담당: <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{getCardLeaders(actionTarget).join(', ')}</span>
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <SheetButton
+                label={`${selectedLeader} 추가 배정`}
+                sub="기존 인도자 유지, 같이 담당"
+                onClick={() => void handleAddToAssignment(actionTarget)}
+              />
+              <SheetButton
+                label={`${selectedLeader} 로 변경`}
+                sub="기존 인도자 해제하고 이 인도자만"
+                onClick={() => {
+                  if (confirm(`기존 인도자(${getCardLeaders(actionTarget).join(', ')})를 해제하고 ${selectedLeader} 로 변경할까요?`)) {
+                    void handleReplaceAssignment(actionTarget)
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setActionTarget(null)}
+                style={{
+                  width: '100%', height: 44, minHeight: 44, marginTop: 6,
+                  background: 'transparent', border: 'none',
+                  fontSize: 14, fontWeight: 600, color: 'var(--muted)',
+                  cursor: 'pointer',
+                }}
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  )
+}
+
+function SheetButton({ label, sub, onClick }: { label: string; sub?: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: '100%', textAlign: 'left', minHeight: 0,
+        padding: '14px 16px',
+        background: 'var(--surface)', border: '1px solid var(--line)',
+        borderRadius: 10, cursor: 'pointer',
+        display: 'flex', flexDirection: 'column', gap: 2,
+      }}
+    >
+      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{label}</span>
+      {sub && <span style={{ fontSize: 12, color: 'var(--muted)' }}>{sub}</span>}
+    </button>
   )
 }
 
@@ -633,6 +824,29 @@ function FilterPill({ label, active, onClick }: { label: string; active: boolean
         fontSize: 13, fontWeight: active ? 600 : 500,
         cursor: 'pointer', flexShrink: 0,
         fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
+// 디자인 08 의 .pill 매칭 (11.5/500, 3-9 padding, 999 radius)
+function CompactPill({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        height: 24, minHeight: 24, padding: '3px 9px',
+        border: 'none',
+        background: active ? 'var(--ink)' : 'var(--tint)',
+        color: active ? '#fff' : 'var(--text)',
+        borderRadius: 999,
+        fontSize: 11.5, fontWeight: active ? 600 : 500,
+        cursor: 'pointer', flexShrink: 0,
+        fontVariantNumeric: 'tabular-nums',
+        letterSpacing: 0,
       }}
     >
       {label}
