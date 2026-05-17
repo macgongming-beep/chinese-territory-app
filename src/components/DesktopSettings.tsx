@@ -6,9 +6,6 @@ import { supabase } from '../lib/supabase'
 import { PwaInstallSection } from './PwaInstall'
 import { NotificationSettings } from './NotificationSettings'
 import { AppUpdateCard } from './AppUpdateCard'
-import type { AppLanguage } from '../i18n'
-import { languageLabels } from '../i18n'
-
 function isAdminLike(role: Role): boolean {
   return role === 'admin' || role === 'developer'
 }
@@ -25,8 +22,6 @@ function calculateEndDate(start: string, days: number): string {
   d.setDate(d.getDate() + days - 1)
   return d.toISOString().slice(0, 10)
 }
-
-const LANGUAGE_OPTIONS: AppLanguage[] = ['ko', 'zh', 'en']
 
 type GroupId = 'notifications' | 'account' | 'env' | 'admin'
 
@@ -64,8 +59,6 @@ export function DesktopSettings({
   specialPeriods = [],
   onCreateSpecialPeriod,
   onDeleteSpecialPeriod,
-  language,
-  onChangeLanguage,
 }: {
   currentVisitor: string
   currentUserId: number
@@ -74,8 +67,6 @@ export function DesktopSettings({
   specialPeriods?: SpecialPeriod[]
   onCreateSpecialPeriod?: (input: { label: string; startDate: string; endDate: string; color: string }) => Promise<void> | void
   onDeleteSpecialPeriod?: (id: number) => Promise<void> | void
-  language: AppLanguage
-  onChangeLanguage: (lang: AppLanguage) => void
 }) {
   const navigate = useNavigate()
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -276,44 +267,12 @@ export function DesktopSettings({
           >
             <div>
               <strong>환경</strong>
-              <span>언어 · 앱 정보</span>
+              <span>앱 정보</span>
             </div>
             <ChevronIcon open={expanded.has('env')} />
           </button>
           {expanded.has('env') && (
             <div className="ds-group-body">
-              <article className="desk-card ds-card">
-                <div className="desk-card__head">
-                  <h2 className="desk-card__title"><span className="desk-card__title-dot" />언어</h2>
-                </div>
-                <div style={{ display: 'flex', gap: 6, padding: '4px 0' }}>
-                  {LANGUAGE_OPTIONS.map((lang) => {
-                    const active = language === lang
-                    return (
-                      <button
-                        key={lang}
-                        type="button"
-                        onClick={() => onChangeLanguage(lang)}
-                        style={{
-                          flex: 1, padding: '10px 12px', borderRadius: 8,
-                          border: '1px solid',
-                          borderColor: active ? 'var(--primary-600)' : 'var(--border-default)',
-                          background: active ? 'var(--primary-50)' : 'var(--bg-card)',
-                          color: active ? 'var(--primary-700)' : 'var(--gray-700)',
-                          fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                          transition: 'all 0.12s',
-                        }}
-                      >
-                        {languageLabels[lang]}
-                      </button>
-                    )
-                  })}
-                </div>
-                <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--gray-500)' }}>
-                  앱 전체에 즉시 반영됩니다. 다음 로그인까지 유지됩니다.
-                </p>
-              </article>
-
               <article className="desk-card ds-card">
                 <div className="desk-card__head">
                   <h2 className="desk-card__title"><span className="desk-card__title-dot" />앱 정보</h2>

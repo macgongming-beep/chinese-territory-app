@@ -15,7 +15,6 @@ import { DesktopUsers } from './DesktopUsers'
 import { ServiceLogPage } from './ServiceLogPage'
 import { AppHeaderActionButtons } from './AppHeader'
 import type { Building, CalendarEvent, CardBoundary, DesktopPage, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
-import type { AppLanguage } from '../i18n'
 import { roleLabels } from '../types'
 
 const pageToPath: Record<DesktopPage, string> = {
@@ -117,8 +116,6 @@ export function DesktopApp({
   onUncompleteReviewTask,
   onUpdateReviewTask,
   onDeleteReviewTask,
-  language,
-  onChangeLanguage,
   // v2 신 배정 모델
   informalAssets = [],
   informalGroups = [],
@@ -250,8 +247,6 @@ export function DesktopApp({
   onUncompleteReviewTask: (id: number) => Promise<void>
   onUpdateReviewTask: (id: number, title: string, content: string) => Promise<void>
   onDeleteReviewTask: (id: number) => Promise<void>
-  language: AppLanguage
-  onChangeLanguage: (lang: AppLanguage) => void
   // v2 신 배정 모델
   informalAssets?: InformalAsset[]
   informalGroups?: InformalGroup[]
@@ -719,8 +714,6 @@ export function DesktopApp({
             specialPeriods={specialPeriods}
             onCreateSpecialPeriod={async (input) => onCreateSpecialPeriod(input)}
             onDeleteSpecialPeriod={async (id) => onDeleteSpecialPeriod(id)}
-            language={language}
-            onChangeLanguage={onChangeLanguage}
           />
         } />
         <Route path="/service-logs" element={
