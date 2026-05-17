@@ -1598,6 +1598,14 @@ export function MobileHome({
               <>
               <AppHeader
                 pageTitle={t(language, 'nav.assignment')}
+                subtitle={role === 'admin' ? (() => {
+                  const leaderCount = leaderNames.length
+                  const unassigned = cards.filter((c) => {
+                    const ls = c.assignedLeaders?.length ? c.assignedLeaders : c.assignedLeader ? [c.assignedLeader] : []
+                    return ls.length === 0
+                  }).length
+                  return `인도자 ${leaderCount}명 · 미배정 ${unassigned}개`
+                })() : undefined}
                 userId={currentUser.id}
                 userName={currentVisitor}
                 role={role}
@@ -1608,6 +1616,7 @@ export function MobileHome({
                 <MobileAdminAssignment
                   cards={cards}
                   leaderNames={leaderNames}
+                  currentVisitor={currentVisitor}
                   onSetCardLeaders={onSetCardLeaders}
                 />
               ) : (
