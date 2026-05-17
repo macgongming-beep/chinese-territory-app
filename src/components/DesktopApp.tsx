@@ -14,7 +14,7 @@ import { DesktopLeaderAssignment } from './DesktopLeaderAssignment'
 import { DesktopUsers } from './DesktopUsers'
 import { ServiceLogPage } from './ServiceLogPage'
 import { AppHeaderActionButtons } from './AppHeader'
-import type { Building, CalendarEvent, CardBoundary, DesktopPage, GeoPoint, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, CalendarEvent, CardBoundary, DesktopPage, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import { roleLabels } from '../types'
 
 const pageToPath: Record<DesktopPage, string> = {
@@ -116,6 +116,16 @@ export function DesktopApp({
   onUncompleteReviewTask,
   onUpdateReviewTask,
   onDeleteReviewTask,
+  // v2 신 배정 모델
+  informalAssets = [],
+  informalGroups = [],
+  onUploadInformalAsset,
+  onDeleteInformalAsset,
+  onCreateInformalGroup,
+  onRenameInformalGroup,
+  onDeleteInformalGroup,
+  onMoveAssetToGroup,
+  onToggleBuildingRestaurant,
 }: {
   buildings: Building[]
   calendarEvents: CalendarEvent[]
@@ -237,6 +247,16 @@ export function DesktopApp({
   onUncompleteReviewTask: (id: number) => Promise<void>
   onUpdateReviewTask: (id: number, title: string, content: string) => Promise<void>
   onDeleteReviewTask: (id: number) => Promise<void>
+  // v2 신 배정 모델
+  informalAssets?: InformalAsset[]
+  informalGroups?: InformalGroup[]
+  onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
+  onDeleteInformalAsset?: (assetId: number) => Promise<void>
+  onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
+  onRenameInformalGroup?: (groupId: number, name: string) => Promise<void>
+  onDeleteInformalGroup?: (groupId: number) => Promise<void>
+  onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
+  onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -501,6 +521,16 @@ export function DesktopApp({
               onOpenBuildingMap={openBuildingOnMap}
               visitHistories={visitHistories}
               onCreateBuilding={onCreateBuilding}
+              currentVisitor={currentVisitor}
+              informalAssets={informalAssets}
+              informalGroups={informalGroups}
+              onUploadInformalAsset={onUploadInformalAsset}
+              onDeleteInformalAsset={onDeleteInformalAsset}
+              onCreateInformalGroup={onCreateInformalGroup}
+              onRenameInformalGroup={onRenameInformalGroup}
+              onDeleteInformalGroup={onDeleteInformalGroup}
+              onMoveAssetToGroup={onMoveAssetToGroup}
+              onToggleBuildingRestaurant={onToggleBuildingRestaurant}
             />
           ) : (
             <DesktopMyService
@@ -582,6 +612,16 @@ export function DesktopApp({
                 visitHistories={visitHistories}
                 onCreateBuilding={onCreateBuilding}
                 onSwitchToMap={() => navigate('/zone?view=map')}
+                currentVisitor={currentVisitor}
+                informalAssets={informalAssets}
+                informalGroups={informalGroups}
+                onUploadInformalAsset={onUploadInformalAsset}
+                onDeleteInformalAsset={onDeleteInformalAsset}
+                onCreateInformalGroup={onCreateInformalGroup}
+                onRenameInformalGroup={onRenameInformalGroup}
+                onDeleteInformalGroup={onDeleteInformalGroup}
+                onMoveAssetToGroup={onMoveAssetToGroup}
+                onToggleBuildingRestaurant={onToggleBuildingRestaurant}
               />
             )}
           </div>

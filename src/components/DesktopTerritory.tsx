@@ -3,7 +3,9 @@ import { useAuth } from '../hooks/useAuth'
 import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
 import { showToast } from '../lib/toast'
 import { findCardForCoordinates, formatDisplayAddress, isValidMapCoordinate, normalizeMapCoordinates, parseCoordinate } from '../utils/mapUtils'
-import type { Building, CardBoundary, Role, TerritoryCard, TerritoryRegion, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, CardBoundary, InformalAsset, InformalGroup, Role, TerritoryCard, TerritoryRegion, Unit, UnitStatus, VisitHistory } from '../types'
+import { InformalCardsTab } from './InformalCardsTab'
+import { RestaurantsTab } from './RestaurantsTab'
 import {
   type CsvBuildingImport,
   type CsvPreviewRow,
@@ -44,6 +46,17 @@ export function DesktopTerritory({
   visitHistories,
   onCreateBuilding,
   onSwitchToMap,
+  // v2 신 배정 모델
+  currentVisitor = '',
+  informalAssets = [],
+  informalGroups = [],
+  onUploadInformalAsset,
+  onDeleteInformalAsset,
+  onCreateInformalGroup,
+  onRenameInformalGroup,
+  onDeleteInformalGroup,
+  onMoveAssetToGroup,
+  onToggleBuildingRestaurant,
 }: {
   buildings: Building[]
   cardBoundaries: CardBoundary[]
@@ -76,6 +89,16 @@ export function DesktopTerritory({
   }) => Promise<number | null> | number | null
   onCreateBuilding?: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => Promise<void> | void
   onSwitchToMap?: () => void
+  currentVisitor?: string
+  informalAssets?: InformalAsset[]
+  informalGroups?: InformalGroup[]
+  onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
+  onDeleteInformalAsset?: (assetId: number) => Promise<void>
+  onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
+  onRenameInformalGroup?: (groupId: number, name: string) => Promise<void>
+  onDeleteInformalGroup?: (groupId: number) => Promise<void>
+  onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
+  onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
 }) {
   const { allUsers, fetchAllUsers } = useAuth()
   const isAdmin = role === 'admin'
@@ -84,6 +107,11 @@ export function DesktopTerritory({
   const [checkedBuildingIds, setCheckedBuildingIds] = useState<Set<number>>(new Set())
   const [detailPaneOpen, setDetailPaneOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'카드 관리' | '건물 관리'>('카드 관리')
+  // v2: 종류 sub-tab
+  type ZoneKind = 'territory' | 'informal' | 'restaurant'
+  const [zoneKind, setZoneKind] = useState<ZoneKind>('territory')
+  const informalCount = informalAssets.length
+  const restaurantCount = buildings.filter((b) => b.type === '상가' && b.isRestaurant).length
   const [buildingSubTab, setBuildingSubTab] = useState<'건물 목록' | '중국인 포인트'>('건물 목록')
   const [showCardModal, setShowCardModal] = useState(false)
   const [pendingBoundaryCard, setPendingBoundaryCard] = useState<{ id: number; name: string } | null>(null)
@@ -1219,6 +1247,85 @@ export function DesktopTerritory({
       )}
 
       <div className="territory-main">
+        {/* ── 종류 sub-tab (구역 카드 / 비공식 카드 / 식당) ── */}
+        <div className="desk-zone-kind-tabs" role="tablist" aria-label="구역 종류" style={{
+          display: 'flex', gap: 6, padding: 5, marginBottom: 18,
+          background: '#f1f5f9', borderRadius: 12, border: '1px solid #e2e8f0',
+          width: 'fit-content',
+        }}>
+          {[
+            { id: 'territory' as const, label: '구역 카드', count: cards.length },
+            { id: 'informal' as const, label: '비공식 카드', count: informalCount },
+            { id: 'restaurant' as const, label: '식당', count: restaurantCount },
+          ].map((t) => {
+            const active = zoneKind === t.id
+            return (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setZoneKind(t.id)}
+                type="button"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '7px 14px', borderRadius: 8, border: 'none',
+                  background: active ? '#ffffff' : 'transparent',
+                  color: active ? 'var(--brand-700, #1d4ed8)' : '#64748b',
+                  fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  boxShadow: active ? '0 1px 3px rgba(15,23,42,0.08)' : 'none',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {t.label}
+                <em style={{
+                  fontStyle: 'normal', fontSize: 11, fontWeight: 700,
+                  color: active ? 'var(--brand-700, #1d4ed8)' : '#94a3b8',
+                }}>{t.count}</em>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* 비공식 카드 탭 */}
+        {zoneKind === 'informal' && (
+          <div style={{ paddingTop: 4 }}>
+            {onUploadInformalAsset && onDeleteInformalAsset && onCreateInformalGroup && onRenameInformalGroup && onDeleteInformalGroup && onMoveAssetToGroup ? (
+              <InformalCardsTab
+                role={role}
+                currentVisitor={currentVisitor}
+                informalAssets={informalAssets}
+                informalGroups={informalGroups}
+                onUpload={onUploadInformalAsset}
+                onDelete={onDeleteInformalAsset}
+                onCreateGroup={onCreateInformalGroup}
+                onRenameGroup={onRenameInformalGroup}
+                onDeleteGroup={onDeleteInformalGroup}
+                onMoveAsset={onMoveAssetToGroup}
+              />
+            ) : (
+              <p style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>
+                비공식 카드 기능을 사용할 수 없습니다.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* 식당 탭 */}
+        {zoneKind === 'restaurant' && (
+          <div style={{ paddingTop: 4 }}>
+            <RestaurantsTab
+              role={role}
+              buildings={buildings}
+              cards={cards}
+              onToggleRestaurantFlag={onToggleBuildingRestaurant}
+              onOpenMap={(cardId) => onOpenCardMap(cardId)}
+            />
+          </div>
+        )}
+
+        {/* 구역 카드 탭 (기존 컨텐츠) */}
+        {zoneKind === 'territory' && (<>
+
         {/* ── Page Head ── */}
         <div className="home-page-head" style={{ marginBottom: 20, alignItems: 'center' }}>
           <div>
@@ -2099,9 +2206,10 @@ export function DesktopTerritory({
           </div>
         )}
         </div>{/* /desk-card */}
+        </>)}
       </div>{/* /territory-main */}
 
-      {activeTab === '카드 관리' && detailPaneOpen && (
+      {zoneKind === 'territory' && activeTab === '카드 관리' && detailPaneOpen && (
       <aside className="territory-side">
         {!selectedCard ? (
           <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: '#94a3b8' }}>

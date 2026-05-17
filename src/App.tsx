@@ -323,6 +323,15 @@ function App() {
             onUncompleteReviewTask={uncompleteReviewTask}
             onUpdateReviewTask={updateReviewTask}
             onDeleteReviewTask={deleteReviewTask}
+            informalAssets={informalAssets}
+            informalGroups={informalGroups}
+            onUploadInformalAsset={uploadInformalAsset}
+            onDeleteInformalAsset={deleteInformalAsset}
+            onCreateInformalGroup={createInformalGroup}
+            onRenameInformalGroup={renameInformalGroup}
+            onDeleteInformalGroup={deleteInformalGroup}
+            onMoveAssetToGroup={moveAssetToGroup}
+            onToggleBuildingRestaurant={toggleBuildingRestaurant}
           />
         ) : (
           <div className="mobile-shell-host">
