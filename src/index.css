@@ -10,17 +10,19 @@
                'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
 
-  /* ── Gray ── */
-  --gray-50:  #F9FAFB;
-  --gray-100: #F3F4F6;
-  --gray-200: #E9EBEF;
-  --gray-300: #D8DBE0;
-  --gray-400: #9CA3AF;
-  --gray-500: #6B7280;
-  --gray-600: #4B5563;
-  --gray-700: #374151;
-  --gray-800: #1F2937;
-  --gray-900: #111827;
+  /* ── Gray (Notion-inspired warm scale) ──
+     기존 cool gray (블루 언더톤) → 따뜻한 회색 (브라운 언더톤)
+     친근하고 차분한 분위기 — 데이터 양 많은 화면에서 눈 덜 피곤 */
+  --gray-50:  #FAFAF9;  /* Notion surface-soft */
+  --gray-100: #F6F5F4;  /* Notion surface */
+  --gray-200: #EDE9E4;  /* Notion hairline-soft */
+  --gray-300: #E5E3DF;  /* Notion hairline */
+  --gray-400: #C8C4BE;  /* Notion hairline-strong */
+  --gray-500: #A4A097;  /* Notion stone */
+  --gray-600: #787671;  /* Notion steel */
+  --gray-700: #5D5B54;  /* Notion slate */
+  --gray-800: #37352F;  /* Notion charcoal */
+  --gray-900: #1A1A1A;  /* Notion ink */
 
   /* ── Primary (Cobalt) ── */
   --primary-50:  #EFF4FE;
@@ -58,16 +60,16 @@
   --info-600: #2563EB;
   --info-700: #1D4ED8;
 
-  /* ── Surfaces ── */
-  --bg-app:    #F6F7F9;
-  --bg-card:   #FFFFFF;
-  --bg-muted:  #F3F4F6;
-  --bg-subtle: #FAFBFC;
+  /* ── Surfaces (Notion light tones) ── */
+  --bg-app:    #FAFAF9;  /* surface-soft — 앱 전체 배경 */
+  --bg-card:   #FFFFFF;  /* canvas — 카드 흰 배경 */
+  --bg-muted:  #F6F5F4;  /* surface — 비활성 / 채워진 영역 */
+  --bg-subtle: #FAFAF9;  /* surface-soft */
 
-  /* ── Borders ── */
-  --border-subtle:  #F0F1F4;
-  --border-default: #E9EBEF;
-  --border-strong:  #D8DBE0;
+  /* ── Borders (Notion warm hairlines) ── */
+  --border-subtle:  #EDE9E4;  /* hairline-soft */
+  --border-default: #E5E3DF;  /* hairline */
+  --border-strong:  #C8C4BE;  /* hairline-strong */
 
   /* ── Radius ── */
   --radius-sm:   6px;
