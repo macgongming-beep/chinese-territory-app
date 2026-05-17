@@ -2988,7 +2988,7 @@ button:focus-visible {
 .ds-group-body {
   display: grid;
   gap: 12px;
-  padding: 0 16px 16px;
+  padding: 16px;
   border-top: 1px solid var(--border-subtle);
 }
 
