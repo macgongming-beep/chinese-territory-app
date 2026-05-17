@@ -15,6 +15,7 @@ import type {
   EventTeam,
   GeoPoint,
   InformalAsset,
+  InformalGroup,
   Notice,
   Role,
   ScheduleType,
@@ -118,6 +119,15 @@ export type RawInformalAsset = {
   uploaded_by: string
   created_at: string
   archived: boolean
+  group_id?: number | null
+}
+
+export type RawInformalGroup = {
+  id: number
+  name: string
+  position: number
+  created_by: string
+  created_at: string
 }
 
 export type RawEventInformalAssignment = {
@@ -334,6 +344,17 @@ export function toInformalAsset(raw: RawInformalAsset): InformalAsset {
     uploadedBy: raw.uploaded_by ?? '',
     createdAt: raw.created_at,
     archived: !!raw.archived,
+    groupId: raw.group_id ?? null,
+  }
+}
+
+export function toInformalGroup(raw: RawInformalGroup): InformalGroup {
+  return {
+    id: raw.id,
+    name: raw.name,
+    position: raw.position ?? 0,
+    createdBy: raw.created_by ?? '',
+    createdAt: raw.created_at,
   }
 }
 

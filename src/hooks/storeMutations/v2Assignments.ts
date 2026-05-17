@@ -59,6 +59,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     file: File
     name: string
     uploadedBy: string
+    groupId?: number | null
   }): Promise<{ ok: boolean; assetId?: number; error?: string }> => {
     const ext = input.file.name.split('.').pop()?.toLowerCase() || 'jpg'
     const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -91,6 +92,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
         image_path: path,
         uploaded_by: input.uploadedBy,
         archived: false,
+        group_id: input.groupId ?? null,
       })
       .select('id')
       .single()
@@ -102,6 +104,46 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     }
     await fetchAll()
     return { ok: true, assetId: data?.id }
+  }
+
+  // ── 비공식 그룹 ────────────────────────────────────
+  const createInformalGroup = async (input: { name: string; createdBy: string }) => {
+    const { data, error } = await supabase
+      .from('informal_groups')
+      .insert({ name: input.name.trim() || '새 그룹', created_by: input.createdBy })
+      .select('id')
+      .single()
+    if (error) {
+      showToast(`그룹 생성 실패: ${error.message}`, 'error')
+      return null
+    }
+    await fetchAll()
+    return data?.id ?? null
+  }
+
+  const renameInformalGroup = async (groupId: number, name: string) => {
+    const { error } = await supabase
+      .from('informal_groups')
+      .update({ name: name.trim() || '새 그룹' })
+      .eq('id', groupId)
+    if (error) showToast(`그룹 이름 변경 실패: ${error.message}`, 'error')
+    else await fetchAll()
+  }
+
+  const deleteInformalGroup = async (groupId: number) => {
+    // 그룹 내 자료는 group_id 가 NULL 로 풀림 (FK on delete set null)
+    const { error } = await supabase.from('informal_groups').delete().eq('id', groupId)
+    if (error) showToast(`그룹 삭제 실패: ${error.message}`, 'error')
+    else await fetchAll()
+  }
+
+  const moveAssetToGroup = async (assetId: number, groupId: number | null) => {
+    const { error } = await supabase
+      .from('informal_assets')
+      .update({ group_id: groupId })
+      .eq('id', assetId)
+    if (error) showToast(`자료 이동 실패: ${error.message}`, 'error')
+    else await fetchAll()
   }
 
   const deleteInformalAsset = async (assetId: number) => {
@@ -203,6 +245,10 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     deleteEventTeam,
     uploadInformalAsset,
     deleteInformalAsset,
+    createInformalGroup,
+    renameInformalGroup,
+    deleteInformalGroup,
+    moveAssetToGroup,
     assignInformalToUser,
     removeInformalAssignment,
     assignRestaurantToUser,

@@ -131,11 +131,16 @@ function App() {
     informalAssets,
     eventInformalAssignments,
     eventRestaurantAssignments,
+    informalGroups,
     createEventTeam,
     updateEventTeam,
     deleteEventTeam,
     uploadInformalAsset,
     deleteInformalAsset,
+    createInformalGroup,
+    renameInformalGroup,
+    deleteInformalGroup,
+    moveAssetToGroup,
     assignInformalToUser,
     removeInformalAssignment,
     assignRestaurantToUser,
@@ -384,11 +389,16 @@ function App() {
               informalAssets={informalAssets}
               eventInformalAssignments={eventInformalAssignments}
               eventRestaurantAssignments={eventRestaurantAssignments}
+              informalGroups={informalGroups}
               onCreateEventTeam={createEventTeam}
               onUpdateEventTeam={updateEventTeam}
               onDeleteEventTeam={deleteEventTeam}
               onUploadInformalAsset={uploadInformalAsset}
               onDeleteInformalAsset={deleteInformalAsset}
+              onCreateInformalGroup={createInformalGroup}
+              onRenameInformalGroup={renameInformalGroup}
+              onDeleteInformalGroup={deleteInformalGroup}
+              onMoveAssetToGroup={moveAssetToGroup}
               onAssignInformalToUser={assignInformalToUser}
               onRemoveInformalAssignment={removeInformalAssignment}
               onAssignRestaurantToUser={assignRestaurantToUser}

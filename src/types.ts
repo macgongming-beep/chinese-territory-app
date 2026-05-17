@@ -62,6 +62,15 @@ export type InformalAsset = {
   uploadedBy: string
   createdAt: string
   archived: boolean
+  groupId: number | null
+}
+
+export type InformalGroup = {
+  id: number
+  name: string
+  position: number
+  createdBy: string
+  createdAt: string
 }
 
 export type EventInformalAssignment = {

@@ -8,6 +8,7 @@ import type {
   EventRestaurantAssignment,
   EventTeam,
   InformalAsset,
+  InformalGroup,
   Notice,
   ReturnVisit,
   ReturnVisitLog,
@@ -25,6 +26,7 @@ import {
   toEventCardAssignment,
   toEventTeam,
   toInformalAsset,
+  toInformalGroup,
   toEventInformalAssignment,
   toEventRestaurantAssignment,
   mergeEventCardAssignments,
@@ -57,6 +59,7 @@ import type {
   RawEventRestaurantAssignment,
   RawEventTeam,
   RawInformalAsset,
+  RawInformalGroup,
   RawVisitHistory,
   RawServiceSession,
   RawCardBoundary,
@@ -90,6 +93,7 @@ export function useStore() {
   const [informalAssets, setInformalAssets] = useState<InformalAsset[]>([])
   const [eventInformalAssignments, setEventInformalAssignments] = useState<EventInformalAssignment[]>([])
   const [eventRestaurantAssignments, setEventRestaurantAssignments] = useState<EventRestaurantAssignment[]>([])
+  const [informalGroups, setInformalGroups] = useState<InformalGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [missingCardLeaderAssignmentsTable, setMissingCardLeaderAssignmentsTable] = useState(false)
@@ -133,6 +137,7 @@ export function useStore() {
       eventCardAssignmentsRes, eventAssignmentCardsRes, boundariesRes,
       noticesRes, periodsRes, returnVisitsRes, returnVisitLogsRes, reviewTasksRes,
       eventTeamsRes, informalAssetsRes, eventInformalAssignmentsRes, eventRestaurantAssignmentsRes,
+      informalGroupsRes,
     ] = await Promise.all([
       supabase.from('buildings').select('*, units(*, regular_visits(*))').order('id'),
       cardsQueryPromise,
@@ -151,6 +156,7 @@ export function useStore() {
       supabase.from('informal_assets').select('*').eq('archived', false).order('created_at', { ascending: false }),
       supabase.from('event_informal_assignments').select('*'),
       supabase.from('event_restaurant_assignments').select('*'),
+      supabase.from('informal_groups').select('*').order('position').order('created_at'),
     ])
 
     if (buildingsRes.error || cardsRes.error || visitsRes.error || eventsRes.error) {
@@ -260,7 +266,8 @@ export function useStore() {
     setInformalAssets(informalAssetsRes.error ? [] : (informalAssetsRes.data as RawInformalAsset[]).map(toInformalAsset))
     setEventInformalAssignments(eventInformalAssignmentsRes.error ? [] : (eventInformalAssignmentsRes.data as RawEventInformalAssignment[]).map(toEventInformalAssignment))
     setEventRestaurantAssignments(eventRestaurantAssignmentsRes.error ? [] : (eventRestaurantAssignmentsRes.data as RawEventRestaurantAssignment[]).map(toEventRestaurantAssignment))
-    if (eventTeamsRes.error || informalAssetsRes.error || eventInformalAssignmentsRes.error || eventRestaurantAssignmentsRes.error) {
+    setInformalGroups(informalGroupsRes.error ? [] : (informalGroupsRes.data as RawInformalGroup[]).map(toInformalGroup))
+    if (eventTeamsRes.error || informalAssetsRes.error || eventInformalAssignmentsRes.error || eventRestaurantAssignmentsRes.error || informalGroupsRes.error) {
       console.warn('v2 신 배정 모델 테이블 일부 미적용 — supabase/v2_assignment_model.sql 실행 필요')
     }
 
@@ -402,6 +409,10 @@ export function useStore() {
     deleteEventTeam,
     uploadInformalAsset,
     deleteInformalAsset,
+    createInformalGroup,
+    renameInformalGroup,
+    deleteInformalGroup,
+    moveAssetToGroup,
     assignInformalToUser,
     removeInformalAssignment,
     assignRestaurantToUser,
@@ -490,11 +501,16 @@ export function useStore() {
     informalAssets,
     eventInformalAssignments,
     eventRestaurantAssignments,
+    informalGroups,
     createEventTeam,
     updateEventTeam,
     deleteEventTeam,
     uploadInformalAsset,
     deleteInformalAsset,
+    createInformalGroup,
+    renameInformalGroup,
+    deleteInformalGroup,
+    moveAssetToGroup,
     assignInformalToUser,
     removeInformalAssignment,
     assignRestaurantToUser,

@@ -9,8 +9,9 @@ import { MobileTerritory } from './MobileTerritory'
 import { MobileUsers } from './MobileUsers'
 import { MobileSignupRequests } from './MobileSignupRequests'
 import { MobileProfileSettings } from './MobileProfileSettings'
-import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, EventTeam, InformalAsset, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
-import { InformalAssetsManager } from './InformalAssetsManager'
+import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, EventTeam, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import { InformalCardsTab } from './InformalCardsTab'
+import { RestaurantsTab } from './RestaurantsTab'
 import type { AuthUser } from '../hooks/useAuth'
 import type { AppLanguage } from '../i18n'
 import { languageLabels, t } from '../i18n'
@@ -232,18 +233,45 @@ function MobileZoneView({
   cards,
   buildings = [],
   currentVisitor,
+  role,
   onOpenMap,
   onOpenAssignedMap,
   onShowMapView,
+  // 비공식 카드 탭 props
+  informalAssets = [],
+  informalGroups = [],
+  onUploadInformalAsset,
+  onDeleteInformalAsset,
+  onCreateInformalGroup,
+  onRenameInformalGroup,
+  onDeleteInformalGroup,
+  onMoveAssetToGroup,
+  // 식당 탭 props
+  onToggleBuildingRestaurant,
 }: {
   language: AppLanguage
   cards: TerritoryCard[]
   buildings?: Building[]
   currentVisitor: string
+  role: Role
   onOpenMap: (cardId: number) => void
   onOpenAssignedMap: (cardIds: number[]) => void
   onShowMapView: () => void
+  informalAssets?: InformalAsset[]
+  informalGroups?: InformalGroup[]
+  onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
+  onDeleteInformalAsset?: (assetId: number) => Promise<void>
+  onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
+  onRenameInformalGroup?: (groupId: number, name: string) => Promise<void>
+  onDeleteInformalGroup?: (groupId: number) => Promise<void>
+  onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
+  onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
 }) {
+  // 종류 sub-tab
+  type ZoneKind = 'territory' | 'informal' | 'restaurant'
+  const [zoneKind, setZoneKind] = useState<ZoneKind>('territory')
+  const informalCount = informalAssets.length
+  const restaurantCount = buildings.filter((b) => b.type === '상가' && b.isRestaurant).length
   const [searchParams, setSearchParams] = useSearchParams()
   const initRegion = searchParams.get('region') ?? ''
   const initDong = searchParams.get('dong') ?? ''
@@ -432,6 +460,80 @@ function MobileZoneView({
 
   return (
     <div className="mobile-zone-page">
+      {/* ── 종류 sub-tab ── */}
+      <div className="mobile-zone-kind-tabs" role="tablist" aria-label="구역 종류">
+        <button
+          role="tab"
+          aria-selected={zoneKind === 'territory'}
+          className={zoneKind === 'territory' ? 'active' : ''}
+          onClick={() => setZoneKind('territory')}
+          type="button"
+        >
+          <span>구역 카드</span>
+          <em>{cards.length}</em>
+        </button>
+        <button
+          role="tab"
+          aria-selected={zoneKind === 'informal'}
+          className={zoneKind === 'informal' ? 'active' : ''}
+          onClick={() => setZoneKind('informal')}
+          type="button"
+        >
+          <span>비공식 카드</span>
+          <em>{informalCount}</em>
+        </button>
+        <button
+          role="tab"
+          aria-selected={zoneKind === 'restaurant'}
+          className={zoneKind === 'restaurant' ? 'active' : ''}
+          onClick={() => setZoneKind('restaurant')}
+          type="button"
+        >
+          <span>식당</span>
+          <em>{restaurantCount}</em>
+        </button>
+      </div>
+
+      {/* 비공식 카드 탭 */}
+      {zoneKind === 'informal' && (
+        <div style={{ padding: '12px 0' }}>
+          {onUploadInformalAsset && onDeleteInformalAsset && onCreateInformalGroup && onRenameInformalGroup && onDeleteInformalGroup && onMoveAssetToGroup ? (
+            <InformalCardsTab
+              role={role}
+              currentVisitor={currentVisitor}
+              informalAssets={informalAssets}
+              informalGroups={informalGroups}
+              onUpload={onUploadInformalAsset}
+              onDelete={onDeleteInformalAsset}
+              onCreateGroup={onCreateInformalGroup}
+              onRenameGroup={onRenameInformalGroup}
+              onDeleteGroup={onDeleteInformalGroup}
+              onMoveAsset={onMoveAssetToGroup}
+            />
+          ) : (
+            <p style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>
+              비공식 카드 기능을 사용할 수 없습니다.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* 식당 탭 */}
+      {zoneKind === 'restaurant' && (
+        <div style={{ padding: '12px 0' }}>
+          <RestaurantsTab
+            role={role}
+            buildings={buildings}
+            cards={cards}
+            onToggleRestaurantFlag={onToggleBuildingRestaurant}
+            onOpenMap={onOpenMap}
+          />
+        </div>
+      )}
+
+      {/* 구역 카드 탭 (기존 컨텐츠) */}
+      {zoneKind === 'territory' && <>
+
       {/* ── 서브 헤더 (지도 토글 + drill 백) ── */}
       <div className="mobile-zone-head">
         {scope === 'all' && level !== 'regions' && (
@@ -712,6 +814,8 @@ function MobileZoneView({
           )}
         </>
       )}
+
+      </>}
     </div>
   )
 }
@@ -780,11 +884,16 @@ export function MobileHome({
   informalAssets = [],
   eventInformalAssignments = [],
   eventRestaurantAssignments = [],
+  informalGroups = [],
   onCreateEventTeam,
   onUpdateEventTeam,
   onDeleteEventTeam,
   onUploadInformalAsset,
   onDeleteInformalAsset,
+  onCreateInformalGroup,
+  onRenameInformalGroup,
+  onDeleteInformalGroup,
+  onMoveAssetToGroup,
   onAssignInformalToUser,
   onRemoveInformalAssignment,
   onAssignRestaurantToUser,
@@ -867,11 +976,16 @@ export function MobileHome({
   informalAssets?: InformalAsset[]
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
+  informalGroups?: InformalGroup[]
   onCreateEventTeam?: (input: { eventId: number; name?: string; color?: string; position?: number }) => Promise<number | null>
   onUpdateEventTeam?: (teamId: number, input: { name?: string; color?: string; position?: number }) => Promise<void>
   onDeleteEventTeam?: (teamId: number) => Promise<void>
-  onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
+  onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
   onDeleteInformalAsset?: (assetId: number) => Promise<void>
+  onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
+  onRenameInformalGroup?: (groupId: number, name: string) => Promise<void>
+  onDeleteInformalGroup?: (groupId: number) => Promise<void>
+  onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
   onAssignInformalToUser?: (input: { eventId: number; teamId: number | null; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
   onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
   onAssignRestaurantToUser?: (input: { eventId: number; teamId: number | null; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
@@ -1369,9 +1483,19 @@ export function MobileHome({
                 cards={cards}
                 buildings={buildings}
                 currentVisitor={currentVisitor}
+                role={role}
                 onOpenMap={(cardId) => navigate(`/map?cardId=${cardId}`)}
                 onOpenAssignedMap={(cardIds) => navigate(`/map?cardIds=${cardIds.join(',')}&scope=mine`)}
                 onShowMapView={() => navigate('/map')}
+                informalAssets={informalAssets}
+                informalGroups={informalGroups}
+                onUploadInformalAsset={onUploadInformalAsset}
+                onDeleteInformalAsset={onDeleteInformalAsset}
+                onCreateInformalGroup={onCreateInformalGroup}
+                onRenameInformalGroup={onRenameInformalGroup}
+                onDeleteInformalGroup={onDeleteInformalGroup}
+                onMoveAssetToGroup={onMoveAssetToGroup}
+                onToggleBuildingRestaurant={onToggleBuildingRestaurant}
               />
               </>
             } />
@@ -1606,19 +1730,6 @@ export function MobileHome({
                 <div style={{ padding: '0 16px', marginBottom: 16 }}>
                   <AppUpdateCard variant="mobile" />
                 </div>
-
-                {/* 비공식 증거 카드 관리 (admin/developer 전용) */}
-                {(actualRole === 'admin' || actualRole === 'developer') && onUploadInformalAsset && onDeleteInformalAsset && (
-                  <div style={{ padding: '0 16px', marginBottom: 16 }}>
-                    <InformalAssetsManager
-                      role={actualRole}
-                      currentVisitor={currentVisitor}
-                      informalAssets={informalAssets}
-                      onUpload={onUploadInformalAsset}
-                      onDelete={onDeleteInformalAsset}
-                    />
-                  </div>
-                )}
 
                 <button className="mobile-settings-logout" onClick={onLogout} type="button">
                   <span className="mobile-settings-icon mobile-settings-icon-danger" aria-hidden="true">
