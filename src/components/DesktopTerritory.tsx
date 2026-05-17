@@ -19,6 +19,25 @@ import {
 } from '../utils/csvBuildingImport'
 import { AddUnitRow } from './AddUnitRow'
 import { CardCreateModal } from './DesktopTerritoryCardModal'
+
+// 상대 날짜 표시: "오늘", "어제", "N일 전", "N주 전", "N개월 전", "YYYY-MM-DD"
+function formatRelativeDate(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const target = new Date(d)
+  target.setHours(0, 0, 0, 0)
+  const diffDays = Math.floor((today.getTime() - target.getTime()) / 86400000)
+  if (diffDays === 0) return '오늘'
+  if (diffDays === 1) return '어제'
+  if (diffDays < 7) return `${diffDays}일 전`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}주 전`
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}개월 전`
+  return iso.slice(0, 10)
+}
+
 export function DesktopTerritory({
   buildings,
   cardBoundaries,
@@ -297,6 +316,19 @@ export function DesktopTerritory({
   const selectedHasBoundary = selectedCard
     ? cardBoundaries.some((boundary) => boundary.cardId === selectedCard.id)
     : false
+  // 마지막 방문 정보 (선택한 카드 내의 모든 unit 방문 중 가장 최근)
+  const selectedLastVisit = useMemo(() => {
+    if (!selectedCard) return null
+    const cardUnitIds = new Set(
+      selectedCardBuildings.flatMap((b) => b.units.map((u) => u.id))
+    )
+    let latest: VisitHistory | null = null
+    for (const v of visitHistories) {
+      if (!cardUnitIds.has(v.unitId)) continue
+      if (!latest || v.visitedAt > latest.visitedAt) latest = v
+    }
+    return latest
+  }, [selectedCard, selectedCardBuildings, visitHistories])
   const leaderOptions = Array.from(
     new Set(
       allUsers
@@ -1247,44 +1279,33 @@ export function DesktopTerritory({
       )}
 
       <div className="territory-main">
-        {/* ── 종류 sub-tab (구역 카드 / 비공식 카드 / 식당) ── */}
-        <div className="desk-zone-kind-tabs" role="tablist" aria-label="구역 종류" style={{
-          display: 'flex', gap: 6, padding: 5, marginBottom: 18,
-          background: '#f1f5f9', borderRadius: 12, border: '1px solid #e2e8f0',
-          width: 'fit-content',
-        }}>
-          {[
-            { id: 'territory' as const, label: '구역 카드', count: cards.length },
-            { id: 'informal' as const, label: '비공식 카드', count: informalCount },
-            { id: 'restaurant' as const, label: '식당', count: restaurantCount },
-          ].map((t) => {
-            const active = zoneKind === t.id
-            return (
-              <button
-                key={t.id}
-                role="tab"
-                aria-selected={active}
-                onClick={() => setZoneKind(t.id)}
-                type="button"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '7px 14px', borderRadius: 8, border: 'none',
-                  background: active ? '#ffffff' : 'transparent',
-                  color: active ? 'var(--brand-700, #1d4ed8)' : '#64748b',
-                  fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                  boxShadow: active ? '0 1px 3px rgba(15,23,42,0.08)' : 'none',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {t.label}
-                <em style={{
-                  fontStyle: 'normal', fontSize: 11, fontWeight: 700,
-                  color: active ? 'var(--brand-700, #1d4ed8)' : '#94a3b8',
-                }}>{t.count}</em>
-              </button>
-            )
-          })}
-        </div>
+        {/* ── 페이지 헤더: 종류 탭이 곧 제목 (구역 카드 / 비공식 카드 / 식당) ── */}
+        <header className="page-header">
+          <div className="page-header-text">
+            <div className="zone-kind-tabs" role="tablist" aria-label="구역 종류">
+              {[
+                { id: 'territory' as const, label: '구역 카드', count: cards.length },
+                { id: 'informal' as const, label: '비공식 카드', count: informalCount },
+                { id: 'restaurant' as const, label: '식당', count: restaurantCount },
+              ].map((t) => {
+                const active = zoneKind === t.id
+                return (
+                  <button
+                    key={t.id}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setZoneKind(t.id)}
+                    type="button"
+                    className={`zone-kind-tab${active ? ' is-active' : ''}`}
+                  >
+                    {t.label}
+                    <em className="zone-kind-tab-count">{t.count}</em>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </header>
 
         {/* 비공식 카드 탭 */}
         {zoneKind === 'informal' && (
@@ -1326,27 +1347,23 @@ export function DesktopTerritory({
         {/* 구역 카드 탭 (기존 컨텐츠) */}
         {zoneKind === 'territory' && (<>
 
-        {/* ── Page Head ── */}
-        <header className="page-header">
-          <div className="page-header-text">
-            <h1 className="page-header-title">{activeTab}</h1>
+        {/* ── Segment Tab + 컨텍스트 액션 ── */}
+        <div className="territory-toolbar">
+          <div className="tbl-seg-tab" style={{ marginBottom: 0 }}>
+            {(['카드 관리', '건물 관리'] as const).map((tab) => (
+              <button className={activeTab === tab ? 'active' : ''} key={tab} onClick={() => setActiveTab(tab)} type="button">
+                {tab}
+              </button>
+            ))}
           </div>
-          <div className="page-header-actions">
+          <div className="territory-toolbar-actions">
             {activeTab === '카드 관리' ? (
               <>
                 <button
                   onClick={() => setDetailPaneOpen((o) => !o)}
                   title={detailPaneOpen ? '상세 접기' : '상세 열기'}
                   type="button"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    padding: '5px 12px', borderRadius: 8,
-                    border: '1px solid', transition: 'all .15s',
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    borderColor: detailPaneOpen ? '#bfdbfe' : '#e2e8f0',
-                    background: detailPaneOpen ? '#eff6ff' : '#f8fafc',
-                    color: detailPaneOpen ? '#2563eb' : '#64748b',
-                  }}
+                  className={`tbl-toolbar-btn${detailPaneOpen ? ' is-active' : ''}`}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
@@ -1380,34 +1397,13 @@ export function DesktopTerritory({
                 <button className="tbl-primary-btn" onClick={() => setShowCsvModal(true)} type="button">건물 CSV 업로드</button>
               </>
             )}
-          </div>
-        </header>
-
-        {/* ── Segment Tab + 지도 전환 ── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div className="tbl-seg-tab" style={{ marginBottom: 0 }}>
-            {(['카드 관리', '건물 관리'] as const).map((tab) => (
-              <button className={activeTab === tab ? 'active' : ''} key={tab} onClick={() => setActiveTab(tab)} type="button">
-                {tab}
+            {onSwitchToMap && (
+              <button onClick={onSwitchToMap} type="button" className="tbl-toolbar-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 21 15 18 9 21 3 18 3 6"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="6" x2="15" y2="18"/></svg>
+                지도
               </button>
-            ))}
+            )}
           </div>
-          {onSwitchToMap && (
-            <button
-              onClick={onSwitchToMap}
-              type="button"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '5px 12px', borderRadius: 8,
-                border: '1px solid #e2e8f0', background: '#f8fafc',
-                fontSize: 12, fontWeight: 600, color: '#475569',
-                cursor: 'pointer', transition: 'all .15s',
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 21 15 18 9 21 3 18 3 6"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="6" x2="15" y2="18"/></svg>
-              지도
-            </button>
-          )}
         </div>
 
         {/* ── KPI (카드 관리만) ── */}
@@ -2247,6 +2243,19 @@ export function DesktopTerritory({
                 <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${selectedCard.progress}%`, background: selectedCard.progress >= 80 ? '#16a34a' : selectedCard.progress >= 40 ? '#2563eb' : '#94a3b8', borderRadius: 99, transition: 'width .3s' }} />
                 </div>
+              </div>
+
+              {/* 마지막 방문 */}
+              <div style={{ marginTop: 14, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, fontSize: 12 }}>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>마지막 방문</span>
+                {selectedLastVisit ? (
+                  <span style={{ color: '#1e293b' }}>
+                    <strong style={{ fontWeight: 700 }}>{formatRelativeDate(selectedLastVisit.visitedAt)}</strong>
+                    <span style={{ color: '#94a3b8', marginLeft: 6 }}>· {selectedLastVisit.visitor}</span>
+                  </span>
+                ) : (
+                  <span style={{ color: '#cbd5e1' }}>아직 없음</span>
+                )}
               </div>
             </div>
 
