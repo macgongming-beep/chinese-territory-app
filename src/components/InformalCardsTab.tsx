@@ -434,34 +434,21 @@ export function InformalCardsTab({
           전체 {totalAssets}개 · 그룹 {informalGroups.length}
         </span>
         {admin && (
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              type="button"
-              onClick={handleCreateGroup}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                height: 32, minHeight: 32, padding: '0 12px',
-                borderRadius: 8, border: '1px solid var(--line-2)',
-                background: 'var(--surface)', color: 'var(--text)',
-                fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}
-            >+ 그룹</button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={running}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                height: 32, minHeight: 32, padding: '0 12px',
-                borderRadius: 8, border: 'none',
-                background: running ? 'var(--tint)' : 'var(--ink)',
-                color: running ? 'var(--muted-2)' : '#fff',
-                fontSize: 13, fontWeight: 600,
-                cursor: running ? 'wait' : 'pointer',
-                letterSpacing: '-0.005em',
-              }}
-            >+ 자료 추가</button>
-          </div>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={running}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              height: 32, minHeight: 32, padding: '0 12px',
+              borderRadius: 8, border: 'none',
+              background: running ? 'var(--tint)' : 'var(--ink)',
+              color: running ? 'var(--muted-2)' : '#fff',
+              fontSize: 13, fontWeight: 600,
+              cursor: running ? 'wait' : 'pointer',
+              letterSpacing: '-0.005em',
+            }}
+          >+ 자료 추가</button>
         )}
       </div>
 
