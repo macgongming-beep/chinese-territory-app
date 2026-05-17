@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>구역관리 · 관리자 재디자인 (A안)</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<link rel="stylesheet" href="assets/phone.css">
+
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    background: #f0eee9;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, system-ui, sans-serif;
+  }
+  /* The canvas paints its own background; this just smooths the initial frame. */
+  #root { min-height: 100vh; }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="assets/icons.jsx"></script>
+<script type="text/babel" src="assets/phone-shell.jsx"></script>
+<script type="text/babel" src="assets/screens-a.jsx"></script>
+<script type="text/babel" src="assets/screens-b.jsx"></script>
+<script type="text/babel" src="assets/screens-c.jsx"></script>
+<script type="text/babel" src="assets/screens-d.jsx"></script>
+<script type="text/babel" src="assets/screens-e.jsx"></script>
+<script type="text/babel" src="assets/screens-f.jsx"></script>
+
+<script type="text/babel">
+const W = 360, H = 780;
+
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection
+        id="admin"
+        title="관리자 화면 · 재디자인 (A안 · 잉크 그레이)"
+        subtitle="9 screens · Notion warm gray, no brand blue. Pretendard Variable. 모든 +추가 / 활성 / 1순위 액션을 단일 잉크 블랙 #1A1A18으로 통일."
+      >
+        <DCArtboard id="home"     label="01 · 홈"                  width={W} height={H}>
+          <HomeScreen/>
+        </DCArtboard>
+        <DCArtboard id="cal"      label="02 · 캘린더"               width={W} height={H}>
+          <CalendarScreen/>
+        </DCArtboard>
+        <DCArtboard id="cal-detail" label="02b · 일정 상세"           width={W} height={H}>
+          <EventDetailScreen/>
+        </DCArtboard>
+        <DCArtboard id="cal-add"  label="03 · 일정 추가"             width={W} height={H}>
+          <CalendarAddScreen/>
+        </DCArtboard>
+        <DCArtboard id="terr"     label="04 · 구역 / 구역 카드"      width={W} height={H}>
+          <TerritoryScreen/>
+        </DCArtboard>
+        <DCArtboard id="terr-inf" label="05 · 구역 / 비공식"         width={W} height={H}>
+          <TerritoryInformalScreen/>
+        </DCArtboard>
+        <DCArtboard id="terr-r"   label="06 · 구역 / 식당"           width={W} height={H}>
+          <TerritoryRestScreen/>
+        </DCArtboard>
+        <DCArtboard id="assign-1" label="07 · 배정 · Step 1"        width={W} height={H}>
+          <AssignScreen/>
+        </DCArtboard>
+        <DCArtboard id="assign-2" label="08 · 배정 · Step 2"        width={W} height={H}>
+          <AssignStep2Screen/>
+        </DCArtboard>
+        <DCArtboard id="set"      label="09 · 설정"                  width={W} height={H}>
+          <SettingsScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="overlays"
+        title="공통 오버레이 · 헤더에서 진입"
+        subtitle="알림 / 채팅 드롭다운은 어느 화면에서든 헤더 버튼으로 열림. 일정별 채팅방은 전체화면 모달."
+      >
+        <DCArtboard id="alerts"   label="10 · 알림 패널"             width={W} height={H}>
+          <AlertsPanelScreen/>
+        </DCArtboard>
+        <DCArtboard id="chats"    label="11 · 채팅 목록 패널"         width={W} height={H}>
+          <ChatsPanelScreen/>
+        </DCArtboard>
+        <DCArtboard id="chatroom" label="12 · 채팅방 (일정별)"        width={W} height={H}>
+          <ChatRoomScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="users"
+        title="사용자 관리 · 권한 변경 핵심 흐름"
+        subtitle="설정 → 사용자 → 사용자 편집. 권한 segmented(관리자/인도자/봉사자)가 여기에서 변경됨."
+      >
+        <DCArtboard id="user-list" label="13 · 사용자 목록"            width={W} height={H}>
+          <UsersListScreen/>
+        </DCArtboard>
+        <DCArtboard id="user-edit" label="14 · 사용자 편집"            width={W} height={H}>
+          <UserEditScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="settings-sub"
+        title="설정 하위 페이지"
+        subtitle="설정 메뉴에서 진입하는 상세 화면들. 5개."
+      >
+        <DCArtboard id="me"        label="15 · 내 정보"               width={W} height={H}>
+          <MyInfoScreen/>
+        </DCArtboard>
+        <DCArtboard id="notif-set" label="16 · 알림 설정"              width={W} height={H}>
+          <NotifSettingsScreen/>
+        </DCArtboard>
+        <DCArtboard id="join"      label="17 · 가입 신청"              width={W} height={H}>
+          <JoinRequestsScreen/>
+        </DCArtboard>
+        <DCArtboard id="season"    label="18 · 특별봉사 시즌"          width={W} height={H}>
+          <SpecialSeasonScreen/>
+        </DCArtboard>
+        <DCArtboard id="notice"    label="19 · 공지"                   width={W} height={H}>
+          <AnnouncementsScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="territory-drill"
+        title="구역 · 드릴다운 + 담당 + 지도"
+        subtitle="시·구(04) → 동 → 카드 3단계 드릴다운. 담당 구역은 상태별 sub-group. 지도는 4가지 카드 상태 색으로 구분."
+      >
+        <DCArtboard id="terr-dong" label="20 · 구역 · 동 (처인구)"      width={W} height={H}>
+          <TerritoryDongScreen/>
+        </DCArtboard>
+        <DCArtboard id="terr-card" label="21 · 구역 · 카드 (고림동)"    width={W} height={H}>
+          <TerritoryCardScreen/>
+        </DCArtboard>
+        <DCArtboard id="terr-mine" label="22 · 구역 · 담당 (상태별)"    width={W} height={H}>
+          <TerritoryMineScreen/>
+        </DCArtboard>
+        <DCArtboard id="terr-map"  label="23 · 구역 · 지도"            width={W} height={H}>
+          <TerritoryMapScreen/>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+</script>
+</body>
+</html>

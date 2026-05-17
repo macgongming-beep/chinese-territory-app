@@ -190,6 +190,37 @@
   --s-10: var(--space-10);
   --s-12: var(--space-12);
   --s-16: 64px;
+
+  /* ================================================================
+     디자인 핸드오프 (admin 리디자인 2026-05-18) — 신규 토큰
+     이 토큰들은 ui/* atom 컴포넌트와 신규 admin 화면에서만 사용.
+     기존 --gray-* / --primary-* / --brand-* 와 공존하며,
+     화면별로 점진 마이그레이션.
+     ================================================================ */
+
+  /* Tone B — subtle warmth, no visible yellow */
+  --bg:        #F8F8F7;  /* 화면 배경 */
+  --surface:   #FFFFFF;  /* 카드 / 입력 */
+  --paper:     #F1F1EF;  /* 채팅방 등 보조 배경 */
+  --tint:      #EFEFED;  /* pill / 비활성 배경 */
+  --line:      #E5E5E2;  /* 경계 1px */
+  --line-2:    #D4D4D0;  /* 보조 경계 / 토글 트랙 */
+
+  --ink:       #1A1A18;  /* 최고 강조 텍스트 / 1순위 액션 */
+  --text:      #3A3A36;  /* 본문 */
+  --muted:     #7A7A75;  /* 메타 / 보조 텍스트 */
+  --muted-2:   #A8A8A2;  /* 더 약함 / chevron */
+  --muted-3:   #C8C8C3;  /* 디스에이블 */
+
+  /* 상태색 — 데이터 의미 (액센트 아님) */
+  --status-danger:    #C44536;  /* 위험·미사용·방문필요 */
+  --status-danger-bg: #FBEDEA;
+  --status-warn:      #B8862A;  /* 정기방문 */
+  --status-warn-bg:   #FBF3DF;
+  --status-ok:        #4F7A4B;  /* 완료·사용완료 */
+  --status-ok-bg:     #ECF1EA;
+  --status-info:      #5B6B7C;  /* slate · 사용중 — 브랜드 블루 대용 */
+  --status-info-bg:   #EAEEF2;
 }
 
 /* ============================================================
