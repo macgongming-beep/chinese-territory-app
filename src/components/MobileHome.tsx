@@ -6,6 +6,7 @@ import { MobileLeaderAssignment } from './MobileLeaderAssignment'
 import { MobileMap } from './MobileMap'
 import { MobileNotices } from './MobileNotices'
 import { MobileTerritory } from './MobileTerritory'
+import { AdminMobileHome } from './admin/AdminMobileHome'
 import { MobileUsers } from './MobileUsers'
 import { MobileSignupRequests } from './MobileSignupRequests'
 import { MobileProfileSettings } from './MobileProfileSettings'
@@ -1066,7 +1067,6 @@ export function MobileHome({
   const todayLabel = useMemo(() => formatHomeDate(new Date(), language), [language])
   const leaderCards = useMemo(() => cards.filter((c) => c.assignedLeader === currentVisitor), [cards, currentVisitor])
   const inProgressCards = useMemo(() => cards.filter((c) => c.status === '진행중'), [cards])
-  const completedCards = useMemo(() => cards.filter((c) => c.progress >= 100), [cards])
   const totalUnits = useMemo(() => cards.reduce((sum, card) => sum + card.units, 0), [cards])
   const completedUnits = useMemo(() => cards.reduce((sum, card) => sum + card.completed, 0), [cards])
   const latestNotices = useMemo(() =>
@@ -1249,6 +1249,21 @@ export function MobileHome({
                   </div>
                 )}
 
+                {role === 'admin' ? (
+                  <AdminMobileHome
+                    notices={notices}
+                    todayEvents={todayEvents}
+                    cards={cards}
+                    totalUnits={totalUnits}
+                    completedUnits={completedUnits}
+                    inProgressCount={inProgressCards.length}
+                    unassignedCount={cards.filter((c) => c.status === '미배정').length}
+                    onOpenNotices={() => navigate('/notices')}
+                    onOpenCalendar={() => navigate('/calendar')}
+                    onOpenZone={() => navigate('/zone')}
+                  />
+                ) : (<>
+
                 <section className="mobile-home-section">
                   <div className="mobile-section-title" style={{ marginBottom: '8px' }}>
                     <h2><span aria-hidden="true"><NavIcon name="notice" /></span> {t(language, 'home.notice')}</h2>
@@ -1293,31 +1308,29 @@ export function MobileHome({
                   )}
                 </section>
 
-                {role !== 'admin' && (
-                  <section className="mobile-home-section">
-                    <div className="mobile-section-title">
-                      <h2><span aria-hidden="true"><NavIcon name="territory" /></span> {t(language, 'home.regularVisitStatus')}</h2>
-                      <button onClick={() => navigate('/territory')} type="button">{t(language, 'home.viewAll')}</button>
-                    </div>
-                    <div className="mobile-service-summary-grid">
-                      <button onClick={() => navigate('/territory?section=regular')} type="button">
-                        <strong>{myRegularVisits.length}{t(language, 'home.caseCountSuffix')}</strong>
-                        <span>{t(language, 'home.regularVisitCount')}</span>
-                      </button>
-                      <button onClick={() => navigate('/territory?section=regular')} type="button">
-                        <strong>{latestReturnVisitLabel}</strong>
-                        <span>{t(language, 'home.lastVisit')}</span>
-                      </button>
-                    </div>
-                    {myRegularVisits.length === 0 && (
-                      <button className="mobile-home-inline-link" onClick={() => navigate('/territory?section=regular')} type="button">
-                        {t(language, 'home.startFirstReturnVisit')}
-                      </button>
-                    )}
-                  </section>
-                )}
+                <section className="mobile-home-section">
+                  <div className="mobile-section-title">
+                    <h2><span aria-hidden="true"><NavIcon name="territory" /></span> {t(language, 'home.regularVisitStatus')}</h2>
+                    <button onClick={() => navigate('/territory')} type="button">{t(language, 'home.viewAll')}</button>
+                  </div>
+                  <div className="mobile-service-summary-grid">
+                    <button onClick={() => navigate('/territory?section=regular')} type="button">
+                      <strong>{myRegularVisits.length}{t(language, 'home.caseCountSuffix')}</strong>
+                      <span>{t(language, 'home.regularVisitCount')}</span>
+                    </button>
+                    <button onClick={() => navigate('/territory?section=regular')} type="button">
+                      <strong>{latestReturnVisitLabel}</strong>
+                      <span>{t(language, 'home.lastVisit')}</span>
+                    </button>
+                  </div>
+                  {myRegularVisits.length === 0 && (
+                    <button className="mobile-home-inline-link" onClick={() => navigate('/territory?section=regular')} type="button">
+                      {t(language, 'home.startFirstReturnVisit')}
+                    </button>
+                  )}
+                </section>
 
-                {role !== 'admin' && myTodaySessions.length > 0 && (
+                {myTodaySessions.length > 0 && (
                   <section className="mobile-home-section">
                     <div className="mobile-section-title">
                       <h2><span aria-hidden="true"><NavIcon name="map" /></span> {t(language, 'home.todayServedCards')}</h2>
@@ -1346,21 +1359,6 @@ export function MobileHome({
                         })}
                       </div>
                     )}
-                  </section>
-                )}
-
-                {role === 'admin' && (
-                  <section className="mobile-home-section">
-                    <div className="mobile-section-title">
-                      <h2><span aria-hidden="true"><NavIcon name="territory" /></span> {t(language, 'home.operationStatus')}</h2>
-                      <button onClick={() => navigate('/zone')} type="button">{t(language, 'home.viewAll')}</button>
-                    </div>
-                    <div className="mobile-home-stats">
-                      <div><strong>{cards.length}</strong><span>{t(language, 'home.totalCards')}</span></div>
-                      <div><strong>{inProgressCards.length}</strong><span>{t(language, 'zone.summaryProgress')}</span></div>
-                      <div><strong>{completedCards.length}</strong><span>{t(language, 'home.completedCards')}</span></div>
-                      <div><strong>{completedUnits}/{totalUnits}</strong><span>{t(language, 'home.completedUnits')}</span></div>
-                    </div>
                   </section>
                 )}
 
@@ -1404,6 +1402,7 @@ export function MobileHome({
                     )}
                   </section>
                 )}
+                </>)}
               </>
             } />
 
