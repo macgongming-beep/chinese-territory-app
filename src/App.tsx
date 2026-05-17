@@ -260,6 +260,8 @@ function App() {
             currentUserId={user.id}
             actualRole={actualRole}
             viewMode={mobileViewMode}
+            language={language}
+            onChangeLanguage={handleChangeLanguage}
             notices={notices}
             serviceSessions={serviceSessions}
             onAddUnit={addUnitToBuilding}

@@ -6,6 +6,12 @@ import { supabase } from '../lib/supabase'
 import { PwaInstallSection } from './PwaInstall'
 import { NotificationSettings } from './NotificationSettings'
 import { AppUpdateCard } from './AppUpdateCard'
+import type { AppLanguage } from '../i18n'
+import { languageLabels } from '../i18n'
+
+function isAdminLike(role: Role): boolean {
+  return role === 'admin' || role === 'developer'
+}
 
 function formatLoginAt(iso: string): string {
   const d = new Date(iso)
@@ -20,6 +26,8 @@ function calculateEndDate(start: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+const LANGUAGE_OPTIONS: AppLanguage[] = ['ko', 'zh', 'en']
+
 export function DesktopSettings({
   currentVisitor,
   currentUserId,
@@ -28,6 +36,8 @@ export function DesktopSettings({
   specialPeriods = [],
   onCreateSpecialPeriod,
   onDeleteSpecialPeriod,
+  language,
+  onChangeLanguage,
 }: {
   currentVisitor: string
   currentUserId: number
@@ -36,6 +46,8 @@ export function DesktopSettings({
   specialPeriods?: SpecialPeriod[]
   onCreateSpecialPeriod?: (input: { label: string; startDate: string; endDate: string; color: string }) => Promise<void> | void
   onDeleteSpecialPeriod?: (id: number) => Promise<void> | void
+  language: AppLanguage
+  onChangeLanguage: (lang: AppLanguage) => void
 }) {
   const navigate = useNavigate()
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -167,6 +179,39 @@ export function DesktopSettings({
 
         <AppUpdateCard variant="desktop" />
 
+        {/* 언어 — 모든 역할 */}
+        <article className="desk-card ds-card">
+          <div className="desk-card__head">
+            <h2 className="desk-card__title"><span className="desk-card__title-dot" />언어</h2>
+          </div>
+          <div style={{ display: 'flex', gap: 6, padding: '4px 0' }}>
+            {LANGUAGE_OPTIONS.map((lang) => {
+              const active = language === lang
+              return (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => onChangeLanguage(lang)}
+                  style={{
+                    flex: 1, padding: '10px 12px', borderRadius: 8,
+                    border: '1px solid',
+                    borderColor: active ? 'var(--primary-600)' : 'var(--border-default)',
+                    background: active ? 'var(--primary-50)' : 'var(--bg-card)',
+                    color: active ? 'var(--primary-700)' : 'var(--gray-700)',
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    transition: 'all 0.12s',
+                  }}
+                >
+                  {languageLabels[lang]}
+                </button>
+              )
+            })}
+          </div>
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--gray-500)' }}>
+            앱 전체에 즉시 반영됩니다. 다음 로그인까지 유지됩니다.
+          </p>
+        </article>
+
         <article className="desk-card ds-card">
           <div className="desk-card__head">
             <h2 className="desk-card__title"><span className="desk-card__title-dot" />앱 정보</h2>
@@ -236,14 +281,15 @@ export function DesktopSettings({
           )}
         </article>
 
+        {/* 특별 봉사 시즌 — admin/developer 만 (관리 권한)
+            인도자/봉사자는 활성 시즌이 있을 때 홈 배너로 확인 */}
+        {isAdminLike(actualRole) && (
         <article className="desk-card ds-card">
           <div className="desk-card__head">
             <h2 className="desk-card__title"><span className="desk-card__title-dot ds-dot-warning" />특별 봉사 시즌</h2>
-            {actualRole === 'admin' && (
-              <button className="ds-btn ds-btn-primary ds-btn-sm" onClick={() => setShowCreateModal(true)} type="button">
-                + 새 시즌
-              </button>
-            )}
+            <button className="ds-btn ds-btn-primary ds-btn-sm" onClick={() => setShowCreateModal(true)} type="button">
+              + 새 시즌
+            </button>
           </div>
 
           {activePeriod ? (
@@ -258,19 +304,17 @@ export function DesktopSettings({
                 {dDay !== null && (
                   <span className="ds-dday tnum">{dDay > 0 ? `D-${dDay}` : dDay === 0 ? '오늘 마지막 날' : `D+${Math.abs(dDay)}`}</span>
                 )}
-                {actualRole === 'admin' && (
-                  <button
-                    className="ds-btn ds-btn-ghost ds-btn-sm"
-                    onClick={() => {
-                      if (window.confirm(`"${activePeriod.label}" 시즌을 즉시 종료할까요? 이미 기록된 방문은 보존됩니다.`)) {
-                        void onDeleteSpecialPeriod?.(activePeriod.id)
-                      }
-                    }}
-                    type="button"
-                  >
-                    종료/삭제
-                  </button>
-                )}
+                <button
+                  className="ds-btn ds-btn-ghost ds-btn-sm"
+                  onClick={() => {
+                    if (window.confirm(`"${activePeriod.label}" 시즌을 즉시 종료할까요? 이미 기록된 방문은 보존됩니다.`)) {
+                      void onDeleteSpecialPeriod?.(activePeriod.id)
+                    }
+                  }}
+                  type="button"
+                >
+                  종료/삭제
+                </button>
               </div>
             </div>
           ) : (
@@ -329,6 +373,7 @@ export function DesktopSettings({
             </div>
           )}
         </article>
+        )}
       </div>
 
       {showCreateModal && (
