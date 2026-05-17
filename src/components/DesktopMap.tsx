@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { MapCanvas } from './MapCanvas'
+import type { MapAggregateMarker } from './MapCanvas'
 import { SpecialPeriodBanner } from './SpecialPeriodBanner'
 import { UnitSlotGrid } from './UnitSlotGrid'
-import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
+import { territoryRegions } from '../data/territoryStructure'
 import type {
   Building,
   BuildingStatus,
@@ -19,7 +20,7 @@ import type {
   VisitHistory,
   SpecialPeriod,
 } from '../types'
-import { formatDisplayAddress, getBuildingStatus, getCardName, findCardForCoordinates, getSortedAreaOptions, isValidMapCoordinate, normalizeMapCoordinates } from '../utils/mapUtils'
+import { formatDisplayAddress, getBuildingStatus, getCardName, findCardForCoordinates, isValidMapCoordinate, normalizeMapCoordinates } from '../utils/mapUtils'
 import { showToast } from '../lib/toast'
 import { getCurrentTimeSlot } from '../utils/timeUtils'
 
@@ -495,10 +496,7 @@ export function DesktopMap({
 
 
 
-  const areaFilterOptions = useMemo(() =>
-    getSortedAreaOptions(regionFilter as TerritoryRegion | '전체', territoryAreasByRegion, cards),
-    [regionFilter, cards]
-  )
+  // areaFilterOptions 는 동 dropdown 제거 후 미사용 — 추후 필요 시 부활
 
   const unitMatchesOperatingFilter = (unit: Building['units'][number]) => {
     if (chineseOnlyFilter && !unit.isChinese) return false
@@ -548,6 +546,64 @@ export function DesktopMap({
     () => contextBuildings.filter((building) => !hiddenMapStatuses.has(getBuildingStatus(building))),
     [contextBuildings, hiddenMapStatuses],
   )
+
+  // 집계 마커 (모바일과 동일 패턴) — 카드/동 미선택 + 그리기 모드 X 일 때 구/동 단위로 묶기
+  const shouldUseAggregateMap =
+    cardFilter === '전체' &&
+    !focusedBuildingId &&
+    !drawingBoundary &&
+    !addingBuilding &&
+    !editingPinMode
+
+  const mapAggregateMarkers = useMemo<MapAggregateMarker[]>(() => {
+    if (!shouldUseAggregateMap) return []
+    type Acc = MapAggregateMarker & { latSum: number; lngSum: number; pointCount: number }
+    const groups = new Map<string, Acc>()
+    const groupByArea = regionFilter !== '전체'
+    mapBuildings.forEach((building) => {
+      const card = cardMap.get(building.cardId)
+      if (!card) return
+      const label = groupByArea ? card.area : String(card.region)
+      if (!label) return
+      const id = `${groupByArea ? 'area' : 'region'}:${label}`
+      const current = groups.get(id) ?? {
+        id, label,
+        count: 0, unitCount: 0, houseCount: 0, shopCount: 0,
+        lat: 0, lng: 0, latSum: 0, lngSum: 0, pointCount: 0,
+      }
+      current.count += 1
+      current.unitCount += building.units.length
+      if (building.type === '주택') current.houseCount += 1
+      if (building.type === '상가') current.shopCount += 1
+      if (Number.isFinite(building.lat) && Number.isFinite(building.lng)) {
+        current.latSum += building.lat
+        current.lngSum += building.lng
+        current.pointCount += 1
+      }
+      groups.set(id, current)
+    })
+    return Array.from(groups.values())
+      .filter((g) => g.pointCount > 0)
+      .map((g) => ({
+        id: g.id, label: g.label,
+        count: g.count, unitCount: g.unitCount,
+        houseCount: g.houseCount, shopCount: g.shopCount,
+        lat: g.latSum / g.pointCount, lng: g.lngSum / g.pointCount,
+      }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'))
+  }, [mapBuildings, cardMap, regionFilter, shouldUseAggregateMap])
+
+  const aggregateMapBuildings = shouldUseAggregateMap ? [] : mapBuildings
+
+  const handleSelectAggregateMarker = (id: string) => {
+    const [kind, label] = id.split(':')
+    if (kind === 'region') {
+      setRegionFilter(label as TerritoryRegion | '전체')
+      setAreaFilter('전체')
+    } else if (kind === 'area') {
+      setAreaFilter(label)
+    }
+  }
   const panelBuildingGroups = useMemo(() => {
     const order: BuildingStatus[] = ['방문금지', '방문필요', '정기방문', '방문완료']
     const labels: Record<BuildingStatus, string> = {
@@ -889,22 +945,6 @@ export function DesktopMap({
           })()}
         </div>
         <div className="map-toolbar" aria-label="지도 필터">
-          {/* 동 */}
-          <div className="map-toolbar-item">
-            <span className="map-toolbar-label">동</span>
-            <select className="map-toolbar-select" value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
-              <option value="전체">전체</option>
-              {areaFilterOptions.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-          </div>
-          {/* 카드 */}
-          <div className="map-toolbar-item">
-            <span className="map-toolbar-label">카드</span>
-            <select className="map-toolbar-select wide" value={cardFilter} onChange={(e) => { const v = e.target.value === '전체' ? '전체' : Number(e.target.value); setCardFilter(v); if (v !== '전체') setBoundaryCardId(v as number) }}>
-              <option value="전체">전체 카드</option>
-              {orderedCards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
           {/* 건물 유형 segment */}
           <div className="map-toolbar-item">
             <span className="map-toolbar-label">건물</span>
@@ -1127,7 +1167,9 @@ export function DesktopMap({
             )}
 
             <MapCanvas
-              buildings={mapBuildings}
+              buildings={aggregateMapBuildings}
+              aggregateMarkers={mapAggregateMarkers}
+              onSelectAggregate={handleSelectAggregateMarker}
               cardBoundaries={cardBoundaries}
               highlightedCardIds={highlightedCardIds}
               cards={cards}
