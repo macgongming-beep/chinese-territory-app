@@ -191,17 +191,12 @@ export function InformalCardsTab({
     const title = group?.name ?? '미분류'
     const sorted = [...assets].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return (
-      <section
-        key={`group-${key}`}
-        style={{
-          marginBottom: 12, border: '1px solid #e5e7eb', borderRadius: 12,
-          background: '#fff', overflow: 'hidden',
-        }}
-      >
+      <section key={`group-${key}`}>
+        {/* 그룹 헤더 (디자인 05: chev + 제목 + 카운트) */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          padding: '10px 12px', borderBottom: isCollapsed ? 'none' : '1px solid #f1f5f9',
-          background: '#f8fafc',
+          padding: '0 4px', justifyContent: 'space-between',
+          marginBottom: 10,
         }}>
           <button
             type="button"
@@ -209,45 +204,52 @@ export function InformalCardsTab({
             style={{
               flex: 1, display: 'flex', alignItems: 'center', gap: 8,
               background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-              textAlign: 'left',
+              textAlign: 'left', minHeight: 0,
             }}
           >
-            <span style={{ fontSize: 14, color: '#64748b' }}>{isCollapsed ? '›' : '⌄'}</span>
-            <strong style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>{title}</strong>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>{assets.length}</span>
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text)', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{title}</span>
+            <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>{assets.length}</span>
           </button>
           {admin && group && (
-            <>
+            <div style={{ display: 'flex', gap: 4 }}>
               <button
                 type="button"
                 onClick={() => handleRenameGroup(group)}
-                aria-label="이름 변경"
                 style={{
-                  background: 'none', border: 'none', padding: '4px 6px',
-                  color: '#94a3b8', fontSize: 12, cursor: 'pointer',
+                  height: 28, minHeight: 28, padding: '0 10px',
+                  background: 'transparent', border: 'none',
+                  color: 'var(--muted)', fontSize: 12, fontWeight: 500,
+                  cursor: 'pointer', borderRadius: 6,
                 }}
               >이름</button>
               <button
                 type="button"
                 onClick={() => setConfirmDeleteGroup(group)}
-                aria-label="삭제"
                 style={{
-                  background: 'none', border: 'none', padding: '4px 6px',
-                  color: '#dc2626', fontSize: 12, cursor: 'pointer',
+                  height: 28, minHeight: 28, padding: '0 10px',
+                  background: 'transparent', border: 'none',
+                  color: 'var(--status-danger)', fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer', borderRadius: 6,
                 }}
               >삭제</button>
-            </>
+            </div>
           )}
         </div>
         {!isCollapsed && (
           <div style={{
-            display: 'grid', gap: 8, padding: 10,
-            gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+            display: 'grid', gap: 10,
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            marginBottom: 14,
           }}>
             {sorted.length === 0 ? (
               <p style={{
-                gridColumn: '1 / -1', textAlign: 'center', padding: '12px 0',
-                fontSize: 12, color: '#94a3b8',
+                gridColumn: '1 / -1', textAlign: 'center', padding: '20px 0',
+                fontSize: 13, color: 'var(--muted)',
+                background: 'var(--surface)', border: '1px dashed var(--line-2)',
+                borderRadius: 12, margin: 0,
               }}>
                 자료 없음
               </p>
@@ -256,49 +258,57 @@ export function InformalCardsTab({
                 <div
                   key={asset.id}
                   style={{
-                    position: 'relative', aspectRatio: '4 / 5', borderRadius: 10,
-                    border: '1px solid #e5e7eb', overflow: 'hidden', background: '#fff',
-                    cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', gap: 6,
                   }}
-                  onClick={() => setPreview(asset)}
                 >
-                  <img
-                    src={asset.imageUrl}
-                    alt={asset.name}
-                    style={{ width: '100%', height: '70%', objectFit: 'cover', display: 'block' }}
-                    loading="lazy"
-                  />
+                  <div
+                    style={{
+                      position: 'relative', aspectRatio: '4 / 3', borderRadius: 10,
+                      border: '1px solid var(--line)', overflow: 'hidden', background: 'var(--paper)',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => setPreview(asset)}
+                  >
+                    <img
+                      src={asset.imageUrl}
+                      alt={asset.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      loading="lazy"
+                    />
+                    {admin && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setMoveTargetAsset(asset) }}
+                          aria-label="그룹 이동"
+                          style={{
+                            position: 'absolute', top: 6, left: 6,
+                            width: 24, height: 24, minHeight: 24, borderRadius: 6, border: 'none',
+                            background: 'rgba(26,26,24,0.6)', color: '#fff',
+                            fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0,
+                            display: 'grid', placeItems: 'center',
+                          }}
+                        >↔</button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setConfirmDelete(asset) }}
+                          aria-label="삭제"
+                          style={{
+                            position: 'absolute', top: 6, right: 6,
+                            width: 24, height: 24, minHeight: 24, borderRadius: 6, border: 'none',
+                            background: 'rgba(26,26,24,0.6)', color: '#fff',
+                            fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0,
+                            display: 'grid', placeItems: 'center',
+                          }}
+                        >✕</button>
+                      </>
+                    )}
+                  </div>
                   <div style={{
-                    padding: '5px 7px', fontSize: 10, fontWeight: 700,
-                    color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis',
+                    padding: '0 2px', fontSize: 13, fontWeight: 600,
+                    color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                   }}>{asset.name}</div>
-                  {admin && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setMoveTargetAsset(asset) }}
-                        aria-label="그룹 이동"
-                        style={{
-                          position: 'absolute', top: 4, left: 4,
-                          width: 22, height: 22, borderRadius: 6, border: 'none',
-                          background: 'rgba(15,23,42,0.55)', color: '#fff',
-                          fontSize: 10, fontWeight: 800, cursor: 'pointer', padding: 0,
-                        }}
-                      >↔</button>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setConfirmDelete(asset) }}
-                        aria-label="삭제"
-                        style={{
-                          position: 'absolute', top: 4, right: 4,
-                          width: 22, height: 22, borderRadius: 6, border: 'none',
-                          background: 'rgba(15,23,42,0.55)', color: '#fff',
-                          fontSize: 11, fontWeight: 800, cursor: 'pointer', padding: 0,
-                        }}
-                      >✕</button>
-                    </>
-                  )}
                 </div>
               ))
             )}
@@ -309,24 +319,26 @@ export function InformalCardsTab({
   }
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* 상단 액션 + 자료 카운트 */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 12,
+        padding: '0 4px',
       }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#64748b' }}>
+        <span style={{ fontSize: 13, color: 'var(--muted)' }}>
           전체 {totalAssets}개 · 그룹 {informalGroups.length}
-        </p>
+        </span>
         {admin && (
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               type="button"
               onClick={handleCreateGroup}
               style={{
-                padding: '7px 10px', borderRadius: 9, border: '1px solid #e5e7eb',
-                background: '#fff', color: '#475569', fontSize: 12, fontWeight: 700,
-                cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                height: 32, minHeight: 32, padding: '0 12px',
+                borderRadius: 8, border: '1px solid var(--line-2)',
+                background: 'var(--surface)', color: 'var(--text)',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}
             >+ 그룹</button>
             <button
@@ -334,9 +346,14 @@ export function InformalCardsTab({
               onClick={() => fileInputRef.current?.click()}
               disabled={running}
               style={{
-                padding: '7px 12px', borderRadius: 9, border: '1px solid #c4b5fd',
-                background: '#f5f3ff', color: '#6d28d9', fontSize: 12, fontWeight: 800,
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                height: 32, minHeight: 32, padding: '0 12px',
+                borderRadius: 8, border: 'none',
+                background: running ? 'var(--tint)' : 'var(--ink)',
+                color: running ? 'var(--muted-2)' : '#fff',
+                fontSize: 13, fontWeight: 600,
                 cursor: running ? 'wait' : 'pointer',
+                letterSpacing: '-0.005em',
               }}
             >+ 자료 추가</button>
           </div>
@@ -482,16 +499,37 @@ export function InformalCardsTab({
       {sortedGroups.map((g) => renderGroupSection(g, assetsByGroup.get(g.id) ?? []))}
       {(unassignedAssets.length > 0 || sortedGroups.length === 0) && renderGroupSection(null, unassignedAssets)}
 
+      {/* + 그룹 추가 (admin 만, 디자인 05 의 dashed ghost) */}
+      {admin && (
+        <button
+          type="button"
+          onClick={handleCreateGroup}
+          style={{
+            padding: '14px',
+            border: '1px dashed var(--line-2)',
+            background: 'transparent',
+            color: 'var(--muted)',
+            borderRadius: 12,
+            display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center',
+            font: 'inherit', fontSize: 13, fontWeight: 500,
+            cursor: 'pointer', minHeight: 0, width: '100%',
+          }}
+        >
+          + 그룹 추가
+        </button>
+      )}
+
       {/* 빈 상태 */}
       {totalAssets === 0 && (
-        <p style={{
+        <div style={{
           padding: '40px 16px', textAlign: 'center', fontSize: 13,
-          color: '#94a3b8', fontWeight: 600,
+          color: 'var(--muted)', lineHeight: 1.6,
+          background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12,
         }}>
           {admin
-            ? '아직 등록된 비공식 자료가 없습니다.\n위 + 자료 추가로 시작하세요.'
-            : '관리자가 자료를 등록하면 여기에 표시됩니다.'}
-        </p>
+            ? <>아직 등록된 비공식 자료가 없습니다.<br />위 + 자료 추가로 시작하세요.</>
+            : <>관리자가 자료를 등록하면 여기에 표시됩니다.</>}
+        </div>
       )}
 
       {/* 미리보기 */}
