@@ -53,6 +53,30 @@ export function InformalCardsTab({
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<InformalGroup | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number | 'null'>>(new Set())
   const [moveTargetAsset, setMoveTargetAsset] = useState<InformalAsset | null>(null)
+  // ⋮ 메뉴 / 선택 모드
+  const [openGroupMenu, setOpenGroupMenu] = useState<number | 'null' | null>(null)
+  const [selectionGroup, setSelectionGroup] = useState<number | 'null' | null>(null)
+  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<number>>(new Set())
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false)
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+
+  const toggleSelect = (id: number) => {
+    setSelectedAssetIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const clearSelection = () => {
+    setSelectionGroup(null)
+    setSelectedAssetIds(new Set())
+  }
+  const enterSelection = (key: number | 'null') => {
+    setSelectionGroup(key)
+    setSelectedAssetIds(new Set())
+    setOpenGroupMenu(null)
+  }
 
   // 그룹별 자료 그룹화
   const assetsByGroup = new Map<number | null, InformalAsset[]>()
@@ -213,28 +237,106 @@ export function InformalCardsTab({
             <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{title}</span>
             <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>{assets.length}</span>
           </button>
-          {admin && group && (
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button
-                type="button"
-                onClick={() => handleRenameGroup(group)}
-                style={{
-                  height: 28, minHeight: 28, padding: '0 10px',
-                  background: 'transparent', border: 'none',
-                  color: 'var(--muted)', fontSize: 12, fontWeight: 500,
-                  cursor: 'pointer', borderRadius: 6,
-                }}
-              >이름</button>
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteGroup(group)}
-                style={{
-                  height: 28, minHeight: 28, padding: '0 10px',
-                  background: 'transparent', border: 'none',
-                  color: 'var(--status-danger)', fontSize: 12, fontWeight: 600,
-                  cursor: 'pointer', borderRadius: 6,
-                }}
-              >삭제</button>
+          {admin && (
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }}>
+              {/* 선택 모드 진입 중이면 "취소" 버튼 */}
+              {selectionGroup === key ? (
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  style={{
+                    height: 28, minHeight: 28, padding: '0 10px',
+                    background: 'transparent', border: 'none',
+                    color: 'var(--muted)', fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', borderRadius: 6,
+                  }}
+                >취소</button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setOpenGroupMenu(openGroupMenu === key ? null : key)}
+                    aria-label="더보기"
+                    style={{
+                      width: 28, height: 28, minHeight: 28,
+                      display: 'grid', placeItems: 'center',
+                      background: 'transparent', border: 'none',
+                      color: 'var(--text)', cursor: 'pointer', borderRadius: 6,
+                    }}
+                  >
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                      <circle cx="12" cy="5" r="1.5" />
+                      <circle cx="12" cy="12" r="1.5" />
+                      <circle cx="12" cy="19" r="1.5" />
+                    </svg>
+                  </button>
+                  {openGroupMenu === key && (
+                    <>
+                      <div
+                        onClick={() => setOpenGroupMenu(null)}
+                        style={{ position: 'fixed', inset: 0, zIndex: 30 }}
+                      />
+                      <div
+                        style={{
+                          position: 'absolute', top: '100%', right: 0,
+                          marginTop: 4, zIndex: 31,
+                          background: 'var(--surface)',
+                          border: '1px solid var(--line)',
+                          borderRadius: 8,
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                          minWidth: 140,
+                          padding: 4,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => { setOpenGroupMenu(null); enterSelection(key) }}
+                          disabled={assets.length === 0}
+                          style={{
+                            width: '100%', textAlign: 'left',
+                            padding: '8px 10px', minHeight: 0,
+                            background: 'transparent', border: 'none',
+                            fontSize: 13, color: assets.length === 0 ? 'var(--muted-2)' : 'var(--text)',
+                            cursor: assets.length === 0 ? 'not-allowed' : 'pointer', borderRadius: 6,
+                          }}
+                        >
+                          선택
+                        </button>
+                        {group && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => { setOpenGroupMenu(null); handleRenameGroup(group) }}
+                              style={{
+                                width: '100%', textAlign: 'left',
+                                padding: '8px 10px', minHeight: 0,
+                                background: 'transparent', border: 'none',
+                                fontSize: 13, color: 'var(--text)',
+                                cursor: 'pointer', borderRadius: 6,
+                              }}
+                            >
+                              이름 변경
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setOpenGroupMenu(null); setConfirmDeleteGroup(group) }}
+                              style={{
+                                width: '100%', textAlign: 'left',
+                                padding: '8px 10px', minHeight: 0,
+                                background: 'transparent', border: 'none',
+                                fontSize: 13, color: 'var(--status-danger)',
+                                cursor: 'pointer', borderRadius: 6,
+                              }}
+                            >
+                              그룹 삭제
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>
@@ -254,63 +356,93 @@ export function InformalCardsTab({
                 자료 없음
               </p>
             ) : (
-              sorted.map((asset) => (
-                <div
-                  key={asset.id}
-                  style={{
-                    display: 'flex', flexDirection: 'column', gap: 6,
-                  }}
-                >
+              sorted.map((asset) => {
+                const isSelectionMode = selectionGroup === key
+                const isSelected = selectedAssetIds.has(asset.id)
+                return (
                   <div
+                    key={asset.id}
                     style={{
-                      position: 'relative', aspectRatio: '4 / 3', borderRadius: 10,
-                      border: '1px solid var(--line)', overflow: 'hidden', background: 'var(--paper)',
-                      cursor: 'pointer',
+                      display: 'flex', flexDirection: 'column', gap: 6,
                     }}
-                    onClick={() => setPreview(asset)}
                   >
-                    <img
-                      src={asset.imageUrl}
-                      alt={asset.name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                      loading="lazy"
-                    />
-                    {admin && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setMoveTargetAsset(asset) }}
-                          aria-label="그룹 이동"
-                          style={{
-                            position: 'absolute', top: 6, left: 6,
-                            width: 24, height: 24, minHeight: 24, borderRadius: 6, border: 'none',
-                            background: 'rgba(26,26,24,0.6)', color: '#fff',
-                            fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0,
-                            display: 'grid', placeItems: 'center',
-                          }}
-                        >↔</button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setConfirmDelete(asset) }}
-                          aria-label="삭제"
+                    <div
+                      style={{
+                        position: 'relative', aspectRatio: '4 / 3', borderRadius: 10,
+                        border: isSelected ? '2px solid var(--ink)' : '1px solid var(--line)',
+                        overflow: 'hidden', background: 'var(--paper)',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => {
+                        if (isSelectionMode) toggleSelect(asset.id)
+                        else setPreview(asset)
+                      }}
+                    >
+                      <img
+                        src={asset.imageUrl}
+                        alt={asset.name}
+                        style={{
+                          width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                          opacity: isSelectionMode && !isSelected ? 0.6 : 1,
+                          transition: 'opacity 0.15s',
+                        }}
+                        loading="lazy"
+                      />
+                      {isSelectionMode ? (
+                        <span
+                          aria-hidden
                           style={{
                             position: 'absolute', top: 6, right: 6,
-                            width: 24, height: 24, minHeight: 24, borderRadius: 6, border: 'none',
-                            background: 'rgba(26,26,24,0.6)', color: '#fff',
-                            fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0,
+                            width: 22, height: 22, borderRadius: 6,
+                            background: isSelected ? 'var(--ink)' : 'rgba(255,255,255,0.85)',
+                            border: isSelected ? 'none' : '1.5px solid var(--line-2)',
                             display: 'grid', placeItems: 'center',
+                            color: '#fff',
                           }}
-                        >✕</button>
-                      </>
-                    )}
+                        >
+                          {isSelected && (
+                            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="5 13 10 18 19 8" />
+                            </svg>
+                          )}
+                        </span>
+                      ) : admin && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setMoveTargetAsset(asset) }}
+                            aria-label="그룹 이동"
+                            style={{
+                              position: 'absolute', top: 6, left: 6,
+                              width: 24, height: 24, minHeight: 24, borderRadius: 6, border: 'none',
+                              background: 'rgba(26,26,24,0.6)', color: '#fff',
+                              fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0,
+                              display: 'grid', placeItems: 'center',
+                            }}
+                          >↔</button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setConfirmDelete(asset) }}
+                            aria-label="삭제"
+                            style={{
+                              position: 'absolute', top: 6, right: 6,
+                              width: 24, height: 24, minHeight: 24, borderRadius: 6, border: 'none',
+                              background: 'rgba(26,26,24,0.6)', color: '#fff',
+                              fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0,
+                              display: 'grid', placeItems: 'center',
+                            }}
+                          >✕</button>
+                        </>
+                      )}
+                    </div>
+                    <div style={{
+                      padding: '0 2px', fontSize: 13, fontWeight: 600,
+                      color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>{asset.name}</div>
                   </div>
-                  <div style={{
-                    padding: '0 2px', fontSize: 13, fontWeight: 600,
-                    color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}>{asset.name}</div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         )}
@@ -696,10 +828,186 @@ export function InformalCardsTab({
               >
                 {g.name}
                 {moveTargetAsset.groupId === g.id && (
-                  <span style={{ marginLeft: 8, color: '#7c3aed' }}>✓</span>
+                  <span style={{ marginLeft: 8, color: 'var(--ink)' }}>✓</span>
                 )}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── 선택 모드 sticky 하단 액션 바 ─────────── */}
+      {selectionGroup !== null && (
+        <div
+          style={{
+            position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 150,
+            padding: '12px 16px max(14px, env(safe-area-inset-bottom))',
+            background: 'var(--bg)',
+            borderTop: '1px solid var(--line)',
+            display: 'flex', alignItems: 'center', gap: 8,
+            boxShadow: '0 -8px 24px rgba(0,0,0,0.06)',
+          }}
+        >
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+            {selectedAssetIds.size > 0 ? `${selectedAssetIds.size}개 선택` : '자료를 선택하세요'}
+          </span>
+          <button
+            type="button"
+            onClick={() => setBulkMoveOpen(true)}
+            disabled={selectedAssetIds.size === 0}
+            style={{
+              height: 40, minHeight: 40, padding: '0 14px',
+              border: '1px solid var(--line-2)', background: 'var(--surface)',
+              color: 'var(--text)', borderRadius: 8,
+              fontSize: 13, fontWeight: 600,
+              cursor: selectedAssetIds.size === 0 ? 'not-allowed' : 'pointer',
+              opacity: selectedAssetIds.size === 0 ? 0.5 : 1,
+            }}
+          >
+            그룹 이동
+          </button>
+          <button
+            type="button"
+            onClick={() => setBulkDeleteConfirm(true)}
+            disabled={selectedAssetIds.size === 0}
+            style={{
+              height: 40, minHeight: 40, padding: '0 14px',
+              border: 'none', background: 'var(--status-danger)',
+              color: '#fff', borderRadius: 8,
+              fontSize: 13, fontWeight: 600,
+              cursor: selectedAssetIds.size === 0 ? 'not-allowed' : 'pointer',
+              opacity: selectedAssetIds.size === 0 ? 0.5 : 1,
+            }}
+          >
+            삭제
+          </button>
+        </div>
+      )}
+
+      {/* ── 일괄 이동 시트 (그룹 선택) ──────────── */}
+      {bulkMoveOpen && (
+        <div
+          onClick={() => setBulkMoveOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(26,26,24,0.34)',
+            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg)',
+              borderTopLeftRadius: 18, borderTopRightRadius: 18,
+              padding: '8px 16px max(18px, env(safe-area-inset-bottom))',
+              maxHeight: '70vh',
+              display: 'flex', flexDirection: 'column',
+            }}
+          >
+            <div style={{ width: 32, height: 4, borderRadius: 99, background: 'var(--line-2)', margin: '4px auto 14px' }} />
+            <div style={{ marginBottom: 12 }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>그룹으로 이동</span>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--muted)' }}>
+                {selectedAssetIds.size}개 자료를 이동할 그룹을 고르세요
+              </p>
+            </div>
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  const ids = Array.from(selectedAssetIds)
+                  await Promise.all(ids.map((id) => onMoveAsset(id, null)))
+                  setBulkMoveOpen(false)
+                  clearSelection()
+                  showToast(`${ids.length}개 자료를 미분류로 이동했습니다`, 'success')
+                }}
+                style={{
+                  width: '100%', textAlign: 'left',
+                  padding: '14px 16px', minHeight: 0,
+                  background: 'var(--surface)', border: '1px solid var(--line)',
+                  borderRadius: 10, fontSize: 14, fontWeight: 600,
+                  color: 'var(--text)', cursor: 'pointer',
+                }}
+              >
+                미분류
+              </button>
+              {sortedGroups.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={async () => {
+                    const ids = Array.from(selectedAssetIds)
+                    await Promise.all(ids.map((id) => onMoveAsset(id, g.id)))
+                    setBulkMoveOpen(false)
+                    clearSelection()
+                    showToast(`${ids.length}개 자료를 "${g.name}" 으로 이동했습니다`, 'success')
+                  }}
+                  style={{
+                    width: '100%', textAlign: 'left',
+                    padding: '14px 16px', minHeight: 0,
+                    background: 'var(--surface)', border: '1px solid var(--line)',
+                    borderRadius: 10, fontSize: 14, fontWeight: 600,
+                    color: 'var(--ink)', cursor: 'pointer',
+                  }}
+                >
+                  {g.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 일괄 삭제 confirm ───────────────────── */}
+      {bulkDeleteConfirm && (
+        <div
+          onClick={() => setBulkDeleteConfirm(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(26,26,24,0.4)',
+            display: 'grid', placeItems: 'center', padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--surface)', borderRadius: 14,
+              padding: '20px 20px 16px', maxWidth: 320, width: '100%',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
+            }}
+          >
+            <p style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>
+              {selectedAssetIds.size}개 자료를 삭제할까요?
+            </p>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
+              삭제한 자료는 되돌릴 수 없습니다.
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setBulkDeleteConfirm(false)}
+                style={{
+                  flex: 1, height: 40, minHeight: 40, border: '1px solid var(--line-2)',
+                  background: 'var(--surface)', color: 'var(--text)',
+                  borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >취소</button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const ids = Array.from(selectedAssetIds)
+                  setBulkDeleteConfirm(false)
+                  await Promise.all(ids.map((id) => onDelete(id)))
+                  clearSelection()
+                  showToast(`${ids.length}개 자료를 삭제했습니다`, 'success')
+                }}
+                style={{
+                  flex: 1, height: 40, minHeight: 40, border: 'none',
+                  background: 'var(--status-danger)', color: '#fff',
+                  borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >삭제</button>
+            </div>
           </div>
         </div>
       )}
