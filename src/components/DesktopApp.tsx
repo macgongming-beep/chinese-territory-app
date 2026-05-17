@@ -22,7 +22,7 @@ const pageToPath: Record<DesktopPage, string> = {
   '공지': '/notices',
   '캘린더': '/calendar',
   '구역': '/zone',       // 구역 관리 (인도자/관리자)
-  '나의봉사': '/territory', // 개인 봉사 (봉사자/인도자)
+  '활동': '/territory', // 개인 봉사 (봉사자/인도자)
   '지도': '/map',
   '배정': '/assignment',
   '사용자': '/users',
@@ -34,7 +34,7 @@ const pathToPage: Record<string, DesktopPage> = {
   '/': '홈',
   '/notices': '공지',
   '/calendar': '캘린더',
-  '/territory': '나의봉사',
+  '/territory': '활동',
   '/zone': '구역',
   '/map': '지도',
   '/assignment': '배정',
@@ -293,9 +293,9 @@ export function DesktopApp({
     rawActivePage === '지도' && viewMode === 'leader' ? '구역' : rawActivePage
 
   const visibleDesktopPages: DesktopPage[] = viewMode === 'user'
-    ? ['홈', '캘린더', '나의봉사', '지도', '설정']
+    ? ['홈', '캘린더', '활동', '지도', '설정']
     : viewMode === 'leader'
-      ? ['홈', '캘린더', '나의봉사', '배정', '구역', '설정']
+      ? ['홈', '캘린더', '활동', '배정', '구역', '설정']
       : ['홈', '공지', '캘린더', '구역', '지도', '배정', '사용자', '통계', '설정']
 
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null

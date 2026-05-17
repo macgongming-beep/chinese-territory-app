@@ -22,12 +22,12 @@ import { NotificationSettings } from './NotificationSettings'
 import { AppUpdateCard } from './AppUpdateCard'
 import { AppHeader } from './AppHeader'
 
-type MobileTab = '홈' | '캘린더' | '나의봉사' | '구역' | '지도' | '배정' | '설정'
+type MobileTab = '홈' | '캘린더' | '활동' | '구역' | '지도' | '배정' | '설정'
 
 const tabToPath: Record<MobileTab, string> = {
   '홈': '/',
   '캘린더': '/calendar',
-  '나의봉사': '/territory',
+  '활동': '/territory',
   '구역': '/zone',
   '지도': '/map',
   '배정': '/assignment',
@@ -41,7 +41,7 @@ const pathToTab: Record<string, MobileTab> = {
   '/special-periods': '설정',
   '/signup-requests': '설정',
   '/calendar': '캘린더',
-  '/territory': '나의봉사',
+  '/territory': '활동',
   '/zone': '구역',
   '/map': '지도',
   '/assignment': '배정',
@@ -54,7 +54,7 @@ type IconName = 'home' | 'calendar' | 'territory' | 'map' | 'assignment' | 'sett
 const navIcons: Record<MobileTab, IconName> = {
   '홈': 'home',
   '캘린더': 'calendar',
-  '나의봉사': 'territory',
+  '활동': 'territory',
   '구역': 'territory',
   '지도': 'map',
   '배정': 'assignment',
@@ -1160,7 +1160,7 @@ export function MobileHome({
   const tabLabel = (tab: MobileTab) => {
     if (tab === '홈') return t(language, 'nav.home')
     if (tab === '캘린더') return t(language, 'nav.calendar')
-    if (tab === '나의봉사') return t(language, 'nav.myService')
+    if (tab === '활동') return t(language, 'nav.myService')
     if (tab === '구역') return t(language, 'nav.zone')
     if (tab === '지도') return t(language, 'nav.map')
     if (tab === '배정') return t(language, 'nav.assignment')
@@ -1174,9 +1174,9 @@ export function MobileHome({
   }
 
   const visibleTabs: MobileTab[] = role === 'user'
-    ? ['홈', '캘린더', '나의봉사', '설정']
+    ? ['홈', '캘린더', '활동', '설정']
     : role === 'leader'
-      ? ['홈', '캘린더', '나의봉사', '배정', '구역', '설정']
+      ? ['홈', '캘린더', '활동', '배정', '구역', '설정']
       : ['홈', '캘린더', '구역', '배정', '설정']  // admin
 
   const BottomNav = (

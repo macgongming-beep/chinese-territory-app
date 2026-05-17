@@ -182,7 +182,7 @@ const dictionary = {
     'map.unknownCard': '카드 미지정',
     'map.servicing': '봉사 중',
     'map.exploring': '탐색 중',
-    'territory.title': '나의 봉사',
+    'territory.title': '활동',
     'territory.adminTitle': '구역 관리',
     'territory.todayService': '오늘의 봉사',
     'territory.assignedService': '배정된 봉사',
