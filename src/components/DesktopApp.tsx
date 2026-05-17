@@ -461,6 +461,8 @@ export function DesktopApp({
             notices={notices}
             role={viewMode}
             serviceSessions={serviceSessions}
+            returnVisits={returnVisits}
+            returnVisitLogs={returnVisitLogs}
             onApplyToEvent={onApplyToEvent}
             onStartServiceSession={(input) => startServiceSessionAndOpenMap({ ...input, role: viewMode })}
             onEndServiceSession={onEndServiceSession}

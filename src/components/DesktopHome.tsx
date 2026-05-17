@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CalendarEvent, Notice, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot } from '../types'
+import type { CalendarEvent, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot } from '../types'
 import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
+import { formatRelativeVisitDate, getLatestReturnVisitDate, getUserReturnVisits } from '../utils/returnVisits'
 import { SpecialPeriodBanner } from './SpecialPeriodBanner'
 
 const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토']
@@ -104,6 +105,8 @@ export function DesktopHome({
   notices,
   role,
   serviceSessions,
+  returnVisits = [],
+  returnVisitLogs = [],
   onApplyToEvent,
   onStartServiceSession,
   onEndServiceSession: _onEndServiceSession,
@@ -125,6 +128,8 @@ export function DesktopHome({
   notices: Notice[]
   role: Role
   serviceSessions: ServiceSession[]
+  returnVisits?: ReturnVisit[]
+  returnVisitLogs?: ReturnVisitLog[]
   onApplyToEvent: (eventId: number) => void
   onStartServiceSession: (input: {
     timeSlot: TimeSlot
@@ -221,8 +226,16 @@ export function DesktopHome({
     .filter((e) => e.date === today)
     .sort((a, b) => a.time.localeCompare(b.time))
 
-  const myCards = cards.filter((c) => c.assignedUsers.includes(currentVisitor))
   const leaderCards = cards.filter((c) => c.assignedLeader === currentVisitor)
+  const myReturnVisits = useMemo(
+    () => getUserReturnVisits(returnVisits, currentVisitor),
+    [currentVisitor, returnVisits],
+  )
+  const latestReturnVisitDate = useMemo(
+    () => getLatestReturnVisitDate(myReturnVisits, returnVisitLogs),
+    [myReturnVisits, returnVisitLogs],
+  )
+  const latestReturnVisitLabel = formatRelativeVisitDate(latestReturnVisitDate, 'ko')
   const myLeadingEvents = calendarEvents.filter(
     (e) => e.date === today && e.leader === currentVisitor,
   )
@@ -296,8 +309,6 @@ export function DesktopHome({
     await startSession(input)
   }
 
-  const userCards = myCards.length > 0 ? myCards : cards.slice(0, 3)
-
   if (role === 'leader') {
     const usedCardCount = new Set(
       myTodaySessions
@@ -325,6 +336,12 @@ export function DesktopHome({
             events={todayEvents}
             onApplyToEvent={onApplyToEvent}
             onOpenCalendar={onOpenCalendar}
+          />
+
+          <RegularVisitStatusSection
+            count={myReturnVisits.length}
+            lastVisitLabel={latestReturnVisitLabel}
+            onOpenRegularVisits={onOpenTerritory}
           />
 
           <section className="home-section">
@@ -745,37 +762,11 @@ export function DesktopHome({
           onOpenCalendar={onOpenCalendar}
         />
 
-        {/* 나의 구역 */}
-        <section className="home-section">
-          <div className="home-section-title">
-            <span className="home-section-icon home-section-icon--soft"><InlineIcon name="map" /></span>
-            <h2>나의 구역</h2>
-            <button className="home-more-btn" onClick={onOpenTerritory} type="button">
-              전체보기 →
-            </button>
-          </div>
-          <div className="home-my-list">
-            {myCards.length === 0 && (
-              <div className="home-empty-state">
-                <p>배정된 구역이 없습니다</p>
-              </div>
-            )}
-            {userCards.slice(0, 3).map((card) => (
-              <div className="home-my-card" key={card.id}>
-                <div className="home-my-card-info">
-                  <strong>{card.name}</strong>
-                  <span>{card.area}</span>
-                </div>
-                <div className="home-my-card-progress">
-                  <div className="home-progress-bar">
-                    <span style={{ width: `${card.progress}%` }} />
-                  </div>
-                  <small>{card.progress}%</small>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <RegularVisitStatusSection
+          count={myReturnVisits.length}
+          lastVisitLabel={latestReturnVisitLabel}
+          onOpenRegularVisits={onOpenTerritory}
+        />
 
         {/* 나의 인도 */}
         <section className="home-section">
@@ -806,6 +797,43 @@ export function DesktopHome({
         </div>
       )}
     </div>
+  )
+}
+
+function RegularVisitStatusSection({
+  count,
+  lastVisitLabel,
+  onOpenRegularVisits,
+}: {
+  count: number
+  lastVisitLabel: string
+  onOpenRegularVisits: () => void
+}) {
+  return (
+    <section className="home-section">
+      <div className="home-section-title">
+        <span className="home-section-icon home-section-icon--soft"><InlineIcon name="repeat" /></span>
+        <h2>정기 방문 현황</h2>
+        <button className="home-more-btn" onClick={onOpenRegularVisits} type="button">
+          전체보기 →
+        </button>
+      </div>
+      <div className="leader-card-summary">
+        <button onClick={onOpenRegularVisits} type="button">
+          <strong>{count}<small>건</small></strong>
+          <span>정기방문</span>
+        </button>
+        <button onClick={onOpenRegularVisits} type="button">
+          <strong>{lastVisitLabel}</strong>
+          <span>마지막 방문</span>
+        </button>
+      </div>
+      {count === 0 && (
+        <button className="home-empty-state" onClick={onOpenRegularVisits} type="button">
+          <p>첫 정기방문을 만들어보세요 →</p>
+        </button>
+      )}
+    </section>
   )
 }
 

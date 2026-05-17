@@ -1452,6 +1452,19 @@ button:focus-visible {
   font-weight: 700;
 }
 
+.mobile-home-inline-link {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: #ffffff;
+  color: var(--primary-700);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+
 .mobile-collapsed-summary {
   display: flex;
   width: 100%;
@@ -18658,19 +18671,32 @@ button:focus-visible {
     margin-bottom: 16px;
   }
 
-  .leader-card-summary div {
+  .leader-card-summary div,
+  .leader-card-summary button {
     display: grid;
     gap: 6px;
     padding: 16px;
     border: 1px solid var(--line-muted);
     border-radius: var(--r-lg);
     background: #f8fafc;
+    color: inherit;
+    text-align: left;
+  }
+
+  .leader-card-summary button {
+    cursor: pointer;
   }
 
   .leader-card-summary strong {
     color: var(--ink-900);
     font-size: 28px;
     line-height: 1;
+  }
+
+  .leader-card-summary strong small {
+    margin-left: 2px;
+    font-size: 15px;
+    font-weight: 700;
   }
 
   .leader-card-summary span {
@@ -18820,6 +18846,13 @@ button:focus-visible {
     font-size: 14px;
     font-weight: 600;
     text-align: center;
+  }
+
+  button.home-empty-state {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
   }
 
   /* 공지 */
@@ -19380,6 +19413,7 @@ button:focus-visible {
   }
 
   .leader-home-layout .leader-card-summary div,
+  .leader-home-layout .leader-card-summary button,
   .leader-home-layout .leader-participant-card,
   .leader-home-layout .home-event-card,
   .leader-home-layout .home-my-card,
@@ -19392,7 +19426,8 @@ button:focus-visible {
     box-shadow: none;
   }
 
-  .leader-home-layout .leader-card-summary div {
+  .leader-home-layout .leader-card-summary div,
+  .leader-home-layout .leader-card-summary button {
     padding: 14px 16px;
   }
 

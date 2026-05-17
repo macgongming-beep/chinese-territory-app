@@ -21,6 +21,7 @@ import { PwaInstallSection } from './PwaInstall'
 import { NotificationSettings } from './NotificationSettings'
 import { AppUpdateCard } from './AppUpdateCard'
 import { AppHeader } from './AppHeader'
+import { formatRelativeVisitDate, getLatestReturnVisitDate, getUserReturnVisits } from '../utils/returnVisits'
 
 type MobileTab = '홈' | '캘린더' | '활동' | '구역' | '지도' | '배정' | '설정'
 
@@ -1063,7 +1064,6 @@ export function MobileHome({
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
   const todayLabel = useMemo(() => formatHomeDate(new Date(), language), [language])
-  const myCards = useMemo(() => cards.filter((c) => c.assignedUsers.includes(currentVisitor)), [cards, currentVisitor])
   const leaderCards = useMemo(() => cards.filter((c) => c.assignedLeader === currentVisitor), [cards, currentVisitor])
   const inProgressCards = useMemo(() => cards.filter((c) => c.status === '진행중'), [cards])
   const completedCards = useMemo(() => cards.filter((c) => c.progress >= 100), [cards])
@@ -1078,20 +1078,15 @@ export function MobileHome({
   const myTodaySessions = useMemo(() =>
     serviceSessions.filter((session) => session.serviceDate === today && session.userName === currentVisitor),
     [currentVisitor, serviceSessions, today])
-  const myRegularVisits = useMemo(() =>
-    buildings.flatMap((building) => {
-      const card = cards.find((item) => item.id === building.cardId)
-      return building.units
-        .filter((unit) => unit.isRegularVisit && unit.regularVisitor === currentVisitor)
-        .map((unit) => ({
-          building,
-          card,
-          unit,
-        }))
-    }),
-    [buildings, cards, currentVisitor])
-  const myVisibleCards = role === 'leader' ? leaderCards : myCards
-
+  const myRegularVisits = useMemo(
+    () => getUserReturnVisits(returnVisits, currentVisitor),
+    [currentVisitor, returnVisits],
+  )
+  const latestReturnVisitDate = useMemo(
+    () => getLatestReturnVisitDate(myRegularVisits, returnVisitLogs),
+    [myRegularVisits, returnVisitLogs],
+  )
+  const latestReturnVisitLabel = formatRelativeVisitDate(latestReturnVisitDate, language)
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
   const focusedMapCardIds = useMemo(() => {
     const raw = searchParams.get('cardIds')
@@ -1301,19 +1296,24 @@ export function MobileHome({
                 {role !== 'admin' && (
                   <section className="mobile-home-section">
                     <div className="mobile-section-title">
-                      <h2><span aria-hidden="true"><NavIcon name="territory" /></span> {t(language, 'home.myServiceStatus')}</h2>
+                      <h2><span aria-hidden="true"><NavIcon name="territory" /></span> {t(language, 'home.regularVisitStatus')}</h2>
                       <button onClick={() => navigate('/territory')} type="button">{t(language, 'home.viewAll')}</button>
                     </div>
                     <div className="mobile-service-summary-grid">
-                      <button onClick={() => navigate('/territory')} type="button">
-                        <strong>{myVisibleCards.length}</strong>
-                        <span>{t(language, 'home.myCards')}</span>
+                      <button onClick={() => navigate('/territory?section=regular')} type="button">
+                        <strong>{myRegularVisits.length}{t(language, 'home.caseCountSuffix')}</strong>
+                        <span>{t(language, 'home.regularVisitCount')}</span>
                       </button>
                       <button onClick={() => navigate('/territory?section=regular')} type="button">
-                        <strong>{myRegularVisits.length}</strong>
-                        <span>{t(language, 'home.myRegularVisits')}</span>
+                        <strong>{latestReturnVisitLabel}</strong>
+                        <span>{t(language, 'home.lastVisit')}</span>
                       </button>
                     </div>
+                    {myRegularVisits.length === 0 && (
+                      <button className="mobile-home-inline-link" onClick={() => navigate('/territory?section=regular')} type="button">
+                        {t(language, 'home.startFirstReturnVisit')}
+                      </button>
+                    )}
                   </section>
                 )}
 
