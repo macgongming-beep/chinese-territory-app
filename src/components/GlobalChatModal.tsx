@@ -109,7 +109,7 @@ export function GlobalChatModal({
         position: 'fixed',
         inset: 0,
         zIndex: 50000,
-        background: 'rgba(15,23,42,0.5)',
+        background: 'rgba(26,26,24,0.28)',
       }}
       onClick={onClose}
     >
@@ -117,62 +117,76 @@ export function GlobalChatModal({
         className="header-action-panel"
         style={{
           position: 'absolute',
-          top: 0,
-          right: 0,
-          width: '100%',
-          maxWidth: 440,
-          height: '100%',
-          background: '#fff',
+          top: 8, right: 8, left: 8,
+          maxWidth: 480,
+          margin: '0 auto',
+          maxHeight: 'calc(100% - 16px)',
+          background: 'var(--bg)',
+          border: '1px solid var(--line)',
+          borderRadius: 14,
+          boxShadow: '0 16px 48px rgba(0,0,0,0.18)',
           display: 'flex',
           flexDirection: 'column',
-          animation: 'chatSlideIn 0.25s ease-out',
+          animation: 'chatSlideIn 0.2s ease-out',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="header-action-panel__head" style={{
+        <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 16px 12px', borderBottom: '1px solid #f1f5f9',
+          padding: '14px 16px', borderBottom: '1px solid var(--line)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0, flex: 1 }}>
             {selectedChat && (
               <button
                 aria-label="채팅 목록으로 돌아가기"
                 onClick={handleBackToList}
                 style={{
-                  width: 32, height: 32, minHeight: 32, borderRadius: 999,
-                  border: '1px solid #e2e8f0', background: '#fff',
-                  color: '#334155', fontSize: 18, cursor: 'pointer',
+                  width: 30, height: 30, minHeight: 30, borderRadius: 8,
+                  border: 'none', background: 'transparent',
+                  color: 'var(--text)', cursor: 'pointer',
                   display: 'grid', placeItems: 'center', padding: 0,
+                  marginLeft: -8,
                 }}
                 type="button"
               >
-                ‹
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 6 9 12 15 18" />
+                </svg>
               </button>
             )}
-            <div style={{ minWidth: 0 }}>
-              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#1e293b' }}>
-                {selectedChat ? selectedChat.eventTitle || '채팅방' : '채팅'}
-              </h2>
-              {selectedChat && (
-                <p style={{
-                  margin: '2px 0 0', color: '#64748b', fontSize: 12, fontWeight: 700,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {formatEventLabel(selectedChat.eventDate, selectedChat.eventTime)}
-                </p>
-              )}
-            </div>
+            <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em' }}>
+              {selectedChat ? selectedChat.eventTitle || '채팅방' : '채팅'}
+            </span>
+            {!selectedChat && (
+              <span style={{ fontSize: 13, color: 'var(--muted)' }}>일정별 대화방</span>
+            )}
+            {selectedChat && (
+              <span style={{
+                fontSize: 12, color: 'var(--muted)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {formatEventLabel(selectedChat.eventDate, selectedChat.eventTime)}
+              </span>
+            )}
           </div>
           <button
             onClick={onClose}
             style={{
-              background: 'none', border: 'none', fontSize: 22, color: '#94a3b8',
-              cursor: 'pointer', padding: '0 6px',
+              width: 30, height: 30, minHeight: 30,
+              background: 'transparent', border: 'none',
+              color: 'var(--text)', cursor: 'pointer',
+              display: 'grid', placeItems: 'center',
+              borderRadius: 8, flexShrink: 0,
             }}
             aria-label="닫기"
             type="button"
-          >✕</button>
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
+          </button>
         </div>
 
         {/* 본문 */}
@@ -215,9 +229,9 @@ export function GlobalChatModal({
           {!selectedChat && activeChats.length > 0 && (
             <div>
               <p style={{
-                margin: 0, padding: '12px 16px 6px', fontSize: 11, fontWeight: 700,
-                color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase',
-              }}>활성 채팅</p>
+                margin: 0, padding: '4px 8px 6px', fontSize: 12, fontWeight: 600,
+                color: 'var(--muted)',
+              }}>활성</p>
               {activeChats.map((chat) => (
                 <ChatRow key={chat.eventId} chat={chat} onClick={handleClick} />
               ))}
@@ -228,9 +242,9 @@ export function GlobalChatModal({
           {!selectedChat && lockedChats.length > 0 && (
             <div>
               <p style={{
-                margin: 0, padding: '16px 16px 6px', fontSize: 11, fontWeight: 700,
-                color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase',
-              }}>🔒 종료 (보기 전용)</p>
+                margin: 0, padding: '12px 8px 6px', fontSize: 12, fontWeight: 600,
+                color: 'var(--muted)',
+              }}>지난 대화</p>
               {lockedChats.map((chat) => (
                 <ChatRow key={chat.eventId} chat={chat} onClick={handleClick} />
               ))}
@@ -257,54 +271,61 @@ export function GlobalChatModal({
 
 function ChatRow({ chat, onClick }: { chat: UserChat; onClick: (c: UserChat) => void }) {
   const isUnread = chat.unreadCount > 0
+  const isLocked = chat.isLocked
+  const initial = (chat.eventTitle || chat.eventDate)?.slice(0, 1) ?? '?'
 
   return (
     <button
       onClick={() => onClick(chat)}
       style={{
         display: 'flex', gap: 12, alignItems: 'center',
-        width: '100%', padding: '14px 16px',
-        background: isUnread ? '#f0f9ff' : '#fff',
-        border: 'none', borderBottom: '1px solid #f1f5f9',
+        width: '100%', padding: '12px 10px',
+        background: isUnread ? 'rgba(26,26,24,0.04)' : 'transparent',
+        border: 'none', borderRadius: 10,
         cursor: 'pointer', textAlign: 'left',
-        opacity: chat.isLocked ? 0.7 : 1,
+        minHeight: 0,
       }}
       type="button"
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <span style={{
+        width: isLocked ? 32 : 36, height: isLocked ? 32 : 36,
+        borderRadius: '50%',
+        background: isLocked ? 'var(--tint)' : 'var(--ink)',
+        color: isLocked ? 'var(--muted)' : '#fff',
+        display: 'grid', placeItems: 'center',
+        fontSize: isLocked ? 12 : 13, fontWeight: 700, flexShrink: 0,
+      }}>{initial}</span>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <div style={{
-          display: 'flex', alignItems: 'baseline', gap: 8,
-          fontSize: 14, fontWeight: 700, color: '#1e293b',
-          overflow: 'hidden',
+          display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'space-between',
         }}>
-          {chat.hasEnded && !chat.isLocked && (
-            <span style={{ fontSize: 10, color: '#64748b' }}>✓</span>
-          )}
           <span style={{
+            fontSize: 14, fontWeight: isLocked ? 500 : 600,
+            color: isLocked ? 'var(--muted)' : 'var(--ink)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
           }}>{chat.eventTitle || formatEventLabel(chat.eventDate, chat.eventTime)}</span>
+          <span style={{ fontSize: 12, color: 'var(--muted)', flexShrink: 0 }}>
+            {formatChatDate(chat.lastMessageAt, chat.eventDate)}
+          </span>
         </div>
-        <p style={{
-          margin: '3px 0 0', fontSize: 12, color: '#64748b',
+        <span style={{
+          fontSize: 12, color: 'var(--muted)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {formatEventLabel(chat.eventDate, chat.eventTime)} · {chat.participantCount}명 참여
-        </p>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-        <span style={{ fontSize: 11, color: '#94a3b8' }}>
-          {formatChatDate(chat.lastMessageAt, chat.eventDate)}
+          {formatEventLabel(chat.eventDate, chat.eventTime)} · {chat.participantCount}명
         </span>
-        {isUnread && (
-          <span style={{
-            minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9,
-            background: '#dc2626', color: '#fff', fontSize: 11, fontWeight: 700,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
-          </span>
-        )}
       </div>
+      {isUnread && (
+        <span style={{
+          minWidth: 18, padding: '2px 6px', borderRadius: 99,
+          background: 'var(--status-danger)', color: '#fff',
+          fontSize: 10, fontWeight: 700,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+        }}>
+          {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+        </span>
+      )}
     </button>
   )
 }

@@ -196,7 +196,7 @@ export function NotificationCenter({
         position: 'fixed',
         inset: 0,
         zIndex: 50000,
-        background: 'rgba(15,23,42,0.5)',
+        background: 'rgba(26,26,24,0.28)',
       }}
       onClick={onClose}
     >
@@ -204,40 +204,46 @@ export function NotificationCenter({
         className="header-action-panel"
         style={{
           position: 'absolute',
-          top: 0,
-          right: 0,
-          width: '100%',
-          maxWidth: 440,
-          height: '100%',
-          background: '#fff',
+          top: 8, right: 8, left: 8,
+          maxWidth: 480,
+          margin: '0 auto',
+          maxHeight: 'calc(100% - 16px)',
+          background: 'var(--bg)',
+          border: '1px solid var(--line)',
+          borderRadius: 14,
+          boxShadow: '0 16px 48px rgba(0,0,0,0.18)',
           display: 'flex',
           flexDirection: 'column',
-          animation: 'notifSlideIn 0.25s ease-out',
+          animation: 'notifSlideIn 0.2s ease-out',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="header-action-panel__head" style={{
+        <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 16px 12px', borderBottom: '1px solid #f1f5f9',
+          padding: '14px 16px', borderBottom: '1px solid var(--line)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#1e293b' }}>알림</h2>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em' }}>알림</span>
             {totalUnread > 0 && (
               <span style={{
-                fontSize: 11, fontWeight: 700, color: '#fff', background: '#dc2626',
-                borderRadius: 99, padding: '2px 8px',
+                fontSize: 11.5, fontWeight: 700,
+                color: 'var(--status-danger)',
+                background: 'var(--status-danger-bg)',
+                borderRadius: 999, padding: '2px 9px',
+                fontVariantNumeric: 'tabular-nums',
               }}>{totalUnread}</span>
             )}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             {totalUnread > 0 && (
               <button
                 onClick={markAllRead}
                 style={{
-                  padding: '6px 10px', borderRadius: 7, border: '1px solid #e2e8f0',
-                  background: '#fff', color: '#64748b', fontSize: 12, fontWeight: 600,
-                  cursor: 'pointer',
+                  height: 28, minHeight: 28, padding: '0 10px',
+                  borderRadius: 8, border: '1px solid var(--line-2)',
+                  background: 'var(--surface)', color: 'var(--text)',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
                 }}
                 type="button"
               >모두 읽음</button>
@@ -245,50 +251,42 @@ export function NotificationCenter({
             <button
               onClick={onClose}
               style={{
-                background: 'none', border: 'none', fontSize: 22, color: '#94a3b8',
-                cursor: 'pointer', padding: '0 6px',
+                width: 30, height: 30, minHeight: 30,
+                background: 'transparent', border: 'none',
+                color: 'var(--text)', cursor: 'pointer',
+                display: 'grid', placeItems: 'center',
+                borderRadius: 8,
               }}
               aria-label="닫기"
               type="button"
-            >✕</button>
+            >
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="18" y1="6" x2="6" y2="18" />
+              </svg>
+            </button>
           </div>
         </div>
 
         {/* 본문 */}
-        <div className="header-action-panel__body" style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {!userId ? (
-            <div className="header-action-panel__empty" style={{
-              padding: '60px 20px', textAlign: 'center', color: '#94a3b8',
-            }}>
-              <span style={{
-                display: 'grid', width: 44, height: 44, placeItems: 'center',
-                marginBottom: 8, borderRadius: 14, background: '#f3f4f6', color: '#6b7280',
-              }}>
-                <NotificationIcon name="bell" />
-              </span>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#475569' }}>로그인 정보 확인이 필요합니다</p>
-              <p style={{ margin: '6px 0 0', fontSize: 12 }}>다시 로그인하면 알림을 불러올 수 있습니다.</p>
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--muted)' }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>로그인 정보 확인이 필요합니다</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12.5 }}>다시 로그인하면 알림을 불러올 수 있습니다.</p>
             </div>
           ) : !hasAny ? (
-            <div className="header-action-panel__empty" style={{
-              padding: '60px 20px', textAlign: 'center', color: '#94a3b8',
-            }}>
-              <span style={{
-                display: 'grid', width: 44, height: 44, placeItems: 'center',
-                marginBottom: 8, borderRadius: 14, background: '#f3f4f6', color: '#6b7280',
-              }}>
-                <NotificationIcon name="bell" />
-              </span>
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--muted)' }}>
               <p style={{ margin: 0, fontSize: 14 }}>아직 알림이 없습니다</p>
             </div>
           ) : (
             <>
               {(unreadOthers.length > 0 || unreadChatGroups.length > 0) && (
-                <div>
-                  <p style={{
-                    margin: 0, padding: '12px 16px 6px', fontSize: 11, fontWeight: 700,
-                    color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase',
-                  }}>새 알림</p>
+                <>
+                  <span style={{
+                    fontSize: 12, fontWeight: 600, color: 'var(--muted)',
+                    padding: '0 4px 6px',
+                  }}>새 알림</span>
                   {unreadChatGroups.map((g) => (
                     <ChatGroupItem
                       key={`chatgroup-${g.eventId}`}
@@ -300,14 +298,14 @@ export function NotificationCenter({
                   {unreadOthers.map((n) => (
                     <NotificationItem key={n.id} notification={n} onClick={handleClickItem} />
                   ))}
-                </div>
+                </>
               )}
               {(readOthers.length > 0 || readChatGroups.length > 0) && (
-                <div>
-                  <p style={{
-                    margin: 0, padding: '16px 16px 6px', fontSize: 11, fontWeight: 700,
-                    color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase',
-                  }}>이전 알림</p>
+                <>
+                  <span style={{
+                    fontSize: 12, fontWeight: 600, color: 'var(--muted)',
+                    padding: '12px 4px 6px',
+                  }}>이전 알림</span>
                   {readChatGroups.map((g) => (
                     <ChatGroupItem
                       key={`chatgroup-${g.eventId}`}
@@ -319,7 +317,7 @@ export function NotificationCenter({
                   {readOthers.map((n) => (
                     <NotificationItem key={n.id} notification={n} onClick={handleClickItem} />
                   ))}
-                </div>
+                </>
               )}
             </>
           )}
@@ -328,14 +326,8 @@ export function NotificationCenter({
 
       <style>{`
         @keyframes notifSlideIn {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
-        }
-        @media (max-width: 480px) {
-          @keyframes notifSlideIn {
-            from { transform: translateY(-100%); }
-            to { transform: translateY(0); }
-          }
+          from { transform: translateY(-12px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
       `}</style>
     </div>
@@ -362,55 +354,58 @@ function ChatGroupItem({
       onClick={() => onClick(group)}
       style={{
         display: 'flex', gap: 12, alignItems: 'flex-start',
-        width: '100%', padding: '12px 16px',
-        background: isAllRead ? '#fff' : '#f0f9ff',
-        border: 'none', borderBottom: '1px solid #f1f5f9',
+        width: '100%', padding: '12px',
+        background: isAllRead ? 'transparent' : 'rgba(26,26,24,0.04)',
+        border: 'none', borderRadius: 10,
         cursor: 'pointer', textAlign: 'left',
+        minHeight: 0,
       }}
       type="button"
     >
       <div style={{
-        flexShrink: 0, width: 38, height: 38, borderRadius: 12,
-        background: meta.bg, color: meta.color,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontWeight: 700, position: 'relative',
+        flexShrink: 0, width: 32, height: 32, borderRadius: 8,
+        background: 'var(--ink)', color: '#fff',
+        display: 'grid', placeItems: 'center',
       }}>
         <NotificationIcon name={meta.icon} />
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          fontSize: 13, fontWeight: 700, color: '#1e293b',
-        }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-            {eventTitle}
-          </span>
-          {participantCount > 0 && (
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flex: 1, minWidth: 0 }}>
+            {group.unreadCount > 0 && (
+              <span style={{ width: 6, height: 6, borderRadius: 99, background: 'var(--status-danger)', flexShrink: 0 }} />
+            )}
             <span style={{
-              flexShrink: 0, fontSize: 11, fontWeight: 600, color: '#64748b',
+              fontSize: 14, fontWeight: 600, color: 'var(--ink)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
+              {eventTitle}
+            </span>
+          </div>
+          {participantCount > 0 && (
+            <span style={{ flexShrink: 0, fontSize: 12, color: 'var(--muted)' }}>
               {participantCount}명
             </span>
           )}
         </div>
         {latestBody && (
-          <p style={{
-            margin: '3px 0 0', fontSize: 12, color: '#64748b',
-            overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box',
-            WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', lineHeight: 1.4,
-          }}>{latestBody}</p>
+          <span style={{
+            fontSize: 12, color: 'var(--muted)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{latestBody}</span>
         )}
-        <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>
+        <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>
           {formatRelativeTime(group.latest.createdAt)}
-        </p>
+        </span>
       </div>
       {group.unreadCount > 0 && (
         <span style={{
           flexShrink: 0, alignSelf: 'center',
-          minWidth: 22, height: 22, padding: '0 7px',
-          borderRadius: 99, background: '#dc2626', color: '#fff',
-          fontSize: 11, fontWeight: 800,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          minWidth: 18, padding: '2px 6px',
+          borderRadius: 99, background: 'var(--status-danger)', color: '#fff',
+          fontSize: 10, fontWeight: 700,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontVariantNumeric: 'tabular-nums',
         }}>
           {group.unreadCount > 99 ? '99+' : group.unreadCount}
         </span>
@@ -426,52 +421,54 @@ function NotificationItem({
   notification: AppNotification
   onClick: (n: AppNotification) => void
 }) {
-  const meta = TYPE_LABEL[n.type] ?? { icon: 'bell' as const, color: '#64748b', bg: '#f3f4f6' }
+  const meta = TYPE_LABEL[n.type] ?? { icon: 'bell' as const, color: 'var(--text)', bg: 'var(--tint)' }
+  const isChat = n.type === 'chat'
 
   return (
     <button
       onClick={() => onClick(n)}
       style={{
         display: 'flex', gap: 12, alignItems: 'flex-start',
-        width: '100%', padding: '12px 16px',
-        background: n.isRead ? '#fff' : '#f0f9ff',
-        border: 'none', borderBottom: '1px solid #f1f5f9',
+        width: '100%', padding: '12px',
+        background: n.isRead ? 'transparent' : 'rgba(26,26,24,0.04)',
+        border: 'none', borderRadius: 10,
         cursor: 'pointer', textAlign: 'left',
+        minHeight: 0,
       }}
       type="button"
     >
       <div style={{
-        flexShrink: 0, width: 34, height: 34, borderRadius: 12,
-        background: meta.bg, color: meta.color,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontWeight: 700,
+        flexShrink: 0, width: 32, height: 32, borderRadius: 8,
+        background: isChat ? 'var(--ink)' : 'var(--tint)',
+        color: isChat ? '#fff' : 'var(--text)',
+        display: 'grid', placeItems: 'center',
       }}>
         <NotificationIcon name={meta.icon} />
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          fontSize: 13, fontWeight: 700, color: '#1e293b',
-        }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           {!n.isRead && (
             <span style={{
-              width: 6, height: 6, borderRadius: 99, background: '#dc2626', flexShrink: 0,
+              width: 6, height: 6, borderRadius: 99, background: 'var(--status-danger)', flexShrink: 0,
             }} />
           )}
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{
+            fontSize: 14, fontWeight: n.isRead ? 500 : 600, color: 'var(--ink)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
             {n.title}
           </span>
         </div>
         {n.body && (
-          <p style={{
-            margin: '3px 0 0', fontSize: 12, color: '#64748b',
+          <span style={{
+            fontSize: 12, color: 'var(--muted)',
             overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box',
             WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.4,
-          }}>{n.body}</p>
+          }}>{n.body}</span>
         )}
-        <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>
+        <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>
           {formatRelativeTime(n.createdAt)}
-        </p>
+        </span>
       </div>
     </button>
   )
