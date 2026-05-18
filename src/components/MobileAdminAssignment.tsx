@@ -243,6 +243,24 @@ export function MobileAdminAssignment({
     showToast(`${card.name} 배정 해제`, 'info')
   }
 
+  // 그룹 전체 해제 (selectedLeader 가 담당하는 카드들만)
+  const unassignWholeGroup = async (group: { key: string; cards: TerritoryCard[] }) => {
+    if (!selectedLeader) return
+    const mine = group.cards.filter((card) => getCardLeaders(card).includes(selectedLeader))
+    if (mine.length === 0) return
+    await Promise.all(
+      mine.map((card) =>
+        Promise.resolve(onSetCardLeaders(card.id, getCardLeaders(card).filter((l) => l !== selectedLeader), { silentSuccess: true }))
+      )
+    )
+    setSessionAssigned((prev) => {
+      const next = new Set(prev)
+      mine.forEach((c) => next.delete(c.id))
+      return next
+    })
+    showToast(`${group.key} ${mine.length}개 해제`, 'info')
+  }
+
   const toggleGroup = (key: string) => {
     setExpandedGroups((prev) => {
       const next = new Set(prev)
@@ -453,6 +471,9 @@ export function MobileAdminAssignment({
               const isRowExpanded = expandedRows.has(g.key)
               const visibleCards = isRowExpanded ? g.cards : g.cards.slice(0, 5)
               const hiddenCount = g.cards.length - visibleCards.length
+              // selectedLeader 가 담당하는 카드 수 (전체 배정/해제 토글용)
+              const mineInGroup = g.cards.filter((c) => getCardLeaders(c).includes(selectedLeader)).length
+              const allMine = mineInGroup === g.cards.length
               return (
                 <div
                   key={g.key}
@@ -491,15 +512,16 @@ export function MobileAdminAssignment({
                     </button>
                     <button
                       type="button"
-                      onClick={() => void assignWholeGroup(g)}
+                      onClick={() => void (allMine ? unassignWholeGroup(g) : assignWholeGroup(g))}
                       style={{
                         height: 28, minHeight: 28, padding: '0 10px',
                         border: 'none', borderRadius: 8,
-                        background: 'var(--tint)', color: 'var(--text)',
+                        background: allMine ? 'var(--status-danger-bg)' : 'var(--tint)',
+                        color: allMine ? 'var(--status-danger)' : 'var(--text)',
                         fontSize: 12, fontWeight: 600, cursor: 'pointer',
                       }}
                     >
-                      전체 배정
+                      {allMine ? '전체 해제' : '전체 배정'}
                     </button>
                   </div>
 
@@ -547,11 +569,7 @@ export function MobileAdminAssignment({
                               ) : isMine ? (
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    if (confirm(`"${card.name}" 배정을 해제할까요?`)) {
-                                      void handleUnassign(card)
-                                    }
-                                  }}
+                                  onClick={() => void handleUnassign(card)}
                                   style={{
                                     height: 26, minHeight: 26,
                                     fontSize: 11.5, fontWeight: 600,
