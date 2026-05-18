@@ -456,6 +456,7 @@ button:focus-visible {
 }
 
 .header-action-panel__empty svg,
+.header-action-panel svg[aria-hidden="true"],
 .header-action-panel [aria-hidden="true"] > svg {
   width: 21px;
   height: 21px;
