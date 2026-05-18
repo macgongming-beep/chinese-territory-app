@@ -6058,6 +6058,48 @@ button:focus-visible {
   color: var(--muted);
 }
 
+.mobile-notice-card > .comment-section--compact .comment-composer {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.mobile-notice-card > .comment-section--compact .comment-composer textarea {
+  flex: 1;
+  min-height: 38px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 400;
+  resize: none;
+}
+
+.mobile-notice-card > .comment-section--compact .comment-composer textarea::placeholder {
+  color: var(--muted-2);
+  font-weight: 400;
+}
+
+.mobile-notice-card > .comment-section--compact .comment-composer > button {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.mobile-notice-card > .comment-section--compact .comment-composer > button:disabled {
+  background: var(--tint);
+  color: var(--muted-2);
+  opacity: 1;
+}
+
 .mobile-notice-priority {
   display: inline-flex;
   align-self: flex-start;

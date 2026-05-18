@@ -281,8 +281,8 @@ export function CommentSection({
           onKeyDown={(event) => {
             if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') void submitComment()
           }}
-          placeholder="댓글을 입력하세요. @이름으로 언급할 수 있습니다."
-          rows={compact ? 2 : 3}
+          placeholder="댓글 입력 · @로 멘션"
+          rows={compact ? 1 : 3}
           value={draft}
         />
         {mentionSuggestions.length > 0 && (

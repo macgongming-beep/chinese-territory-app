@@ -1413,6 +1413,7 @@ export function MobileHome({
               <>
                 <AppHeader
                   pageTitle={t(language, 'settings.notice')}
+                  subtitle={`${notices.length}개 · 관리자 작성`}
                   showBack
                   onBack={() => navigate('/settings')}
                   userId={currentUser.id}
