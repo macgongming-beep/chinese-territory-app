@@ -1761,7 +1761,6 @@ export function MobileHome({
                       </button>
                     ))}
                   </div>
-                  <span className="mobile-settings-help">{t(language, 'settings.languageHelp')}</span>
                 </section>
 
                 <section className="mobile-settings-menu" aria-label="관리 메뉴">
