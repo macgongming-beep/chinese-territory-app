@@ -2,6 +2,15 @@
 
 다음 라운드에 잊지 않게 모아두는 목록.
 
+## 알림 클릭 동선
+
+- [x] event_change 알림 → 일정 상세 시트 (openEvent)
+- [ ] assignment / service_started / service_ended 알림 → 현재 /territory
+  로만 보내고 있음. leader/user 활동 화면이 새 디자인으로 리뉴얼되면:
+  - assignment → /territory#assignments 같은 anchor 로 deep-link
+  - service_started/ended → 그 봉사 세션 카드로 스크롤
+  - 또는 토스트만 띄우고 navigate 안 할 수도
+
 ## 캘린더 (Phase 3c)
 
 - [ ] **시간 범위 (시작~종료)** — DB `calendar_events.end_time` 컬럼 추가 + 타입/transform/UI 업데이트

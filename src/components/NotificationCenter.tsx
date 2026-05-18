@@ -22,6 +22,22 @@ function extractEventIdFromLink(link: string | null): number | null {
   return m ? Number(m[1]) : null
 }
 
+// 알림 타입별 클릭 동선 결정
+// - event_change: 일정 상세 시트 (openEvent)
+// - assignment / service_started / service_ended: 활동 (/territory)
+//   ⚠️ leader/user 화면 리디자인 후 더 정확한 위치로 deep-link 예정
+// - chat / mention / comment / notice: 기본 link 그대로 (normalizeAppLink)
+function resolveNotificationLink(n: AppNotification): string | null {
+  if (n.type === 'event_change') {
+    const eventId = n.relatedId ?? extractEventIdFromLink(n.link)
+    return eventId ? `/calendar?openEvent=${eventId}` : normalizeAppLink(n.link)
+  }
+  if (n.type === 'assignment' || n.type === 'service_started' || n.type === 'service_ended') {
+    return '/territory'
+  }
+  return normalizeAppLink(n.link)
+}
+
 type ChatGroup = {
   eventId: number
   notifications: AppNotification[]
@@ -185,7 +201,7 @@ export function NotificationCenter({
   async function handleClickItem(n: AppNotification) {
     if (!n.isRead) await markRead(n.id)
     onClose()
-    const targetLink = normalizeAppLink(n.link)
+    const targetLink = resolveNotificationLink(n)
     if (targetLink) {
       navigate(targetLink)
     }
