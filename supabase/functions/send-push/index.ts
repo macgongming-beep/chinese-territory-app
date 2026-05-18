@@ -107,9 +107,41 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: 'Failed to query subscriptions', detail: dbError.message }, 500)
   }
 
-  const subs: PushSubscriptionRow[] = subscriptions ?? []
-  if (subs.length === 0) {
+  const allSubs: PushSubscriptionRow[] = subscriptions ?? []
+  if (allSubs.length === 0) {
     return jsonResponse({ ok: true, sent: 0, message: 'No subscriptions for recipients' })
+  }
+
+  // 5b. 방해금지 시간 필터 — quiet_hours 안의 사용자는 발송 제외
+  // KST(UTC+9) 기준 HH:MM 비교. start <= end (same day) 또는 start > end (자정 넘김)
+  const { data: prefsRows } = await supabase
+    .from('user_notification_prefs')
+    .select('user_id, quiet_hours_start, quiet_hours_end')
+    .in('user_id', payload.recipient_ids)
+  const prefsByUser = new Map<number, { start: string | null; end: string | null }>()
+  for (const row of prefsRows ?? []) {
+    prefsByUser.set(row.user_id, { start: row.quiet_hours_start, end: row.quiet_hours_end })
+  }
+  function toMinutes(hhmm: string): number {
+    const [h, m] = hhmm.slice(0, 5).split(':').map(Number)
+    return h * 60 + m
+  }
+  function isInQuietHours(start: string | null, end: string | null): boolean {
+    if (!start || !end) return false
+    const now = new Date()
+    const kstMin = ((now.getUTCHours() + 9) % 24) * 60 + now.getUTCMinutes()
+    const s = toMinutes(start)
+    const e = toMinutes(end)
+    if (s === e) return false
+    return s < e ? (kstMin >= s && kstMin < e) : (kstMin >= s || kstMin < e)
+  }
+  const subs = allSubs.filter((s) => {
+    const pref = prefsByUser.get(s.user_id)
+    return !pref || !isInQuietHours(pref.start, pref.end)
+  })
+  const filteredOut = allSubs.length - subs.length
+  if (subs.length === 0) {
+    return jsonResponse({ ok: true, sent: 0, skipped_quiet: filteredOut, message: 'All recipients in quiet hours' })
   }
 
   // 6. 알림 페이로드 (Service Worker가 수신)

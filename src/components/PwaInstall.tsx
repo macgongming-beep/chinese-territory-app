@@ -147,7 +147,7 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
         position: 'fixed',
         inset: 0,
         zIndex: 2000,
-        background: 'rgba(15,23,42,0.55)',
+        background: 'rgba(26,26,24,0.34)',
         display: 'flex',
         alignItems: 'flex-end',
         justifyContent: 'center',
@@ -158,22 +158,27 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
         style={{
           width: '100%',
           maxWidth: 480,
-          background: '#fff',
-          borderRadius: '20px 20px 0 0',
-          padding: '24px 20px 32px',
+          background: 'var(--bg)',
+          borderRadius: '18px 18px 0 0',
+          padding: '8px 16px max(20px, env(safe-area-inset-bottom))',
           maxHeight: '85vh',
           overflowY: 'auto',
           animation: 'pwaModalSlideUp 0.3s ease-out',
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        <div style={{ width: 32, height: 4, borderRadius: 99, background: 'var(--line-2)', margin: '4px auto 14px' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#111827' }}>
-            앱 설치 안내
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.015em' }}>
+            홈 화면에 설치
           </h2>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8', padding: 4 }}
+            style={{
+              width: 36, height: 36, minHeight: 36,
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text)', fontSize: 20,
+            }}
             type="button"
             aria-label="닫기"
           >
@@ -182,13 +187,19 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {(ios || showBoth) && (
-          <section style={{ marginBottom: showBoth ? 24 : 16 }}>
-            <h3 style={{ margin: '0 0 10px', fontSize: 15, fontWeight: 800, color: '#111827' }}>
+          <section style={{
+            marginBottom: showBoth ? 12 : 12,
+            padding: '14px 16px',
+            background: 'var(--surface)',
+            border: '1px solid var(--line)',
+            borderRadius: 12,
+          }}>
+            <h3 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
               iPhone Safari
             </h3>
-            <ol style={{ margin: 0, paddingLeft: 20, color: '#475569', fontSize: 14, lineHeight: 1.7 }}>
+            <ol style={{ margin: 0, paddingLeft: 20, color: 'var(--text)', fontSize: 14, lineHeight: 1.7 }}>
               <li>하단 가운데 <b>공유 버튼</b> 탭<br/>
-                <span style={{ color: '#94a3b8', fontSize: 12 }}>(네모에 위로 화살표 ↑)</span>
+                <span style={{ color: 'var(--muted)', fontSize: 12 }}>(네모에 위로 화살표 ↑)</span>
               </li>
               <li>스크롤 → <b>"홈 화면에 추가"</b> 선택</li>
               <li>우상단 <b>"추가"</b> 탭</li>
@@ -197,11 +208,17 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
         )}
 
         {(android || showBoth) && (
-          <section style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: '0 0 10px', fontSize: 15, fontWeight: 800, color: '#111827' }}>
+          <section style={{
+            marginBottom: 12,
+            padding: '14px 16px',
+            background: 'var(--surface)',
+            border: '1px solid var(--line)',
+            borderRadius: 12,
+          }}>
+            <h3 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
               Android Chrome
             </h3>
-            <ol style={{ margin: 0, paddingLeft: 20, color: '#475569', fontSize: 14, lineHeight: 1.7 }}>
+            <ol style={{ margin: 0, paddingLeft: 20, color: 'var(--text)', fontSize: 14, lineHeight: 1.7 }}>
               <li>우상단 <b>⋮</b> 메뉴 탭</li>
               <li><b>"홈 화면에 추가"</b> 또는 <b>"앱 설치"</b> 선택</li>
               <li><b>"설치"</b> 탭</li>
@@ -209,9 +226,9 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
           </section>
         )}
 
-        <div style={{ background: '#f8fafc', border: '1px solid #eef1f5', borderRadius: 12, padding: 14, marginTop: 8 }}>
-          <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: '#111827' }}>설치하면</p>
-          <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#475569', lineHeight: 1.7 }}>
+        <div style={{ background: 'var(--paper)', borderRadius: 10, padding: '12px 14px', marginTop: 4 }}>
+          <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>설치하면</p>
+          <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12.5, color: 'var(--text)', lineHeight: 1.6 }}>
             <li>봉사 알림 받기</li>
             <li>빠른 접근 (앱 아이콘)</li>
             <li>자동 로그인 유지</li>
@@ -223,15 +240,17 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           style={{
             width: '100%',
-            marginTop: 20,
-            padding: '12px 0',
-            borderRadius: 10,
+            marginTop: 16,
+            height: 48,
+            minHeight: 48,
+            borderRadius: 8,
             border: 'none',
-            background: '#1d4ed8',
+            background: 'var(--ink)',
             color: '#fff',
-            fontSize: 14,
-            fontWeight: 800,
+            fontSize: 15,
+            fontWeight: 600,
             cursor: 'pointer',
+            letterSpacing: '-0.005em',
           }}
           type="button"
         >
@@ -304,114 +323,80 @@ export function PwaInstallSection() {
     }
   }
 
+  const pushOn = isPushSupported() && subscribed
+  const installSub = installed ? '홈 화면 앱으로 사용 중' : '알림을 받으려면 PWA 설치 필요'
+  const pushSub =
+    !isPushSupported() ? '기기에서 푸시 알림 미지원'
+    : notifPermission === 'denied' ? '브라우저 설정에서 허용 필요'
+    : pushOn ? '이 기기 알림 켜짐'
+    : '이 기기 알림 꺼짐'
+
   return (
     <>
-      <div style={{ background: '#fff', borderRadius: 18, padding: 18, border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(16,24,40,0.04)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-          <span style={{
-            display: 'grid', width: 38, height: 38, placeItems: 'center',
-            borderRadius: 12, background: '#f3f4f6', color: '#4b5563',
-          }}>
-            <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 20, height: 20, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }}>
-              <rect x="7" y="3" width="10" height="18" rx="2" />
-              <path d="M11 18h2" />
-            </svg>
-          </span>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111827', lineHeight: 1.25 }}>
-              앱 설치
-            </h3>
-            <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 700, color: '#6b7280' }}>
-              홈 화면에서 빠르게 실행
-            </p>
-          </div>
-        </div>
+      {/* ── 이 기기 섹션 헤더 ──────────────── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0 4px', marginBottom: 10 }}>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>이 기기</h2>
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderBottom: '1px solid #eef1f5' }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#111827' }}>설치 상태</p>
-            <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 700, color: '#6b7280' }}>
-              {installed ? '홈 화면 앱으로 사용 중' : '브라우저로 사용 중'}
-            </p>
+      {/* ── 홈 화면에 설치 카드 ───────────── */}
+      <div style={{
+        padding: '12px 16px', marginBottom: 8,
+        background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>홈 화면에 설치</span>
+            <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{installSub}</span>
           </div>
-          <span style={{
-            flexShrink: 0, padding: '5px 9px', borderRadius: 999,
-            background: installed ? '#ecfdf5' : '#f3f4f6',
-            color: installed ? '#047857' : '#6b7280',
-            fontSize: 12, fontWeight: 800,
-          }}>
-            {installed ? '설치됨' : '미설치'}
-          </span>
-          {!installed && (
+          {installed ? (
+            <span style={{
+              flexShrink: 0, padding: '3px 9px', borderRadius: 999,
+              background: 'var(--status-ok-bg)', color: 'var(--status-ok)',
+              fontSize: 11.5, fontWeight: 600,
+            }}>
+              설치됨
+            </span>
+          ) : (
             <button
               onClick={() => setShowModal(true)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: 10,
-                border: '1px solid #c7d7fe',
-                background: '#eff4fe',
-                color: '#1d4ed8',
-                fontSize: 13,
-                fontWeight: 800,
-                cursor: 'pointer',
-              }}
               type="button"
+              style={{
+                height: 32, minHeight: 32, padding: '0 12px',
+                border: '1px solid var(--line-2)', borderRadius: 8,
+                background: 'var(--surface)', color: 'var(--text)',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
             >
-              설치 안내
+              안내
             </button>
           )}
         </div>
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderBottom: '1px solid #eef1f5' }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#111827' }}>알림 권한</p>
-            <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 700, color: '#6b7280' }}>
-              {notifPermission === 'granted' && '브라우저 알림 허용됨'}
-              {notifPermission === 'denied' && '브라우저 설정에서 허용 필요'}
-              {notifPermission === 'default' && '아직 권한을 요청하지 않음'}
-              {notifPermission === 'unsupported' && '이 브라우저는 알림 미지원'}
-            </p>
-          </div>
-          <span style={{
-            flexShrink: 0, padding: '5px 9px', borderRadius: 999,
-            background: notifPermission === 'granted' ? '#ecfdf5' : notifPermission === 'denied' ? '#fef2f2' : '#f3f4f6',
-            color: notifPermission === 'granted' ? '#047857' : notifPermission === 'denied' ? '#dc2626' : '#6b7280',
-            fontSize: 12, fontWeight: 800,
-          }}>
-            {notifPermission === 'granted' && '허용'}
-            {notifPermission === 'denied' && '거부'}
-            {notifPermission === 'default' && '미설정'}
-            {notifPermission === 'unsupported' && '미지원'}
-          </span>
-        </div>
-
-        {/* 푸시 알림 구독 토글 */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '11px 0 0' }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#111827' }}>이 기기 푸시 알림</p>
-            <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 700, color: '#6b7280' }}>
-              {!isPushSupported() && '기기에서 푸시 알림 미지원'}
-              {isPushSupported() && subscribed && '새 알림을 이 기기로 받는 중'}
-              {isPushSupported() && !subscribed && '이 기기 알림 꺼짐'}
-            </p>
+      {/* ── 푸시 알림 카드 ───────────────── */}
+      <div style={{
+        padding: '12px 16px', marginBottom: 8,
+        background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>푸시 알림</span>
+            <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{pushSub}</span>
           </div>
           {isPushSupported() && user && notifPermission !== 'denied' && (
-            subscribed ? (
+            pushOn ? (
               <button
                 onClick={handleDisablePush}
                 disabled={busy}
+                type="button"
                 style={{
-                  padding: '8px 12px',
-                  borderRadius: 10,
-                  border: '1px solid #d8dbe0',
-                  background: '#fff',
-                  color: '#4b5563',
-                  fontSize: 13,
-                  fontWeight: 800,
-                  cursor: busy ? 'not-allowed' : 'pointer',
+                  height: 32, minHeight: 32, padding: '0 12px',
+                  border: '1px solid var(--line-2)', borderRadius: 8,
+                  background: 'var(--surface)', color: 'var(--text)',
+                  fontSize: 13, fontWeight: 600,
+                  cursor: busy ? 'wait' : 'pointer',
                   opacity: busy ? 0.6 : 1,
                 }}
-                type="button"
               >
                 {busy ? '...' : '끄기'}
               </button>
@@ -419,53 +404,51 @@ export function PwaInstallSection() {
               <button
                 onClick={handleEnablePush}
                 disabled={busy}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 10,
-                  border: '1px solid #1d4ed8',
-                  background: '#1d4ed8',
-                  color: '#fff',
-                  fontSize: 13,
-                  fontWeight: 800,
-                  cursor: busy ? 'not-allowed' : 'pointer',
-                  opacity: busy ? 0.6 : 1,
-                }}
                 type="button"
+                style={{
+                  height: 32, minHeight: 32, padding: '0 12px',
+                  border: 'none', borderRadius: 8,
+                  background: busy ? 'var(--tint)' : 'var(--ink)',
+                  color: busy ? 'var(--muted-2)' : '#fff',
+                  fontSize: 13, fontWeight: 600,
+                  cursor: busy ? 'wait' : 'pointer',
+                  letterSpacing: '-0.005em',
+                }}
               >
                 {busy ? '...' : '켜기'}
               </button>
             )
           )}
           {notifPermission === 'denied' && (
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#dc2626' }}>설정 필요</span>
+            <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--status-danger)' }}>설정 필요</span>
           )}
         </div>
-
-        {!installed && isIOS() && (
-          <div style={{ margin: '14px 0 0', padding: '12px 14px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 12 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#92400e' }}>
-              iPhone 은 푸시 알림 받으려면 필수
-            </p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#78350f', lineHeight: 1.5, fontWeight: 600 }}>
-              Safari 탭에서는 알림이 안 옵니다.<br />
-              위 <strong>설치 안내</strong> 따라 홈 화면에 추가 → 추가된 앱을 열어야 알림 권한을 켤 수 있어요.
-            </p>
-            <p style={{ margin: '6px 0 0', fontSize: 11, color: '#a16207' }}>
-              iOS 16.4 이상에서 동작
-            </p>
-          </div>
-        )}
-        {!installed && !isIOS() && (
-          <p style={{ margin: '14px 0 0', padding: '10px 12px', background: '#eff4fe', borderRadius: 12, fontSize: 12, fontWeight: 700, color: '#1d4ed8', lineHeight: 1.5 }}>
-            홈 화면에 추가하면 봉사 알림, 빠른 접근, 자동 로그인 유지가 더 편해집니다.
-          </p>
-        )}
-        {installed && isIOS() && notifPermission === 'default' && (
-          <p style={{ margin: '14px 0 0', padding: '10px 12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, fontSize: 12, fontWeight: 700, color: '#047857', lineHeight: 1.5 }}>
-            설치 완료! 위 <strong>"이 기기 푸시 알림" → 켜기</strong> 버튼으로 알림을 허용해 주세요.
-          </p>
-        )}
       </div>
+
+      {/* ── iOS / 미설치 안내 (보조) ─────── */}
+      {!installed && isIOS() && (
+        <div style={{
+          margin: '6px 0 0', padding: '12px 14px',
+          background: 'var(--status-warn-bg)', border: '1px solid var(--status-warn)',
+          borderRadius: 10,
+        }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--status-warn)' }}>
+            iPhone 은 푸시 알림 받으려면 설치 필요
+          </p>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>
+            위 <strong>안내</strong> 누르고 홈 화면에 추가 → 추가된 앱을 열어야 알림이 켜집니다.
+          </p>
+        </div>
+      )}
+      {installed && isIOS() && notifPermission === 'default' && (
+        <p style={{
+          margin: '6px 0 0', padding: '10px 12px',
+          background: 'var(--status-ok-bg)', border: '1px solid var(--status-ok)',
+          borderRadius: 10, fontSize: 12, fontWeight: 500, color: 'var(--status-ok)', lineHeight: 1.5,
+        }}>
+          설치 완료! <strong>푸시 알림 → 켜기</strong> 로 알림 허용해 주세요.
+        </p>
+      )}
 
       {showModal && <PwaInstallModal onClose={() => setShowModal(false)} />}
     </>
