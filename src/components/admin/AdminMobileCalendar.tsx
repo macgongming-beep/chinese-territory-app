@@ -1143,6 +1143,7 @@ function TextInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       style={{
+        display: 'block',
         background: subtle ? 'var(--bg)' : 'var(--surface)',
         border: subtle ? '1px solid transparent' : '1px solid var(--line)',
         borderRadius: 10,
@@ -1152,10 +1153,15 @@ function TextInput({
         font: 'inherit',
         outline: 'none',
         width: '100%',
+        maxWidth: '100%',
         minWidth: 0,
         minHeight: 42,
         boxSizing: 'border-box',
         accentColor: 'var(--ink)',
+        // iOS Safari: date/time 인풋이 콘텐츠 폭에 맞춰지지 않는 문제 방지
+        WebkitAppearance: type === 'date' || type === 'time' ? 'none' : undefined,
+        appearance: type === 'date' || type === 'time' ? 'none' : undefined,
+        textAlign: type === 'date' || type === 'time' ? 'left' : undefined,
       }}
     />
   )
@@ -1283,61 +1289,70 @@ function TimePresetEditor({
         <div
           key={`${index}-${preset.time}`}
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) auto',
+            display: 'flex',
+            flexDirection: 'column',
             gap: 5,
-            alignItems: 'center',
             minWidth: 0,
           }}
         >
-          <MiniInput
-            ariaLabel="시간 라벨"
-            value={preset.label}
-            onChange={(value) => updatePreset(index, { label: value })}
-            placeholder="라벨"
-          />
-          <MiniInput
-            ariaLabel="시작 시간"
-            type="time"
-            value={preset.time}
-            onChange={(value) => updatePreset(index, { time: value })}
-          />
-          <MiniInput
-            ariaLabel="소요 시간"
-            type="number"
-            value={String(preset.durationMinutes)}
-            onChange={(value) => updatePreset(index, { durationMinutes: Number(value) || 120 })}
-            suffix="분"
-          />
-          <button
-            type="button"
-            disabled={presets.length <= 1}
-            onClick={() => removePreset(index)}
+          <div
             style={{
-              width: 30,
-              height: 28,
-              minHeight: 28,
-              border: 'none',
-              borderRadius: 8,
-              background: 'transparent',
-              color: presets.length <= 1 ? 'var(--muted-2)' : 'var(--status-danger)',
-              cursor: presets.length <= 1 ? 'not-allowed' : 'pointer',
-              fontSize: 18,
-              lineHeight: 1,
-              padding: 0,
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.7fr) 24px',
+              gap: 5,
+              alignItems: 'center',
+              minWidth: 0,
             }}
-            aria-label="빠른 시간 삭제"
           >
-            ×
-          </button>
-          <div style={{ gridColumn: '1 / -1' }}>
             <MiniInput
-              ariaLabel="기본 제목"
-              value={preset.title}
-              onChange={(value) => updatePreset(index, { title: value })}
-              placeholder="기본 제목"
+              ariaLabel="시간 라벨"
+              value={preset.label}
+              onChange={(value) => updatePreset(index, { label: value })}
+              placeholder="라벨"
             />
+            <MiniInput
+              ariaLabel="시작 시간"
+              type="time"
+              value={preset.time}
+              onChange={(value) => updatePreset(index, { time: value })}
+            />
+            <MiniInput
+              ariaLabel="소요 시간"
+              type="number"
+              value={String(preset.durationMinutes)}
+              onChange={(value) => updatePreset(index, { durationMinutes: Number(value) || 120 })}
+              suffix="분"
+            />
+            <button
+              type="button"
+              disabled={presets.length <= 1}
+              onClick={() => removePreset(index)}
+              style={{
+                width: 24,
+                height: 24,
+                minHeight: 24,
+                border: 'none',
+                borderRadius: 6,
+                background: 'transparent',
+                color: presets.length <= 1 ? 'var(--muted-2)' : 'var(--status-danger)',
+                cursor: presets.length <= 1 ? 'not-allowed' : 'pointer',
+                fontSize: 16,
+                lineHeight: 1,
+                padding: 0,
+                display: 'grid',
+                placeItems: 'center',
+              }}
+              aria-label="빠른 시간 삭제"
+            >
+              ×
+            </button>
           </div>
+          <MiniInput
+            ariaLabel="기본 제목"
+            value={preset.title}
+            onChange={(value) => updatePreset(index, { title: value })}
+            placeholder="기본 제목"
+          />
         </div>
       ))}
 
@@ -1387,8 +1402,10 @@ function MiniInput({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         style={{
+          display: 'block',
           minWidth: 0,
           width: '100%',
+          maxWidth: '100%',
           border: 'none',
           background: 'transparent',
           color: 'var(--ink)',
@@ -1397,7 +1414,10 @@ function MiniInput({
           fontWeight: 650,
           outline: 'none',
           padding: 0,
+          boxSizing: 'border-box',
           accentColor: 'var(--ink)',
+          WebkitAppearance: type === 'time' ? 'none' : undefined,
+          appearance: type === 'time' ? 'none' : undefined,
         }}
       />
       {suffix && <span style={{ flex: '0 0 auto', color: 'var(--muted)', fontSize: 11, fontWeight: 700 }}>{suffix}</span>}
@@ -1479,19 +1499,19 @@ function SettingToggle({
         justifyContent: 'space-between',
         gap: 12,
         width: '100%',
-        minHeight: compact ? 44 : 58,
-        padding: compact ? 0 : '11px 12px',
-        border: '1px solid var(--line)',
-        borderRadius: 12,
+        minHeight: compact ? 0 : 58,
+        padding: compact ? '2px 0' : '11px 12px',
+        border: compact ? 'none' : '1px solid var(--line)',
+        borderRadius: compact ? 0 : 12,
         background: compact ? 'transparent' : 'var(--surface)',
         color: 'var(--text)',
         textAlign: 'left',
         cursor: 'pointer',
       }}
     >
-      <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-        <strong style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{label}</strong>
-        <small style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.25 }}>{description}</small>
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+        <strong style={{ fontSize: compact ? 13 : 14, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.005em' }}>{label}</strong>
+        <small style={{ fontSize: compact ? 11.5 : 12, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.3 }}>{description}</small>
       </span>
       <span
         aria-hidden
