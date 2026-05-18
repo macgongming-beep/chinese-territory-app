@@ -1953,23 +1953,24 @@ button:focus-visible {
   font-weight: 800;
 }
 
+/* design_handoff 09 — settings */
 .mobile-settings-profile,
 .mobile-settings-menu,
 .mobile-settings-logout {
-  border: 1px solid #e4e9f0;
-  border-radius: 18px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
 }
 
 .mobile-settings-profile {
   display: flex;
   align-items: center;
   width: 100%;
-  gap: 14px;
-  min-height: 88px;
-  padding: 16px 18px;
-  margin-bottom: 18px;
+  gap: 12px;
+  min-height: 0;
+  padding: 14px 16px;
+  margin-bottom: 16px;
   color: inherit;
   text-align: left;
 }
@@ -1977,14 +1978,14 @@ button:focus-visible {
 .mobile-settings-avatar {
   display: grid;
   flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border-radius: 50%;
-  background: #0f172a;
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 800;
+  background: var(--ink);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .mobile-settings-profile-text,
@@ -1995,28 +1996,29 @@ button:focus-visible {
 
 .mobile-settings-profile-text {
   flex: 1;
-  gap: 4px;
+  gap: 2px;
 }
 
 .mobile-settings-profile-text strong {
-  color: var(--ink-900);
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 1.25;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .mobile-settings-profile-text span,
 .mobile-settings-row-text small {
-  color: #7b8492;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.35;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .mobile-settings-chevron {
   flex: 0 0 auto;
-  color: #7b8492;
-  font-size: 28px;
+  color: var(--muted-2);
+  font-size: 22px;
   font-weight: 300;
   line-height: 1;
 }
@@ -2026,70 +2028,74 @@ button:focus-visible {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  min-width: 24px;
-  height: 24px;
+  min-width: 22px;
+  height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  background: var(--primary-500);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 800;
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+  font-size: 11.5px;
+  font-weight: 600;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .mobile-settings-switch {
   display: grid;
   gap: 8px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .mobile-settings-switch p {
   margin: 0 4px;
-  color: #7b8492;
-  font-size: 13px;
-  font-weight: 700;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .mobile-role-grid,
 .mobile-language-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  padding: 4px;
-  border-radius: 13px;
-  background: #f1f3f6;
+  gap: 0;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--tint);
 }
 
 .mobile-role-grid button,
 .mobile-language-grid button {
   display: grid;
-  min-height: 44px;
+  min-height: 38px;
   place-items: center;
   border: 0;
-  border-radius: 10px;
+  border-radius: 7px;
   background: transparent;
-  color: #7b8492;
+  color: var(--muted);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
+  letter-spacing: -0.005em;
 }
 
 .mobile-role-grid button.active,
 .mobile-language-grid button.active {
-  background: #ffffff;
-  color: var(--ink-900);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .mobile-settings-help {
   margin: -2px 4px 0;
-  color: #9aa4b2;
+  color: var(--muted-2);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .mobile-settings-menu {
   overflow: hidden;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .mobile-settings-menu button,
@@ -2097,17 +2103,17 @@ button:focus-visible {
   display: flex;
   align-items: center;
   width: 100%;
-  gap: 14px;
+  gap: 12px;
   border: 0;
-  color: var(--ink-900);
+  color: var(--ink);
   text-align: left;
 }
 
 .mobile-settings-menu button {
-  min-height: 72px;
-  padding: 14px 18px;
-  border-bottom: 1px solid #eef1f5;
-  background: #ffffff;
+  min-height: 0;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
 }
 
 .mobile-settings-menu button:last-child {
@@ -2117,18 +2123,18 @@ button:focus-visible {
 .mobile-settings-icon {
   display: grid;
   flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 9px;
 }
 
 .mobile-settings-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2;
+  stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -2138,50 +2144,53 @@ button:focus-visible {
 }
 
 .mobile-settings-icon-neutral {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--tint);
+  color: var(--text);
 }
 
 .mobile-settings-icon-season {
-  background: #fff7d6;
-  color: #d97706;
+  background: var(--tint);
+  color: var(--text);
 }
 
 .mobile-settings-icon-danger {
-  background: #fff1f1;
-  color: #ef4444;
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
 }
 
 .mobile-settings-row-text {
   flex: 1;
-  gap: 3px;
+  gap: 2px;
 }
 
 .mobile-settings-row-text strong {
-  color: var(--ink-900);
+  color: var(--ink);
   font-size: 15px;
-  font-weight: 800;
-  line-height: 1.25;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .mobile-settings-logout {
-  min-height: 68px;
-  padding: 14px 18px;
-  margin-bottom: 56px;
+  min-height: 0;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  background: var(--surface);
 }
 
 .mobile-settings-logout strong {
-  color: #ef4444;
-  font-size: 15px;
-  font-weight: 800;
+  color: var(--status-danger);
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .mobile-settings-version {
   margin: 0;
-  color: #c3cad4;
+  color: var(--muted-2);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   text-align: center;
+  letter-spacing: 0;
 }
 
 .mobile-signup-requests-page {

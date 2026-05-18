@@ -1710,6 +1710,7 @@ export function MobileHome({
               <div className="mobile-settings-page">
                 <AppHeader
                   pageTitle={t(language, 'settings.title')}
+                  subtitle={`${currentVisitor} · ${roleLabel}`}
                   userId={currentUser.id}
                   userName={currentVisitor}
                   role={role}
