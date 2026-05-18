@@ -123,16 +123,16 @@ export function MobileNotices({
           </span>
           <h3 className="mobile-notice-title">{notice.title}</h3>
           <p className="mobile-notice-content">{notice.content}</p>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
             <span className="mobile-notice-meta">{notice.author} · {notice.createdAt.slice(0, 10)}</span>
             {isAdmin && (
               <button
                 onClick={() => { if (confirm('공지를 삭제할까요?')) onDeleteNotice(notice.id) }}
                 style={{
-                  height: 28, minHeight: 28, padding: '0 10px',
-                  borderRadius: 8, border: '1px solid var(--line-2)',
-                  background: 'var(--surface)', color: 'var(--muted)',
-                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  height: 26, minHeight: 26, padding: '0 10px',
+                  borderRadius: 8, border: 'none',
+                  background: 'transparent', color: 'var(--muted)',
+                  fontSize: 12, fontWeight: 500, cursor: 'pointer',
                 }}
                 type="button"
               >
