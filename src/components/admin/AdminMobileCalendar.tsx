@@ -18,10 +18,19 @@ import type { MentionUser } from '../CommentSection'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const WEEKDAY_LABELS = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
-const TIME_PRESETS = [
-  { label: '오전', time: '10:00', title: '오전 방문' },
-  { label: '오후', time: '13:00', title: '오후 방문' },
-  { label: '저녁', time: '19:00', title: '저녁 방문' },
+const TIME_PRESET_STORAGE_KEY = 'chs-admin-calendar-time-presets-v1'
+const TIME_PRESETS_MAX = 5
+type TimePreset = {
+  label: string
+  time: string
+  durationMinutes: number
+  title: string
+}
+const DEFAULT_TIME_PRESETS: TimePreset[] = [
+  { label: '오전', time: '10:00', durationMinutes: 120, title: '오전 방문' },
+  { label: '오후', time: '13:00', durationMinutes: 120, title: '오후 방문' },
+  { label: '늦은 오후', time: '15:00', durationMinutes: 120, title: '오후 방문' },
+  { label: '저녁', time: '19:00', durationMinutes: 120, title: '저녁 방문' },
 ]
 
 type EventInput = {
@@ -61,6 +70,50 @@ function toDateStr(year: number, month: number, day: number) {
 function formatTimeRange(start?: string, end?: string): string {
   if (!start) return ''
   return end ? `${start} — ${end}` : start
+}
+
+function addMinutesToTime(time: string, minutes: number) {
+  const match = time.match(/^(\d{2}):(\d{2})$/)
+  if (!match) return ''
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return ''
+  const total = (hour * 60 + minute + minutes) % (24 * 60)
+  return `${pad2(Math.floor(total / 60))}:${pad2(total % 60)}`
+}
+
+function normalizeTimePresets(input: unknown): TimePreset[] {
+  if (!Array.isArray(input)) return DEFAULT_TIME_PRESETS
+  const normalized = input
+    .slice(0, TIME_PRESETS_MAX)
+    .map((item) => {
+      const row = item as Partial<TimePreset>
+      const time = typeof row.time === 'string' && /^\d{2}:\d{2}$/.test(row.time) ? row.time : ''
+      if (!time) return null
+      const duration = Number(row.durationMinutes)
+      return {
+        label: typeof row.label === 'string' && row.label.trim() ? row.label.trim().slice(0, 8) : '봉사',
+        time,
+        durationMinutes: Number.isFinite(duration) && duration > 0 ? Math.min(480, Math.max(15, Math.round(duration))) : 120,
+        title: typeof row.title === 'string' && row.title.trim() ? row.title.trim().slice(0, 20) : '방문',
+      }
+    })
+    .filter((item): item is TimePreset => Boolean(item))
+  return normalized.length > 0 ? normalized : DEFAULT_TIME_PRESETS
+}
+
+function loadTimePresets(): TimePreset[] {
+  if (typeof window === 'undefined') return DEFAULT_TIME_PRESETS
+  try {
+    return normalizeTimePresets(JSON.parse(window.localStorage.getItem(TIME_PRESET_STORAGE_KEY) ?? 'null'))
+  } catch {
+    return DEFAULT_TIME_PRESETS
+  }
+}
+
+function saveTimePresets(presets: TimePreset[]) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(TIME_PRESET_STORAGE_KEY, JSON.stringify(normalizeTimePresets(presets)))
 }
 
 function buildCalendarDays(year: number, month: number): (number | null)[] {
@@ -603,13 +656,22 @@ function EventAddSheet({
   const [leader, setLeader] = useState(editingEvent?.leader ?? '')
   const [hasMeeting, setHasMeeting] = useState(editingEvent?.hasMeeting ?? false)
   const [allowApplications, setAllowApplications] = useState(editingEvent?.allowApplications ?? true)
+  const [timePresets, setTimePresets] = useState<TimePreset[]>(loadTimePresets)
+  const [timeSettingsOpen, setTimeSettingsOpen] = useState(false)
   const canSubmit = title.trim().length > 0
   const isEditing = !!editingEvent
-  const selectedPreset = TIME_PRESETS.find((preset) => preset.time === time)?.label ?? ''
+  const selectedPreset = timePresets.find((preset) => preset.time === time)?.label ?? ''
 
-  const applyTimePreset = (preset: (typeof TIME_PRESETS)[number]) => {
+  const updateTimePresets = (next: TimePreset[]) => {
+    const normalized = normalizeTimePresets(next)
+    setTimePresets(normalized)
+    saveTimePresets(normalized)
+  }
+
+  const applyTimePreset = (preset: TimePreset) => {
     setTime(preset.time)
-    if (!title.trim() || TIME_PRESETS.some((item) => item.title === title)) {
+    setEndTime(addMinutesToTime(preset.time, preset.durationMinutes))
+    if (!title.trim() || timePresets.some((item) => item.title === title)) {
       setTitle(preset.title)
     }
   }
@@ -703,32 +765,57 @@ function EventAddSheet({
             >
               <TextInput type="date" value={date} onChange={setDate} subtle />
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-                {TIME_PRESETS.map((preset) => {
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>자주 쓰는 시간</span>
+                <button
+                  type="button"
+                  onClick={() => setTimeSettingsOpen((value) => !value)}
+                  style={{
+                    minHeight: 0,
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'var(--text)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: '4px 2px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {timeSettingsOpen ? '설정 닫기' : '시간 설정'}
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
+                {timePresets.map((preset) => {
                   const active = selectedPreset === preset.label
                   return (
                     <button
-                      key={preset.label}
+                      key={`${preset.label}-${preset.time}`}
                       type="button"
                       onClick={() => applyTimePreset(preset)}
                       style={{
-                        height: 36,
-                        minHeight: 36,
+                        minHeight: 46,
                         border: active ? '1px solid var(--ink)' : '1px solid var(--line)',
                         borderRadius: 10,
                         background: active ? 'var(--ink)' : 'var(--bg)',
                         color: active ? '#fff' : 'var(--text)',
-                        fontSize: 13,
-                        fontWeight: 650,
                         cursor: 'pointer',
-                        padding: 0,
+                        padding: '7px 9px',
+                        textAlign: 'left',
                       }}
                     >
-                      {preset.label} {preset.time}
+                      <span style={{ display: 'block', fontSize: 13, fontWeight: 750, lineHeight: 1.2 }}>{preset.label}</span>
+                      <span style={{ display: 'block', marginTop: 2, fontSize: 11.5, fontWeight: 650, opacity: active ? 0.85 : 0.68 }}>
+                        {preset.time} - {addMinutesToTime(preset.time, preset.durationMinutes)}
+                      </span>
                     </button>
                   )
                 })}
               </div>
+
+              {timeSettingsOpen && (
+                <TimePresetEditor presets={timePresets} onChange={updateTimePresets} />
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center' }}>
                 <TimeBox label="시작" value={time} onChange={setTime} />
@@ -881,6 +968,187 @@ function TimeBox({
           accentColor: 'var(--ink)',
         }}
       />
+    </label>
+  )
+}
+
+function TimePresetEditor({
+  presets,
+  onChange,
+}: {
+  presets: TimePreset[]
+  onChange: (presets: TimePreset[]) => void
+}) {
+  const updatePreset = (index: number, patch: Partial<TimePreset>) => {
+    onChange(presets.map((preset, i) => i === index ? { ...preset, ...patch } : preset))
+  }
+
+  const addPreset = () => {
+    if (presets.length >= TIME_PRESETS_MAX) return
+    const baseHour = 10 + presets.length * 2
+    const time = `${pad2(Math.min(baseHour, 21))}:00`
+    onChange([
+      ...presets,
+      {
+        label: `시간 ${presets.length + 1}`,
+        time,
+        durationMinutes: 120,
+        title: '방문',
+      },
+    ])
+  }
+
+  const removePreset = (index: number) => {
+    if (presets.length <= 1) return
+    onChange(presets.filter((_, i) => i !== index))
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        padding: 10,
+        border: '1px solid var(--line)',
+        borderRadius: 12,
+        background: 'var(--bg)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ fontSize: 12, fontWeight: 750, color: 'var(--ink)' }}>빠른 시간 편집</span>
+        <button
+          type="button"
+          disabled={presets.length >= TIME_PRESETS_MAX}
+          onClick={addPreset}
+          style={{
+            minHeight: 0,
+            border: '1px solid var(--line)',
+            borderRadius: 8,
+            background: presets.length >= TIME_PRESETS_MAX ? 'var(--surface)' : '#fff',
+            color: presets.length >= TIME_PRESETS_MAX ? 'var(--muted-2)' : 'var(--text)',
+            cursor: presets.length >= TIME_PRESETS_MAX ? 'not-allowed' : 'pointer',
+            fontSize: 12,
+            fontWeight: 750,
+            padding: '6px 9px',
+          }}
+        >
+          + 추가
+        </button>
+      </div>
+
+      {presets.map((preset, index) => (
+        <div
+          key={`${index}-${preset.time}`}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '0.9fr 1fr 0.8fr auto',
+            gap: 6,
+            alignItems: 'center',
+          }}
+        >
+          <MiniInput
+            ariaLabel="시간 라벨"
+            value={preset.label}
+            onChange={(value) => updatePreset(index, { label: value })}
+            placeholder="라벨"
+          />
+          <MiniInput
+            ariaLabel="시작 시간"
+            type="time"
+            value={preset.time}
+            onChange={(value) => updatePreset(index, { time: value })}
+          />
+          <MiniInput
+            ariaLabel="소요 시간"
+            type="number"
+            value={String(preset.durationMinutes)}
+            onChange={(value) => updatePreset(index, { durationMinutes: Number(value) || 120 })}
+            suffix="분"
+          />
+          <button
+            type="button"
+            disabled={presets.length <= 1}
+            onClick={() => removePreset(index)}
+            style={{
+              width: 30,
+              height: 30,
+              minHeight: 30,
+              border: 'none',
+              borderRadius: 8,
+              background: 'transparent',
+              color: presets.length <= 1 ? 'var(--muted-2)' : 'var(--status-danger)',
+              cursor: presets.length <= 1 ? 'not-allowed' : 'pointer',
+              fontSize: 18,
+              lineHeight: 1,
+              padding: 0,
+            }}
+            aria-label="빠른 시간 삭제"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+
+      <p style={{ margin: 0, color: 'var(--muted)', fontSize: 11.5, lineHeight: 1.35 }}>
+        시간을 누르면 종료시간은 소요시간만큼 자동 입력됩니다. 기본 소요시간은 120분입니다.
+      </p>
+    </div>
+  )
+}
+
+function MiniInput({
+  ariaLabel,
+  onChange,
+  placeholder,
+  suffix,
+  type = 'text',
+  value,
+}: {
+  ariaLabel: string
+  onChange: (value: string) => void
+  placeholder?: string
+  suffix?: string
+  type?: string
+  value: string
+}) {
+  return (
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        minWidth: 0,
+        height: 32,
+        border: '1px solid var(--line)',
+        borderRadius: 8,
+        background: '#fff',
+        padding: '0 8px',
+      }}
+    >
+      <input
+        aria-label={ariaLabel}
+        type={type}
+        min={type === 'number' ? 15 : undefined}
+        max={type === 'number' ? 480 : undefined}
+        step={type === 'number' ? 15 : undefined}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        style={{
+          minWidth: 0,
+          width: '100%',
+          border: 'none',
+          background: 'transparent',
+          color: 'var(--ink)',
+          font: 'inherit',
+          fontSize: 12,
+          fontWeight: 650,
+          outline: 'none',
+          padding: 0,
+          accentColor: 'var(--ink)',
+        }}
+      />
+      {suffix && <span style={{ flex: '0 0 auto', color: 'var(--muted)', fontSize: 11, fontWeight: 700 }}>{suffix}</span>}
     </label>
   )
 }
