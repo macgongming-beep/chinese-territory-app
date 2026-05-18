@@ -1464,9 +1464,11 @@ export function MobileHome({
                   <AdminMobileCalendar
                     language={language}
                     currentVisitor={currentVisitor}
+                    currentUserId={currentUser.id}
                     role={role}
                     events={calendarEvents}
                     leaderNames={leaderNames}
+                    mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
                     onCreateEvent={onCreateCalendarEvent}
                     onDeleteEvent={onDeleteCalendarEvent}
                     onUpdateEvent={onUpdateCalendarEvent}

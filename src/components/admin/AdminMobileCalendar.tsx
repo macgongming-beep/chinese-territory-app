@@ -14,6 +14,7 @@ import type { CalendarEvent, Role } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { Card } from '../ui'
 import { AdminEventDetailSheet } from './AdminEventDetailSheet'
+import type { MentionUser } from '../CommentSection'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const WEEKDAY_LABELS = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
@@ -33,9 +34,11 @@ type EventInput = {
 type Props = {
   language: AppLanguage
   currentVisitor: string
+  currentUserId?: number | null
   role: Role
   events: CalendarEvent[]
   leaderNames?: string[]
+  mentionUsers?: MentionUser[]
   onCreateEvent?: (input: EventInput & { date: string }) => void
   onDeleteEvent?: (id: number) => void
   onUpdateEvent?: (id: number, input: EventInput) => void
@@ -97,7 +100,9 @@ export function AdminMobileCalendar({
   events,
   role,
   currentVisitor,
+  currentUserId,
   leaderNames = [],
+  mentionUsers = [],
   onCreateEvent,
   onDeleteEvent,
   onUpdateEvent,
@@ -382,6 +387,8 @@ export function AdminMobileCalendar({
           event={detailEvent}
           role={role}
           currentVisitor={currentVisitor}
+          currentUserId={currentUserId}
+          mentionUsers={mentionUsers}
           onClose={() => setDetailEventId(null)}
           onEdit={
             onUpdateEvent

@@ -13,11 +13,14 @@
 
 import { useMemo, useState } from 'react'
 import type { CalendarEvent, Role } from '../../types'
+import { CommentSection, type MentionUser } from '../CommentSection'
 
 type Props = {
   event: CalendarEvent
   role: Role
   currentVisitor: string
+  currentUserId?: number | null
+  mentionUsers?: MentionUser[]
   onClose: () => void
   onDelete?: () => void
   onEdit?: () => void
@@ -49,14 +52,6 @@ function PinIcon({ size = 14 }: { size?: number }) {
     </svg>
   )
 }
-function ChatIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-    </svg>
-  )
-}
-
 function initial(name: string) {
   return name.slice(0, 1)
 }
@@ -71,6 +66,8 @@ export function AdminEventDetailSheet({
   event,
   role,
   currentVisitor,
+  currentUserId,
+  mentionUsers = [],
   onClose,
   onDelete,
   onEdit,
@@ -83,18 +80,6 @@ export function AdminEventDetailSheet({
   const previewApplicants = applicants.slice(0, 6)
   const overflow = applicants.length - previewApplicants.length
   const [menuOpen, setMenuOpen] = useState(false)
-
-  const openChat = () => {
-    window.dispatchEvent(new CustomEvent('app:open-event-chat', {
-      detail: {
-        eventId: event.id,
-        eventTitle: event.title,
-        eventDate: event.date,
-        eventTime: event.time,
-      },
-    }))
-    onClose()
-  }
 
   return (
     <div
@@ -221,7 +206,7 @@ export function AdminEventDetailSheet({
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '20px 16px 84px',
+          padding: '20px 16px max(28px, env(safe-area-inset-bottom))',
           display: 'flex',
           flexDirection: 'column',
           gap: 18,
@@ -419,71 +404,15 @@ export function AdminEventDetailSheet({
           </section>
         )}
 
-        {/* 댓글 (간단히) */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <SectionHead
-            title={<>댓글</>}
-            right={
-              <button
-                type="button"
-                onClick={openChat}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: 'var(--muted)',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  minHeight: 0,
-                  padding: '4px 2px',
-                }}
-              >
-                <ChatIcon /> 채팅 열기
-              </button>
-            }
-          />
-          <div style={{ fontSize: 13, color: 'var(--muted-2)', padding: '20px 0', textAlign: 'center' }}>
-            아직 댓글이 없습니다
-          </div>
-        </section>
-      </div>
-
-      {/* Sticky 하단 composer (placeholder) */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          padding: '10px 12px max(14px, env(safe-area-inset-bottom))',
-          background: 'var(--bg)',
-          borderTop: '1px solid var(--line)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar name={currentVisitor || '?'} size={28} />
-          <button
-            type="button"
-            onClick={openChat}
-            style={{
-              flex: 1,
-              padding: '10px 14px',
-              background: 'var(--surface)',
-              border: '1px solid var(--line)',
-              borderRadius: 10,
-              fontSize: 14,
-              color: 'var(--muted-2)',
-              textAlign: 'left',
-              minHeight: 0,
-              cursor: 'pointer',
-            }}
-          >
-            메시지 · @로 멘션
-          </button>
-        </div>
+        <CommentSection
+          compact
+          currentUserId={currentUserId}
+          currentVisitor={currentVisitor}
+          role={role}
+          targetId={event.id}
+          targetType="calendar_event"
+          users={mentionUsers}
+        />
       </div>
     </div>
   )
