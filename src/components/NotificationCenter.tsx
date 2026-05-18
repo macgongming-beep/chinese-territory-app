@@ -68,10 +68,21 @@ function groupChatNotifications(items: AppNotification[]): {
 
 type NotificationIconName = 'notice' | 'calendar' | 'message' | 'mention' | 'chat' | 'play' | 'stop' | 'bell'
 
+const notificationIconProps = {
+  width: 18,
+  height: 18,
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 2,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  style: { display: 'block', flexShrink: 0 },
+} as const
+
 function NotificationIcon({ name }: { name: NotificationIconName }) {
   if (name === 'notice') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true" {...notificationIconProps}>
         <path d="M4 12h3l8-5v10l-8-5H4Z" />
         <path d="M7 12v5a2 2 0 0 0 2 2h1" />
       </svg>
@@ -79,7 +90,7 @@ function NotificationIcon({ name }: { name: NotificationIconName }) {
   }
   if (name === 'calendar') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true" {...notificationIconProps}>
         <path d="M7 3v4M17 3v4M4 9h16" />
         <rect x="4" y="5" width="16" height="16" rx="3" />
       </svg>
@@ -87,7 +98,7 @@ function NotificationIcon({ name }: { name: NotificationIconName }) {
   }
   if (name === 'message' || name === 'chat') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true" {...notificationIconProps}>
         <path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.4-4.2A8 8 0 1 1 21 12Z" />
         <path d="M8 12h.01M12 12h.01M16 12h.01" />
       </svg>
@@ -95,7 +106,7 @@ function NotificationIcon({ name }: { name: NotificationIconName }) {
   }
   if (name === 'mention') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true" {...notificationIconProps}>
         <path d="M16 8v5a3 3 0 1 1-1.1-2.3" />
         <path d="M16 13a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8" />
       </svg>
@@ -103,20 +114,20 @@ function NotificationIcon({ name }: { name: NotificationIconName }) {
   }
   if (name === 'play') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true" {...notificationIconProps}>
         <path d="M8 5v14l11-7Z" />
       </svg>
     )
   }
   if (name === 'stop') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true" {...notificationIconProps}>
         <rect x="6" y="6" width="12" height="12" rx="2" />
       </svg>
     )
   }
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...notificationIconProps}>
       <path d="M18 9a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
       <path d="M10 21a2 2 0 0 0 4 0" />
     </svg>
