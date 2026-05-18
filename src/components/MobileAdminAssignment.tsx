@@ -210,21 +210,37 @@ export function MobileAdminAssignment({
 
   const assignWholeGroup = async (group: { key: string; cards: TerritoryCard[] }) => {
     if (!selectedLeader) return
-    let count = 0
-    for (const card of group.cards) {
-      const cardLeaders = getCardLeaders(card)
-      if (cardLeaders.includes(selectedLeader)) continue
-      await Promise.resolve(onSetCardLeaders(card.id, [...cardLeaders, selectedLeader], { silentSuccess: true }))
-      count += 1
+    // 미배정/내 아닌 카드만 골라서 병렬 처리
+    const toAssign = group.cards.filter((card) => !getCardLeaders(card).includes(selectedLeader))
+    if (toAssign.length === 0) {
+      showToast('새로 배정할 카드가 없습니다', 'info')
+      return
     }
-    if (count > 0) {
-      setSessionAssigned((prev) => {
-        const next = new Set(prev)
-        group.cards.forEach((c) => next.add(c.id))
-        return next
-      })
-      showToast(`${group.key} 전체 ${count}개 배정 완료`, 'success')
-    }
+    await Promise.all(
+      toAssign.map((card) =>
+        Promise.resolve(onSetCardLeaders(card.id, [...getCardLeaders(card), selectedLeader], { silentSuccess: true }))
+      )
+    )
+    setSessionAssigned((prev) => {
+      const next = new Set(prev)
+      toAssign.forEach((c) => next.add(c.id))
+      return next
+    })
+    showToast(`${group.key} ${toAssign.length}개 배정 완료`, 'success')
+  }
+
+  // 배정 해제 (현재 selectedLeader 를 카드에서 빼기)
+  const handleUnassign = async (card: TerritoryCard) => {
+    if (!selectedLeader) return
+    const cardLeaders = getCardLeaders(card)
+    if (!cardLeaders.includes(selectedLeader)) return
+    await Promise.resolve(onSetCardLeaders(card.id, cardLeaders.filter((l) => l !== selectedLeader), { silentSuccess: true }))
+    setSessionAssigned((prev) => {
+      const next = new Set(prev)
+      next.delete(card.id)
+      return next
+    })
+    showToast(`${card.name} 배정 해제`, 'info')
   }
 
   const toggleGroup = (key: string) => {
@@ -529,14 +545,33 @@ export function MobileAdminAssignment({
                                   배정
                                 </button>
                               ) : isMine ? (
-                                <span style={{
-                                  fontSize: 11.5, fontWeight: 600,
-                                  padding: '3px 9px', borderRadius: 999,
-                                  background: justAssigned ? 'var(--status-ok-bg)' : 'var(--tint)',
-                                  color: justAssigned ? 'var(--status-ok)' : 'var(--muted)',
-                                }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (confirm(`"${card.name}" 배정을 해제할까요?`)) {
+                                      void handleUnassign(card)
+                                    }
+                                  }}
+                                  style={{
+                                    height: 26, minHeight: 26,
+                                    fontSize: 11.5, fontWeight: 600,
+                                    padding: '3px 9px', borderRadius: 999,
+                                    background: justAssigned ? 'var(--status-ok-bg)' : 'var(--tint)',
+                                    color: justAssigned ? 'var(--status-ok)' : 'var(--muted)',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                  }}
+                                  title="탭해서 배정 해제"
+                                >
                                   배정됨
-                                </span>
+                                  <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                  </svg>
+                                </button>
                               ) : (
                                 <button
                                   type="button"
@@ -645,6 +680,24 @@ export function MobileAdminAssignment({
                   }
                 }}
               />
+              <SheetButton
+                label="배정 모두 해제"
+                sub="이 카드를 미배정 상태로"
+                danger
+                onClick={() => {
+                  if (confirm(`"${actionTarget.name}" 의 모든 인도자 배정을 해제할까요?`)) {
+                    void Promise.resolve(onSetCardLeaders(actionTarget.id, [], { silentSuccess: true })).then(() => {
+                      setSessionAssigned((prev) => {
+                        const next = new Set(prev)
+                        next.delete(actionTarget.id)
+                        return next
+                      })
+                      setActionTarget(null)
+                      showToast(`${actionTarget.name} 배정 해제`, 'info')
+                    })
+                  }
+                }}
+              />
               <button
                 type="button"
                 onClick={() => setActionTarget(null)}
@@ -665,7 +718,7 @@ export function MobileAdminAssignment({
   )
 }
 
-function SheetButton({ label, sub, onClick }: { label: string; sub?: string; onClick: () => void }) {
+function SheetButton({ label, sub, onClick, danger }: { label: string; sub?: string; onClick: () => void; danger?: boolean }) {
   return (
     <button
       type="button"
@@ -678,7 +731,7 @@ function SheetButton({ label, sub, onClick }: { label: string; sub?: string; onC
         display: 'flex', flexDirection: 'column', gap: 2,
       }}
     >
-      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 600, color: danger ? 'var(--status-danger)' : 'var(--ink)' }}>{label}</span>
       {sub && <span style={{ fontSize: 12, color: 'var(--muted)' }}>{sub}</span>}
     </button>
   )
