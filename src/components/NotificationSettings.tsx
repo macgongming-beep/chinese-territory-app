@@ -53,49 +53,49 @@ export function NotificationSettings({ userId }: { userId: number }) {
   const [expandedGroup, setExpandedGroup] = useState<Group['id'] | null>(null)
 
   return (
-    <div style={{ background: '#fff', borderRadius: 18, padding: 18, border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(16,24,40,0.04)' }}>
+    <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 16, border: '1px solid var(--line)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <span style={{
-            display: 'grid', width: 38, height: 38, placeItems: 'center',
-            borderRadius: 12, background: '#f3f4f6', color: '#4b5563',
+            display: 'grid', width: 32, height: 32, placeItems: 'center',
+            borderRadius: 9, background: 'var(--tint)', color: 'var(--text)',
             flexShrink: 0,
           }}>
-            <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 20, height: 20, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 16, height: 16, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round' }}>
               <path d="M18 9a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
               <path d="M10 21a2 2 0 0 0 4 0" />
             </svg>
           </span>
           <div style={{ minWidth: 0 }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 750, color: '#111827', lineHeight: 1.25 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3, letterSpacing: '-0.01em' }}>
               알림 설정
             </h3>
-            <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 600, color: '#6b7280' }}>
+            <p style={{ margin: '2px 0 0', fontSize: 12.5, fontWeight: 500, color: 'var(--muted)' }}>
               받을 알림과 조용한 시간 관리
             </p>
           </div>
         </div>
         {saving && (
           <span style={{
-            flexShrink: 0, padding: '5px 9px', borderRadius: 999,
-            background: '#f3f4f6', color: '#6b7280', fontSize: 11, fontWeight: 700,
+            flexShrink: 0, padding: '3px 9px', borderRadius: 999,
+            background: 'var(--tint)', color: 'var(--muted)', fontSize: 11.5, fontWeight: 500,
           }}>
             저장 중
           </span>
         )}
       </div>
 
-      {/* 그룹 토글 (간단) + 세부 펼침 */}
-      <div style={{ marginBottom: 18 }}>
+      {/* 그룹 토글 + 세부 펼침 */}
+      <div style={{ marginBottom: 16 }}>
         <p style={{
-          margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#6b7280',
+          margin: '0 0 8px', fontSize: 12.5, fontWeight: 500, color: 'var(--muted)',
         }}>받을 알림 종류</p>
         {GROUPS.map((group) => {
           const groupOn = group.items.every((item) => prefs[item.key])
           const someOn = !groupOn && group.items.some((item) => prefs[item.key])
           const isOpen = expandedGroup === group.id
           return (
-            <div key={group.id} style={{ borderBottom: '1px solid #eef1f5' }}>
+            <div key={group.id} style={{ borderBottom: '1px solid var(--line)' }}>
               <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 gap: 12, padding: '12px 0',
@@ -104,7 +104,7 @@ export function NotificationSettings({ userId }: { userId: number }) {
                   type="button"
                   onClick={() => setExpandedGroup(isOpen ? null : group.id)}
                   style={{
-                    flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10,
+                    flex: 1, minWidth: 0, minHeight: 0, display: 'flex', alignItems: 'center', gap: 10,
                     background: 'none', border: 'none', padding: 0, textAlign: 'left',
                     cursor: 'pointer',
                   }}
@@ -113,20 +113,20 @@ export function NotificationSettings({ userId }: { userId: number }) {
                     aria-hidden
                     style={{
                       width: 6, height: 6, borderRadius: 99,
-                      background: 'var(--brand-700)', flexShrink: 0,
+                      background: groupOn ? 'var(--ink)' : 'var(--muted-2)', flexShrink: 0,
                     }}
                   />
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1.25 }}>
+                    <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3 }}>
                       {group.label}
-                      {someOn && <em style={{ fontStyle: 'normal', marginLeft: 6, fontSize: 11, color: '#92400e' }}>(일부)</em>}
+                      {someOn && <em style={{ fontStyle: 'normal', marginLeft: 6, fontSize: 11.5, color: 'var(--muted)' }}>(일부)</em>}
                     </span>
-                    <span style={{ display: 'block', marginTop: 3, fontSize: 12, fontWeight: 500, color: '#6b7280', lineHeight: 1.35 }}>
+                    <span style={{ display: 'block', marginTop: 2, fontSize: 12.5, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.4 }}>
                       {group.desc}
                     </span>
                   </span>
-                  <span aria-hidden style={{ color: '#94a3b8', fontSize: 16, fontWeight: 700 }}>
-                    {isOpen ? '⌄' : '›'}
+                  <span aria-hidden style={{ color: 'var(--muted-2)', fontSize: 14, transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }}>
+                    ⌄
                   </span>
                 </button>
                 <Toggle
@@ -145,13 +145,13 @@ export function NotificationSettings({ userId }: { userId: number }) {
                       key={item.key}
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        gap: 12, padding: '8px 12px 8px 32px',
+                        gap: 12, padding: '8px 12px 8px 28px',
                         cursor: 'pointer',
                       }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#1e293b', lineHeight: 1.25 }}>{item.label}</p>
-                        <p style={{ margin: '2px 0 0', fontSize: 11, color: '#94a3b8', lineHeight: 1.35 }}>{item.desc}</p>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>{item.label}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.4 }}>{item.desc}</p>
                       </div>
                       <Toggle
                         checked={prefs[item.key]}
@@ -164,7 +164,7 @@ export function NotificationSettings({ userId }: { userId: number }) {
             </div>
           )
         })}
-        <p style={{ margin: '10px 0 0', padding: '10px 12px', borderRadius: 12, background: '#f8fafc', fontSize: 12, fontWeight: 500, color: '#6b7280', lineHeight: 1.5 }}>
+        <p style={{ margin: '12px 0 0', padding: '10px 12px', borderRadius: 10, background: 'var(--paper)', fontSize: 12, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.5 }}>
           새 일정 등록 알림은 보내지 않습니다. 그룹을 펼치면 세부 알림을 따로 켜고 끌 수 있어요.
         </p>
       </div>
@@ -172,7 +172,7 @@ export function NotificationSettings({ userId }: { userId: number }) {
       {/* 방해금지 시간 */}
       <div>
         <p style={{
-          margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#6b7280',
+          margin: '0 0 8px', fontSize: 12.5, fontWeight: 500, color: 'var(--muted)',
         }}>방해금지 시간</p>
 
         <label style={{
@@ -180,8 +180,8 @@ export function NotificationSettings({ userId }: { userId: number }) {
           gap: 12, padding: '11px 0', cursor: 'pointer',
         }}>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 650, color: '#111827', lineHeight: 1.25 }}>방해금지 시간 사용</p>
-            <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 500, color: '#6b7280', lineHeight: 1.35 }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3 }}>방해금지 시간 사용</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12.5, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.4 }}>
               설정한 시간에는 알림이 와도 무음 (배지로만 표시)
             </p>
           </div>
@@ -200,10 +200,10 @@ export function NotificationSettings({ userId }: { userId: number }) {
         {dndEnabled && (
           <div style={{
             display: 'flex', gap: 12, marginTop: 8, padding: '12px 14px',
-            background: '#f8fafc', border: '1px solid #eef1f5', borderRadius: 12,
+            background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 10,
           }}>
             <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6b7280', marginBottom: 5 }}>시작</label>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: 'var(--muted)', marginBottom: 5 }}>시작</label>
               <input
                 type="time"
                 value={localStart}
@@ -212,13 +212,14 @@ export function NotificationSettings({ userId }: { userId: number }) {
                   update({ quietHoursStart: e.target.value })
                 }}
                 style={{
-                  width: '100%', padding: '8px 10px', borderRadius: 9,
-                  border: '1px solid #d8dbe0', fontSize: 13, fontWeight: 600, color: '#111827',
+                  width: '100%', padding: '8px 10px', borderRadius: 8,
+                  border: '1px solid var(--line)', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
+                  background: 'var(--surface)',
                 }}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6b7280', marginBottom: 5 }}>종료</label>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: 'var(--muted)', marginBottom: 5 }}>종료</label>
               <input
                 type="time"
                 value={localEnd}
@@ -227,8 +228,9 @@ export function NotificationSettings({ userId }: { userId: number }) {
                   update({ quietHoursEnd: e.target.value })
                 }}
                 style={{
-                  width: '100%', padding: '8px 10px', borderRadius: 9,
-                  border: '1px solid #d8dbe0', fontSize: 13, fontWeight: 600, color: '#111827',
+                  width: '100%', padding: '8px 10px', borderRadius: 8,
+                  border: '1px solid var(--line)', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
+                  background: 'var(--surface)',
                 }}
               />
             </div>
@@ -239,6 +241,7 @@ export function NotificationSettings({ userId }: { userId: number }) {
   )
 }
 
+// 디자인 09 의 .toggle 매칭 (40×24 트랙, 18 노브, ink on)
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
@@ -251,15 +254,15 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       }}
       style={{
         position: 'relative',
-        width: 58,
-        height: 30,
+        width: 40,
+        height: 24,
+        minHeight: 24,
         flexShrink: 0,
         borderRadius: 99,
-        border: `1px solid ${checked ? '#c7d7fe' : '#d8dbe0'}`,
-        background: checked ? '#eff4fe' : '#f3f4f6',
-        color: checked ? '#1d4ed8' : '#6b7280',
+        border: 'none',
+        background: checked ? 'var(--ink)' : 'var(--line)',
         cursor: 'pointer',
-        transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+        transition: 'background 0.18s',
         padding: 0,
         marginLeft: 12,
       }}
@@ -267,30 +270,14 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       <span
         style={{
           position: 'absolute',
-          top: 0,
-          right: checked ? 24 : 8,
-          left: checked ? 8 : 'auto',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          fontSize: 10,
-          fontWeight: 700,
-          lineHeight: 1,
-        }}
-      >
-        {checked ? '켬' : '끔'}
-      </span>
-      <span
-        style={{
-          position: 'absolute',
           top: 3,
-          left: checked ? 31 : 3,
-          width: 22,
-          height: 22,
+          left: checked ? 19 : 3,
+          width: 18,
+          height: 18,
           borderRadius: '50%',
-          background: checked ? '#1d4ed8' : '#ffffff',
-          transition: 'left 0.15s',
-          boxShadow: '0 1px 2px rgba(16,24,40,0.18)',
+          background: '#fff',
+          transition: 'left 0.18s',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
         }}
       />
     </button>

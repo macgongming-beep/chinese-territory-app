@@ -4,9 +4,9 @@ import type { Notice, Role } from '../types'
 import { CommentSection, type MentionUser } from './CommentSection'
 
 const PRIORITY_COLOR: Record<Notice['priority'], { bg: string; color: string }> = {
-  긴급: { bg: 'var(--danger-100)', color: '#b91c1c' },
-  일반: { bg: '#eff6ff', color: 'var(--brand-700)' },
-  정보: { bg: 'var(--accent-100)', color: 'var(--accent-700)' },
+  긴급: { bg: 'var(--status-danger-bg)', color: 'var(--status-danger)' },
+  일반: { bg: 'var(--tint)', color: 'var(--text)' },
+  정보: { bg: 'var(--status-info-bg)', color: 'var(--status-info)' },
 }
 
 export function MobileNotices({
@@ -92,12 +92,17 @@ export function MobileNotices({
         </>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <h2 style={{ margin: 0, fontSize: '20px' }}>공지사항</h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>공지사항 <span style={{ fontWeight: 500, color: 'var(--muted)', fontSize: 13, marginLeft: 6 }}>{notices.length}</span></h2>
         {isAdmin && (
           <button
             onClick={() => setShowCreate(true)}
-            style={{ minHeight: '36px', padding: '0 14px', borderRadius: '999px', background: 'var(--ink-900)', color: '#fff', fontSize: '13px', fontWeight: 700 }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              height: 32, minHeight: 32, padding: '0 12px', borderRadius: 8,
+              background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 600,
+              border: 'none', cursor: 'pointer', letterSpacing: '-0.005em',
+            }}
             type="button"
           >
             + 공지 작성
@@ -106,7 +111,7 @@ export function MobileNotices({
       </div>
 
       {notices.length === 0 && (
-        <div style={{ padding: '48px 0', textAlign: 'center', color: '#9ca3af', fontSize: '14px', fontWeight: 600 }}>
+        <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--muted)', fontSize: 13, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
           등록된 공지가 없습니다
         </div>
       )}
@@ -123,7 +128,12 @@ export function MobileNotices({
             {isAdmin && (
               <button
                 onClick={() => { if (confirm('공지를 삭제할까요?')) onDeleteNotice(notice.id) }}
-                style={{ minHeight: '28px', padding: '0 10px', borderRadius: 'var(--r-sm)', border: '1px solid var(--danger-100)', background: '#fff5f5', color: 'var(--danger-600)', fontSize: '12px', fontWeight: 700 }}
+                style={{
+                  height: 28, minHeight: 28, padding: '0 10px',
+                  borderRadius: 8, border: '1px solid var(--line-2)',
+                  background: 'var(--surface)', color: 'var(--muted)',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}
                 type="button"
               >
                 삭제

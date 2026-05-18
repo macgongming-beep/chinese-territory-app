@@ -104,6 +104,11 @@ export function MobileProfileSettings({
               setSavingPin(false)
             }
           }}
+          style={{
+            background: 'var(--surface)',
+            color: 'var(--text)',
+            border: '1px solid var(--line-2)',
+          }}
           type="button"
         >
           비밀번호 변경

@@ -62,18 +62,18 @@ export function SpecialPeriodSettings({
   return (
     <div className="special-period-settings">
       {activePeriod && (
-        <div className="detail-card sps-active-card" style={{ marginBottom: '16px', borderLeft: '4px solid #f59e0b', background: '#fffbeb' }}>
-          <div className="sps-active-head">
-            <div className="sps-active-main">
-              <div className="sps-active-title">
-                <span aria-hidden="true" />
-                <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: '#92400e' }}>특별봉사 진행 중</h2>
+        <div style={{ marginBottom: 16, padding: 16, background: 'var(--status-warn-bg)', border: '1px solid var(--status-warn)', borderRadius: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 6, height: 6, borderRadius: 99, background: 'var(--status-warn)' }} />
+                <h2 style={{ fontSize: 13, fontWeight: 600, margin: 0, color: 'var(--status-warn)', letterSpacing: '0.04em' }}>특별봉사 진행 중</h2>
               </div>
-              <p style={{ fontSize: '14px', fontWeight: 700, margin: '4px 0', color: '#1e293b' }}>{activePeriod.label}</p>
-              <p className="sps-period-dates" style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
+              <p style={{ fontSize: 15, fontWeight: 600, margin: '4px 0', color: 'var(--ink)' }}>{activePeriod.label}</p>
+              <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                 {activePeriod.startDate} ~ {activePeriod.endDate}
                 {dDay !== null && (
-                  <span className="sps-dday" style={{ marginLeft: '8px', padding: '2px 8px', borderRadius: '10px', background: '#f59e0b', color: '#fff', fontWeight: 700 }}>
+                  <span style={{ padding: '2px 8px', borderRadius: 999, background: 'var(--status-warn)', color: '#fff', fontWeight: 600, fontSize: 11 }}>
                     {dDay > 0 ? `D-${dDay}` : dDay === 0 ? '오늘 마지막 날' : `D+${Math.abs(dDay)}`}
                   </span>
                 )}
@@ -87,14 +87,14 @@ export function SpecialPeriodSettings({
                   }
                 }}
                 type="button"
-                style={{ padding: '6px 12px', border: '1px solid #fecaca', borderRadius: '7px', background: '#fff', color: '#dc2626', fontSize: '12px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                style={{ height: 30, minHeight: 30, padding: '0 12px', border: '1px solid var(--line-2)', borderRadius: 8, background: 'var(--surface)', color: 'var(--status-danger)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
-                종료/삭제
+                종료
               </button>
             )}
           </div>
-          <p className="sps-active-note" style={{ fontSize: '12px', color: '#78716c', margin: '12px 0 0', lineHeight: 1.5 }}>
-            기간 동안의 모든 방문 기록은 자동으로 이 시즌에 태깅됩니다. 방문 모달에 "초대장 남김" 체크박스가 표시됩니다.
+          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
+            기간 동안의 모든 방문 기록은 자동으로 이 시즌에 태깅됩니다.
           </p>
         </div>
       )}
