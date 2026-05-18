@@ -613,10 +613,10 @@ button:focus-visible {
   width: 28px;
   height: 28px;
   border-radius: var(--radius-full);
-  background: var(--primary-50);
-  color: var(--primary-700);
-  font-size: 12px;
-  font-weight: 800;
+  background: var(--ink);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .comment-item__body {
@@ -788,11 +788,12 @@ button:focus-visible {
 .chat-composer input {
   flex: 1;
   min-width: 0;
-  border: 1px solid var(--border-default);
-  background: var(--bg-card);
-  color: var(--gray-900);
-  font-size: 13px;
-  font-weight: 600;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .comment-composer textarea {
@@ -808,25 +809,35 @@ button:focus-visible {
 
 .comment-composer > button,
 .chat-composer > button {
-  min-height: 40px;
-  padding: 0 13px;
-  border: 1px solid var(--primary-100);
-  border-radius: var(--radius-md);
-  background: var(--primary-50);
-  color: var(--primary-700);
+  height: 36px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fff;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
+  letter-spacing: -0.005em;
 }
 
 .comment-composer > button:disabled,
 .chat-composer > button:disabled {
-  opacity: 0.45;
-  cursor: default;
+  background: var(--tint);
+  color: var(--muted-2);
+  opacity: 1;
+  cursor: not-allowed;
 }
 
 .chat-composer__photo {
-  background: var(--bg-card) !important;
-  color: var(--gray-600) !important;
+  background: var(--tint) !important;
+  color: var(--text) !important;
+  border-radius: 8px !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  border: none !important;
+  padding: 0 !important;
 }
 
 .mention-menu {
@@ -923,30 +934,33 @@ button:focus-visible {
 
 .chat-message__bubble {
   max-width: min(78%, 420px);
-  padding: 9px 11px;
-  border: 1px solid var(--border-subtle);
+  padding: 10px 14px;
+  border: 1px solid var(--line);
   border-radius: 14px 14px 14px 4px;
-  background: var(--bg-card);
+  background: var(--surface);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .chat-message.is-mine .chat-message__bubble {
-  border-color: var(--primary-100);
+  border-color: transparent;
   border-radius: 14px 14px 4px 14px;
-  background: var(--primary-50);
+  background: var(--ink);
+  color: #fff;
 }
 
 .chat-message.is-system .chat-message__bubble {
   max-width: 92%;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: var(--radius-full);
-  background: var(--gray-100);
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
 }
 
 .chat-message.is-system p {
-  color: var(--gray-500);
+  color: var(--muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .chat-message img {
