@@ -9,7 +9,8 @@
 //
 // 헤더는 상위 MobileHome.tsx 의 AppHeader 가 그림.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { CalendarEvent, Role } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { Card } from '../ui'
@@ -202,6 +203,46 @@ export function AdminMobileCalendar({
   const [detailEventId, setDetailEventId] = useState<number | null>(null)
   const detailEvent = detailEventId !== null ? events.find((e) => e.id === detailEventId) ?? null : null
   const editingEvent = editingEventId !== null ? events.find((e) => e.id === editingEventId) ?? null : null
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  // 알림/딥링크 진입: ?openChat=X → 그 일정 채팅 열기,
+  //                  ?openEvent=X → 그 일정 상세 시트 열기
+  useEffect(() => {
+    const openChatId = searchParams.get('openChat')
+    const openEventId = searchParams.get('openEvent')
+    if (!openChatId && !openEventId) return
+
+    const targetIdRaw = openChatId ?? openEventId
+    const targetId = Number(targetIdRaw)
+    if (!Number.isFinite(targetId)) return
+    const targetEvent = events.find((e) => e.id === targetId)
+    if (!targetEvent) return
+
+    // 해당 일정 날짜로 이동
+    const d = new Date(targetEvent.date)
+    setYear(d.getFullYear())
+    setMonth(d.getMonth() + 1)
+    setSelectedDay(d.getDate())
+
+    if (openChatId) {
+      window.dispatchEvent(new CustomEvent('app:open-event-chat', {
+        detail: {
+          eventId: targetEvent.id,
+          eventTitle: targetEvent.title,
+          eventDate: targetEvent.date,
+          eventTime: targetEvent.time,
+        },
+      }))
+    } else if (openEventId) {
+      setDetailEventId(targetEvent.id)
+    }
+
+    const next = new URLSearchParams(searchParams)
+    next.delete('openChat')
+    next.delete('openEvent')
+    setSearchParams(next, { replace: true })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, events])
 
   const cells = useMemo(() => buildCalendarDays(year, month), [year, month])
   const selectedDateStr = toDateStr(year, month, selectedDay)
