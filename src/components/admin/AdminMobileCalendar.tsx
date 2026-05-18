@@ -18,6 +18,11 @@ import type { MentionUser } from '../CommentSection'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const WEEKDAY_LABELS = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
+const TIME_PRESETS = [
+  { label: '오전', time: '10:00', title: '오전 방문' },
+  { label: '오후', time: '13:00', title: '오후 방문' },
+  { label: '저녁', time: '19:00', title: '저녁 방문' },
+]
 
 type EventInput = {
   time: string
@@ -600,6 +605,14 @@ function EventAddSheet({
   const [allowApplications, setAllowApplications] = useState(editingEvent?.allowApplications ?? true)
   const canSubmit = title.trim().length > 0
   const isEditing = !!editingEvent
+  const selectedPreset = TIME_PRESETS.find((preset) => preset.time === time)?.label ?? ''
+
+  const applyTimePreset = (preset: (typeof TIME_PRESETS)[number]) => {
+    setTime(preset.time)
+    if (!title.trim() || TIME_PRESETS.some((item) => item.title === title)) {
+      setTitle(preset.title)
+    }
+  }
 
   return (
     <div
@@ -676,23 +689,54 @@ function EventAddSheet({
             <TextArea value={memo} onChange={setMemo} placeholder="추가 설명" />
           </Field>
 
-          <Field label="날짜">
-            <TextInput type="date" value={date} onChange={setDate} />
-          </Field>
+          <Field label="날짜와 시간">
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                padding: 12,
+                border: '1px solid var(--line)',
+                borderRadius: 14,
+                background: 'var(--surface)',
+              }}
+            >
+              <TextInput type="date" value={date} onChange={setDate} subtle />
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}>
-              <Field label="시작 시간">
-                <TextInput type="time" value={time} onChange={setTime} />
-              </Field>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                {TIME_PRESETS.map((preset) => {
+                  const active = selectedPreset === preset.label
+                  return (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => applyTimePreset(preset)}
+                      style={{
+                        height: 36,
+                        minHeight: 36,
+                        border: active ? '1px solid var(--ink)' : '1px solid var(--line)',
+                        borderRadius: 10,
+                        background: active ? 'var(--ink)' : 'var(--bg)',
+                        color: active ? '#fff' : 'var(--text)',
+                        fontSize: 13,
+                        fontWeight: 650,
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
+                    >
+                      {preset.label} {preset.time}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center' }}>
+                <TimeBox label="시작" value={time} onChange={setTime} />
+                <span style={{ color: 'var(--muted-2)', fontSize: 13, fontWeight: 700 }}>—</span>
+                <TimeBox label="종료" value={endTime} onChange={setEndTime} placeholder="선택" />
+              </div>
             </div>
-            <div style={{ paddingBottom: 12, color: 'var(--muted)', fontSize: 14 }}>—</div>
-            <div style={{ flex: 1 }}>
-              <Field label="종료 시간 (선택)">
-                <TextInput type="time" value={endTime} onChange={setEndTime} />
-              </Field>
-            </div>
-          </div>
+          </Field>
 
           <Field label="모임 장소">
             <TextInput value={place} onChange={setPlace} placeholder="장소 입력" />
@@ -703,9 +747,19 @@ function EventAddSheet({
             <Select value={leader} onChange={setLeader} options={['', ...leaderNames]} placeholder="선택 안함" />
           </Field>
 
-          <Field label="">
-            <CheckRow checked={hasMeeting} onChange={setHasMeeting} label="봉사 모임 있음" />
-            <CheckRow checked={allowApplications} onChange={setAllowApplications} label="이 일정에 봉사 신청을 받습니다" />
+          <Field label="설정">
+            <SettingToggle
+              checked={hasMeeting}
+              description="모임 일정이면 카드에 표시됩니다."
+              label="봉사모임"
+              onChange={setHasMeeting}
+            />
+            <SettingToggle
+              checked={allowApplications}
+              description="봉사자들이 이 일정에 신청할 수 있습니다."
+              label="봉사 신청 받기"
+              onChange={setAllowApplications}
+            />
           </Field>
         </div>
 
@@ -752,11 +806,13 @@ function TextInput({
   onChange,
   placeholder,
   type = 'text',
+  subtle = false,
 }: {
   value: string
   onChange: (v: string) => void
   placeholder?: string
   type?: string
+  subtle?: boolean
 }) {
   return (
     <input
@@ -765,8 +821,8 @@ function TextInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--line)',
+        background: subtle ? 'var(--bg)' : 'var(--surface)',
+        border: subtle ? '1px solid transparent' : '1px solid var(--line)',
         borderRadius: 10,
         padding: '12px 14px',
         fontSize: 14,
@@ -774,8 +830,58 @@ function TextInput({
         font: 'inherit',
         outline: 'none',
         width: '100%',
+        accentColor: 'var(--ink)',
       }}
     />
+  )
+}
+
+function TimeBox({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  return (
+    <label
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'auto 1fr',
+        alignItems: 'center',
+        gap: 8,
+        minWidth: 0,
+        padding: '9px 10px',
+        border: '1px solid var(--line)',
+        borderRadius: 10,
+        background: 'var(--bg)',
+      }}
+    >
+      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{label}</span>
+      <input
+        type="time"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          minWidth: 0,
+          width: '100%',
+          border: 'none',
+          background: 'transparent',
+          color: value ? 'var(--ink)' : 'var(--muted-2)',
+          font: 'inherit',
+          fontSize: 14,
+          fontWeight: 700,
+          outline: 'none',
+          padding: 0,
+          accentColor: 'var(--ink)',
+        }}
+      />
+    </label>
   )
 }
 
@@ -830,44 +936,67 @@ function Select({ value, onChange, options, placeholder }: { value: string; onCh
   )
 }
 
-function CheckRow({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+function SettingToggle({
+  checked,
+  description,
+  label,
+  onChange,
+}: {
+  checked: boolean
+  description: string
+  label: string
+  onChange: (v: boolean) => void
+}) {
   return (
-    <label
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
-        fontSize: 14,
+        justifyContent: 'space-between',
+        gap: 12,
+        width: '100%',
+        minHeight: 58,
+        padding: '11px 12px',
+        border: '1px solid var(--line)',
+        borderRadius: 12,
+        background: 'var(--surface)',
         color: 'var(--text)',
-        padding: '8px 0',
+        textAlign: 'left',
         cursor: 'pointer',
       }}
     >
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+        <strong style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{label}</strong>
+        <small style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.25 }}>{description}</small>
+      </span>
+      <span
+        aria-hidden
         style={{
-          width: 18,
-          height: 18,
-          minHeight: 18,
-          borderRadius: 5,
-          background: checked ? 'var(--ink)' : 'var(--surface)',
-          border: checked ? 'none' : '1px solid var(--line-2)',
-          display: 'grid',
-          placeItems: 'center',
-          color: '#fff',
-          padding: 0,
-          flexShrink: 0,
-          cursor: 'pointer',
+          position: 'relative',
+          flex: '0 0 auto',
+          width: 42,
+          height: 24,
+          borderRadius: 999,
+          background: checked ? 'var(--ink)' : 'var(--line-2)',
+          transition: 'background 0.15s ease',
         }}
       >
-        {checked && (
-          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="5 13 10 18 19 8" />
-          </svg>
-        )}
-      </button>
-      {label}
-    </label>
+        <span
+          style={{
+            position: 'absolute',
+            top: 3,
+            left: checked ? 21 : 3,
+            width: 18,
+            height: 18,
+            borderRadius: '50%',
+            background: '#fff',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
+            transition: 'left 0.15s ease',
+          }}
+        />
+      </span>
+    </button>
   )
 }
