@@ -204,9 +204,11 @@ export function NotificationCenter({
         className="header-action-panel"
         style={{
           position: 'absolute',
-          top: 8, right: 8, left: 8,
+          top: 8,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 'calc(100% - 16px)',
           maxWidth: 480,
-          margin: '0 auto',
           maxHeight: 'calc(100% - 16px)',
           background: 'var(--bg)',
           border: '1px solid var(--line)',
@@ -215,6 +217,8 @@ export function NotificationCenter({
           display: 'flex',
           flexDirection: 'column',
           animation: 'notifSlideIn 0.2s ease-out',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
         }}
         onClick={(e) => e.stopPropagation()}
       >
