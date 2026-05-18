@@ -458,13 +458,26 @@ button:focus-visible {
 .header-action-panel__empty svg,
 .header-action-panel svg[aria-hidden="true"],
 .header-action-panel [aria-hidden="true"] > svg {
-  width: 21px;
-  height: 21px;
+  width: 21px !important;
+  height: 21px !important;
+  max-width: 21px !important;
+  max-height: 21px !important;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.header-action-panel button > div:first-child {
+  overflow: hidden;
+}
+
+.header-action-panel button > div:first-child svg {
+  width: 18px !important;
+  height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
 }
 
 .header-action-panel__empty strong {
