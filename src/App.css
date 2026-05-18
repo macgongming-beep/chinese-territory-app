@@ -304,14 +304,16 @@ button:focus-visible {
   margin: 0 -16px 12px;
 }
 
+/* 하위 페이지 wrapper 안의 헤더도 똑같이 풀-bleed.
+   wrapper padding(14 또는 16) + app-shell padding 16 둘 다 상쇄. */
 .mobile-settings-page > .app-header--mobile {
-  margin: -24px -14px 18px;
+  margin: -24px -30px 12px;
 }
 
 .mobile-signup-requests-page > .app-header--mobile,
 .mobile-profile-page > .app-header--mobile,
 .mobile-users-page > .app-header--mobile {
-  margin: -18px -14px 18px;
+  margin: -18px -30px 12px;
 }
 
 .desktop-header-actions {
