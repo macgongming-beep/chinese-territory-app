@@ -15,6 +15,11 @@ export function AppUpdateCard({ variant = 'desktop' }: { variant?: 'desktop' | '
     }
   }
 
+  // 모바일: 업데이트가 있을 때만 카드 노출 (최신일 땐 숨김)
+  if (variant === 'mobile' && !updateAvailable) {
+    return null
+  }
+
   if (variant === 'mobile') {
     return (
       <div

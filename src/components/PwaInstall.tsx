@@ -425,31 +425,6 @@ export function PwaInstallSection() {
         </div>
       </div>
 
-      {/* ── iOS / 미설치 안내 (보조) ─────── */}
-      {!installed && isIOS() && (
-        <div style={{
-          margin: '6px 0 0', padding: '12px 14px',
-          background: 'var(--status-warn-bg)', border: '1px solid var(--status-warn)',
-          borderRadius: 10,
-        }}>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--status-warn)' }}>
-            iPhone 은 푸시 알림 받으려면 설치 필요
-          </p>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>
-            위 <strong>안내</strong> 누르고 홈 화면에 추가 → 추가된 앱을 열어야 알림이 켜집니다.
-          </p>
-        </div>
-      )}
-      {installed && isIOS() && notifPermission === 'default' && (
-        <p style={{
-          margin: '6px 0 0', padding: '10px 12px',
-          background: 'var(--status-ok-bg)', border: '1px solid var(--status-ok)',
-          borderRadius: 10, fontSize: 12, fontWeight: 500, color: 'var(--status-ok)', lineHeight: 1.5,
-        }}>
-          설치 완료! <strong>푸시 알림 → 켜기</strong> 로 알림 허용해 주세요.
-        </p>
-      )}
-
       {showModal && <PwaInstallModal onClose={() => setShowModal(false)} />}
     </>
   )
