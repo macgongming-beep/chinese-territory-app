@@ -695,18 +695,22 @@ function EventAddSheet({
           background: 'var(--bg)',
           borderTopLeftRadius: 18,
           borderTopRightRadius: 18,
-          padding: '8px 16px max(18px, env(safe-area-inset-bottom))',
+          width: '100%',
+          maxWidth: '100vw',
+          boxSizing: 'border-box',
+          padding: '8px 12px max(14px, env(safe-area-inset-bottom))',
           boxShadow: '0 -12px 40px rgba(0,0,0,0.18)',
-          maxHeight: '88vh',
+          maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
+          overflowX: 'hidden',
         }}
       >
         {/* 핸들 */}
-        <div style={{ width: 32, height: 4, borderRadius: 99, background: 'var(--line-2)', margin: '4px auto 14px' }} />
+        <div style={{ width: 30, height: 4, borderRadius: 99, background: 'var(--line-2)', margin: '4px auto 12px' }} />
 
         {/* 제목 */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>{isEditing ? '일정 편집' : '새 일정 추가'}</span>
             <span style={{ fontSize: 12, color: 'var(--muted)' }}>{date.replace(/-/g, '.')}</span>
@@ -730,7 +734,7 @@ function EventAddSheet({
         </div>
 
         {/* 폼 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', flex: 1, paddingRight: 2, marginRight: -2 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', overflowX: 'hidden', flex: 1, paddingRight: 1, marginRight: -1 }}>
           <Field
             label={
               <>
@@ -756,11 +760,13 @@ function EventAddSheet({
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 10,
-                padding: 12,
+                gap: 8,
+                padding: 10,
                 border: '1px solid var(--line)',
-                borderRadius: 14,
+                borderRadius: 12,
                 background: 'var(--surface)',
+                boxSizing: 'border-box',
+                minWidth: 0,
               }}
             >
               <TextInput type="date" value={date} onChange={setDate} subtle />
@@ -785,7 +791,7 @@ function EventAddSheet({
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6, minWidth: 0 }}>
                 {timePresets.map((preset) => {
                   const active = selectedPreset === preset.label
                   return (
@@ -794,18 +800,20 @@ function EventAddSheet({
                       type="button"
                       onClick={() => applyTimePreset(preset)}
                       style={{
-                        minHeight: 46,
+                        minHeight: 42,
                         border: active ? '1px solid var(--ink)' : '1px solid var(--line)',
                         borderRadius: 10,
                         background: active ? 'var(--ink)' : 'var(--bg)',
                         color: active ? '#fff' : 'var(--text)',
                         cursor: 'pointer',
-                        padding: '7px 9px',
+                        padding: '6px 8px',
                         textAlign: 'left',
+                        minWidth: 0,
+                        overflow: 'hidden',
                       }}
                     >
-                      <span style={{ display: 'block', fontSize: 13, fontWeight: 750, lineHeight: 1.2 }}>{preset.label}</span>
-                      <span style={{ display: 'block', marginTop: 2, fontSize: 11.5, fontWeight: 650, opacity: active ? 0.85 : 0.68 }}>
+                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: 750, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{preset.label}</span>
+                      <span style={{ display: 'block', marginTop: 2, fontSize: 11, fontWeight: 650, opacity: active ? 0.85 : 0.68, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {preset.time} - {addMinutesToTime(preset.time, preset.durationMinutes)}
                       </span>
                     </button>
@@ -817,7 +825,7 @@ function EventAddSheet({
                 <TimePresetEditor presets={timePresets} onChange={updateTimePresets} />
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', gap: 6, alignItems: 'center', minWidth: 0 }}>
                 <TimeBox label="시작" value={time} onChange={setTime} />
                 <span style={{ color: 'var(--muted-2)', fontSize: 13, fontWeight: 700 }}>—</span>
                 <TimeBox label="종료" value={endTime} onChange={setEndTime} placeholder="선택" />
@@ -857,7 +865,7 @@ function EventAddSheet({
           onClick={() => onSubmit({ date, time, endTime: endTime || undefined, title: title.trim(), memo: memo.trim(), place: place.trim(), mapLink: mapLink.trim() || undefined, leader, hasMeeting, allowApplications })}
           style={{
             marginTop: 14,
-            height: 48,
+            height: 46,
             width: '100%',
             background: canSubmit ? 'var(--ink)' : 'var(--tint)',
             color: canSubmit ? '#fff' : 'var(--muted-2)',
@@ -879,11 +887,11 @@ function EventAddSheet({
 // ── 폼 헬퍼 ─────────────────────────────
 function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
       {label && (
         <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{label}</label>
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{children}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 7, minWidth: 0 }}>{children}</div>
     </div>
   )
 }
@@ -911,12 +919,14 @@ function TextInput({
         background: subtle ? 'var(--bg)' : 'var(--surface)',
         border: subtle ? '1px solid transparent' : '1px solid var(--line)',
         borderRadius: 10,
-        padding: '12px 14px',
+        padding: '10px 12px',
         fontSize: 14,
         color: 'var(--text)',
         font: 'inherit',
         outline: 'none',
         width: '100%',
+        minHeight: 42,
+        boxSizing: 'border-box',
         accentColor: 'var(--ink)',
       }}
     />
@@ -942,10 +952,12 @@ function TimeBox({
         alignItems: 'center',
         gap: 8,
         minWidth: 0,
-        padding: '9px 10px',
+        padding: '8px 9px',
         border: '1px solid var(--line)',
         borderRadius: 10,
         background: 'var(--bg)',
+        boxSizing: 'border-box',
+        minHeight: 40,
       }}
     >
       <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{label}</span>
@@ -1009,10 +1021,12 @@ function TimePresetEditor({
         display: 'flex',
         flexDirection: 'column',
         gap: 8,
-        padding: 10,
+        padding: 8,
         border: '1px solid var(--line)',
         borderRadius: 12,
         background: 'var(--bg)',
+        minWidth: 0,
+        boxSizing: 'border-box',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -1042,9 +1056,10 @@ function TimePresetEditor({
           key={`${index}-${preset.time}`}
           style={{
             display: 'grid',
-            gridTemplateColumns: '0.9fr 1fr 0.8fr auto',
-            gap: 6,
+            gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) auto',
+            gap: 5,
             alignItems: 'center',
+            minWidth: 0,
           }}
         >
           <MiniInput
@@ -1072,8 +1087,8 @@ function TimePresetEditor({
             onClick={() => removePreset(index)}
             style={{
               width: 30,
-              height: 30,
-              minHeight: 30,
+              height: 28,
+              minHeight: 28,
               border: 'none',
               borderRadius: 8,
               background: 'transparent',
@@ -1087,6 +1102,14 @@ function TimePresetEditor({
           >
             ×
           </button>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <MiniInput
+              ariaLabel="기본 제목"
+              value={preset.title}
+              onChange={(value) => updatePreset(index, { title: value })}
+              placeholder="기본 제목"
+            />
+          </div>
         </div>
       ))}
 
@@ -1122,7 +1145,8 @@ function MiniInput({
         border: '1px solid var(--line)',
         borderRadius: 8,
         background: '#fff',
-        padding: '0 8px',
+        padding: '0 7px',
+        boxSizing: 'border-box',
       }}
     >
       <input
@@ -1141,7 +1165,7 @@ function MiniInput({
           background: 'transparent',
           color: 'var(--ink)',
           font: 'inherit',
-          fontSize: 12,
+          fontSize: 11.5,
           fontWeight: 650,
           outline: 'none',
           padding: 0,
