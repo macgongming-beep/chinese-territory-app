@@ -47,6 +47,14 @@ function isLockedByEndedAt(latestEnded: number): boolean {
   return Date.now() - latestEnded > 7 * 24 * 60 * 60 * 1000
 }
 
+// 이벤트 날짜 기준 잠금: 일정 날짜가 7일 이상 지났으면 "지난 대화" 로
+function isLockedByEventDate(eventDate: string): boolean {
+  if (!eventDate) return false
+  const eventTime = new Date(eventDate + 'T00:00:00').getTime()
+  if (!Number.isFinite(eventTime)) return false
+  return Date.now() - eventTime > 7 * 24 * 60 * 60 * 1000
+}
+
 export function useUserChats(
   userId: number | null | undefined,
   userName: string | null | undefined,
@@ -198,7 +206,11 @@ export function useUserChats(
         const latestEndedTime = allEnded
           ? Math.max(...eventSessions.map((s) => new Date(s.ended_at!).getTime()))
           : 0
-        const isLocked = allEnded && isLockedByEndedAt(latestEndedTime)
+        // 잠금 기준 두 가지:
+        // 1) 모든 service_sessions 종료 + 종료 7일 경과 (옛 기준)
+        // 2) 일정 날짜가 7일 이상 지남 (신 기준 — 세션이 없거나 안 끝낸 옛 일정 처리)
+        const isLocked = (allEnded && isLockedByEndedAt(latestEndedTime))
+          || isLockedByEventDate(event.event_date)
 
         return {
           eventId: event.id,
@@ -209,17 +221,20 @@ export function useUserChats(
           lastMessageAt: eventMessages[0]?.created_at ?? null,
           unreadCount,
           isLocked,
-          hasEnded: allEnded,
+          hasEnded: allEnded || isLockedByEventDate(event.event_date),
         }
       })
 
-      // 활성 (최신 메시지 시각 desc) → 종료 (날짜 desc) 정렬
+      // 활성 (최신 메시지/이벤트 시각 desc) → 잠금 (날짜 desc) 정렬
+      // lastMessageAt 가 null 인 경우 eventDate 로 fallback (그래야 옛 일정도 자기 순서 유지)
+      const sortKey = (c: UserChat): number => {
+        if (c.lastMessageAt) return new Date(c.lastMessageAt).getTime()
+        if (c.eventDate) return new Date(c.eventDate + 'T00:00:00').getTime()
+        return 0
+      }
       result.sort((a, b) => {
         if (a.isLocked !== b.isLocked) return a.isLocked ? 1 : -1
-        if (a.hasEnded !== b.hasEnded) return a.hasEnded ? 1 : -1
-        const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0
-        const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0
-        return bTime - aTime
+        return sortKey(b) - sortKey(a)
       })
 
       return result
