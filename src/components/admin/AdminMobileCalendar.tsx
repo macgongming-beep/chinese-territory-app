@@ -45,6 +45,12 @@ type EventInput = {
   mapLink?: string
 }
 
+type EventSheetInput = EventInput & {
+  date: string
+  repeat?: boolean
+  repeatEnd?: string
+}
+
 type Props = {
   language: AppLanguage
   currentVisitor: string
@@ -54,8 +60,11 @@ type Props = {
   leaderNames?: string[]
   mentionUsers?: MentionUser[]
   onCreateEvent?: (input: EventInput & { date: string }) => void
+  onCreateRepeatEvents?: (dates: string[], input: EventInput) => void
   onDeleteEvent?: (id: number) => void
+  onDeleteEventSeries?: (seriesId: string, fromDate: string) => void
   onUpdateEvent?: (id: number, input: EventInput) => void
+  onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput) => void
 }
 
 function pad2(n: number) {
@@ -64,6 +73,17 @@ function pad2(n: number) {
 
 function toDateStr(year: number, month: number, day: number) {
   return `${year}-${pad2(month)}-${pad2(day)}`
+}
+
+function getWeeklyDates(startDate: string, endDate: string): string[] {
+  const dates: string[] = []
+  const current = new Date(startDate)
+  const end = new Date(endDate)
+  while (current <= end) {
+    dates.push(current.toISOString().slice(0, 10))
+    current.setDate(current.getDate() + 7)
+  }
+  return dates
 }
 
 // 시간 범위 포맷: "13:00 — 15:00" 또는 "13:00"
@@ -162,8 +182,11 @@ export function AdminMobileCalendar({
   leaderNames = [],
   mentionUsers = [],
   onCreateEvent,
+  onCreateRepeatEvents,
   onDeleteEvent,
+  onDeleteEventSeries,
   onUpdateEvent,
+  onUpdateEventSeries,
 }: Props) {
   const today = useMemo(() => new Date(), [])
   const [year, setYear] = useState(today.getFullYear())
@@ -171,6 +194,11 @@ export function AdminMobileCalendar({
   const [selectedDay, setSelectedDay] = useState(today.getDate())
   const [addOpen, setAddOpen] = useState(false)
   const [editingEventId, setEditingEventId] = useState<number | null>(null)
+  const [scopeAction, setScopeAction] = useState<
+    | { kind: 'edit'; event: CalendarEvent; input: EventInput }
+    | { kind: 'delete'; event: CalendarEvent }
+    | null
+  >(null)
   const [detailEventId, setDetailEventId] = useState<number | null>(null)
   const detailEvent = detailEventId !== null ? events.find((e) => e.id === detailEventId) ?? null : null
   const editingEvent = editingEventId !== null ? events.find((e) => e.id === editingEventId) ?? null : null
@@ -427,11 +455,22 @@ export function AdminMobileCalendar({
           }}
           onSubmit={(input) => {
             if (editingEvent && onUpdateEvent) {
-              const { date: _date, ...editInput } = input
+              const { date: _date, repeat: _repeat, repeatEnd: _repeatEnd, ...editInput } = input
               void _date
-              onUpdateEvent(editingEvent.id, editInput)
+              void _repeat
+              void _repeatEnd
+              if (editingEvent.seriesId && onUpdateEventSeries) {
+                setScopeAction({ kind: 'edit', event: editingEvent, input: editInput })
+              } else {
+                onUpdateEvent(editingEvent.id, editInput)
+              }
             } else if (onCreateEvent) {
-              onCreateEvent(input)
+              const { date: eventDate, repeat, repeatEnd, ...eventInput } = input
+              if (repeat && repeatEnd && onCreateRepeatEvents) {
+                onCreateRepeatEvents(getWeeklyDates(eventDate, repeatEnd), eventInput)
+              } else {
+                onCreateEvent(input)
+              }
             }
             setAddOpen(false)
             setEditingEventId(null)
@@ -459,13 +498,27 @@ export function AdminMobileCalendar({
           onDelete={
             onDeleteEvent
               ? () => {
-                  if (window.confirm(`"${detailEvent.title}" 일정을 삭제할까요?`)) {
+                  if (detailEvent.seriesId && onDeleteEventSeries) {
+                    setScopeAction({ kind: 'delete', event: detailEvent })
+                    setDetailEventId(null)
+                  } else if (window.confirm(`"${detailEvent.title}" 일정을 삭제할까요?`)) {
                     onDeleteEvent(detailEvent.id)
                     setDetailEventId(null)
                   }
                 }
               : undefined
           }
+        />
+      )}
+
+      {scopeAction && (
+        <SeriesScopeSheet
+          action={scopeAction}
+          onClose={() => setScopeAction(null)}
+          onDeleteEvent={onDeleteEvent}
+          onDeleteEventSeries={onDeleteEventSeries}
+          onUpdateEvent={onUpdateEvent}
+          onUpdateEventSeries={onUpdateEventSeries}
         />
       )}
     </div>
@@ -488,6 +541,143 @@ function SectionHead({ title, right }: { title: React.ReactNode; right?: React.R
       </h2>
       {right}
     </div>
+  )
+}
+
+function SeriesScopeSheet({
+  action,
+  onClose,
+  onDeleteEvent,
+  onDeleteEventSeries,
+  onUpdateEvent,
+  onUpdateEventSeries,
+}: {
+  action: { kind: 'edit'; event: CalendarEvent; input: EventInput } | { kind: 'delete'; event: CalendarEvent }
+  onClose: () => void
+  onDeleteEvent?: (id: number) => void
+  onDeleteEventSeries?: (seriesId: string, fromDate: string) => void
+  onUpdateEvent?: (id: number, input: EventInput) => void
+  onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput) => void
+}) {
+  const isEdit = action.kind === 'edit'
+  const seriesId = action.event.seriesId
+  const handleOnly = () => {
+    if (isEdit) onUpdateEvent?.(action.event.id, action.input)
+    else onDeleteEvent?.(action.event.id)
+    onClose()
+  }
+  const handleSeries = () => {
+    if (!seriesId) return
+    if (isEdit) onUpdateEventSeries?.(seriesId, action.event.date, action.input)
+    else onDeleteEventSeries?.(seriesId, action.event.date)
+    onClose()
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 260,
+        display: 'grid',
+        placeItems: 'center',
+        padding: 20,
+        background: 'rgba(26,26,24,0.34)',
+      }}
+    >
+      <div
+        onClick={(event) => event.stopPropagation()}
+        style={{
+          width: '100%',
+          maxWidth: 360,
+          padding: 18,
+          borderRadius: 18,
+          background: 'var(--bg)',
+          border: '1px solid var(--line)',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.18)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 4 }}>
+          <strong style={{ color: 'var(--ink)', fontSize: 17, fontWeight: 750 }}>
+            {isEdit ? '반복 일정 수정' : '반복 일정 삭제'}
+          </strong>
+          <span style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.35 }}>
+            이 일정은 반복 일정입니다. 적용 범위를 선택해 주세요.
+          </span>
+        </div>
+
+        <ScopeButton
+          description={`${action.event.date} 일정만 적용`}
+          label={`이 일정만 ${isEdit ? '수정' : '삭제'}`}
+          onClick={handleOnly}
+        />
+        <ScopeButton
+          danger={!isEdit}
+          description={`${action.event.date}부터 적용`}
+          label={`이후 반복 일정 모두 ${isEdit ? '수정' : '삭제'}`}
+          onClick={handleSeries}
+          primary={isEdit}
+        />
+
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            height: 40,
+            minHeight: 40,
+            border: 'none',
+            borderRadius: 10,
+            background: 'transparent',
+            color: 'var(--muted)',
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          취소
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ScopeButton({
+  danger = false,
+  description,
+  label,
+  onClick,
+  primary = false,
+}: {
+  danger?: boolean
+  description: string
+  label: string
+  onClick: () => void
+  primary?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        minHeight: 58,
+        padding: '12px 14px',
+        border: primary ? '1px solid var(--ink)' : danger ? '1px solid var(--status-danger)' : '1px solid var(--line)',
+        borderRadius: 12,
+        background: primary ? 'var(--ink)' : danger ? 'rgba(220,38,38,0.08)' : 'var(--surface)',
+        color: primary ? '#fff' : danger ? 'var(--status-danger)' : 'var(--text)',
+        textAlign: 'left',
+        cursor: 'pointer',
+      }}
+    >
+      <strong style={{ display: 'block', color: primary ? '#fff' : danger ? 'var(--status-danger)' : 'var(--ink)', fontSize: 14 }}>
+        {label}
+      </strong>
+      <span style={{ display: 'block', marginTop: 3, opacity: 0.72, fontSize: 12 }}>{description}</span>
+    </button>
   )
 }
 
@@ -644,7 +834,7 @@ function EventAddSheet({
   editingEvent?: CalendarEvent | null
   leaderNames: string[]
   onClose: () => void
-  onSubmit: (input: EventInput & { date: string }) => void
+  onSubmit: (input: EventSheetInput) => void
 }) {
   const [date, setDate] = useState(editingEvent?.date ?? defaultDate)
   const [time, setTime] = useState(editingEvent?.time ?? '')
@@ -656,10 +846,13 @@ function EventAddSheet({
   const [leader, setLeader] = useState(editingEvent?.leader ?? '')
   const [hasMeeting, setHasMeeting] = useState(editingEvent?.hasMeeting ?? false)
   const [allowApplications, setAllowApplications] = useState(editingEvent?.allowApplications ?? true)
+  const [repeat, setRepeat] = useState(false)
+  const [repeatEnd, setRepeatEnd] = useState('')
   const [timePresets, setTimePresets] = useState<TimePreset[]>(loadTimePresets)
   const [timeSettingsOpen, setTimeSettingsOpen] = useState(false)
   const canSubmit = title.trim().length > 0
   const isEditing = !!editingEvent
+  const repeatCount = repeat && repeatEnd ? getWeeklyDates(date, repeatEnd).length : 0
   const selectedPreset = timePresets.find((preset) => preset.time === time)?.label ?? ''
 
   const updateTimePresets = (next: TimePreset[]) => {
@@ -734,7 +927,7 @@ function EventAddSheet({
         </div>
 
         {/* 폼 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', overflowX: 'hidden', flex: 1, paddingRight: 1, marginRight: -1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', overflowX: 'hidden', flex: 1, minWidth: 0 }}>
           <Field
             label={
               <>
@@ -770,6 +963,40 @@ function EventAddSheet({
               }}
             >
               <TextInput type="date" value={date} onChange={setDate} subtle />
+              {!isEditing && (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    padding: '9px 10px',
+                    border: '1px solid var(--line)',
+                    borderRadius: 10,
+                    background: 'var(--bg)',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <SettingToggle
+                    checked={repeat}
+                    compact
+                    description="같은 요일로 반복 일정을 생성합니다."
+                    label="매주 반복"
+                    onChange={setRepeat}
+                  />
+                  {repeat && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: 8, alignItems: 'center', minWidth: 0 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>종료일</span>
+                      <TextInput type="date" value={repeatEnd} onChange={setRepeatEnd} subtle />
+                      {repeatEnd && (
+                        <span style={{ gridColumn: '1 / -1', color: 'var(--muted)', fontSize: 11.5, fontWeight: 600 }}>
+                          {repeatCount}개 일정 생성 예정
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>자주 쓰는 시간</span>
@@ -862,7 +1089,7 @@ function EventAddSheet({
         <button
           type="button"
           disabled={!canSubmit}
-          onClick={() => onSubmit({ date, time, endTime: endTime || undefined, title: title.trim(), memo: memo.trim(), place: place.trim(), mapLink: mapLink.trim() || undefined, leader, hasMeeting, allowApplications })}
+          onClick={() => onSubmit({ date, time, endTime: endTime || undefined, title: title.trim(), memo: memo.trim(), place: place.trim(), mapLink: mapLink.trim() || undefined, leader, hasMeeting, allowApplications, repeat: !isEditing && repeat, repeatEnd })}
           style={{
             marginTop: 14,
             height: 46,
@@ -925,6 +1152,7 @@ function TextInput({
         font: 'inherit',
         outline: 'none',
         width: '100%',
+        minWidth: 0,
         minHeight: 42,
         boxSizing: 'border-box',
         accentColor: 'var(--ink)',
@@ -1230,11 +1458,13 @@ function Select({ value, onChange, options, placeholder }: { value: string; onCh
 
 function SettingToggle({
   checked,
+  compact = false,
   description,
   label,
   onChange,
 }: {
   checked: boolean
+  compact?: boolean
   description: string
   label: string
   onChange: (v: boolean) => void
@@ -1249,11 +1479,11 @@ function SettingToggle({
         justifyContent: 'space-between',
         gap: 12,
         width: '100%',
-        minHeight: 58,
-        padding: '11px 12px',
+        minHeight: compact ? 44 : 58,
+        padding: compact ? 0 : '11px 12px',
         border: '1px solid var(--line)',
         borderRadius: 12,
-        background: 'var(--surface)',
+        background: compact ? 'transparent' : 'var(--surface)',
         color: 'var(--text)',
         textAlign: 'left',
         cursor: 'pointer',

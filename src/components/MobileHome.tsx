@@ -925,8 +925,11 @@ export function MobileHome({
   onUpdateBuilding,
   onDeleteUnit,
   onCreateCalendarEvent,
+  onCreateRepeatCalendarEvents,
   onDeleteCalendarEvent,
+  onDeleteCalendarEventSeries,
   onUpdateCalendarEvent,
+  onUpdateCalendarEventSeries,
   onCreateNotice,
   onDeleteNotice,
   returnVisits = [],
@@ -1003,8 +1006,11 @@ export function MobileHome({
   onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number) => void
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onCreateCalendarEvent: (input: { date: string; time: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
+  onCreateRepeatCalendarEvents?: (dates: string[], input: { time: string; endTime?: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
   onDeleteCalendarEvent: (id: number) => void
+  onDeleteCalendarEventSeries?: (seriesId: string, fromDate: string) => void
   onUpdateCalendarEvent: (id: number, input: { time: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
+  onUpdateCalendarEventSeries?: (seriesId: string, fromDate: string, input: { time: string; endTime?: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
   onCreateNotice: (input: { title: string; content: string; priority: Notice['priority']; author: string }) => void
   onDeleteNotice: (id: number) => void
   returnVisits?: ReturnVisit[]
@@ -1470,8 +1476,11 @@ export function MobileHome({
                     leaderNames={leaderNames}
                     mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
                     onCreateEvent={onCreateCalendarEvent}
+                    onCreateRepeatEvents={onCreateRepeatCalendarEvents}
                     onDeleteEvent={onDeleteCalendarEvent}
+                    onDeleteEventSeries={onDeleteCalendarEventSeries}
                     onUpdateEvent={onUpdateCalendarEvent}
+                    onUpdateEventSeries={onUpdateCalendarEventSeries}
                   />
                 ) : (
                   <MobileCalendar
