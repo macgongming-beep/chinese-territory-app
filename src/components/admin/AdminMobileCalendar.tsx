@@ -20,6 +20,7 @@ const WEEKDAY_LABELS = ['일요일', '월요일', '화요일', '수요일', '목
 
 type EventInput = {
   time: string
+  endTime?: string
   title: string
   place: string
   leader: string
@@ -46,6 +47,12 @@ function pad2(n: number) {
 
 function toDateStr(year: number, month: number, day: number) {
   return `${year}-${pad2(month)}-${pad2(day)}`
+}
+
+// 시간 범위 포맷: "13:00 — 15:00" 또는 "13:00"
+function formatTimeRange(start?: string, end?: string): string {
+  if (!start) return ''
+  return end ? `${start} — ${end}` : start
 }
 
 function buildCalendarDays(year: number, month: number): (number | null)[] {
@@ -479,6 +486,11 @@ function DayEventCard({ event, onClick }: { event: CalendarEvent; onClick?: () =
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
             {event.time || '시간 미정'}
           </span>
+          {event.endTime && (
+            <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+              {event.endTime}
+            </span>
+          )}
         </div>
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -517,7 +529,7 @@ function UpcomingEventCard({ event, onClick }: { event: CalendarEvent; onClick?:
   const dStr = `${d.getMonth() + 1}/${d.getDate()}`
   const dow = WEEKDAYS[d.getDay()]
   const meta: string[] = []
-  if (event.time) meta.push(event.time)
+  if (event.time) meta.push(formatTimeRange(event.time, event.endTime))
   if (event.place) meta.push(event.place)
   return (
     <button
@@ -571,6 +583,7 @@ function EventAddSheet({
 }) {
   const [date, setDate] = useState(editingEvent?.date ?? defaultDate)
   const [time, setTime] = useState(editingEvent?.time ?? '')
+  const [endTime, setEndTime] = useState(editingEvent?.endTime ?? '')
   const [title, setTitle] = useState(editingEvent?.title ?? '')
   const [memo, setMemo] = useState(editingEvent?.memo ?? '')
   const [place, setPlace] = useState(editingEvent?.place ?? '')
@@ -656,15 +669,20 @@ function EventAddSheet({
             <TextArea value={memo} onChange={setMemo} placeholder="추가 설명" />
           </Field>
 
-          <div style={{ display: 'flex', gap: 8 }}>
+          <Field label="날짜">
+            <TextInput type="date" value={date} onChange={setDate} />
+          </Field>
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <div style={{ flex: 1 }}>
-              <Field label="날짜">
-                <TextInput type="date" value={date} onChange={setDate} />
+              <Field label="시작 시간">
+                <TextInput type="time" value={time} onChange={setTime} />
               </Field>
             </div>
+            <div style={{ paddingBottom: 12, color: 'var(--muted)', fontSize: 14 }}>—</div>
             <div style={{ flex: 1 }}>
-              <Field label="시간">
-                <TextInput type="time" value={time} onChange={setTime} />
+              <Field label="종료 시간 (선택)">
+                <TextInput type="time" value={endTime} onChange={setEndTime} />
               </Field>
             </div>
           </div>
@@ -688,7 +706,7 @@ function EventAddSheet({
         <button
           type="button"
           disabled={!canSubmit}
-          onClick={() => onSubmit({ date, time, title: title.trim(), memo: memo.trim(), place: place.trim(), mapLink: mapLink.trim() || undefined, leader, hasMeeting, allowApplications })}
+          onClick={() => onSubmit({ date, time, endTime: endTime || undefined, title: title.trim(), memo: memo.trim(), place: place.trim(), mapLink: mapLink.trim() || undefined, leader, hasMeeting, allowApplications })}
           style={{
             marginTop: 14,
             height: 48,

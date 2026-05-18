@@ -231,7 +231,7 @@ export function AdminEventDetailSheet({
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
-              {event.time || '시간 미정'}
+              {event.endTime ? `${event.time} — ${event.endTime}` : (event.time || '시간 미정')}
             </span>
             {event.hasMeeting && (
               <span

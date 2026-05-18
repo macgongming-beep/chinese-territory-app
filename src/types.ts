@@ -18,6 +18,7 @@ export type CalendarEvent = {
   id: number
   date: string  // 'YYYY-MM-DD'
   time: string
+  endTime?: string  // 'HH:MM' — 종료 시간 (선택)
   title: string
   type: ScheduleType
   place: string

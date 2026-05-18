@@ -5,6 +5,7 @@ import { createSystemChatMessage } from './chatSystem'
 /** 일정 입력 공통 타입 */
 export type CalendarEventInput = {
   time: string
+  endTime?: string
   title: string
   place: string
   mapLink?: string
@@ -18,6 +19,7 @@ export type CalendarEventInput = {
 function buildEventPayload(input: CalendarEventInput): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     time: input.time,
+    end_time: input.endTime?.trim() || null,
     title: input.title,
     place: input.place,
     leader_name: input.leader,

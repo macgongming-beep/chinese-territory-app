@@ -370,7 +370,12 @@ export function ChatRoom({
   if (missingTable) {
     return (
       <section className={`chat-room${compact ? ' chat-room--compact' : ''}`}>
-        <div className="chat-empty">채팅 기능은 V1+ SQL 적용 후 사용할 수 있습니다.</div>
+        <div className="chat-empty">
+          채팅을 불러올 수 없습니다.<br />
+          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted-2)' }}>
+            Supabase 에 V1+ 채팅 SQL 미적용 또는 권한 문제
+          </span>
+        </div>
       </section>
     )
   }

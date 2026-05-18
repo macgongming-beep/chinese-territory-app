@@ -77,6 +77,7 @@ export type RawCalendarEvent = {
   id: number
   event_date: string
   time: string
+  end_time?: string | null
   title: string
   type: string
   place: string
@@ -281,6 +282,7 @@ export function toCalendarEvent(
     id: raw.id,
     date: raw.event_date,
     time: raw.time,
+    endTime: raw.end_time ?? undefined,
     title: raw.title,
     type: raw.type as ScheduleType,
     place: raw.place,
