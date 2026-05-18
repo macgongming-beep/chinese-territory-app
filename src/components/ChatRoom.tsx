@@ -503,7 +503,7 @@ export function ChatRoom({
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.nativeEvent.isComposing) void sendTextMessage()
           }}
-          placeholder="메시지 입력. @이름으로 언급할 수 있습니다."
+          placeholder="메시지 · @로 멘션"
           value={draft}
         />
         {mentionSuggestions.length > 0 && (
