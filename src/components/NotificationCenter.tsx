@@ -359,62 +359,34 @@ function ChatGroupItem({
   const latestBody = group.latest.body ?? ''
   return (
     <button
+      className={`notification-row${isAllRead ? '' : ' notification-row--unread'}`}
       onClick={() => onClick(group)}
-      style={{
-        display: 'flex', gap: 12, alignItems: 'flex-start',
-        width: '100%', padding: '12px',
-        background: isAllRead ? 'transparent' : 'rgba(26,26,24,0.04)',
-        border: 'none', borderRadius: 10,
-        cursor: 'pointer', textAlign: 'left',
-        minHeight: 0,
-      }}
       type="button"
     >
-      <div style={{
-        flexShrink: 0, width: 32, height: 32, borderRadius: 8,
-        background: 'var(--ink)', color: '#fff',
-        display: 'grid', placeItems: 'center',
-      }}>
+      <div className="notification-row__icon notification-row__icon--dark">
         <NotificationIcon name={meta.icon} />
       </div>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flex: 1, minWidth: 0 }}>
+      <div className="notification-row__content">
+        <div className="notification-row__top">
+          <div className="notification-row__title-wrap">
             {group.unreadCount > 0 && (
-              <span style={{ width: 6, height: 6, borderRadius: 99, background: 'var(--status-danger)', flexShrink: 0 }} />
+              <span className="notification-row__unread-dot" />
             )}
-            <span style={{
-              fontSize: 14, fontWeight: 600, color: 'var(--ink)',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {eventTitle}
-            </span>
+            <span className="notification-row__title">{eventTitle}</span>
           </div>
           {participantCount > 0 && (
-            <span style={{ flexShrink: 0, fontSize: 12, color: 'var(--muted)' }}>
-              {participantCount}명
-            </span>
+            <span className="notification-row__side-meta">{participantCount}명</span>
           )}
         </div>
         {latestBody && (
-          <span style={{
-            fontSize: 12, color: 'var(--muted)',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>{latestBody}</span>
+          <span className="notification-row__body">{latestBody}</span>
         )}
-        <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>
+        <span className="notification-row__time">
           {formatRelativeTime(group.latest.createdAt)}
         </span>
       </div>
       {group.unreadCount > 0 && (
-        <span style={{
-          flexShrink: 0, alignSelf: 'center',
-          minWidth: 18, padding: '2px 6px',
-          borderRadius: 99, background: 'var(--status-danger)', color: '#fff',
-          fontSize: 10, fontWeight: 700,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          fontVariantNumeric: 'tabular-nums',
-        }}>
+        <span className="notification-row__badge">
           {group.unreadCount > 99 ? '99+' : group.unreadCount}
         </span>
       )}
@@ -434,47 +406,28 @@ function NotificationItem({
 
   return (
     <button
+      className={`notification-row${n.isRead ? '' : ' notification-row--unread'}`}
       onClick={() => onClick(n)}
-      style={{
-        display: 'flex', gap: 12, alignItems: 'flex-start',
-        width: '100%', padding: '12px',
-        background: n.isRead ? 'transparent' : 'rgba(26,26,24,0.04)',
-        border: 'none', borderRadius: 10,
-        cursor: 'pointer', textAlign: 'left',
-        minHeight: 0,
-      }}
       type="button"
     >
-      <div style={{
-        flexShrink: 0, width: 32, height: 32, borderRadius: 8,
-        background: isChat ? 'var(--ink)' : 'var(--tint)',
-        color: isChat ? '#fff' : 'var(--text)',
-        display: 'grid', placeItems: 'center',
-      }}>
+      <div className={`notification-row__icon${isChat ? ' notification-row__icon--dark' : ''}`}>
         <NotificationIcon name={meta.icon} />
       </div>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+      <div className="notification-row__content">
+        <div className="notification-row__top">
+          <div className="notification-row__title-wrap">
           {!n.isRead && (
-            <span style={{
-              width: 6, height: 6, borderRadius: 99, background: 'var(--status-danger)', flexShrink: 0,
-            }} />
+            <span className="notification-row__unread-dot" />
           )}
-          <span style={{
-            fontSize: 14, fontWeight: n.isRead ? 500 : 600, color: 'var(--ink)',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
+          <span className="notification-row__title">
             {n.title}
           </span>
+          </div>
         </div>
         {n.body && (
-          <span style={{
-            fontSize: 12, color: 'var(--muted)',
-            overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box',
-            WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.4,
-          }}>{n.body}</span>
+          <span className="notification-row__body">{n.body}</span>
         )}
-        <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>
+        <span className="notification-row__time">
           {formatRelativeTime(n.createdAt)}
         </span>
       </div>
