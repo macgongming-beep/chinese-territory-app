@@ -216,7 +216,6 @@ export function NotificationCenter({
           boxShadow: '0 16px 48px rgba(0,0,0,0.18)',
           display: 'flex',
           flexDirection: 'column',
-          animation: 'notifSlideIn 0.2s ease-out',
           boxSizing: 'border-box',
           overflow: 'hidden',
         }}
@@ -328,12 +327,6 @@ export function NotificationCenter({
         </div>
       </div>
 
-      <style>{`
-        @keyframes notifSlideIn {
-          from { transform: translateY(-12px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-      `}</style>
     </div>
   )
 }

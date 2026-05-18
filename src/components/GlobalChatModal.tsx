@@ -129,7 +129,6 @@ export function GlobalChatModal({
           boxShadow: '0 16px 48px rgba(0,0,0,0.18)',
           display: 'flex',
           flexDirection: 'column',
-          animation: 'chatSlideIn 0.2s ease-out',
           boxSizing: 'border-box',
           overflow: 'hidden',
         }}
@@ -257,18 +256,6 @@ export function GlobalChatModal({
         </div>
       </div>
 
-      <style>{`
-        @keyframes chatSlideIn {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
-        }
-        @media (max-width: 480px) {
-          @keyframes chatSlideIn {
-            from { transform: translateY(-100%); }
-            to { transform: translateY(0); }
-          }
-        }
-      `}</style>
     </div>
   )
 }
