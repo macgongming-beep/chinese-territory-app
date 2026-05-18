@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Component } from 'react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useNotifications } from '../hooks/useNotifications'
@@ -215,6 +215,27 @@ export function AppHeaderActionButtons({
       }, 0)
     }
   }
+
+  // 외부 컴포넌트(일정 상세 시트 등)에서 'app:open-event-chat' 이벤트 dispatch 하면
+  // GlobalChatModal 을 그 일정으로 바로 열어줌.
+  useEffect(() => {
+    function onOpenEventChat(e: Event) {
+      const detail = (e as CustomEvent).detail as {
+        eventId: number; eventTitle?: string; eventDate?: string; eventTime?: string | null
+      } | null
+      if (!detail || !detail.eventId) return
+      chatReturnToRef.current = `${location.pathname}${location.search}${location.hash}`
+      handleOpenChatRoom({
+        eventId: detail.eventId,
+        eventTitle: detail.eventTitle ?? '봉사 채팅',
+        eventDate: detail.eventDate ?? '',
+        eventTime: detail.eventTime ?? null,
+      })
+    }
+    window.addEventListener('app:open-event-chat', onOpenEventChat)
+    return () => window.removeEventListener('app:open-event-chat', onOpenEventChat)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search, location.hash])
 
   return (
     <>

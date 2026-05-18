@@ -93,14 +93,17 @@ export function AdminMobileCalendar({
   leaderNames = [],
   onCreateEvent,
   onDeleteEvent,
+  onUpdateEvent,
 }: Props) {
   const today = useMemo(() => new Date(), [])
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
   const [selectedDay, setSelectedDay] = useState(today.getDate())
   const [addOpen, setAddOpen] = useState(false)
+  const [editingEventId, setEditingEventId] = useState<number | null>(null)
   const [detailEventId, setDetailEventId] = useState<number | null>(null)
   const detailEvent = detailEventId !== null ? events.find((e) => e.id === detailEventId) ?? null : null
+  const editingEvent = editingEventId !== null ? events.find((e) => e.id === editingEventId) ?? null : null
 
   const cells = useMemo(() => buildCalendarDays(year, month), [year, month])
   const selectedDateStr = toDateStr(year, month, selectedDay)
@@ -342,15 +345,26 @@ export function AdminMobileCalendar({
         </section>
       )}
 
-      {/* ── 일정 추가 시트 ─────────────── */}
-      {addOpen && onCreateEvent && (
+      {/* ── 일정 추가/편집 시트 ─────────── */}
+      {(addOpen || editingEvent) && (
         <EventAddSheet
           defaultDate={selectedDateStr}
+          editingEvent={editingEvent}
           leaderNames={leaderNames}
-          onClose={() => setAddOpen(false)}
-          onSubmit={(input) => {
-            onCreateEvent(input)
+          onClose={() => {
             setAddOpen(false)
+            setEditingEventId(null)
+          }}
+          onSubmit={(input) => {
+            if (editingEvent && onUpdateEvent) {
+              const { date: _date, ...editInput } = input
+              void _date
+              onUpdateEvent(editingEvent.id, editInput)
+            } else if (onCreateEvent) {
+              onCreateEvent(input)
+            }
+            setAddOpen(false)
+            setEditingEventId(null)
           }}
         />
       )}
@@ -362,6 +376,14 @@ export function AdminMobileCalendar({
           role={role}
           currentVisitor={currentVisitor}
           onClose={() => setDetailEventId(null)}
+          onEdit={
+            onUpdateEvent
+              ? () => {
+                  setEditingEventId(detailEvent.id)
+                  setDetailEventId(null)
+                }
+              : undefined
+          }
           onDelete={
             onDeleteEvent
               ? () => {
@@ -533,28 +555,31 @@ function UpcomingEventCard({ event, onClick }: { event: CalendarEvent; onClick?:
   )
 }
 
-// ── 일정 추가 바텀 시트 ────────────────
+// ── 일정 추가/편집 바텀 시트 ────────────────
 function EventAddSheet({
   defaultDate,
+  editingEvent,
   leaderNames,
   onClose,
   onSubmit,
 }: {
   defaultDate: string
+  editingEvent?: CalendarEvent | null
   leaderNames: string[]
   onClose: () => void
   onSubmit: (input: EventInput & { date: string }) => void
 }) {
-  const [date, setDate] = useState(defaultDate)
-  const [time, setTime] = useState('')
-  const [title, setTitle] = useState('')
-  const [memo, setMemo] = useState('')
-  const [place, setPlace] = useState('')
-  const [mapLink, setMapLink] = useState('')
-  const [leader, setLeader] = useState('')
-  const [hasMeeting, setHasMeeting] = useState(false)
-  const [allowApplications, setAllowApplications] = useState(true)
+  const [date, setDate] = useState(editingEvent?.date ?? defaultDate)
+  const [time, setTime] = useState(editingEvent?.time ?? '')
+  const [title, setTitle] = useState(editingEvent?.title ?? '')
+  const [memo, setMemo] = useState(editingEvent?.memo ?? '')
+  const [place, setPlace] = useState(editingEvent?.place ?? '')
+  const [mapLink, setMapLink] = useState(editingEvent?.mapLink ?? '')
+  const [leader, setLeader] = useState(editingEvent?.leader ?? '')
+  const [hasMeeting, setHasMeeting] = useState(editingEvent?.hasMeeting ?? false)
+  const [allowApplications, setAllowApplications] = useState(editingEvent?.allowApplications ?? true)
   const canSubmit = title.trim().length > 0
+  const isEditing = !!editingEvent
 
   return (
     <div
@@ -588,7 +613,7 @@ function EventAddSheet({
         {/* 제목 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>새 일정 추가</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>{isEditing ? '일정 편집' : '새 일정 추가'}</span>
             <span style={{ fontSize: 12, color: 'var(--muted)' }}>{date.replace(/-/g, '.')}</span>
           </div>
           <button

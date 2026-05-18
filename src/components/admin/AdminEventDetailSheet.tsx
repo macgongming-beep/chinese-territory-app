@@ -11,7 +11,7 @@
 //
 // 단순화: 댓글/지도 썸네일은 기본 placeholder 만, 본격 기능은 다음 라운드.
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { CalendarEvent, Role } from '../../types'
 
 type Props = {
@@ -20,6 +20,7 @@ type Props = {
   currentVisitor: string
   onClose: () => void
   onDelete?: () => void
+  onEdit?: () => void
   onApply?: () => void
   onCancelApply?: () => void
 }
@@ -72,6 +73,7 @@ export function AdminEventDetailSheet({
   currentVisitor,
   onClose,
   onDelete,
+  onEdit,
   onApply,
   onCancelApply,
 }: Props) {
@@ -80,6 +82,19 @@ export function AdminEventDetailSheet({
   const applicants = event.applicants ?? []
   const previewApplicants = applicants.slice(0, 6)
   const overflow = applicants.length - previewApplicants.length
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const openChat = () => {
+    window.dispatchEvent(new CustomEvent('app:open-event-chat', {
+      detail: {
+        eventId: event.id,
+        eventTitle: event.title,
+        eventDate: event.date,
+        eventTime: event.time,
+      },
+    }))
+    onClose()
+  }
 
   return (
     <div
@@ -129,26 +144,75 @@ export function AdminEventDetailSheet({
             <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--muted)' }}>{formatDateHeader(event.date)}</span>
           </div>
         </div>
-        {role === 'admin' && onDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            style={{
-              width: 36,
-              height: 36,
-              minHeight: 36,
-              border: 'none',
-              background: 'transparent',
-              borderRadius: 8,
-              color: 'var(--text)',
-              display: 'grid',
-              placeItems: 'center',
-              cursor: 'pointer',
-            }}
-            aria-label="더보기"
-          >
-            <DotsIcon />
-          </button>
+        {role === 'admin' && (onDelete || onEdit) && (
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              style={{
+                width: 36,
+                height: 36,
+                minHeight: 36,
+                border: 'none',
+                background: 'transparent',
+                borderRadius: 8,
+                color: 'var(--text)',
+                display: 'grid',
+                placeItems: 'center',
+                cursor: 'pointer',
+              }}
+              aria-label="더보기"
+            >
+              <DotsIcon />
+            </button>
+            {menuOpen && (
+              <>
+                <div
+                  onClick={() => setMenuOpen(false)}
+                  style={{ position: 'fixed', inset: 0, zIndex: 30 }}
+                />
+                <div
+                  style={{
+                    position: 'absolute', top: '100%', right: 0,
+                    marginTop: 4, zIndex: 31,
+                    background: 'var(--surface)',
+                    border: '1px solid var(--line)',
+                    borderRadius: 8,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                    minWidth: 140,
+                    padding: 4,
+                  }}
+                >
+                  {onEdit && (
+                    <button
+                      type="button"
+                      onClick={() => { setMenuOpen(false); onEdit() }}
+                      style={{
+                        width: '100%', textAlign: 'left',
+                        padding: '8px 10px', minHeight: 0,
+                        background: 'transparent', border: 'none',
+                        fontSize: 13, color: 'var(--text)',
+                        cursor: 'pointer', borderRadius: 6,
+                      }}
+                    >수정</button>
+                  )}
+                  {onDelete && (
+                    <button
+                      type="button"
+                      onClick={() => { setMenuOpen(false); onDelete() }}
+                      style={{
+                        width: '100%', textAlign: 'left',
+                        padding: '8px 10px', minHeight: 0,
+                        background: 'transparent', border: 'none',
+                        fontSize: 13, color: 'var(--status-danger)',
+                        cursor: 'pointer', borderRadius: 6,
+                      }}
+                    >삭제</button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         )}
       </header>
 
@@ -229,12 +293,12 @@ export function AdminEventDetailSheet({
           </section>
         )}
 
-        {/* 위치 */}
-        {event.place && (
+        {/* 위치 — mapLink 가 있을 때만 지도 썸네일+네이버 카드 형태,
+            없으면 간단한 한 줄 표시 */}
+        {event.place && event.mapLink && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <SectionHead title="위치" />
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
-              {/* 지도 썸네일 placeholder */}
               <div
                 style={{
                   aspectRatio: '16/9',
@@ -248,31 +312,44 @@ export function AdminEventDetailSheet({
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{event.place}</span>
                 </div>
-                {event.mapLink && (
-                  <a
-                    href={event.mapLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      height: 30,
-                      minHeight: 30,
-                      padding: '0 10px',
-                      gap: 4,
-                      background: 'var(--surface)',
-                      border: '1px solid var(--line-2)',
-                      borderRadius: 8,
-                      color: 'var(--text)',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      textDecoration: 'none',
-                    }}
-                  >
-                    네이버
-                  </a>
-                )}
+                <a
+                  href={event.mapLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    height: 30,
+                    minHeight: 30,
+                    padding: '0 10px',
+                    gap: 4,
+                    background: 'var(--surface)',
+                    border: '1px solid var(--line-2)',
+                    borderRadius: 8,
+                    color: 'var(--text)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                  }}
+                >
+                  네이버
+                </a>
               </div>
+            </div>
+          </section>
+        )}
+        {event.place && !event.mapLink && (
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <SectionHead title="위치" />
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '12px 14px',
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+              borderRadius: 12,
+            }}>
+              <PinIcon />
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{event.place}</span>
             </div>
           </section>
         )}
@@ -347,7 +424,9 @@ export function AdminEventDetailSheet({
           <SectionHead
             title={<>댓글</>}
             right={
-              <span
+              <button
+                type="button"
+                onClick={openChat}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -355,10 +434,15 @@ export function AdminEventDetailSheet({
                   fontSize: 13,
                   fontWeight: 500,
                   color: 'var(--muted)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  minHeight: 0,
+                  padding: '4px 2px',
                 }}
               >
                 <ChatIcon /> 채팅 열기
-              </span>
+              </button>
             }
           />
           <div style={{ fontSize: 13, color: 'var(--muted-2)', padding: '20px 0', textAlign: 'center' }}>
@@ -381,7 +465,9 @@ export function AdminEventDetailSheet({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Avatar name={currentVisitor || '?'} size={28} />
-          <div
+          <button
+            type="button"
+            onClick={openChat}
             style={{
               flex: 1,
               padding: '10px 14px',
@@ -390,10 +476,13 @@ export function AdminEventDetailSheet({
               borderRadius: 10,
               fontSize: 14,
               color: 'var(--muted-2)',
+              textAlign: 'left',
+              minHeight: 0,
+              cursor: 'pointer',
             }}
           >
-            댓글 입력 (다음 라운드 구현)
-          </div>
+            메시지 · @로 멘션
+          </button>
         </div>
       </div>
     </div>

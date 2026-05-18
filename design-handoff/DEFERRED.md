@@ -5,8 +5,8 @@
 ## 캘린더 (Phase 3c)
 
 - [ ] **시간 범위 (시작~종료)** — DB `calendar_events.end_time` 컬럼 추가 + 타입/transform/UI 업데이트
-- [ ] 일정 상세 시트 댓글/채팅 실제 연동 (현재 placeholder)
-- [ ] 일정 상세 시트 ⋮ 메뉴 — 편집 옵션 추가 (현재는 삭제만)
+- [x] 일정 상세 시트 댓글/채팅 실제 연동 (custom event `app:open-event-chat`)
+- [x] 일정 상세 시트 ⋮ 메뉴 — 편집 옵션 추가
 - [ ] 일정 상세 시트 지도 썸네일 실제 지도로 (현재 grid placeholder)
 
 ## 홈 (Phase 3a)
