@@ -10,7 +10,7 @@
 // 헤더는 상위 MobileHome.tsx 의 AppHeader 가 그림.
 
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { CalendarEvent, Role } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { Card } from '../ui'
@@ -203,9 +203,12 @@ export function AdminMobileCalendar({
     | null
   >(null)
   const [detailEventId, setDetailEventId] = useState<number | null>(null)
+  // 딥링크(?openEvent=) 로 시트가 열렸는지 추적 — 닫을 때 이전 화면으로 복귀하기 위함
+  const [cameFromDeepLink, setCameFromDeepLink] = useState(false)
   const detailEvent = detailEventId !== null ? events.find((e) => e.id === detailEventId) ?? null : null
   const editingEvent = editingEventId !== null ? events.find((e) => e.id === editingEventId) ?? null : null
 
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   // 알림/딥링크 진입: ?openChat=X → 그 일정 채팅 열기,
   //                  ?openEvent=X → 그 일정 상세 시트 열기
@@ -237,6 +240,7 @@ export function AdminMobileCalendar({
       }))
     } else if (openEventId) {
       setDetailEventId(targetEvent.id)
+      setCameFromDeepLink(true)
     }
 
     const next = new URLSearchParams(searchParams)
@@ -529,7 +533,14 @@ export function AdminMobileCalendar({
           currentVisitor={currentVisitor}
           currentUserId={currentUserId}
           mentionUsers={mentionUsers}
-          onClose={() => setDetailEventId(null)}
+          onClose={() => {
+            setDetailEventId(null)
+            // 홈 등 다른 화면에서 ?openEvent= 로 들어왔다면 닫을 때 그 화면으로 복귀
+            if (cameFromDeepLink) {
+              setCameFromDeepLink(false)
+              navigate(-1)
+            }
+          }}
           onApply={onApplyToEvent ? () => onApplyToEvent(detailEvent.id) : undefined}
           onCancelApply={onApplyToEvent ? () => onApplyToEvent(detailEvent.id) : undefined}
           onEdit={
