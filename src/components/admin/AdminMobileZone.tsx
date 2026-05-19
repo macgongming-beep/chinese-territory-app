@@ -152,6 +152,42 @@ export function AdminMobileZone({
     return { total, assigned, unassigned }
   }, [baseCards])
 
+  // ── drill-down stats (현재 level 기준: 전체 카드 · 주택 · 상가) ───
+  const drillStats = useMemo(() => {
+    const cardsInScope = baseCards.filter((c) => {
+      const region = REGION_ORDER.includes(c.region as string) ? (c.region as string) : '기타'
+      if (level === 'regions') return true
+      if (level === 'dongs') return region === selectedRegion
+      // cards
+      return region === selectedRegion && extractDong(c.name, selectedRegion) === selectedDong
+    })
+    let house = 0
+    let shop = 0
+    for (const c of cardsInScope) {
+      const bc = cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }
+      house += bc.house
+      shop += bc.shop
+    }
+    return { total: cardsInScope.length, house, shop }
+  }, [baseCards, cardBuildingCounts, level, selectedRegion, selectedDong])
+
+  // ── 담당 view 의 state totals (미사용 / 사용중 / 사용완료) ─────
+  // 본인 담당 카드를 status 별 집계 — 어휘 매핑:
+  //   미배정/진행 X → 미사용 (danger)
+  //   진행중       → 사용중 (info)
+  //   완료         → 사용완료 (ok)
+  const mineStateTotals = useMemo(() => {
+    let unused = 0
+    let inUse = 0
+    let done = 0
+    for (const c of baseCards) {
+      if (c.status === '완료') done += 1
+      else if (c.status === '진행중') inUse += 1
+      else unused += 1
+    }
+    return { unused, inUse, done }
+  }, [baseCards])
+
   // ── 시·구 list ────────────────────────────────
   const regionList = useMemo(() => {
     const map = new Map<string, TerritoryCard[]>()
@@ -341,12 +377,48 @@ export function AdminMobileZone({
         }} />
       </div>
 
-      {/* Stats inline */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px', fontSize: 13, color: 'var(--muted)' }}>
-        <span><span style={{ color: 'var(--muted)' }}>전체</span> <b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.total}</b></span>
-        <span><span style={{ color: 'var(--muted)' }}>배정</span> <b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.assigned}</b></span>
-        <span><span style={{ color: 'var(--muted)' }}>미배정</span> <b style={{ color: 'var(--status-danger)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.unassigned}</b></span>
-      </div>
+      {/* Stats inline
+          - 전체 view: 전체 / 배정 / 미배정 (디자인 04 의 기본 카운터)
+          - 담당 view + drill-down: 디자인 20/21 의 압축 stats (전체 · 주택 · 상가)
+            대신 디자인 22 의 미사용/사용중/사용완료 totals 행은 별도 카드로 아래 */}
+      {scope === 'all' && level === 'regions' ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px', fontSize: 13, color: 'var(--muted)' }}>
+          <span><span style={{ color: 'var(--muted)' }}>전체</span> <b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.total}</b></span>
+          <span><span style={{ color: 'var(--muted)' }}>배정</span> <b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.assigned}</b></span>
+          <span><span style={{ color: 'var(--muted)' }}>미배정</span> <b style={{ color: 'var(--status-danger)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.unassigned}</b></span>
+        </div>
+      ) : level !== 'regions' ? (
+        <div style={{
+          display: 'flex', alignItems: 'baseline', flexWrap: 'wrap',
+          fontSize: 13, color: 'var(--muted)', padding: '0 4px', gap: '4px 8px',
+        }}>
+          <span>전체<b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 3, fontVariantNumeric: 'tabular-nums' }}>{drillStats.total}</b></span>
+          <span style={{ color: 'var(--muted-3)' }}>·</span>
+          <span>주택<b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 3, fontVariantNumeric: 'tabular-nums' }}>{drillStats.house}</b></span>
+          <span style={{ color: 'var(--muted-3)' }}>·</span>
+          <span>상가<b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 3, fontVariantNumeric: 'tabular-nums' }}>{drillStats.shop}</b></span>
+        </div>
+      ) : (
+        /* scope === 'mine' && level === 'regions' → 담당 state totals 행 (디자인 22) */
+        <div style={{
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 14,
+          padding: '8px 12px',
+          background: 'var(--surface)', border: '1px solid var(--line)',
+          borderRadius: 8,
+        }}>
+          {[
+            { label: '미사용', count: mineStateTotals.unused, color: 'var(--status-danger)' },
+            { label: '사용중', count: mineStateTotals.inUse, color: 'var(--status-info)' },
+            { label: '사용완료', count: mineStateTotals.done, color: 'var(--status-ok)' },
+          ].map((s) => (
+            <span key={s.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              <span style={{ width: 7, height: 7, borderRadius: 99, background: s.color, flexShrink: 0 }} />
+              <b style={{ color: 'var(--ink)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{s.count}</b>
+              <span style={{ color: 'var(--muted)', fontSize: 12 }}>{s.label}</span>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* 검색 */}
       <label style={{
@@ -681,32 +753,48 @@ function CardRow({
         cursor: 'pointer', textAlign: 'left', minHeight: 0,
       }}
     >
-      <Card padding="14px 16px">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{card.name}</span>
-              <span style={{
-                fontSize: 11.5, fontWeight: 600,
-                padding: '3px 9px', borderRadius: 999,
-                background: c.bg, color: c.color,
-              }}>
-                {statePill.label}
-              </span>
-            </div>
-            <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
-              {card.assignedLeader ? `담당 ${card.assignedLeader} · ` : ''}
-              주택 {buildingCount.house} · 상가 {buildingCount.shop}
-            </span>
-            {/* 진행률 바 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-              <div style={{ flex: 1, height: 4, background: 'var(--tint)', borderRadius: 99, overflow: 'hidden' }}>
-                <div style={{ width: `${card.progress}%`, height: '100%', background: 'var(--ink)', borderRadius: 99 }} />
+      <Card padding="12px 14px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* 첫 줄: 이름 + StatePill + 지도 ghost (디자인 21) */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{card.name}</span>
+                <span style={{
+                  fontSize: 11.5, fontWeight: 600,
+                  padding: '3px 9px', borderRadius: 999,
+                  background: c.bg, color: c.color,
+                }}>
+                  {statePill.label}
+                </span>
               </div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', minWidth: 32, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                {card.progress}%
+              <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+                {card.assignedLeader ? `담당 ${card.assignedLeader} · ` : ''}
+                주택 {buildingCount.house} · 상가 {buildingCount.shop}
               </span>
             </div>
+            <span
+              aria-hidden
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                height: 30, padding: '0 12px',
+                border: '1px solid var(--line-2)', borderRadius: 8,
+                background: 'var(--surface)', color: 'var(--text)',
+                fontSize: 12, fontWeight: 600, flexShrink: 0,
+              }}
+            >
+              <MapIcon size={13} /> 지도
+            </span>
+          </div>
+
+          {/* 진행률 바 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ flex: 1, height: 4, background: 'var(--tint)', borderRadius: 99, overflow: 'hidden' }}>
+              <div style={{ width: `${card.progress}%`, height: '100%', background: 'var(--ink)', borderRadius: 99 }} />
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', minWidth: 32, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+              {card.progress}%
+            </span>
           </div>
         </div>
       </Card>
