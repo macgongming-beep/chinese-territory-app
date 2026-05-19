@@ -35,21 +35,71 @@ import { Sentry } from './lib/sentry'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Sentry.ErrorBoundary
-      fallback={({ resetError }) => (
-        <div style={{ padding: 40, textAlign: 'center' }}>
-          <h2 style={{ marginBottom: 10 }}>오류가 발생했습니다</h2>
-          <p style={{ color: '#64748b', marginBottom: 20 }}>
-            화면을 다시 불러와 주세요. 문제가 계속되면 관리자에게 문의해주세요.
-          </p>
-          <button
-            onClick={() => { resetError(); window.location.reload() }}
+      fallback={({ resetError, error }) => {
+        // PWA 캐시 깨짐 (배포 후 옛 bundle hash 가 존재 안 함) 의심 신호
+        const errMessage = String((error as Error)?.message ?? '')
+        const isChunkError = /Failed to fetch dynamically imported module|ChunkLoadError|Loading chunk/.test(errMessage)
+
+        const hardReload = async () => {
+          try {
+            if ('caches' in window) {
+              const keys = await caches.keys()
+              await Promise.all(keys.map((k) => caches.delete(k)))
+            }
+            if ('serviceWorker' in navigator) {
+              const regs = await navigator.serviceWorker.getRegistrations()
+              await Promise.all(regs.map((r) => r.unregister()))
+            }
+          } catch { /* ignore */ }
+          resetError()
+          // 캐시 우회 새로고침
+          window.location.href = `${window.location.pathname}?_r=${Date.now()}`
+        }
+
+        return (
+          <div
             style={{
-              padding: '10px 20px', background: '#2563eb', color: '#fff',
-              border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700,
+              minHeight: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '40px 24px',
+              textAlign: 'center',
+              background: 'var(--bg, #F8F8F7)',
+              fontFamily: 'Pretendard Variable, Pretendard, -apple-system, BlinkMacSystemFont, sans-serif',
             }}
-          >새로고침</button>
-        </div>
-      )}
+          >
+            <h2 style={{
+              margin: '0 0 8px', fontSize: 20, fontWeight: 700,
+              color: 'var(--ink, #1A1A18)', letterSpacing: '-0.01em',
+            }}>
+              {isChunkError ? '새 버전이 배포되었어요' : '오류가 발생했습니다'}
+            </h2>
+            <p style={{
+              margin: '0 0 24px', fontSize: 14, fontWeight: 400,
+              color: 'var(--muted, #7A7A75)', lineHeight: 1.55,
+              maxWidth: 320,
+            }}>
+              {isChunkError
+                ? '아래 버튼으로 앱을 새로고침 해주세요. 잠시면 끝납니다.'
+                : '화면을 다시 불러와 주세요. 문제가 계속되면 관리자에게 문의해주세요.'}
+            </p>
+            <button
+              onClick={isChunkError ? hardReload : () => { resetError(); window.location.reload() }}
+              style={{
+                height: 44, minHeight: 44, padding: '0 22px',
+                background: 'var(--ink, #1A1A18)', color: '#fff',
+                border: 'none', borderRadius: 8,
+                fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', letterSpacing: '-0.005em',
+              }}
+            >
+              {isChunkError ? '앱 새로고침' : '새로고침'}
+            </button>
+          </div>
+        )
+      }}
     >
       <BrowserRouter>
         <App />
