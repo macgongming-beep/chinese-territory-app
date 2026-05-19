@@ -703,9 +703,9 @@ export function MobileMap({
     : t(language, 'map.recordAfterStart')
 
   return (
-    <main className="mobile-map-shell">
-      {/* 통합 헤더 */}
-      <header className="mobile-map-header">
+    <main className={`mobile-map-shell${navLevel === 'map' ? ' mobile-map-shell--map' : ''}`}>
+      {/* 통합 헤더 — map 레벨에서는 floating + blur (디자인 23) */}
+      <header className={`mobile-map-header${navLevel === 'map' ? ' mobile-map-header--floating' : ''}`}>
         <button onClick={handleBack} type="button" className="mm-back-btn" aria-label="Back">‹</button>
         <div className="mobile-map-header-content">
           <div className="mobile-map-title-row">
