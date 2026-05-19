@@ -5529,53 +5529,66 @@ button:focus-visible {
   padding: 0 14px 18px;
 }
 
+/* 디자인 23 매칭 — 압축 좌측 세로 legend */
 .mobile-map-legend-card {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 90px;
+  left: 8px;
   z-index: 20;
-  display: grid;
-  gap: 3px;
-  min-width: 112px;
-  padding: 8px 9px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(6px);
 }
 
 .mobile-map-legend-toggle {
-  display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   min-height: 20px;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
-  color: var(--ink-600);
+  color: var(--text);
   text-align: left;
+  cursor: pointer;
 }
 
+/* 디자인 23 의 순서: dot → count → label.
+   기존 마크업은 dot → span(label) → strong(count) 이므로 order 로 시각 재배치. */
 .mobile-map-legend-toggle .map-dot {
-  width: 10px;
-  height: 10px;
+  order: 1;
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.16);
-}
-
-.mobile-map-legend-toggle span {
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.1;
+  box-shadow: none;
+  flex-shrink: 0;
 }
 
 .mobile-map-legend-toggle strong {
-  color: var(--ink-900);
+  order: 2;
+  color: var(--ink);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 600;
+  min-width: 22px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mobile-map-legend-toggle span {
+  order: 3;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--muted);
+  letter-spacing: -0.01em;
 }
 
 .mobile-map-legend-toggle.collapsed {
