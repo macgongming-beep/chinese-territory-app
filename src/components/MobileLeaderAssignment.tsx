@@ -151,6 +151,18 @@ export function MobileLeaderAssignment({
     return ownToday.length > 0 ? ownToday : allToday
   }, [calendarEvents, currentVisitor, today])
 
+  // 디자인 v2 28 — 다가오는 봉사 (오늘+1 ~ 오늘+14, 본인이 인도자)
+  const upcomingEvents = useMemo(() => {
+    const cutoffDate = new Date(today)
+    cutoffDate.setDate(cutoffDate.getDate() + 14)
+    const cutoff = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, '0')}-${String(cutoffDate.getDate()).padStart(2, '0')}`
+    return calendarEvents
+      .filter((event) => event.date > today && event.date <= cutoff)
+      .filter((event) => role === 'admin' || event.leader === currentVisitor)
+      .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
+      .slice(0, 6)
+  }, [calendarEvents, currentVisitor, role, today])
+
   const [selectedEventId, setSelectedEventId] = useState<number>(todayEvents[0]?.id ?? 0)
   const [draft, setDraft] = useState<AssignmentDraft | null>(null)
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
@@ -464,36 +476,88 @@ export function MobileLeaderAssignment({
       </div>
 
       {!assignmentStarted ? (
-        <div className="ma-content">
-          <article className="ma-today-board">
-            <div className="ma-today-board-head">
+        <div className="ma-content ma-v2-main">
+          {/* 오늘 봉사 — 디자인 v2 28 */}
+          <section className="ma-v2-today-card">
+            <div className="ma-v2-today-head">
               <h2>오늘 봉사</h2>
-              <span>{todayEvents.length}개 모임</span>
+              <span className="ma-v2-today-cnt">{todayEvents.length}개 모임</span>
             </div>
             {todayEvents.length === 0 ? (
-              <p className="ma-today-empty">오늘 봉사 일정이 없습니다.</p>
+              <div className="ma-v2-today-empty">오늘 봉사 일정이 없습니다.</div>
             ) : (
-              <div className="ma-today-event-list">
+              <div className="ma-v2-today-list">
                 {todayEvents.map((event) => {
                   const summary = getEventSummary(event)
                   return (
-                    <section className="ma-today-event-card" key={event.id}>
-                      <div className="ma-today-event-main">
-                        <div>
+                    <article className="ma-v2-today-row" key={event.id}>
+                      <div className="ma-v2-today-row-main">
+                        <div className="ma-v2-today-row-titles">
                           <strong>{formatKoreanDate(event.date)} {event.title}</strong>
-                          <span>{event.time}</span>
+                          <span className="ma-v2-today-time">{event.time}</span>
                         </div>
-                        <button onClick={() => openAssignmentForEvent(event.id)} type="button">팀 구성</button>
+                        <button
+                          type="button"
+                          className="ma-v2-team-btn"
+                          onClick={() => openAssignmentForEvent(event.id)}
+                        >
+                          팀 구성
+                        </button>
                       </div>
-                      <p>
+                      <p className="ma-v2-today-meta">
                         참가자 {summary.participants}명 · 팀 {summary.teams}개 · 배정 카드 {summary.cards}개 · 미배정 {summary.unassigned}명
                       </p>
-                    </section>
+                    </article>
                   )
                 })}
               </div>
             )}
-          </article>
+          </section>
+
+          {/* 다가오는 봉사 — 디자인 v2 28 */}
+          {upcomingEvents.length > 0 && (
+            <section className="ma-v2-upcoming-section">
+              <div className="mh-sec-head">
+                <h2>
+                  다가오는 봉사
+                  <span className="mh-cnt">{upcomingEvents.length}</span>
+                </h2>
+              </div>
+              <div className="ma-v2-upcoming-list">
+                {upcomingEvents.map((event) => {
+                  const summary = getEventSummary(event)
+                  const d = new Date(event.date)
+                  const dow = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()]
+                  const dShort = `${d.getMonth() + 1}/${d.getDate()}`
+                  const hour = Number(event.time.split(':')[0] ?? 0)
+                  const period = hour < 12 ? '오전' : hour < 17 ? '오후' : '저녁'
+                  const status = summary.teams > 0 && summary.unassigned === 0
+                    ? '구성 완료'
+                    : summary.teams > 0
+                      ? `구성 중 · 미배정 ${summary.unassigned}명`
+                      : '미구성'
+                  return (
+                    <button
+                      type="button"
+                      className="ma-v2-upcoming-card"
+                      key={event.id}
+                      onClick={() => openAssignmentForEvent(event.id)}
+                    >
+                      <div className="ma-v2-upcoming-date">
+                        <strong>{dShort}</strong>
+                        <span>{dow}</span>
+                      </div>
+                      <div className="ma-v2-upcoming-body">
+                        <span className="ma-v2-upcoming-time">{period} {event.time}</span>
+                        <span className="ma-v2-upcoming-sub">신청 {summary.participants}명 · {status}</span>
+                      </div>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+          )}
         </div>
       ) : !selectedEvent ? (
         <div className="ma-content">
