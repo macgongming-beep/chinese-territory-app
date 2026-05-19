@@ -125,9 +125,7 @@ export function MobileMap({
   // 필터
   const [strategyFilter] = useState<StrategyFilter>('전체')
   const [statusFilter] = useState<BuildingStatus | '전체'>('전체')
-  const [buildingTypeFilter, _setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
-  // setBuildingTypeFilter 는 헤더에서 type segment 제거 후 사용 안 함 (DEFERRED: 필요 시 다른 위치에서 다시 노출)
-  void _setBuildingTypeFilter
+  const [buildingTypeFilter, setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
 
   // 지도/패널 상태
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null)
@@ -691,12 +689,34 @@ export function MobileMap({
               {navLevel === 'map' ? (
                 <>
                   <h1>구역 · 지도</h1>
-                  <span className="mm-stats-sub">
-                    <span>전체</span><b className="tnum">{typeCounts.전체}</b>
-                    <span className="sep">·</span>
-                    <span>주택</span><b className="tnum">{typeCounts.주택}</b>
-                    <span className="sep">·</span>
-                    <span>상가</span><b className="tnum">{typeCounts.상가}</b>
+                  <span className="mm-stats-sub" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={buildingTypeFilter === '전체'}
+                      className={`mm-stat-chip${buildingTypeFilter === '전체' ? ' is-active' : ''}`}
+                      onClick={() => setBuildingTypeFilter('전체')}
+                    >
+                      <span>전체</span><b className="tnum">{typeCounts.전체}</b>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={buildingTypeFilter === '주택'}
+                      className={`mm-stat-chip${buildingTypeFilter === '주택' ? ' is-active' : ''}`}
+                      onClick={() => setBuildingTypeFilter('주택')}
+                    >
+                      <span>주택</span><b className="tnum">{typeCounts.주택}</b>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={buildingTypeFilter === '상가'}
+                      className={`mm-stat-chip${buildingTypeFilter === '상가' ? ' is-active' : ''}`}
+                      onClick={() => setBuildingTypeFilter('상가')}
+                    >
+                      <span>상가</span><b className="tnum">{typeCounts.상가}</b>
+                    </button>
                   </span>
                 </>
               ) : (

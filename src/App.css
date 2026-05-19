@@ -5554,34 +5554,52 @@ button:focus-visible {
 /* 디자인 23 헤더 sub 통계 — 전체 N · 주택 M · 상가 K */
 .mm-stats-sub {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 4px;
-  color: var(--muted);
-  font-size: 12.5px;
-  font-weight: 500;
+  gap: 6px;
   letter-spacing: 0;
   line-height: 1.3;
+  margin-top: 2px;
 }
 
-.mm-stats-sub b {
+.mm-stat-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  height: 24px;
+  min-height: 0;
+  padding: 0 9px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.mm-stat-chip b {
   color: var(--ink);
   font-weight: 600;
-  margin-left: 3px;
   font-variant-numeric: tabular-nums;
 }
 
-.mm-stats-sub .sep {
-  color: var(--muted-3);
-  font-weight: 500;
-  margin: 0 2px;
+.mm-stat-chip.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.mm-stat-chip.is-active b {
+  color: #fff;
 }
 
 /* 디자인 23 매칭 — 압축 좌측 세로 legend */
 .mobile-map-legend-card {
   position: absolute;
-  top: calc(max(10px, env(safe-area-inset-top)) + 64px);
-  left: 8px;
+  top: calc(max(10px, env(safe-area-inset-top)) + 60px);
+  left: 4px;
   z-index: 20;
   display: flex;
   flex-direction: column;
