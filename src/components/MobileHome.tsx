@@ -1136,19 +1136,20 @@ export function MobileHome({
     [currentVisitor, serviceSessions, today])
   void myTodaySessions
 
-  // 오늘 내가 관여하는 일정 — 인도자/신청자/배정자 중 하나
+  // 오늘 봉사 — 모든 오늘 일정 표시.
+  // 본인이 인도자면 kind='lead' (ink border + "인도" pill),
+  // 신청/배정자면 kind='join', 아무 관여 없으면 kind='avail' (신청 가능).
   const myTodayEvents = useMemo(() => {
-    return todayEvents
-      .map((event) => {
-        const isLeader = event.leader === currentVisitor
-        const isApplicant = event.applicants.includes(currentVisitor)
-        const isAssigned = event.cardAssignments.some((a) => a.userName === currentVisitor)
-          || (event.assigned ?? []).includes(currentVisitor)
-        if (!isLeader && !isApplicant && !isAssigned) return null
-        const kind: 'lead' | 'join' = isLeader ? 'lead' : 'join'
-        return { event, kind }
-      })
-      .filter((value): value is { event: CalendarEvent; kind: 'lead' | 'join' } => value !== null)
+    return todayEvents.map((event) => {
+      const isLeader = event.leader === currentVisitor
+      const isApplicant = event.applicants.includes(currentVisitor)
+      const isAssigned = event.cardAssignments.some((a) => a.userName === currentVisitor)
+        || (event.assigned ?? []).includes(currentVisitor)
+      const kind: 'lead' | 'join' | 'avail' = isLeader
+        ? 'lead'
+        : (isApplicant || isAssigned) ? 'join' : 'avail'
+      return { event, kind }
+    })
   }, [todayEvents, currentVisitor])
 
   const myRegularVisits = useMemo(
@@ -1400,14 +1401,18 @@ export function MobileHome({
                         const period = hour < 12 ? '오전' : hour < 17 ? '오후' : '저녁'
                         const sub = kind === 'lead'
                           ? `신청 ${event.applicants.length}명 · 카드 ${event.cardAssignments.length}개`
-                          : event.leader
-                            ? `인도자 ${event.leader}${event.applicants.length > 0 ? ` · 신청 ${event.applicants.length}명` : ''}`
-                            : ''
+                          : kind === 'join'
+                            ? (event.leader
+                              ? `인도자 ${event.leader}${event.applicants.length > 0 ? ` · 신청 ${event.applicants.length}명` : ''}`
+                              : '')
+                            : (event.leader
+                              ? `인도자 ${event.leader} · 신청 ${event.applicants.length}명${event.allowApplications ? ' · 신청 가능' : ''}`
+                              : `신청 ${event.applicants.length}명${event.allowApplications ? ' · 신청 가능' : ''}`)
                         return (
                           <button
                             key={event.id}
                             type="button"
-                            className={`mh-today-serving${kind === 'lead' ? ' is-lead' : ''}`}
+                            className={`mh-today-serving${kind === 'lead' ? ' is-lead' : ''}${kind === 'avail' ? ' is-avail' : ''}`}
                             onClick={() => navigate(`/calendar?openEvent=${event.id}`)}
                           >
                             <span className="mh-today-time">
