@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
-import { MobileCalendar } from './MobileCalendar'
+// MobileCalendar 는 디자인 v2 적용 후 미사용 (AdminMobileCalendar 가 모든 역할 처리)
+// import { MobileCalendar } from './MobileCalendar'
 import { MobileAdminAssignment } from './MobileAdminAssignment'
 import { MobileLeaderAssignment } from './MobileLeaderAssignment'
 import { MobileMap } from './MobileMap'
@@ -895,6 +896,48 @@ function MobileZoneView({
   )
 }
 
+// 시즌 inline chip — 헤더 subtitle 인라인용 (디자인 v2 screens-g.jsx SeasonInlineChip)
+function SeasonInlineChip({
+  specialPeriods,
+  onClick,
+}: {
+  specialPeriods: SpecialPeriod[]
+  onClick?: () => void
+}) {
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const active = specialPeriods.find((p) => todayStr >= p.startDate && todayStr <= p.endDate)
+  if (!active) return null
+  const end = new Date(active.endDate)
+  const today = new Date(todayStr)
+  const diff = Math.ceil((end.getTime() - today.getTime()) / 86_400_000)
+  const dLabel = diff > 0 ? `D-${diff}` : diff === 0 ? 'D-day' : `D+${Math.abs(diff)}`
+  return (
+    <span
+      onClick={onClick}
+      className="season-inline-chip"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        background: 'var(--status-warn-bg)',
+        color: 'var(--status-warn)',
+        fontSize: 11,
+        fontWeight: 700,
+        padding: '2px 8px',
+        borderRadius: 99,
+        marginLeft: 6,
+        verticalAlign: 'middle',
+        position: 'relative',
+        top: -1,
+        cursor: onClick ? 'pointer' : 'default',
+      }}
+    >
+      <span style={{ width: 5, height: 5, borderRadius: 99, background: 'var(--status-warn)' }} />
+      {active.label} <span style={{ fontVariantNumeric: 'tabular-nums' }}>{dLabel}</span>
+    </span>
+  )
+}
+
 export function MobileHome({
   leaderNames = [],
   buildings,
@@ -916,7 +959,7 @@ export function MobileHome({
   onChangePin,
   onUpdateMyProfile,
   onApplyToEvent,
-  onAddParticipantToEvent,
+  onAddParticipantToEvent: _onAddParticipantToEvent,
   onToggleUser: _onToggleUser,
   onEndServiceSession,
   onAssignCardToEventParticipant: _onAssignCardToEventParticipant,
@@ -1292,7 +1335,12 @@ export function MobileHome({
               <>
                 <AppHeader
                   pageTitle={t(language, 'nav.home')}
-                  subtitle={todayLabel}
+                  subtitle={
+                    <>
+                      {todayLabel}
+                      {role !== 'admin' && <SeasonInlineChip specialPeriods={specialPeriods ?? []} onClick={() => navigate('/settings')} />}
+                    </>
+                  }
                   userId={currentUser.id}
                   userName={currentVisitor}
                   role={role}
@@ -1300,7 +1348,7 @@ export function MobileHome({
                   onOpenMenu={() => navigate('/settings')}
                 />
 
-                {specialPeriods && (
+                {role === 'admin' && specialPeriods && (
                   <div style={{ padding: '0 16px', marginBottom: '12px' }}>
                     <SpecialPeriodBanner specialPeriods={specialPeriods} variant="compact" onClick={() => navigate('/settings')} />
                   </div>
@@ -1319,7 +1367,7 @@ export function MobileHome({
                     onOpenCalendar={() => navigate('/calendar')}
                     onOpenZone={() => navigate('/zone')}
                   />
-                ) : (<>
+                ) : (<div className="mh-page">
 
                 {/* ─── 오늘 봉사 — 디자인 24/25 ─── */}
                 <section className="mobile-home-section">
@@ -1501,7 +1549,7 @@ export function MobileHome({
                   </section>
                 )}
 
-                </>)}
+                </div>)}
               </>
             } />
 
@@ -1557,41 +1605,26 @@ export function MobileHome({
                   chatUsers={headerChatUsers}
                   onOpenMenu={() => navigate('/settings')}
                 />
-                {role === 'admin' ? (
-                  <AdminMobileCalendar
-                    language={language}
-                    currentVisitor={currentVisitor}
-                    currentUserId={currentUser.id}
-                    role={role}
-                    events={calendarEvents}
-                    leaderNames={leaderNames}
-                    mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
-                    onCreateEvent={onCreateCalendarEvent}
-                    onCreateRepeatEvents={onCreateRepeatCalendarEvents}
-                    onDeleteEvent={onDeleteCalendarEvent}
-                    onDeleteEventSeries={onDeleteCalendarEventSeries}
-                    onUpdateEvent={onUpdateCalendarEvent}
-                    onUpdateEventSeries={onUpdateCalendarEventSeries}
-                    onApplyToEvent={onApplyToEvent}
-                  />
-                ) : (
-                  <MobileCalendar
-                    language={language}
-                    currentVisitor={currentVisitor}
-                    currentUserId={currentUser.id}
-                    leaderNames={leaderNames}
-                    leaderPhones={Object.fromEntries(allUsers.filter((u) => u.phone).map((u) => [u.name, u.phone]))}
-                    events={calendarEvents}
-                    role={role}
-                    allUserNames={allUsers.map((u) => u.name)}
-                    mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
-                    onApplyToEvent={onApplyToEvent}
-                    onAddParticipant={onAddParticipantToEvent}
-                    onCreateEvent={onCreateCalendarEvent}
-                    onDeleteEvent={onDeleteCalendarEvent}
-                    onUpdateEvent={onUpdateCalendarEvent}
-                  />
-                )}
+                {/* 모든 역할이 AdminMobileCalendar 사용 — 권한별 콜백 가시성으로 차등 */}
+                <AdminMobileCalendar
+                  language={language}
+                  currentVisitor={currentVisitor}
+                  currentUserId={currentUser.id}
+                  role={role}
+                  events={calendarEvents}
+                  leaderNames={leaderNames}
+                  mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
+                  /* 일정 생성/수정/삭제: admin + leader 만. user 는 신청만. */
+                  onCreateEvent={role === 'user' ? undefined : onCreateCalendarEvent}
+                  onCreateRepeatEvents={role === 'user' ? undefined : onCreateRepeatCalendarEvents}
+                  onDeleteEvent={role === 'user' ? undefined : onDeleteCalendarEvent}
+                  onDeleteEventSeries={role === 'user' ? undefined : onDeleteCalendarEventSeries}
+                  onUpdateEvent={role === 'user' ? undefined : onUpdateCalendarEvent}
+                  onUpdateEventSeries={role === 'user' ? undefined : onUpdateCalendarEventSeries}
+                  onApplyToEvent={onApplyToEvent}
+                />
+                {/* (legacy MobileCalendar 유지 — 향후 제거 가능. 일정 상세 시트 시점별 액션은
+                    AdminEventDetailSheet 가 role prop 받아 분기.) */}
               </>
             } />
 

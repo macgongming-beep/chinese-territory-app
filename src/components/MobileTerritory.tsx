@@ -812,18 +812,18 @@ export function MobileTerritory({
           {/* 지난 봉사 — 미니 캘린더 (활동 탭 맨 아래) */}
           {myPastAssignments.length > 0 && (
             <section className="mobile-territory-section mobile-past-section">
-              <div className="mobile-section-title">
-                <h2>
-                  <button
-                    className="rv-collapse-btn"
-                    onClick={() => setShowPastAssignments((v) => !v)}
-                    type="button"
-                  >
-                    <span className="rv-collapse-chevron">{showPastAssignments ? '⌄' : '›'}</span>
-                    지난 봉사 <span className="rv-count">{myPastAssignments.length}{t(language, 'calendar.countSuffix')}</span>
-                  </button>
-                </h2>
-              </div>
+              <button
+                type="button"
+                className="mt-past-toggle"
+                onClick={() => setShowPastAssignments((v) => !v)}
+              >
+                <span className="mt-past-toggle-left">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden style={{ transform: showPastAssignments ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}><polyline points="9 6 15 12 9 18"/></svg>
+                  <span className="mt-past-title">지난 봉사</span>
+                  <span className="mt-past-count">{myPastAssignments.length}{t(language, 'calendar.countSuffix')}</span>
+                </span>
+                <span className="mt-past-summary">{pastMonthLabel} · {pastMonthCount}{t(language, 'calendar.countSuffix')} 참여</span>
+              </button>
               {showPastAssignments && (
                 <div className="mobile-past-mini">
                   {/* 월 네비 */}

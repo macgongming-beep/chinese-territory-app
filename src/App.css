@@ -25247,6 +25247,17 @@ button:focus-visible {
    screens-g.jsx 기준. Pretendard / ink + tone B.
    ============================================================ */
 
+/* 페이지 컨테이너 — 섹션 간 gap 20px (designer .ph-body) */
+.mh-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 4px 0 24px;
+}
+.mh-page .mobile-home-section {
+  margin-bottom: 0;
+}
+
 .mh-sec-head {
   display: flex;
   justify-content: space-between;
@@ -25823,4 +25834,41 @@ button:focus-visible {
   border-color: var(--tint);
   color: var(--muted-2);
   cursor: not-allowed;
+}
+
+/* 디자인 v2 — 지난 봉사 collapsed 단일 행 */
+.mt-past-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+.mt-past-toggle-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+.mt-past-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.mt-past-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.mt-past-summary {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
 }

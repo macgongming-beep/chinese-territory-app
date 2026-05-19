@@ -24,7 +24,7 @@ type AppHeaderProps = {
   variant?: AppHeaderVariant
   isHome?: boolean
   date?: Date | string
-  subtitle?: string
+  subtitle?: ReactNode
   showBack?: boolean
   onBack?: () => void
   notificationCount?: number
