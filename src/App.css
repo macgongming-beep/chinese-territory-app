@@ -4923,9 +4923,7 @@ button:focus-visible {
   right: 0;
   z-index: 30;
   padding-top: max(10px, env(safe-area-inset-top));
-  background: rgba(248, 248, 247, 0.92);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
 
@@ -5553,10 +5551,36 @@ button:focus-visible {
   padding: 0 14px 18px;
 }
 
+/* 디자인 23 헤더 sub 통계 — 전체 N · 주택 M · 상가 K */
+.mm-stats-sub {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+
+.mm-stats-sub b {
+  color: var(--ink);
+  font-weight: 600;
+  margin-left: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mm-stats-sub .sep {
+  color: var(--muted-3);
+  font-weight: 500;
+  margin: 0 2px;
+}
+
 /* 디자인 23 매칭 — 압축 좌측 세로 legend */
 .mobile-map-legend-card {
   position: absolute;
-  top: 90px;
+  top: calc(max(10px, env(safe-area-inset-top)) + 64px);
   left: 8px;
   z-index: 20;
   display: flex;

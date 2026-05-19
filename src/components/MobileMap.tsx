@@ -33,7 +33,6 @@ export function MobileMap({
   serviceSessions,
   focusedCardId,
   focusedCardIds = [],
-  focusedScopeLabel,
   onBack,
   onAddUnit,
   onCreateBuilding,
@@ -126,7 +125,9 @@ export function MobileMap({
   // 필터
   const [strategyFilter] = useState<StrategyFilter>('전체')
   const [statusFilter] = useState<BuildingStatus | '전체'>('전체')
-  const [buildingTypeFilter, setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
+  const [buildingTypeFilter, _setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
+  // setBuildingTypeFilter 는 헤더에서 type segment 제거 후 사용 안 함 (DEFERRED: 필요 시 다른 위치에서 다시 노출)
+  void _setBuildingTypeFilter
 
   // 지도/패널 상태
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null)
@@ -192,7 +193,6 @@ export function MobileMap({
   const isUserDirectAssignment = isUserMap && (focusedCardId != null || focusedCardIds.length > 0)
   const canRecordVisits =
     actualRole !== 'user' || !!todayRecordableSession || isUserDirectAssignment
-  const selectedCard = selectedCardId ? cards.find((card) => card.id === selectedCardId) : undefined
   const isViewingActiveCard = !!activeSessionCard && selectedCardId === activeSessionCard.id
   const filteredCardOptions = useMemo(() => {
     const query = normalizeCardSearch(cardSearch)
@@ -574,15 +574,6 @@ export function MobileMap({
       : navLevel === 'region' ? t(language, 'map.dongSelect')
         : navLevel === 'card' ? t(language, 'map.cardSelect')
           : ''
-  const mapScopeTitle = selectedCardId
-    ? selectedCard?.name ?? t(language, 'map.selectedCard')
-    : focusedCardIdSet.size > 0 && focusedScopeLabel
-      ? focusedScopeLabel
-    : selectedRegion
-      ? `${selectedRegion} 전체`
-      : selectedArea
-        ? `${selectedArea} 전체`
-        : t(language, 'map.allTerritory')
   const showScopeAllButton = !isUserMap && (navLevel === 'area' || navLevel === 'region' || navLevel === 'card')
   const mapSelectedCardId = selectedCardId ?? '전체'
 
@@ -689,19 +680,6 @@ export function MobileMap({
     return slot
   }
   const buildingTypeLabel = (type: Building['type']) => type === '상가' ? t(language, 'map.shop') : t(language, 'map.house')
-  const mapHeaderTitle = activeServiceSession
-    ? isViewingActiveCard
-      ? `${activeSessionCard?.name ?? t(language, 'map.unknownCard')} ${t(language, 'map.servicing')}`
-      : selectedCard
-        ? `${selectedCard.name} ${t(language, 'map.exploring')}`
-        : t(language, 'map.exploringAll')
-    : t(language, 'map.noActiveCard')
-  const mapHeaderSubtitle = activeServiceSession
-    ? isViewingActiveCard
-      ? `${activeServiceSession.timeSlot} · ${t(language, 'map.recordable')}`
-      : t(language, 'map.viewingOtherCard')
-    : t(language, 'map.recordAfterStart')
-
   return (
     <main className={`mobile-map-shell${navLevel === 'map' ? ' mobile-map-shell--map' : ''}`}>
       {/* 통합 헤더 — map 레벨에서는 floating + blur (디자인 23) */}
@@ -710,56 +688,70 @@ export function MobileMap({
         <div className="mobile-map-header-content">
           <div className="mobile-map-title-row">
             <div className="mobile-map-title-copy">
-              {drillBreadcrumb && (
-                <p>{drillBreadcrumb}</p>
+              {navLevel === 'map' ? (
+                <>
+                  <h1>구역 · 지도</h1>
+                  <span className="mm-stats-sub">
+                    <span>전체</span><b className="tnum">{typeCounts.전체}</b>
+                    <span className="sep">·</span>
+                    <span>주택</span><b className="tnum">{typeCounts.주택}</b>
+                    <span className="sep">·</span>
+                    <span>상가</span><b className="tnum">{typeCounts.상가}</b>
+                  </span>
+                </>
+              ) : (
+                <>
+                  {drillBreadcrumb && <p>{drillBreadcrumb}</p>}
+                  <h1>{drillTitle}</h1>
+                </>
               )}
-              <h1>
-                {navLevel !== 'map' && drillTitle}
-                {navLevel === 'map' && (isUserMap && !isUserDirectAssignment ? mapHeaderTitle : (selectedCard?.name ?? mapScopeTitle))}
-              </h1>
-              {navLevel === 'map' && (
-                <div className="mobile-map-type-segment" aria-label="건물 유형 보기">
-                  {([
-                    { value: '전체', label: '전체', count: typeCounts.전체 },
-                    { value: '주택', label: '주택', count: typeCounts.주택 },
-                    { value: '상가', label: '상가', count: typeCounts.상가 },
-                  ] as Array<{ value: BuildingTypeFilter; label: string; count: number }>).map((item) => (
-                    <button
-                      className={buildingTypeFilter === item.value ? 'active' : ''}
-                      key={item.value}
-                      onClick={() => setBuildingTypeFilter(item.value)}
-                      type="button"
-                    >
-                      <span>{item.label}</span>
-                      <strong className="tnum">{item.count}</strong>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {navLevel === 'map' && isUserMap && !isUserDirectAssignment && <span>{mapHeaderSubtitle}</span>}
             </div>
-            {showScopeAllButton && (
-              <button
-                className="mm-scope-all-btn"
-                onClick={openCurrentScopeMap}
-                type="button"
-              >
-                {t(language, 'map.allView')}
-              </button>
-            )}
-            <AppHeaderActionButtons
-              userId={currentUserId}
-              userName={currentVisitor}
-              role={actualRole}
-              className="mobile-map-header-actions"
-              buttonClassName="mobile-map-header-action"
-              showMenu={false}
-            />
-            {navLevel === 'map' && (
-              <div className="mobile-map-progress-mini">
-                <strong>{completionRate}%</strong>
-                <span>{visitedTotal}/{unitTotal}</span>
+            {navLevel === 'map' ? (
+              <div className="mobile-map-header-actions">
+                <button
+                  type="button"
+                  className="mobile-map-header-action"
+                  onClick={() => setShowCardFinder((open) => !open)}
+                  aria-label="카드 / 주소 검색"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden>
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="mobile-map-header-action"
+                  onClick={() => setShowMapActionMenu((prev) => !prev)}
+                  aria-label="더보기"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden>
+                    <circle cx="12" cy="5" r="1.5" />
+                    <circle cx="12" cy="12" r="1.5" />
+                    <circle cx="12" cy="19" r="1.5" />
+                  </svg>
+                </button>
               </div>
+            ) : (
+              <>
+                {showScopeAllButton && (
+                  <button
+                    className="mm-scope-all-btn"
+                    onClick={openCurrentScopeMap}
+                    type="button"
+                  >
+                    {t(language, 'map.allView')}
+                  </button>
+                )}
+                <AppHeaderActionButtons
+                  userId={currentUserId}
+                  userName={currentVisitor}
+                  role={actualRole}
+                  className="mobile-map-header-actions"
+                  buttonClassName="mobile-map-header-action"
+                  showMenu={false}
+                />
+              </>
             )}
           </div>
           {navLevel === 'map' && isUserMap && !isUserDirectAssignment && (
