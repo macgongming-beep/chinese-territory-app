@@ -172,12 +172,8 @@ export function MobileTerritory({
 
   // 오늘 봉사 + 미래 배정 + (지난 배정은 펼치기 토글)
   const [showPastAssignments, setShowPastAssignments] = useState(false)
-  const pastCutoff = useMemo(() => {
-    // 지난 봉사는 최대 30일 전까지만
-    const d = new Date()
-    d.setDate(d.getDate() - 30)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  }, [])
+  // 지난 봉사 — 전체 기간 (월별 타임라인으로 렌더)
+  const pastCutoff = useMemo(() => '0001-01-01', [])
   const myAssignmentsSplit = useMemo(() => {
     const todayEvents = calendarEvents.filter((e) => e.date === today)
     // 미래(오늘 제외) 일정 중 내 배정
@@ -243,6 +239,23 @@ export function MobileTerritory({
       .filter(Boolean) as Array<{ event: CalendarEvent; cards: TerritoryCard[]; teammates: string[] }>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myAssignmentsSplit, cards, currentVisitor])
+
+  // 월별 그루핑 — { yearMonth: 'YYYY-MM', label: '2026년 5월', count: N, items: [...] }
+  const myPastAssignmentsByMonth = useMemo(() => {
+    const groups = new Map<string, { yearMonth: string; label: string; items: typeof myPastAssignments }>()
+    for (const item of myPastAssignments) {
+      const ym = item.event.date.slice(0, 7) // YYYY-MM
+      if (!groups.has(ym)) {
+        const [year, month] = ym.split('-')
+        const label = language === 'zh' ? `${year}年${Number(month)}月`
+          : language === 'en' ? `${new Date(`${ym}-01`).toLocaleString('en-US', { month: 'long' })} ${year}`
+          : `${year}년 ${Number(month)}월`
+        groups.set(ym, { yearMonth: ym, label, items: [] })
+      }
+      groups.get(ym)!.items.push(item)
+    }
+    return [...groups.values()].sort((a, b) => b.yearMonth.localeCompare(a.yearMonth))
+  }, [myPastAssignments, language])
 
 
   const [expandedEventIds, setExpandedEventIds] = useState<Set<number>>(() => {
@@ -492,57 +505,6 @@ export function MobileTerritory({
             )}
           </section>
 
-          {myPastAssignments.length > 0 && (
-            <section className="mobile-territory-section">
-              <div className="mobile-section-title">
-                <h2>
-                  <button
-                    className="rv-collapse-btn"
-                    onClick={() => setShowPastAssignments((v) => !v)}
-                    type="button"
-                  >
-                    <span className="rv-collapse-chevron">{showPastAssignments ? '⌄' : '›'}</span>
-                    지난 봉사 <span className="rv-count">{myPastAssignments.length}{t(language, 'calendar.countSuffix')}</span>
-                  </button>
-                </h2>
-              </div>
-              {showPastAssignments && (
-                <div className="mobile-today-service-list">
-                  {myPastAssignments.map(({ event, cards: assignedCards, teammates }) => {
-                    const isOpen = expandedEventIds.has(event.id)
-                    return (
-                      <article className={`mobile-today-service-card${isOpen ? ' open' : ''}`} key={event.id}>
-                        <button className="mobile-today-service-toggle" onClick={() => toggleTodayEvent(event.id)} type="button">
-                          <span aria-hidden="true">{isOpen ? '⌄' : '›'}</span>
-                          <strong>{fmtDate(event.date, language)} · {event.time} {event.title}</strong>
-                          <b>{assignedCards.length}{t(language, 'calendar.countSuffix')}</b>
-                        </button>
-                        {isOpen && (
-                          <div className="mobile-today-service-body">
-                            <p>
-                              {event.leader ? `${t(language, 'territory.leader')} ${event.leader}` : t(language, 'territory.leaderTbd')}
-                              {teammates.length > 0 ? ` · ${t(language, 'territory.members')} ${teammates.join(', ')}` : ''}
-                            </p>
-                            {assignedCards.length === 0 ? (
-                              <div className="mobile-territory-empty compact">{t(language, 'territory.noAssignedCards')}</div>
-                            ) : assignedCards.map((card) => (
-                              <div className="mobile-today-card-row" key={card.id}>
-                                <span>📍</span>
-                                <strong>{card.name}</strong>
-                                <em>{card.progress}%</em>
-                                <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </article>
-                    )
-                  })}
-                </div>
-              )}
-            </section>
-          )}
-
           {activeSession && (
             <section className="mobile-territory-section">
               <div className="mobile-active-session-card">
@@ -600,18 +562,30 @@ export function MobileTerritory({
                     >
                       {/* 메인 행: 정보 + 버튼 */}
                       <div className="rv-card-main">
-                        <div className="rv-card-info">
+                        <button
+                          type="button"
+                          className="rv-card-info rv-card-info-btn"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (isMenuOpen) { setMenuOpenId(null); return }
+                            if (isColorPick) { setColorPickId(null); return }
+                            navigate(`/territory/regular/${rv.id}`)
+                          }}
+                          aria-label={`${label} 상세`}
+                        >
                           <div className="rv-card-title">
                             <strong className="rv-name">{label}</strong>
                             {rv.lastResult && (
                               <span className={`rv-status-dot rv-status-${rv.lastResult}`} />
                             )}
-                            {rv.lastVisitedAt && (
-                              <span className="rv-last-visit">{fmtDate(rv.lastVisitedAt, language)}</span>
-                            )}
                           </div>
                           {rv.address && <span className="rv-address">{rv.address}</span>}
-                        </div>
+                          <span className="rv-meta-row">
+                            {rv.lastVisitedAt
+                              ? `${t(language, 'home.lastVisit')} · ${fmtDate(rv.lastVisitedAt, language)}`
+                              : t(language, 'home.noVisitYet')}
+                          </span>
+                        </button>
 
                         <div className="rv-row-actions">
                           <button
@@ -769,6 +743,89 @@ export function MobileTerritory({
               </div>
             ))}
           </section>
+
+          {/* 지난 봉사 — 월별 타임라인 (활동 탭 맨 아래) */}
+          {myPastAssignments.length > 0 && (
+            <section className="mobile-territory-section mobile-past-section">
+              <div className="mobile-section-title">
+                <h2>
+                  <button
+                    className="rv-collapse-btn"
+                    onClick={() => setShowPastAssignments((v) => !v)}
+                    type="button"
+                  >
+                    <span className="rv-collapse-chevron">{showPastAssignments ? '⌄' : '›'}</span>
+                    지난 봉사 <span className="rv-count">{myPastAssignments.length}{t(language, 'calendar.countSuffix')}</span>
+                  </button>
+                </h2>
+              </div>
+              {showPastAssignments && (
+                <div className="mobile-past-timeline">
+                  {myPastAssignmentsByMonth.map((group) => (
+                    <div key={group.yearMonth} className="mobile-past-month-group">
+                      <header className="mobile-past-month-header">
+                        <span>{group.label}</span>
+                        <span className="rv-count">{group.items.length}{t(language, 'calendar.countSuffix')}</span>
+                      </header>
+                      <ul className="mobile-past-list">
+                        {group.items.map(({ event, cards: assignedCards, teammates }) => {
+                          const d = new Date(event.date)
+                          const dow = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()]
+                          const slot = getTimeSlotFromTime(event.time)
+                          const isOpen = expandedEventIds.has(event.id)
+                          return (
+                            <li key={event.id} className={`mobile-past-item${isOpen ? ' is-open' : ''}`}>
+                              <button
+                                type="button"
+                                className="mobile-past-item-head"
+                                onClick={() => toggleTodayEvent(event.id)}
+                              >
+                                <div className="mobile-past-item-date">
+                                  <strong>{d.getMonth() + 1}/{d.getDate()}</strong>
+                                  <span>({dow}) · {slot}</span>
+                                </div>
+                                <div className="mobile-past-item-summary">
+                                  <p className="mobile-past-item-title">{event.title}</p>
+                                  <p className="mobile-past-item-meta">
+                                    {event.leader ? `${t(language, 'territory.leader')} ${event.leader}` : t(language, 'territory.leaderTbd')}
+                                    {teammates.length > 0 && ` · ${t(language, 'territory.members')} ${teammates.length}${t(language, 'calendar.countSuffix')}`}
+                                    {assignedCards.length > 0 && ` · 카드 ${assignedCards.length}${t(language, 'calendar.countSuffix')}`}
+                                  </p>
+                                </div>
+                                <span className="mobile-past-item-chevron" aria-hidden>{isOpen ? '⌄' : '›'}</span>
+                              </button>
+                              {isOpen && (
+                                <div className="mobile-past-item-body">
+                                  {teammates.length > 0 && (
+                                    <p className="mobile-past-teammates">
+                                      <span>{t(language, 'territory.members')}</span> {teammates.join(', ')}
+                                    </p>
+                                  )}
+                                  {assignedCards.length === 0 ? (
+                                    <p className="mobile-past-empty">{t(language, 'territory.noAssignedCards')}</p>
+                                  ) : (
+                                    <ul className="mobile-past-cards">
+                                      {assignedCards.map((card) => (
+                                        <li key={card.id} className="mobile-past-card-row">
+                                          <strong>{card.name}</strong>
+                                          <em>{card.progress}%</em>
+                                          <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              )}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
         {/* ── 수동 추가 시트 ── */}
         {showAddSheet && (

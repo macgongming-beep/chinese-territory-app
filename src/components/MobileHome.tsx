@@ -6,6 +6,7 @@ import { MobileLeaderAssignment } from './MobileLeaderAssignment'
 import { MobileMap } from './MobileMap'
 import { MobileNotices } from './MobileNotices'
 import { MobileTerritory } from './MobileTerritory'
+import { MobileRegularVisitDetail } from './MobileRegularVisitDetail'
 import { AdminMobileHome } from './admin/AdminMobileHome'
 import { AdminMobileCalendar } from './admin/AdminMobileCalendar'
 import { AdminMobileZone } from './admin/AdminMobileZone'
@@ -1095,6 +1096,30 @@ export function MobileHome({
     [myRegularVisits, returnVisitLogs],
   )
   const latestReturnVisitLabel = formatRelativeVisitDate(latestReturnVisitDate, language)
+
+  // 정기방문 미리보기 — 마지막 방문이 가장 오래된 순으로 정렬 (다가옴)
+  // 한 번도 안 간 항목 우선, 그다음 오래된 순.
+  const regularVisitPreviews = useMemo(() => {
+    const list = myRegularVisits
+      .map((rv) => {
+        // rv.lastVisitedAt + 해당 rv 의 가장 최근 log.visitedAt 중 더 최신
+        const logsForRv = returnVisitLogs
+          .filter((log) => log.returnVisitId === rv.id)
+          .map((log) => log.visitedAt)
+          .filter((value): value is string => !!value)
+        const candidates = [rv.lastVisitedAt, ...logsForRv].filter((value): value is string => !!value)
+        candidates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+        return { rv, lastVisit: candidates[0] ?? null }
+      })
+      .sort((a, b) => {
+        // 한 번도 안 간 항목 (lastVisit null) 을 가장 앞으로
+        if (!a.lastVisit && b.lastVisit) return -1
+        if (a.lastVisit && !b.lastVisit) return 1
+        if (!a.lastVisit && !b.lastVisit) return 0
+        return new Date(a.lastVisit!).getTime() - new Date(b.lastVisit!).getTime()
+      })
+    return list.slice(0, 3)
+  }, [myRegularVisits, returnVisitLogs])
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
   const focusedMapCardIds = useMemo(() => {
     const raw = searchParams.get('cardIds')
@@ -1318,23 +1343,62 @@ export function MobileHome({
 
                 <section className="mobile-home-section">
                   <div className="mobile-section-title">
-                    <h2><span aria-hidden="true"><NavIcon name="territory" /></span> {t(language, 'home.regularVisitStatus')}</h2>
-                    <button onClick={() => navigate('/territory')} type="button">{t(language, 'home.viewAll')}</button>
+                    <h2>
+                      <span aria-hidden="true"><NavIcon name="territory" /></span>
+                      {t(language, 'home.regularVisitStatus')}
+                      {myRegularVisits.length > 0 && (
+                        <span className="rv-count" style={{ marginLeft: 6, fontSize: 13, fontWeight: 500, color: 'var(--muted)' }}>
+                          {myRegularVisits.length}{t(language, 'home.caseCountSuffix')}
+                        </span>
+                      )}
+                    </h2>
+                    <button onClick={() => navigate('/territory?section=regular')} type="button">{t(language, 'home.viewAll')}</button>
                   </div>
-                  <div className="mobile-service-summary-grid">
-                    <button onClick={() => navigate('/territory?section=regular')} type="button">
-                      <strong>{myRegularVisits.length}{t(language, 'home.caseCountSuffix')}</strong>
-                      <span>{t(language, 'home.regularVisitCount')}</span>
-                    </button>
-                    <button onClick={() => navigate('/territory?section=regular')} type="button">
-                      <strong>{latestReturnVisitLabel}</strong>
-                      <span>{t(language, 'home.lastVisit')}</span>
-                    </button>
-                  </div>
-                  {myRegularVisits.length === 0 && (
+                  {myRegularVisits.length === 0 ? (
                     <button className="mobile-home-inline-link" onClick={() => navigate('/territory?section=regular')} type="button">
                       {t(language, 'home.startFirstReturnVisit')}
                     </button>
+                  ) : (
+                    <div className="mobile-rv-preview-list">
+                      {regularVisitPreviews.map(({ rv, lastVisit }) => {
+                        const label = rv.nickname || rv.displayName
+                        const lastLabel = lastVisit ? formatRelativeVisitDate(lastVisit, language) : t(language, 'home.noVisitYet')
+                        return (
+                          <button
+                            key={rv.id}
+                            type="button"
+                            className="mobile-rv-preview-card"
+                            onClick={() => navigate(`/territory?section=regular&rv=${rv.id}`)}
+                          >
+                            <div className="mobile-rv-preview-row1">
+                              <strong>{label}</strong>
+                              {rv.lastResult && (
+                                <span className={`mobile-rv-result-chip is-${rv.lastResult === '만남' ? 'met' : 'absent'}`}>
+                                  {rv.lastResult}
+                                </span>
+                              )}
+                            </div>
+                            <p className="mobile-rv-preview-row2">{rv.address}</p>
+                            <p className="mobile-rv-preview-row3">{t(language, 'home.lastVisit')} · {lastLabel}</p>
+                          </button>
+                        )
+                      })}
+                      {myRegularVisits.length > regularVisitPreviews.length && (
+                        <button
+                          type="button"
+                          className="mobile-rv-preview-more"
+                          onClick={() => navigate('/territory?section=regular')}
+                        >
+                          {t(language, 'home.viewAll')} →
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {/* 최근 방문 라벨: 디자이너 검토 후 위치 재조정 (디자인 가이드 대기) */}
+                  {latestReturnVisitDate && (
+                    <p style={{ margin: '8px 4px 0', fontSize: 12, color: 'var(--muted)' }}>
+                      {t(language, 'home.lastVisit')} · {latestReturnVisitLabel}
+                    </p>
                   )}
                 </section>
 
@@ -1502,6 +1566,27 @@ export function MobileHome({
                   />
                 )}
               </>
+            } />
+
+            {/* 정기방문 상세 (풀스크린) — 디자인 핸드오프 대기 */}
+            <Route path="/territory/regular/:id" element={
+              role === 'admin' ? (
+                <Navigate to="/zone" replace />
+              ) : (
+                <MobileRegularVisitDetail
+                  language={language}
+                  returnVisits={returnVisits}
+                  returnVisitLogs={returnVisitLogs}
+                  buildings={buildings}
+                  currentVisitor={currentVisitor}
+                  onAddReturnVisitLog={onAddReturnVisitLog}
+                  onUpdateReturnVisitLog={onUpdateReturnVisitLog}
+                  onDeleteReturnVisitLog={onDeleteReturnVisitLog}
+                  onDeleteReturnVisit={onDeleteReturnVisit}
+                  onUpdateReturnVisitNickname={onUpdateReturnVisitNickname}
+                  onUpdateReturnVisitAddress={onUpdateReturnVisitAddress}
+                />
+              )
             } />
 
             {/* 나의봉사 (개인 봉사 현황) */}
