@@ -33,6 +33,7 @@ type CommentSectionProps = {
   users?: MentionUser[]
   title?: string
   compact?: boolean
+  headerRight?: import('react').ReactNode  // sec-head 우측 (예: '채팅 열기' 링크)
 }
 
 function getMentionQuery(value: string) {
@@ -67,6 +68,7 @@ export function CommentSection({
   users = [],
   title = '댓글',
   compact = false,
+  headerRight,
 }: CommentSectionProps) {
   const [comments, setComments] = useState<CommentRecord[]>([])
   const [draft, setDraft] = useState('')
@@ -216,6 +218,7 @@ export function CommentSection({
       <div className="comment-section__head">
         <strong>{title}</strong>
         <span>{comments.length}개</span>
+        {headerRight && <div style={{ marginLeft: 'auto' }}>{headerRight}</div>}
       </div>
 
       <div className="comment-list">

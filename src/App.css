@@ -3048,6 +3048,348 @@ button:focus-visible {
   color: #687386;
 }
 
+/* Admin mobile redesign: screens 13/14 사용자 목록 · 편집 */
+.mobile-users-page {
+  padding: 14px 14px 112px;
+  background: var(--bg);
+}
+
+.mobile-users-toolbar {
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.mobile-users-search-row {
+  grid-template-columns: minmax(0, 1fr) 116px;
+  gap: 8px;
+}
+
+.mobile-users-search-box,
+.mobile-users-filter-box {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.mobile-users-search-box {
+  gap: 8px;
+  padding: 0 12px;
+}
+
+.mobile-users-search-box > span {
+  color: var(--muted-2);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mobile-users-search-box input,
+.mobile-users-filter-box select {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+}
+
+.mobile-users-search-box input::placeholder {
+  color: var(--muted-2);
+}
+
+.mobile-users-filter-box select {
+  padding: 0 10px;
+  font-weight: 600;
+}
+
+.mobile-users-search-row > input,
+.mobile-users-search-row > select {
+  display: none;
+}
+
+.mobile-users-add-toggle {
+  height: 44px;
+  border: 1px dashed var(--line-2);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mobile-users-list {
+  display: grid;
+  gap: 8px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mobile-users-list-head {
+  padding: 0 4px;
+  border: 0;
+}
+
+.mobile-users-list-head strong,
+.mobile-users-list-head span {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mobile-users-list-head strong {
+  color: var(--ink);
+}
+
+.mobile-users-list-head span {
+  color: var(--muted);
+}
+
+.mobile-users-list > .mobile-users-list-card {
+  min-height: 62px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.mobile-users-list > .mobile-users-list-card:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.mobile-users-list-card .mobile-users-row-main strong {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mobile-users-list-card .mobile-users-row-main strong small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.mobile-users-list-card .mobile-users-row-main small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.mobile-user-avatar {
+  width: 36px;
+  height: 36px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mobile-user-avatar.admin {
+  background: var(--ink);
+}
+
+.mobile-user-avatar.leader {
+  background: var(--muted);
+}
+
+.mobile-user-avatar.user {
+  background: var(--muted-2);
+}
+
+.mobile-user-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px 4px 6px;
+  border-radius: 999px;
+  background: var(--tint);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mobile-user-role-badge::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--muted-2);
+  content: "";
+}
+
+.mobile-user-role-badge.admin,
+.mobile-user-role-badge.leader,
+.mobile-user-role-badge.user {
+  background: var(--tint);
+  color: var(--text);
+}
+
+.mobile-user-role-badge.admin::before {
+  background: var(--ink);
+}
+
+.mobile-user-role-badge.leader::before {
+  background: var(--muted);
+}
+
+.mobile-users-chevron {
+  color: var(--muted-2);
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.mobile-user-detail-card,
+.mobile-user-manage-card,
+.mobile-user-danger-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.mobile-user-detail-card {
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.mobile-user-detail-card .mobile-user-avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 16px;
+}
+
+.mobile-user-detail-card strong {
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.mobile-user-detail-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.mobile-user-detail-card .mobile-user-role-badge {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mobile-user-manage-card {
+  gap: 10px;
+  padding: 0;
+  margin-bottom: 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.mobile-user-manage-card h2 {
+  margin: 0 0 2px;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.mobile-user-manage-card label {
+  gap: 6px;
+}
+
+.mobile-user-manage-card label > span {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mobile-user-manage-card input,
+.mobile-user-manage-card select,
+.mobile-user-inline-form input {
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.mobile-user-account-card > button {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.mobile-user-password-card > button,
+.mobile-user-inline-form button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.mobile-user-role-select {
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--tint);
+}
+
+.mobile-user-role-select button {
+  min-height: 40px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mobile-user-role-select button.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-xs);
+}
+
+.mobile-user-manage-card p {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.mobile-user-danger-card {
+  padding: 14px 16px;
+}
+
+.mobile-user-danger-card strong {
+  color: var(--danger-500);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mobile-user-danger-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.mobile-user-danger-card button {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--danger-500);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .special-period-settings {
   display: grid;
   gap: 0;
