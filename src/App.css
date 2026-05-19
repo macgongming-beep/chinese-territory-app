@@ -8,7 +8,9 @@
   max-width: 100%;
   padding: 0 16px 96px;
   overflow-x: hidden;
-  background: var(--bg-panel);
+  /* 디자인 v2 Tone B — body 와 동일한 warm grey 베이스
+     카드(.surface = #fff) 가 위에 떠 보이도록 함 */
+  background: var(--bg);
   color: var(--ink-900);
 }
 
