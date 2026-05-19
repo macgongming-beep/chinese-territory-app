@@ -474,8 +474,9 @@ export function MobileTerritory({
       {role !== 'admin' && (
         <>
           <section className="mobile-territory-section mobile-today-service-section">
-            <div className="mobile-section-title mobile-territory-list-title mobile-execution-title">
-              <h2>{t(language, 'territory.assignedService')}</h2>
+            <div className="mt-mini-section-head">
+              <h2>오늘 배정</h2>
+              <span className="mt-mini-meta">{myTodayAssignments.length}{t(language, 'calendar.countSuffix')}</span>
             </div>
             {myTodayAssignments.length === 0 ? (
               <div className="mobile-territory-empty">{t(language, 'territory.noTodayService')}</div>
@@ -586,15 +587,16 @@ export function MobileTerritory({
             </section>
           )}
 
-          <section className="mobile-territory-section mobile-regular-section" aria-label={t(language, 'territory.regularVisit')}>
-            <div className="mobile-section-title">
-              <h2>
-                <button className="rv-collapse-btn" onClick={() => setRvCollapsed((v) => !v)} type="button">
-                  <span className="rv-collapse-chevron">{rvCollapsed ? '›' : '⌄'}</span>
-                  {t(language, 'territory.regularVisit')} <span className="rv-count">{myReturnVisits.length}{t(language, 'calendar.countSuffix')}</span>
-                </button>
-              </h2>
-              <button className="rv-add-btn" onClick={() => { setShowAddSheet(true); setAddNickname(''); setAddAddress(''); setAddMemo(''); setAddLinked(null); setAddUnitPickBuilding(null) }} type="button">+ {t(language, 'common.add')}</button>
+          <section className="mobile-territory-section mobile-regular-section mt-main-section" aria-label={t(language, 'territory.regularVisit')}>
+            <div className="mt-main-section-head">
+              <button className="mt-main-title-btn" onClick={() => setRvCollapsed((v) => !v)} type="button">
+                <h2>정기 방문</h2>
+                <span className="mt-main-count">{myReturnVisits.length}</span>
+              </button>
+              <button className="mt-main-add-btn" onClick={() => { setShowAddSheet(true); setAddNickname(''); setAddAddress(''); setAddMemo(''); setAddLinked(null); setAddUnitPickBuilding(null) }} type="button">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                추가
+              </button>
             </div>
 
             {!rvCollapsed && (myReturnVisits.length === 0 ? (

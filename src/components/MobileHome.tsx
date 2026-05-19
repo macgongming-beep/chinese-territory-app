@@ -1063,9 +1063,12 @@ export function MobileHome({
     () => allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role as Role })),
     [allUsers],
   )
+  // 디자인 v2: 홈에서 "오늘 봉사한 카드" 섹션 제거됨 (활동 탭으로 이동)
+  // 토글 상태는 디버그/스위치용으로 보존 — 활동 탭에서 재사용 가능
   const [todayCardsCollapsed, setTodayCardsCollapsed] = useState(() =>
     window.localStorage.getItem('mobileTodaySessionsCollapsed') === 'true'
   )
+  void todayCardsCollapsed; void setTodayCardsCollapsed
 
   const rawActiveTab = pathToTab[location.pathname] || '홈'
   // 인도자는 '지도' 탭이 없으므로 /map 접근 시 '구역' 탭 활성화
@@ -1084,9 +1087,27 @@ export function MobileHome({
   const todayEvents = useMemo(() =>
     calendarEvents.filter((e) => e.date === today).sort((a, b) => a.time.localeCompare(b.time)),
     [calendarEvents, today])
+  // 디자인 v2: 활동 탭으로 이동. 홈에서는 사용 안 함.
   const myTodaySessions = useMemo(() =>
     serviceSessions.filter((session) => session.serviceDate === today && session.userName === currentVisitor),
     [currentVisitor, serviceSessions, today])
+  void myTodaySessions
+
+  // 오늘 내가 관여하는 일정 — 인도자/신청자/배정자 중 하나
+  const myTodayEvents = useMemo(() => {
+    return todayEvents
+      .map((event) => {
+        const isLeader = event.leader === currentVisitor
+        const isApplicant = event.applicants.includes(currentVisitor)
+        const isAssigned = event.cardAssignments.some((a) => a.userName === currentVisitor)
+          || (event.assigned ?? []).includes(currentVisitor)
+        if (!isLeader && !isApplicant && !isAssigned) return null
+        const kind: 'lead' | 'join' = isLeader ? 'lead' : 'join'
+        return { event, kind }
+      })
+      .filter((value): value is { event: CalendarEvent; kind: 'lead' | 'join' } => value !== null)
+  }, [todayEvents, currentVisitor])
+
   const myRegularVisits = useMemo(
     () => getUserReturnVisits(returnVisits, currentVisitor),
     [currentVisitor, returnVisits],
@@ -1095,7 +1116,9 @@ export function MobileHome({
     () => getLatestReturnVisitDate(myRegularVisits, returnVisitLogs),
     [myRegularVisits, returnVisitLogs],
   )
+  // 디자인 v2: 홈 정기방문 섹션에서 latestReturnVisitLabel 직접 노출 안 함 (카드 내부 last 로 흡수)
   const latestReturnVisitLabel = formatRelativeVisitDate(latestReturnVisitDate, language)
+  void latestReturnVisitLabel
 
   // 정기방문 미리보기 — 마지막 방문이 가장 오래된 순으로 정렬 (다가옴)
   // 한 번도 안 간 항목 우선, 그다음 오래된 순.
@@ -1195,11 +1218,12 @@ export function MobileHome({
     return t(language, 'nav.settings')
   }
 
-  const toggleTodayCardsCollapsed = () => {
+  const _toggleTodayCardsCollapsed = () => {
     const next = !todayCardsCollapsed
     setTodayCardsCollapsed(next)
     window.localStorage.setItem('mobileTodaySessionsCollapsed', String(next))
   }
+  void _toggleTodayCardsCollapsed
 
   const visibleTabs: MobileTab[] = role === 'user'
     ? ['홈', '캘린더', '활동', '설정']
@@ -1297,69 +1321,98 @@ export function MobileHome({
                   />
                 ) : (<>
 
+                {/* ─── 오늘 봉사 — 디자인 24/25 ─── */}
                 <section className="mobile-home-section">
-                  <div className="mobile-section-title" style={{ marginBottom: '8px' }}>
-                    <h2><span aria-hidden="true"><NavIcon name="notice" /></span> {t(language, 'home.notice')}</h2>
-                    <button onClick={() => navigate('/notices')} type="button">{t(language, 'home.viewAll')}</button>
+                  <div className="mh-sec-head">
+                    <h2>
+                      오늘 봉사
+                      {myTodayEvents.length > 0 && <span className="mh-cnt">{myTodayEvents.length}</span>}
+                    </h2>
+                    <button className="mh-all" onClick={() => navigate('/calendar')} type="button">
+                      전체보기
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
+                    </button>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {latestNotices.length === 0 ? (
-                      <p style={{ fontSize: '13px', color: 'var(--ink-500)', margin: 0, padding: '12px', background: '#f9fafb', borderRadius: '8px', textAlign: 'center' }}>{t(language, 'home.noNotices')}</p>
-                    ) : latestNotices.map((notice) => (
-                      <button key={notice.id} onClick={() => navigate('/notices')} style={{
-                        display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px',
-                        background: '#f9fafb', borderRadius: '8px', border: 'none', textAlign: 'left', width: '100%'
-                      }}>
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--primary-600)', background: 'var(--primary-50)', padding: '2px 6px', borderRadius: '4px', flexShrink: 0 }}>{t(language, 'home.notice')}</span>
-                        <span style={{ flex: 1, fontSize: '13px', color: 'var(--ink-900)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{notice.title}</span>
-                        <span style={{ fontSize: '11px', color: 'var(--ink-400)', flexShrink: 0 }}>{notice.createdAt.slice(5, 10).replace('-', '/')}</span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="mobile-home-section">
-                  <div className="mobile-section-title">
-                    <h2><span aria-hidden="true"><NavIcon name="calendar" /></span> {t(language, 'home.todayService')}</h2>
-                    <button onClick={() => navigate('/calendar')} type="button">{t(language, 'home.viewAll')}</button>
-                  </div>
-                  {todayEvents.length === 0 ? (
-                    <article className="mobile-empty-card mobile-service-empty">
-                      <span aria-hidden="true">□</span>
-                      <p>{t(language, 'home.noTodayService')}</p>
-                    </article>
+                  {myTodayEvents.length === 0 ? (
+                    <button
+                      type="button"
+                      className="mh-empty-line"
+                      onClick={() => navigate('/calendar')}
+                    >
+                      <span>오늘 예정된 봉사가 없습니다.</span>
+                      <span className="mh-empty-link">
+                        가까운 일정 보기
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
+                      </span>
+                    </button>
                   ) : (
-                    <div className="mobile-home-list">
-                      {todayEvents.slice(0, 3).map((event) => (
-                        <button className="mobile-event-row" key={event.id} onClick={() => navigate('/calendar')} type="button">
-                          <strong>{event.time}</strong>
-                          <span>{event.title}</span>
-                          <small>{event.place || event.leader}</small>
-                        </button>
-                      ))}
+                    <div className="mh-today-list">
+                      {myTodayEvents.map(({ event, kind }) => {
+                        const hour = Number(event.time.split(':')[0] ?? 0)
+                        const period = hour < 12 ? '오전' : hour < 17 ? '오후' : '저녁'
+                        const sub = kind === 'lead'
+                          ? `신청 ${event.applicants.length}명 · 카드 ${event.cardAssignments.length}개`
+                          : event.leader
+                            ? `인도자 ${event.leader}${event.applicants.length > 0 ? ` · 신청 ${event.applicants.length}명` : ''}`
+                            : ''
+                        return (
+                          <button
+                            key={event.id}
+                            type="button"
+                            className={`mh-today-serving${kind === 'lead' ? ' is-lead' : ''}`}
+                            onClick={() => navigate(`/calendar?openEvent=${event.id}`)}
+                          >
+                            <span className="mh-today-time">
+                              <span className="mh-today-time-hour">{event.time.split(':')[0]}</span>
+                              <span className="mh-today-time-period">{period}</span>
+                            </span>
+                            <span className="mh-today-body">
+                              <span className="mh-today-title-row">
+                                <span className="mh-today-title">{event.title}</span>
+                                {kind === 'lead' && <span className="mh-today-pill-lead">인도</span>}
+                              </span>
+                              {event.place && (
+                                <span className="mh-today-where">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/></svg>
+                                  {event.place}
+                                </span>
+                              )}
+                              {sub && <span className="mh-today-sub">{sub}</span>}
+                            </span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
+                          </button>
+                        )
+                      })}
                     </div>
                   )}
                 </section>
 
+                {/* ─── 정기 방문 — 메인 모듈 ─── */}
                 <section className="mobile-home-section">
-                  <div className="mobile-section-title">
+                  <div className="mh-sec-head">
                     <h2>
-                      <span aria-hidden="true"><NavIcon name="territory" /></span>
-                      {t(language, 'home.regularVisitStatus')}
-                      {myRegularVisits.length > 0 && (
-                        <span className="rv-count" style={{ marginLeft: 6, fontSize: 13, fontWeight: 500, color: 'var(--muted)' }}>
-                          {myRegularVisits.length}{t(language, 'home.caseCountSuffix')}
-                        </span>
-                      )}
+                      정기 방문
+                      {myRegularVisits.length > 0 && <span className="mh-cnt">{myRegularVisits.length}</span>}
                     </h2>
-                    <button onClick={() => navigate('/territory?section=regular')} type="button">{t(language, 'home.viewAll')}</button>
+                    <button className="mh-all" onClick={() => navigate('/territory?section=regular')} type="button">
+                      전체보기
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
+                    </button>
                   </div>
                   {myRegularVisits.length === 0 ? (
-                    <button className="mobile-home-inline-link" onClick={() => navigate('/territory?section=regular')} type="button">
-                      {t(language, 'home.startFirstReturnVisit')}
+                    <button
+                      type="button"
+                      className="mh-empty-line"
+                      onClick={() => navigate('/territory?section=regular')}
+                    >
+                      <span>아직 정기 방문이 없습니다.</span>
+                      <span className="mh-empty-link">
+                        시작하기
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
+                      </span>
                     </button>
                   ) : (
-                    <div className="mobile-rv-preview-list">
+                    <div className="mh-rv-list">
                       {regularVisitPreviews.map(({ rv, lastVisit }) => {
                         const label = rv.nickname || rv.displayName
                         const lastLabel = lastVisit ? formatRelativeVisitDate(lastVisit, language) : t(language, 'home.noVisitYet')
@@ -1367,113 +1420,87 @@ export function MobileHome({
                           <button
                             key={rv.id}
                             type="button"
-                            className="mobile-rv-preview-card"
-                            onClick={() => navigate(`/territory?section=regular&rv=${rv.id}`)}
+                            className="mh-rv-card"
+                            onClick={() => navigate(`/territory/regular/${rv.id}`)}
                           >
-                            <div className="mobile-rv-preview-row1">
-                              <strong>{label}</strong>
-                              {rv.lastResult && (
-                                <span className={`mobile-rv-result-chip is-${rv.lastResult === '만남' ? 'met' : 'absent'}`}>
-                                  {rv.lastResult}
-                                </span>
-                              )}
-                            </div>
-                            <p className="mobile-rv-preview-row2">{rv.address}</p>
-                            <p className="mobile-rv-preview-row3">{t(language, 'home.lastVisit')} · {lastLabel}</p>
+                            <span className="mh-rv-name">{label}</span>
+                            <span className="mh-rv-addr">{rv.address || '주소 없음'}</span>
+                            <span className="mh-rv-last">마지막 방문 · {lastLabel}</span>
                           </button>
                         )
                       })}
-                      {myRegularVisits.length > regularVisitPreviews.length && (
-                        <button
-                          type="button"
-                          className="mobile-rv-preview-more"
-                          onClick={() => navigate('/territory?section=regular')}
-                        >
-                          {t(language, 'home.viewAll')} →
-                        </button>
-                      )}
                     </div>
-                  )}
-                  {/* 최근 방문 라벨: 디자이너 검토 후 위치 재조정 (디자인 가이드 대기) */}
-                  {latestReturnVisitDate && (
-                    <p style={{ margin: '8px 4px 0', fontSize: 12, color: 'var(--muted)' }}>
-                      {t(language, 'home.lastVisit')} · {latestReturnVisitLabel}
-                    </p>
                   )}
                 </section>
 
-                {myTodaySessions.length > 0 && (
+                {/* ─── 인도자 — 담당 카드 chip 행 ─── */}
+                {role === 'leader' && leaderCards.length > 0 && (
                   <section className="mobile-home-section">
-                    <div className="mobile-section-title">
-                      <h2><span aria-hidden="true"><NavIcon name="map" /></span> {t(language, 'home.todayServedCards')}</h2>
-                      <button onClick={toggleTodayCardsCollapsed} type="button">
-                        {todayCardsCollapsed ? t(language, 'home.expand') : t(language, 'home.collapse')}
+                    <div className="mh-sec-head">
+                      <h2>
+                        담당 카드
+                        <span className="mh-cnt">{leaderCards.length}</span>
+                      </h2>
+                      <button className="mh-all" onClick={() => navigate('/zone?reset=true')} type="button">
+                        전체보기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
                       </button>
                     </div>
-                    {todayCardsCollapsed ? (
-                      <button className="mobile-collapsed-summary" onClick={toggleTodayCardsCollapsed} type="button">
-                        {t(language, 'home.collapsedTodayCards')} {myTodaySessions.length}{t(language, 'calendar.countSuffix')} {t(language, 'home.collapsed')}
-                        <span>{t(language, 'territory.open')}</span>
-                      </button>
-                    ) : (
-                      <div className="mobile-home-list">
-                        {myTodaySessions.map((session) => {
-                          const card = cards.find((item) => item.id === session.primaryCardId)
-                          return (
-                            <button className="mobile-my-card" key={session.id} onClick={() => navigate(`/map?cardId=${session.primaryCardId ?? ''}`)} type="button">
-                              <div>
-                                <strong>{card?.name ?? t(language, 'territory.noCard')}</strong>
-                                <small>{session.timeSlot} · {session.status === 'active' && !session.endedAt ? t(language, 'home.inProgress') : t(language, 'home.ended')}</small>
-                              </div>
-                              <span>{t(language, 'territory.open')}</span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
+                    <div className="mh-leader-chips">
+                      {(() => {
+                        const groupMap = new Map<string, { region: string; area: string; count: number }>()
+                        for (const card of leaderCards) {
+                          const region = (card.region as string) || '기타'
+                          const area = (card.area as string) || '기타'
+                          const key = `${region}::${area}`
+                          const prev = groupMap.get(key)
+                          groupMap.set(key, prev ? { ...prev, count: prev.count + 1 } : { region, area, count: 1 })
+                        }
+                        return [...groupMap.values()].map(({ region, area, count }) => (
+                          <button
+                            key={`${region}::${area}`}
+                            type="button"
+                            className="mh-leader-chip"
+                            onClick={() => navigate(`/zone?region=${encodeURIComponent(region)}&dong=${encodeURIComponent(area)}`)}
+                          >
+                            {region} {area} <span className="mh-leader-chip-cnt">{count}{t(language, 'calendar.countSuffix')}</span>
+                          </button>
+                        ))
+                      })()}
+                    </div>
                   </section>
                 )}
 
-                {role === 'leader' && (
+                {/* ─── 공지 — 압축 한 줄 ─── */}
+                {latestNotices.length > 0 && (
                   <section className="mobile-home-section">
-                    <div className="mobile-section-title">
-                      <h2><span aria-hidden="true"><NavIcon name="territory" /></span> {t(language, 'home.assignedCards')}</h2>
-                      <button onClick={() => navigate('/zone?reset=true')} type="button">{t(language, 'home.viewAll')}</button>
+                    <div className="mh-sec-head">
+                      <h2>
+                        공지
+                        <span className="mh-cnt">{notices.length}</span>
+                      </h2>
+                      <button className="mh-all" onClick={() => navigate('/notices')} type="button">
+                        전체보기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
+                      </button>
                     </div>
-                    {leaderCards.length === 0 ? (
-                      <article className="mobile-empty-card">{t(language, 'zone.noAssignedCards')}</article>
-                    ) : (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '4px 0' }}>
-                        {(() => {
-                          // 구 → 동 별로 그룹핑: "처인구 고림동 2개" 형태
-                          const groupMap = new Map<string, { region: string; area: string; count: number }>()
-                          for (const card of leaderCards) {
-                            const region = (card.region as string) || '기타'
-                            const area = (card.area as string) || '기타'
-                            const key = `${region}::${area}`
-                            const prev = groupMap.get(key)
-                            groupMap.set(key, prev ? { ...prev, count: prev.count + 1 } : { region, area, count: 1 })
-                          }
-                          return [...groupMap.values()].map(({ region, area, count }) => (
-                            <button
-                              key={`${region}::${area}`}
-                              onClick={() => navigate(`/zone?region=${encodeURIComponent(region)}&dong=${encodeURIComponent(area)}`)}
-                              type="button"
-                              style={{
-                                padding: '6px 12px', borderRadius: 20,
-                                background: 'var(--brand-50)', color: 'var(--brand-700)',
-                                border: '1px solid var(--brand-200)',
-                                fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                              }}
-                            >
-                              {region} {area} {count}{t(language, 'calendar.countSuffix')}
-                            </button>
-                          ))
-                        })()}
-                      </div>
-                    )}
+                    <div className="mh-notice-list">
+                      {latestNotices.map((notice) => (
+                        <button
+                          key={notice.id}
+                          type="button"
+                          className="mh-notice-row"
+                          onClick={() => navigate('/notices')}
+                        >
+                          <span className="mh-notice-pill">공지</span>
+                          <span className="mh-notice-title">{notice.title}</span>
+                          <span className="mh-notice-date">{notice.createdAt.slice(5, 10).replace('-', '/')}</span>
+                        </button>
+                      ))}
+                    </div>
                   </section>
                 )}
+
                 </>)}
               </>
             } />

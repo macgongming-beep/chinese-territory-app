@@ -8845,29 +8845,32 @@ button:focus-visible {
 /* 하단 버튼 행 */
 .rv-card-actions { display: flex; gap: 5px; }
 
+/* 디자인 v2 — 정기방문 카드 액션 버튼 (ReturnVisitCard withActions) */
 .rv-btn {
-  padding: 5px 11px;
-  border-radius: 7px;
-  border: 1px solid #e2e8f0;
-  font-size: 12px;
-  font-weight: 700;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line-2);
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  line-height: 1.4;
   white-space: nowrap;
-  background: #f8fafc;
-  color: var(--ink-600);
+  background: var(--surface);
+  color: var(--text);
+  letter-spacing: -0.005em;
 }
 
 .rv-btn-log {
-  background: var(--brand-700);
-  border-color: var(--brand-700);
+  background: var(--ink);
+  border-color: var(--ink);
   color: #fff;
 }
 
 .rv-btn-map {
-  background: #f0f4ff;
-  border-color: #c7d5f8;
-  color: var(--brand-700);
+  background: var(--surface);
+  border-color: var(--line-2);
+  color: var(--text);
 }
 
 /* ═══════════════════════════════════════
@@ -25237,4 +25240,587 @@ button:focus-visible {
 
 .mobile-past-mini-detail-row3 {
   color: var(--muted);
+}
+
+/* ============================================================
+   디자인 v2 — 봉사자/인도자 홈 (화면 24, 25)
+   screens-g.jsx 기준. Pretendard / ink + tone B.
+   ============================================================ */
+
+.mh-sec-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0 4px;
+}
+.mh-sec-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.mh-cnt {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.mh-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: transparent;
+  border: none;
+  padding: 4px 4px;
+  min-height: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* 한 줄 빈 상태 */
+.mh-empty-line {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  margin-top: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+.mh-empty-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* 오늘 봉사 — TodayServingCard */
+.mh-today-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.mh-today-serving {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+  transition: background 0.15s;
+}
+.mh-today-serving:active {
+  background: var(--tint);
+}
+.mh-today-serving.is-lead {
+  border: 1.5px solid var(--ink);
+}
+.mh-today-time {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--tint);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.mh-today-serving.is-lead .mh-today-time {
+  background: var(--ink);
+  color: #fff;
+}
+.mh-today-time-hour {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.mh-today-time-period {
+  font-size: 10px;
+  margin-top: 2px;
+  opacity: 0.7;
+}
+.mh-today-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.mh-today-title-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.mh-today-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.mh-today-pill-lead {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 99px;
+  letter-spacing: 0;
+}
+.mh-today-where {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.mh-today-sub {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 정기방문 카드 (홈 미리보기) */
+.mh-rv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.mh-rv-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 14px 14px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mh-rv-card:active {
+  background: var(--tint);
+}
+.mh-rv-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mh-rv-addr {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mh-rv-last {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 인도자 담당 카드 chip */
+.mh-leader-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.mh-leader-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--tint);
+  color: var(--ink);
+  border: none;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+.mh-leader-chip-cnt {
+  color: var(--muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 공지 압축 */
+.mh-notice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+.mh-notice-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+.mh-notice-pill {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  background: var(--tint);
+  color: var(--text);
+  border-radius: 99px;
+}
+.mh-notice-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.005em;
+}
+.mh-notice-date {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   디자인 v2 — 활동 탭 (화면 27)
+   - "오늘 배정" 미니 헤더 (uppercase 13/600 muted)
+   - "정기 방문" 메인 헤더 (20/700 + count + + 추가 solid)
+   ============================================================ */
+
+.mt-mini-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0 4px;
+  margin-bottom: 8px;
+}
+.mt-mini-section-head h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.mt-mini-meta {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-main-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+  margin-bottom: 12px;
+}
+.mt-main-title-btn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  min-height: 0;
+}
+.mt-main-title-btn h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+}
+.mt-main-count {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.mt-main-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 12px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+
+/* ============================================================
+   디자인 v2 — 정기방문 상세 (화면 26) 재정렬
+   ============================================================ */
+
+.mobile-rv-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 0;
+}
+.mobile-rv-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+.mobile-rv-title-addr,
+.mobile-rv-title-last {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.mobile-rv-actions-v2 {
+  display: flex;
+  gap: 8px;
+}
+.mobile-rv-act-primary {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 48px;
+  padding: 0 18px;
+  background: var(--ink);
+  color: #fff;
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+}
+.mobile-rv-act-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 48px;
+  padding: 0 18px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+}
+
+/* ============================================================
+   디자인 v2 — 정기방문 빠른 기록 시트 (화면 26b)
+   ============================================================ */
+
+.rv-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(0, 0, 0, 0.32);
+  display: flex;
+  align-items: flex-end;
+}
+.rv-sheet {
+  width: 100%;
+  background: var(--bg);
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  padding: 8px 16px max(20px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.rv-sheet-grabber {
+  width: 36px;
+  height: 4px;
+  background: var(--line-2);
+  border-radius: 99px;
+  align-self: center;
+  margin: 4px 0 10px;
+}
+.rv-sheet-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rv-sheet-title-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.rv-sheet-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.rv-sheet-sub {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: -0.005em;
+}
+.rv-sheet-close {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.rv-sheet-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 0 -16px;
+}
+.rv-sheet-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rv-sheet-date {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.rv-sheet-chips {
+  display: inline-flex;
+  gap: 8px;
+}
+.rv-sheet-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+.rv-sheet-chip.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+.rv-sheet-memo {
+  width: 100%;
+  min-height: 72px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--ink);
+  resize: vertical;
+  box-sizing: border-box;
+  letter-spacing: -0.005em;
+}
+.rv-sheet-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+.rv-sheet-btn {
+  flex: 1;
+  height: 48px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+.rv-sheet-btn-ghost {
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  color: var(--text);
+}
+.rv-sheet-btn-solid {
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  color: #fff;
+}
+.rv-sheet-btn-solid:disabled {
+  background: var(--tint);
+  border-color: var(--tint);
+  color: var(--muted-2);
+  cursor: not-allowed;
 }
