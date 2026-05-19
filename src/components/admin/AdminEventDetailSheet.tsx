@@ -274,14 +274,15 @@ export function AdminEventDetailSheet({
             type="button"
             onClick={isApplied ? onCancelApply : onApply}
             style={{
-              height: 48,
-              minHeight: 48,
+              height: 44,
+              minHeight: 44,
               width: '100%',
+              padding: '0 18px',
               borderRadius: 8,
               border: 'none',
               background: isApplied ? 'var(--tint)' : 'var(--ink)',
               color: isApplied ? 'var(--text)' : '#fff',
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: 600,
               cursor: 'pointer',
               letterSpacing: '-0.005em',
