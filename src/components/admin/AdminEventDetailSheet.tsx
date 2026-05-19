@@ -278,62 +278,65 @@ export function AdminEventDetailSheet({
           </section>
         )}
 
-        {/* 위치 — mapLink 가 있을 때만 지도 썸네일+네이버 카드 형태,
-            없으면 간단한 한 줄 표시 */}
+        {/* 위치 — mapLink 있으면 카드 전체가 네이버 지도 링크,
+            없으면 단순 한 줄 표시.
+            지도 썸네일 미리보기는 네이버 X-Frame-Options 차단으로 불가능. */}
         {event.place && event.mapLink && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <SectionHead title="위치" />
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
-              <div
-                style={{
-                  aspectRatio: '16/9',
-                  background:
-                    'linear-gradient(135deg, transparent 49%, var(--line-2) 49%, var(--line-2) 51%, transparent 51%), linear-gradient(45deg, transparent 49%, var(--line-2) 49%, var(--line-2) 51%, transparent 51%), var(--paper)',
-                  backgroundSize: '24px 24px, 24px 24px, 100% 100%',
-                }}
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px' }}>
-                <PinIcon />
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{event.place}</span>
-                </div>
-                <a
-                  href={event.mapLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    height: 30,
-                    minHeight: 30,
-                    padding: '0 10px',
-                    gap: 4,
-                    background: 'var(--surface)',
-                    border: '1px solid var(--line-2)',
-                    borderRadius: 8,
-                    color: 'var(--text)',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                  }}
-                >
-                  네이버
-                </a>
+            <a
+              href={event.mapLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '14px 16px',
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                borderRadius: 12,
+                textDecoration: 'none',
+                color: 'inherit',
+              }}
+            >
+              <span style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: 'var(--tint)', color: 'var(--text)',
+                display: 'grid', placeItems: 'center', flexShrink: 0,
+              }}>
+                <PinIcon size={16} />
+              </span>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{event.place}</span>
+                <span style={{ fontSize: 12, color: 'var(--muted)' }}>네이버 지도에서 보기</span>
               </div>
-            </div>
+              <span style={{ color: 'var(--muted-2)', flexShrink: 0 }}>
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M7 17 17 7" />
+                  <path d="M8 7h9v9" />
+                </svg>
+              </span>
+            </a>
           </section>
         )}
         {event.place && !event.mapLink && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <SectionHead title="위치" />
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '12px 14px',
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '14px 16px',
               background: 'var(--surface)',
               border: '1px solid var(--line)',
               borderRadius: 12,
             }}>
-              <PinIcon />
+              <span style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: 'var(--tint)', color: 'var(--text)',
+                display: 'grid', placeItems: 'center', flexShrink: 0,
+              }}>
+                <PinIcon size={16} />
+              </span>
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{event.place}</span>
             </div>
           </section>

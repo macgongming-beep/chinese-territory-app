@@ -18,6 +18,7 @@ export function MobileProfileSettings({
   const [name, setName] = useState(user.name)
   const [phone, setPhone] = useState(user.phone ?? '')
   const [newPin, setNewPin] = useState('')
+  const [newPinConfirm, setNewPinConfirm] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPin, setSavingPin] = useState(false)
 
@@ -28,12 +29,13 @@ export function MobileProfileSettings({
 
   const canUsePhone = user.role === 'leader' || user.role === 'admin' || user.role === 'developer'
   const roleLabel = user.role === 'user' ? '봉사자' : roleLabels[user.role as Role]
+  const accountSubtitle = `${roleLabel} 계정`
 
   return (
     <div className="mobile-profile-page">
       <AppHeader
         pageTitle="내 정보"
-        subtitle={`${roleLabel} 계정 정보`}
+        subtitle={accountSubtitle}
         showBack
         onBack={() => navigate('/settings')}
         userId={user.id}
@@ -47,6 +49,7 @@ export function MobileProfileSettings({
           <strong>{user.name}</strong>
           <span>{user.loginId}</span>
         </div>
+        <span className="mobile-profile-role-badge">• {roleLabel}</span>
       </section>
 
       <section className="mobile-profile-card">
@@ -93,13 +96,29 @@ export function MobileProfileSettings({
             onChange={(event) => setNewPin(event.target.value)}
           />
         </label>
+        <label>
+          <span>새 비밀번호 확인</span>
+          <input
+            placeholder="다시 입력하세요"
+            type="password"
+            value={newPinConfirm}
+            onChange={(event) => setNewPinConfirm(event.target.value)}
+          />
+        </label>
         <button
-          disabled={savingPin || !newPin.trim()}
+          disabled={savingPin || !newPin.trim() || !newPinConfirm.trim()}
           onClick={async () => {
+            if (newPin !== newPinConfirm) {
+              window.alert('새 비밀번호가 서로 일치하지 않습니다.')
+              return
+            }
             setSavingPin(true)
             try {
               const ok = await onChangePin(newPin)
-              if (ok) setNewPin('')
+              if (ok) {
+                setNewPin('')
+                setNewPinConfirm('')
+              }
             } finally {
               setSavingPin(false)
             }
