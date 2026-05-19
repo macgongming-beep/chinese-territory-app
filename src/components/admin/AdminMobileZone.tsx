@@ -327,55 +327,74 @@ export function AdminMobileZone({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 16px 24px' }}>
       <TerritoryInlineTabs active="territory" onChange={setZoneKind} cardCount={cards.length} informalCount={informalCount} restaurantCount={restaurantCount} />
 
-      {/* Drill-down breadcrumb (필요 시) */}
-      {level !== 'regions' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px', fontSize: 12.5, color: 'var(--muted)' }}>
+      {/* Top toolbar — level 에 따라 다른 구성 (디자인 04 vs 20/21)
+          - regions: [담당/전체 segmented] [ViewToggle]
+          - dongs/cards: [← back] [전체 구역 › 처인구 (› 고림동)] [spacer] [ViewToggle] */}
+      {level === 'regions' ? (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+          <SegmentedScope value={scope} onChange={setScope} />
+          <ViewToggle value={view} onChange={(next) => {
+            setView(next)
+            if (next === 'map') {
+              if (scope === 'mine') {
+                const mineCardIds = baseCards.map((c) => c.id)
+                onOpenAssignedMap(mineCardIds)
+              } else {
+                onShowMapView()
+              }
+            }
+          }} />
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 4px' }}>
           <button
             type="button"
             onClick={goBack}
             style={{
-              width: 28, height: 28, minHeight: 28,
+              width: 30, height: 30, minHeight: 30,
               display: 'grid', placeItems: 'center',
               background: 'transparent', border: 'none', color: 'var(--text)',
-              cursor: 'pointer', borderRadius: 6, marginLeft: -6,
+              cursor: 'pointer', borderRadius: 8, marginLeft: -8,
+              flexShrink: 0,
             }}
+            aria-label="뒤로"
           >
-            <ChevL />
+            <ChevL size={16} />
           </button>
-          <span style={{ color: 'var(--muted)' }}>전체 구역</span>
-          {selectedRegion && (
-            <>
-              <span style={{ color: 'var(--muted-3)' }}>›</span>
-              <span style={{ color: level === 'dongs' ? 'var(--ink)' : 'var(--muted)', fontWeight: level === 'dongs' ? 600 : 500 }}>
-                {selectedRegion}
-              </span>
-            </>
-          )}
-          {selectedDong && (
-            <>
-              <span style={{ color: 'var(--muted-3)' }}>›</span>
-              <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{selectedDong}</span>
-            </>
-          )}
+          <nav style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            fontSize: 12.5, color: 'var(--muted)',
+            flexWrap: 'wrap', lineHeight: 1.4, flex: 1, minWidth: 0,
+          }}>
+            <span style={{ color: level === 'dongs' && !selectedDong ? 'var(--muted)' : 'var(--muted)' }}>전체 구역</span>
+            {selectedRegion && (
+              <>
+                <span style={{ color: 'var(--muted-3)' }}>›</span>
+                <span style={{ color: level === 'dongs' ? 'var(--ink)' : 'var(--muted)', fontWeight: level === 'dongs' ? 600 : 500 }}>
+                  {selectedRegion}
+                </span>
+              </>
+            )}
+            {selectedDong && (
+              <>
+                <span style={{ color: 'var(--muted-3)' }}>›</span>
+                <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{selectedDong}</span>
+              </>
+            )}
+          </nav>
+          <ViewToggle value={view} onChange={(next) => {
+            setView(next)
+            if (next === 'map') {
+              if (scope === 'mine') {
+                const mineCardIds = baseCards.map((c) => c.id)
+                onOpenAssignedMap(mineCardIds)
+              } else {
+                onShowMapView()
+              }
+            }
+          }} />
         </div>
       )}
-
-      {/* 담당/전체 + 목록/지도 segmented */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-        <SegmentedScope value={scope} onChange={setScope} />
-        <ViewToggle value={view} onChange={(next) => {
-          setView(next)
-          if (next === 'map') {
-            // 지도 보기로 전환
-            if (scope === 'mine') {
-              const mineCardIds = baseCards.map((c) => c.id)
-              onOpenAssignedMap(mineCardIds)
-            } else {
-              onShowMapView()
-            }
-          }
-        }} />
-      </div>
 
       {/* Stats inline
           - 전체 view: 전체 / 배정 / 미배정 (디자인 04 의 기본 카운터)
@@ -420,30 +439,32 @@ export function AdminMobileZone({
         </div>
       )}
 
-      {/* 검색 */}
-      <label style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--line)',
-        borderRadius: 10,
-        padding: '11px 14px',
-        fontSize: 14,
-        color: 'var(--text)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        cursor: 'text',
-      }}>
-        <SearchIcon />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={level === 'regions' ? '시·구 검색' : level === 'dongs' ? '동 검색' : '카드 검색'}
-          style={{
-            flex: 1, minWidth: 0, border: 'none', outline: 'none',
-            background: 'transparent', font: 'inherit', color: 'inherit', padding: 0,
-          }}
-        />
-      </label>
+      {/* 검색 — 카드 레벨은 디자인 21 에서 검색 안 보임 */}
+      {level !== 'cards' && (
+        <label style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--line)',
+          borderRadius: 10,
+          padding: '11px 14px',
+          fontSize: 14,
+          color: 'var(--text)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          cursor: 'text',
+        }}>
+          <SearchIcon />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={level === 'regions' ? '시·구 검색' : '동 이름 검색'}
+            style={{
+              flex: 1, minWidth: 0, border: 'none', outline: 'none',
+              background: 'transparent', font: 'inherit', color: 'inherit', padding: 0,
+            }}
+          />
+        </label>
+      )}
 
       {/* 리스트 (level 별) */}
       {level === 'regions' && (
