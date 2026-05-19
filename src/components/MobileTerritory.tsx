@@ -868,13 +868,6 @@ export function MobileTerritory({
                           disabled={!hasItems}
                         >
                           <span className="mobile-past-mini-day">{cell.day}</span>
-                          {hasItems && (
-                            <span className="mobile-past-mini-slots" aria-hidden>
-                              <span className={cell.slots.has('오전') ? 'is-on' : ''} />
-                              <span className={cell.slots.has('오후') ? 'is-on' : ''} />
-                              <span className={cell.slots.has('저녁') ? 'is-on' : ''} />
-                            </span>
-                          )}
                         </button>
                       )
                     })}
