@@ -1118,7 +1118,11 @@ export function MobileHome({
   const activeTab: MobileTab =
     rawActiveTab === '지도' && role === 'leader' ? '구역' : rawActiveTab
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  // KST(로컬) 기준 오늘. toISOString 은 UTC 라 새벽 시간대에 하루 어긋남 → local 날짜 사용
+  const today = useMemo(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }, [])
   const todayLabel = useMemo(() => formatHomeDate(new Date(), language), [language])
   const leaderCards = useMemo(() => cards.filter((c) => c.assignedLeader === currentVisitor), [cards, currentVisitor])
   const inProgressCards = useMemo(() => cards.filter((c) => c.status === '진행중'), [cards])
