@@ -15,17 +15,17 @@ function displayRole(role: Role) {
   return roleLabels[role]
 }
 
-function roleScope(role: Role) {
-  if (role === 'developer') return '개발자'
-  if (role === 'admin') return '관리자 · 인도자 · 봉사자'
-  if (role === 'leader') return '인도자 · 봉사자'
-  return '봉사자'
-}
-
 function roleClass(role: Role) {
   if (role === 'admin' || role === 'developer') return 'admin'
   if (role === 'leader') return 'leader'
   return 'user'
+}
+
+function formatLastLogin(value?: string | null) {
+  if (!value) return '로그인 기록 없음'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '로그인 기록 없음'
+  return `마지막 로그인 ${date.getMonth() + 1}/${date.getDate()}`
 }
 
 export function MobileUsers() {
@@ -84,6 +84,7 @@ export function MobileUsers() {
   }, [roleFilter, search, users])
 
   const selectedUser = users.find((item) => item.id === selectedUserId) ?? null
+  const adminCount = users.filter((item) => item.role === 'admin' || item.role === 'developer').length
 
   useEffect(() => {
     if (!selectedUser) return
@@ -120,8 +121,8 @@ export function MobileUsers() {
     return (
       <div className="mobile-users-page">
         <AppHeader
-          pageTitle={selectedUser.name}
-          subtitle={roleScope(selectedUser.role)}
+          pageTitle="사용자 편집"
+          subtitle={`${displayRole(selectedUser.role)} · ${formatLastLogin(selectedUser.lastLoginAt)}`}
           showBack
           onBack={() => setSelectedUserId(null)}
           userId={currentUser?.id}
@@ -142,7 +143,7 @@ export function MobileUsers() {
           </span>
         </section>
 
-        <section className="mobile-user-manage-card">
+        <section className="mobile-user-manage-card mobile-user-account-card">
           <h2>계정 관리</h2>
           <label>
             <span>아이디</span>
@@ -164,7 +165,7 @@ export function MobileUsers() {
           </button>
         </section>
 
-        <section className="mobile-user-manage-card">
+        <section className="mobile-user-manage-card mobile-user-role-card">
           <h2>사용자 권한</h2>
           <div className="mobile-user-role-select">
             {(['admin', 'leader', 'user'] as Role[]).map((role) => (
@@ -181,7 +182,7 @@ export function MobileUsers() {
           <p>관리자는 인도자와 봉사자 권한을 포함합니다.</p>
         </section>
 
-        <section className="mobile-user-manage-card">
+        <section className="mobile-user-manage-card mobile-user-password-card">
           <h2>비밀번호</h2>
           <button onClick={() => resetUserPin(selectedUser.id)} type="button">
             0000으로 초기화
@@ -230,6 +231,7 @@ export function MobileUsers() {
     <div className="mobile-users-page">
       <AppHeader
         pageTitle="사용자"
+        subtitle={`회중 ${users.length}명 · 관리자 ${adminCount}`}
         showBack
         onBack={() => navigate('/settings')}
         userId={currentUser?.id}
@@ -239,22 +241,27 @@ export function MobileUsers() {
 
       <section className="mobile-users-toolbar">
         <div className="mobile-users-search-row">
-          <input
-            aria-label="사용자 이름 검색"
-            placeholder="이름 검색"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <select
-            aria-label="권한 필터"
-            value={roleFilter}
-            onChange={(event) => setRoleFilter(event.target.value as UserFilter)}
-          >
-            <option value="all">전체</option>
-            <option value="admin">관리자</option>
-            <option value="leader">인도자</option>
-            <option value="user">봉사자</option>
-          </select>
+          <label className="mobile-users-search-box">
+            <span aria-hidden="true">⌕</span>
+            <input
+              aria-label="사용자 이름 검색"
+              placeholder="이름 검색"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <label className="mobile-users-filter-box">
+            <select
+              aria-label="권한 필터"
+              value={roleFilter}
+              onChange={(event) => setRoleFilter(event.target.value as UserFilter)}
+            >
+              <option value="all">전체</option>
+              <option value="admin">관리자</option>
+              <option value="leader">인도자</option>
+              <option value="user">봉사자</option>
+            </select>
+          </label>
         </div>
         <button className="mobile-users-add-toggle" onClick={() => setShowAddForm((value) => !value)} type="button">
           + 사용자 추가
@@ -320,10 +327,10 @@ export function MobileUsers() {
           <div className="mobile-users-empty">검색 결과가 없습니다.</div>
         ) : (
           filteredUsers.map((item) => (
-            <button key={item.id} onClick={() => setSelectedUserId(item.id)} type="button">
+            <button className="mobile-users-list-card" key={item.id} onClick={() => setSelectedUserId(item.id)} type="button">
               <span className={`mobile-user-avatar ${roleClass(item.role)}`}>{item.name.slice(0, 1)}</span>
               <span className="mobile-users-row-main">
-                <strong>{item.name}</strong>
+                <strong>{item.name}{currentUser?.id === item.id ? <small> (나)</small> : null}</strong>
                 <small>{item.loginId}</small>
               </span>
               <span className={`mobile-user-role-badge ${roleClass(item.role)}`}>

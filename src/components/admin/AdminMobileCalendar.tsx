@@ -66,6 +66,7 @@ type Props = {
   onDeleteEventSeries?: (seriesId: string, fromDate: string) => void
   onUpdateEvent?: (id: number, input: EventInput) => void
   onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput) => void
+  onApplyToEvent?: (eventId: number) => void
 }
 
 function pad2(n: number) {
@@ -188,6 +189,7 @@ export function AdminMobileCalendar({
   onDeleteEventSeries,
   onUpdateEvent,
   onUpdateEventSeries,
+  onApplyToEvent,
 }: Props) {
   const today = useMemo(() => new Date(), [])
   const [year, setYear] = useState(today.getFullYear())
@@ -528,6 +530,8 @@ export function AdminMobileCalendar({
           currentUserId={currentUserId}
           mentionUsers={mentionUsers}
           onClose={() => setDetailEventId(null)}
+          onApply={onApplyToEvent ? () => onApplyToEvent(detailEvent.id) : undefined}
+          onCancelApply={onApplyToEvent ? () => onApplyToEvent(detailEvent.id) : undefined}
           onEdit={
             onUpdateEvent
               ? () => {

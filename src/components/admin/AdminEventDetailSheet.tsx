@@ -75,7 +75,10 @@ export function AdminEventDetailSheet({
   onCancelApply,
 }: Props) {
   const isApplied = useMemo(() => event.applicants.includes(currentVisitor), [event.applicants, currentVisitor])
-  const canApply = event.allowApplications && role !== 'admin'
+  // 신청은 모든 역할 가능 (admin 도 본인이 참가 의사 표할 수 있음).
+  // role 파라미터는 향후 다른 조건부 UI 용으로 유지.
+  void role
+  const canApply = event.allowApplications
   const applicants = event.applicants ?? []
   const previewApplicants = applicants.slice(0, 6)
   const overflow = applicants.length - previewApplicants.length

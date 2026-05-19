@@ -1481,6 +1481,7 @@ export function MobileHome({
                     onDeleteEventSeries={onDeleteCalendarEventSeries}
                     onUpdateEvent={onUpdateCalendarEvent}
                     onUpdateEventSeries={onUpdateCalendarEventSeries}
+                    onApplyToEvent={onApplyToEvent}
                   />
                 ) : (
                   <MobileCalendar
