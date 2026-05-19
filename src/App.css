@@ -24948,7 +24948,7 @@ button:focus-visible {
 }
 
 /* ============================================================
-   지난 봉사 — 월별 타임라인 (활동 탭 맨 아래)
+   지난 봉사 — 미니 캘린더 (활동 탭 맨 아래)
    디자인 핸드오프 대기 — 톤은 디자이너가 정리할 예정.
    ============================================================ */
 
@@ -24956,197 +24956,285 @@ button:focus-visible {
   margin-top: 4px;
 }
 
-.mobile-past-timeline {
+.mobile-past-mini {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
+  padding: 14px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
 }
 
-.mobile-past-month-group {
+/* 월 네비 */
+.mobile-past-mini-nav {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.mobile-past-month-header {
-  display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  padding: 0 4px 6px;
-  border-bottom: 1px solid var(--line);
-  font-size: 13.5px;
-  font-weight: 600;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.mobile-past-mini-nav-btn {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
   color: var(--ink);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mobile-past-mini-nav-btn:active {
+  background: var(--tint);
+}
+
+.mobile-past-mini-nav-label {
+  flex: 1;
+  text-align: center;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+/* 요일 헤더 */
+.mobile-past-mini-dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  padding: 0 2px;
+}
+
+.mobile-past-mini-dow span {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  text-align: center;
+  padding: 4px 0 2px;
   letter-spacing: -0.005em;
 }
 
-.mobile-past-month-header .rv-count {
-  font-weight: 500;
-  color: var(--muted);
-  font-size: 12.5px;
+.mobile-past-mini-dow span:first-child {
+  color: var(--status-danger, #c94a4a);
 }
 
-.mobile-past-list {
+.mobile-past-mini-dow span:last-child {
+  color: var(--accent, #3b6db4);
+}
+
+/* 그리드 */
+.mobile-past-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  padding: 0 2px;
+}
+
+.mobile-past-mini-cell {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 0;
+  min-height: 0;
+  cursor: default;
+  color: var(--ink);
+}
+
+.mobile-past-mini-cell:disabled {
+  cursor: default;
+}
+
+.mobile-past-mini-cell.is-empty {
+  visibility: hidden;
+}
+
+.mobile-past-mini-day {
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-2, var(--muted));
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  letter-spacing: -0.01em;
+}
+
+/* 일요일 / 토요일 색 */
+.mobile-past-mini-cell.is-sun .mobile-past-mini-day {
+  color: rgba(201, 74, 74, 0.6);
+}
+.mobile-past-mini-cell.is-sat .mobile-past-mini-day {
+  color: rgba(59, 109, 180, 0.6);
+}
+
+/* 오늘 표시 */
+.mobile-past-mini-cell.is-today .mobile-past-mini-day {
+  outline: 1px solid var(--line);
+  outline-offset: -1px;
+}
+
+/* 참여한 날 — ink 채움 */
+.mobile-past-mini-cell.has-items {
+  cursor: pointer;
+}
+
+.mobile-past-mini-cell.has-items .mobile-past-mini-day {
+  background: var(--ink);
+  color: #fff;
+  font-weight: 600;
+}
+
+.mobile-past-mini-cell.has-items.is-sun .mobile-past-mini-day,
+.mobile-past-mini-cell.has-items.is-sat .mobile-past-mini-day {
+  color: #fff;
+}
+
+.mobile-past-mini-cell.is-selected .mobile-past-mini-day {
+  box-shadow: 0 0 0 2px var(--ink);
+  background: var(--ink);
+}
+
+/* 시간대 micro dot */
+.mobile-past-mini-slots {
+  display: inline-flex;
+  gap: 3px;
+  height: 4px;
+}
+
+.mobile-past-mini-slots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.mobile-past-mini-slots span.is-on {
+  background: var(--ink);
+}
+
+/* 월별 요약 */
+.mobile-past-mini-summary {
+  margin: 4px 0 0;
+  padding: 6px 4px 0;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+
+/* 선택된 날짜의 상세 */
+.mobile-past-mini-detail {
+  margin-top: 4px;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-past-mini-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mobile-past-mini-detail-head strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.mobile-past-mini-detail-head button {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mobile-past-mini-detail-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
-.mobile-past-item {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.mobile-past-item-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 14px;
-  background: transparent;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  min-height: 0;
-}
-
-.mobile-past-item-head:active {
-  background: var(--tint);
-}
-
-.mobile-past-item-date {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-width: 52px;
-  flex-shrink: 0;
-}
-
-.mobile-past-item-date strong {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-.mobile-past-item-date span {
-  font-size: 11.5px;
-  color: var(--muted);
-  font-weight: 500;
-}
-
-.mobile-past-item-summary {
-  flex: 1;
-  min-width: 0;
+.mobile-past-mini-detail-list li {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.mobile-past-item-title {
-  margin: 0;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--ink);
-  letter-spacing: -0.005em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobile-past-item-meta {
-  margin: 0;
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobile-past-item-chevron {
-  flex-shrink: 0;
-  color: var(--muted);
-  font-size: 16px;
-}
-
-.mobile-past-item-body {
-  padding: 0 14px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-top: 1px solid var(--line);
+.mobile-past-mini-detail-list li + li {
   padding-top: 10px;
+  border-top: 1px solid var(--line);
 }
 
-.mobile-past-teammates {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
-.mobile-past-teammates span {
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.mobile-past-empty {
-  margin: 0;
-  padding: 8px 0;
-  text-align: center;
-  color: var(--muted-2, var(--muted));
-  font-size: 12.5px;
-}
-
-.mobile-past-cards {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.mobile-past-card-row {
+.mobile-past-mini-detail-row1 {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
+  gap: 6px;
+  margin-bottom: 2px;
 }
 
-.mobile-past-card-row strong {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
+.mobile-past-mini-slot {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: var(--tint);
+  color: var(--ink);
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.mobile-past-mini-time {
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobile-past-card-row em {
-  font-style: normal;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
-.mobile-past-card-row button {
-  height: 28px;
-  padding: 0 10px;
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
+.mobile-past-mini-detail-row2,
+.mobile-past-mini-detail-row3 {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 500;
   color: var(--ink);
-  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+
+.mobile-past-mini-detail-row3 {
+  color: var(--muted);
 }

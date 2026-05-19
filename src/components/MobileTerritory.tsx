@@ -240,22 +240,85 @@ export function MobileTerritory({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myAssignmentsSplit, cards, currentVisitor])
 
-  // 월별 그루핑 — { yearMonth: 'YYYY-MM', label: '2026년 5월', count: N, items: [...] }
-  const myPastAssignmentsByMonth = useMemo(() => {
-    const groups = new Map<string, { yearMonth: string; label: string; items: typeof myPastAssignments }>()
+  // 지난 봉사 — 미니 캘린더용 데이터 구조
+  // assignmentsByDate: 'YYYY-MM-DD' → 그날 참여한 항목들 (시간대순)
+  const assignmentsByDate = useMemo(() => {
+    const map = new Map<string, typeof myPastAssignments>()
     for (const item of myPastAssignments) {
-      const ym = item.event.date.slice(0, 7) // YYYY-MM
-      if (!groups.has(ym)) {
-        const [year, month] = ym.split('-')
-        const label = language === 'zh' ? `${year}年${Number(month)}月`
-          : language === 'en' ? `${new Date(`${ym}-01`).toLocaleString('en-US', { month: 'long' })} ${year}`
-          : `${year}년 ${Number(month)}월`
-        groups.set(ym, { yearMonth: ym, label, items: [] })
-      }
-      groups.get(ym)!.items.push(item)
+      const list = map.get(item.event.date) ?? []
+      list.push(item)
+      map.set(item.event.date, list)
     }
-    return [...groups.values()].sort((a, b) => b.yearMonth.localeCompare(a.yearMonth))
-  }, [myPastAssignments, language])
+    // 각 날짜의 항목들을 시간순 정렬
+    for (const list of map.values()) {
+      list.sort((a, b) => a.event.time.localeCompare(b.event.time))
+    }
+    return map
+  }, [myPastAssignments])
+
+  // 사용 가능한 월 목록 (최신순)
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>()
+    for (const item of myPastAssignments) set.add(item.event.date.slice(0, 7))
+    return [...set].sort((a, b) => b.localeCompare(a))
+  }, [myPastAssignments])
+
+  // 현재 보고 있는 월 ('YYYY-MM'). 기본 = 가장 최근 데이터의 월, 없으면 오늘
+  const [pastMonth, setPastMonth] = useState<string>(() => {
+    if (availableMonths.length > 0) return availableMonths[0]
+    return today.slice(0, 7)
+  })
+  // availableMonths 가 처음 로드된 직후에는 초기값이 오늘로 잡혀있을 수 있으므로 보정
+  useEffect(() => {
+    if (availableMonths.length > 0 && !availableMonths.includes(pastMonth)) {
+      // pastMonth 가 데이터 없는 달이면 그대로 둠 (사용자가 빈 달도 볼 수 있게)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableMonths])
+
+  // 선택된 날짜 ('YYYY-MM-DD'), 인라인 상세 펼침 용
+  const [selectedPastDate, setSelectedPastDate] = useState<string | null>(null)
+
+  const pastMonthLabel = useMemo(() => {
+    const [year, month] = pastMonth.split('-')
+    if (language === 'zh') return `${year}年${Number(month)}月`
+    if (language === 'en') return `${new Date(`${pastMonth}-01`).toLocaleString('en-US', { month: 'long' })} ${year}`
+    return `${year}년 ${Number(month)}월`
+  }, [pastMonth, language])
+
+  // 현재 월의 셀 정보 — 6주 × 7일 = 42칸. null = 빈 칸
+  const pastCalendarCells = useMemo(() => {
+    const [yearStr, monthStr] = pastMonth.split('-')
+    const year = Number(yearStr)
+    const month = Number(monthStr)
+    const firstDay = new Date(year, month - 1, 1)
+    const lastDay = new Date(year, month, 0)
+    const startWeekday = firstDay.getDay() // 0=일
+    const daysInMonth = lastDay.getDate()
+    const cells: Array<{ date: string; day: number; items: typeof myPastAssignments; slots: Set<TimeSlot> } | null> = []
+    for (let i = 0; i < startWeekday; i += 1) cells.push(null)
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const dateStr = `${yearStr}-${monthStr}-${String(day).padStart(2, '0')}`
+      const items = assignmentsByDate.get(dateStr) ?? []
+      const slots = new Set<TimeSlot>()
+      for (const it of items) slots.add(getTimeSlotFromTime(it.event.time))
+      cells.push({ date: dateStr, day, items, slots })
+    }
+    while (cells.length % 7 !== 0) cells.push(null)
+    return cells
+  }, [pastMonth, assignmentsByDate])
+
+  const pastMonthCount = useMemo(() => {
+    return pastCalendarCells.reduce((sum, cell) => sum + (cell?.items.length ?? 0), 0)
+  }, [pastCalendarCells])
+
+  const navigatePastMonth = (delta: number) => {
+    const [y, m] = pastMonth.split('-').map(Number)
+    const d = new Date(y, m - 1 + delta, 1)
+    const newYm = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    setPastMonth(newYm)
+    setSelectedPastDate(null)
+  }
 
 
   const [expandedEventIds, setExpandedEventIds] = useState<Set<number>>(() => {
@@ -744,7 +807,7 @@ export function MobileTerritory({
             ))}
           </section>
 
-          {/* 지난 봉사 — 월별 타임라인 (활동 탭 맨 아래) */}
+          {/* 지난 봉사 — 미니 캘린더 (활동 탭 맨 아래) */}
           {myPastAssignments.length > 0 && (
             <section className="mobile-territory-section mobile-past-section">
               <div className="mobile-section-title">
@@ -760,68 +823,110 @@ export function MobileTerritory({
                 </h2>
               </div>
               {showPastAssignments && (
-                <div className="mobile-past-timeline">
-                  {myPastAssignmentsByMonth.map((group) => (
-                    <div key={group.yearMonth} className="mobile-past-month-group">
-                      <header className="mobile-past-month-header">
-                        <span>{group.label}</span>
-                        <span className="rv-count">{group.items.length}{t(language, 'calendar.countSuffix')}</span>
-                      </header>
-                      <ul className="mobile-past-list">
-                        {group.items.map(({ event, cards: assignedCards, teammates }) => {
-                          const d = new Date(event.date)
-                          const dow = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()]
-                          const slot = getTimeSlotFromTime(event.time)
-                          const isOpen = expandedEventIds.has(event.id)
-                          return (
-                            <li key={event.id} className={`mobile-past-item${isOpen ? ' is-open' : ''}`}>
-                              <button
-                                type="button"
-                                className="mobile-past-item-head"
-                                onClick={() => toggleTodayEvent(event.id)}
-                              >
-                                <div className="mobile-past-item-date">
-                                  <strong>{d.getMonth() + 1}/{d.getDate()}</strong>
-                                  <span>({dow}) · {slot}</span>
+                <div className="mobile-past-mini">
+                  {/* 월 네비 */}
+                  <div className="mobile-past-mini-nav">
+                    <button
+                      type="button"
+                      className="mobile-past-mini-nav-btn"
+                      onClick={() => navigatePastMonth(-1)}
+                      aria-label="이전 달"
+                    >‹</button>
+                    <span className="mobile-past-mini-nav-label">{pastMonthLabel}</span>
+                    <button
+                      type="button"
+                      className="mobile-past-mini-nav-btn"
+                      onClick={() => navigatePastMonth(1)}
+                      aria-label="다음 달"
+                    >›</button>
+                  </div>
+
+                  {/* 요일 헤더 */}
+                  <div className="mobile-past-mini-dow">
+                    {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
+                      <span key={d}>{d}</span>
+                    ))}
+                  </div>
+
+                  {/* 캘린더 그리드 */}
+                  <div className="mobile-past-mini-grid">
+                    {pastCalendarCells.map((cell, idx) => {
+                      if (!cell) return <div key={`pad-${idx}`} className="mobile-past-mini-cell is-empty" />
+                      const hasItems = cell.items.length > 0
+                      const isSelected = selectedPastDate === cell.date
+                      const isToday = cell.date === today
+                      const dowNum = new Date(cell.date).getDay()
+                      return (
+                        <button
+                          key={cell.date}
+                          type="button"
+                          className={`mobile-past-mini-cell${hasItems ? ' has-items' : ''}${isSelected ? ' is-selected' : ''}${isToday ? ' is-today' : ''}${dowNum === 0 ? ' is-sun' : ''}${dowNum === 6 ? ' is-sat' : ''}`}
+                          onClick={() => {
+                            if (!hasItems) return
+                            setSelectedPastDate((prev) => prev === cell.date ? null : cell.date)
+                          }}
+                          disabled={!hasItems}
+                        >
+                          <span className="mobile-past-mini-day">{cell.day}</span>
+                          {hasItems && (
+                            <span className="mobile-past-mini-slots" aria-hidden>
+                              <span className={cell.slots.has('오전') ? 'is-on' : ''} />
+                              <span className={cell.slots.has('오후') ? 'is-on' : ''} />
+                              <span className={cell.slots.has('저녁') ? 'is-on' : ''} />
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* 월별 요약 */}
+                  <p className="mobile-past-mini-summary">
+                    {pastMonthLabel} · {pastMonthCount}{t(language, 'calendar.countSuffix')} 참여
+                  </p>
+
+                  {/* 선택된 날짜의 인라인 상세 */}
+                  {selectedPastDate && (() => {
+                    const items = assignmentsByDate.get(selectedPastDate) ?? []
+                    if (items.length === 0) return null
+                    const d = new Date(selectedPastDate)
+                    const dow = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()]
+                    return (
+                      <div className="mobile-past-mini-detail">
+                        <header className="mobile-past-mini-detail-head">
+                          <strong>{d.getMonth() + 1}월 {d.getDate()}일 ({dow})</strong>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPastDate(null)}
+                            aria-label="닫기"
+                          >×</button>
+                        </header>
+                        <ul className="mobile-past-mini-detail-list">
+                          {items.map(({ event, teammates }) => {
+                            const slot = getTimeSlotFromTime(event.time)
+                            return (
+                              <li key={event.id}>
+                                <div className="mobile-past-mini-detail-row1">
+                                  <span className="mobile-past-mini-slot">{slot}</span>
+                                  <span className="mobile-past-mini-time">{event.time}</span>
                                 </div>
-                                <div className="mobile-past-item-summary">
-                                  <p className="mobile-past-item-title">{event.title}</p>
-                                  <p className="mobile-past-item-meta">
-                                    {event.leader ? `${t(language, 'territory.leader')} ${event.leader}` : t(language, 'territory.leaderTbd')}
-                                    {teammates.length > 0 && ` · ${t(language, 'territory.members')} ${teammates.length}${t(language, 'calendar.countSuffix')}`}
-                                    {assignedCards.length > 0 && ` · 카드 ${assignedCards.length}${t(language, 'calendar.countSuffix')}`}
+                                <p className="mobile-past-mini-detail-row2">
+                                  {event.leader
+                                    ? `${t(language, 'territory.leader')} ${event.leader}`
+                                    : t(language, 'territory.leaderTbd')}
+                                </p>
+                                {teammates.length > 0 && (
+                                  <p className="mobile-past-mini-detail-row3">
+                                    {t(language, 'territory.members')} {teammates.join(', ')}
                                   </p>
-                                </div>
-                                <span className="mobile-past-item-chevron" aria-hidden>{isOpen ? '⌄' : '›'}</span>
-                              </button>
-                              {isOpen && (
-                                <div className="mobile-past-item-body">
-                                  {teammates.length > 0 && (
-                                    <p className="mobile-past-teammates">
-                                      <span>{t(language, 'territory.members')}</span> {teammates.join(', ')}
-                                    </p>
-                                  )}
-                                  {assignedCards.length === 0 ? (
-                                    <p className="mobile-past-empty">{t(language, 'territory.noAssignedCards')}</p>
-                                  ) : (
-                                    <ul className="mobile-past-cards">
-                                      {assignedCards.map((card) => (
-                                        <li key={card.id} className="mobile-past-card-row">
-                                          <strong>{card.name}</strong>
-                                          <em>{card.progress}%</em>
-                                          <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  )}
-                                </div>
-                              )}
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    </div>
-                  ))}
+                                )}
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
             </section>
