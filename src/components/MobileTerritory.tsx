@@ -511,7 +511,7 @@ export function MobileTerritory({
                             <>
                               {assignedCards.map((card) => (
                                 <div className="mobile-today-card-row" key={`card-${card.id}`}>
-                                  <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#2563eb' }} />
+                                  <span className="mobile-today-card-dot" aria-hidden="true" />
                                   <strong>{card.name}</strong>
                                   <em>{card.progress}%</em>
                                   <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
@@ -521,9 +521,9 @@ export function MobileTerritory({
                                 const asset = informalAssets.find((x) => x.id === asn.assetId)
                                 return (
                                   <div className="mobile-today-card-row" key={`inf-${asn.id}`}>
-                                    <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#a855f7' }} />
+                                    <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#8e6acb' }} />
                                     <strong>{asset?.name ?? '비공식 자료'}</strong>
-                                    <em style={{ color: '#a855f7' }}>비공식</em>
+                                    <em style={{ color: '#8e6acb' }}>비공식</em>
                                     {asset?.imageUrl && (
                                       <a href={asset.imageUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
                                         <img
@@ -541,9 +541,9 @@ export function MobileTerritory({
                                 if (!b) return null
                                 return (
                                   <div className="mobile-today-card-row" key={`rest-${asn.id}`}>
-                                    <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#ea580c' }} />
+                                    <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#d88a3e' }} />
                                     <strong>{b.name || b.address}</strong>
-                                    <em style={{ color: '#ea580c' }}>식당</em>
+                                    <em style={{ color: '#d88a3e' }}>식당</em>
                                     <button
                                       type="button"
                                       onClick={() => {
