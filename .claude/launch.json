@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "chinese-territory-app",
-      "runtimeExecutable": "/Users/gm/Documents/New project/chinese-territory-app/node_modules/.bin/vite",
-      "runtimeArgs": [],
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5174", "--host", "127.0.0.1"],
       "autoPort": true,
       "port": 5174
     }

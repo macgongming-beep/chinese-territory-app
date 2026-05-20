@@ -1374,6 +1374,36 @@ export function MobileHome({
                   />
                 ) : (<div className="mh-page">
 
+                {/* ─── 공지 (최상단) ─── */}
+                {latestNotices.length > 0 && (
+                  <section className="mobile-home-section">
+                    <div className="mh-sec-head">
+                      <h2>
+                        공지
+                        <span className="mh-cnt">{notices.length}</span>
+                      </h2>
+                      <button className="mh-all" onClick={() => navigate('/notices')} type="button">
+                        전체보기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
+                      </button>
+                    </div>
+                    <div className="mh-notice-list">
+                      {latestNotices.map((notice) => (
+                        <button
+                          key={notice.id}
+                          type="button"
+                          className="mh-notice-row"
+                          onClick={() => navigate('/notices')}
+                        >
+                          <span className="mh-notice-pill">공지</span>
+                          <span className="mh-notice-title">{notice.title}</span>
+                          <span className="mh-notice-date">{notice.createdAt.slice(5, 10).replace('-', '/')}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
                 {/* ─── 오늘 봉사 — 디자인 24/25 ─── */}
                 <section className="mobile-home-section">
                   <div className="mh-sec-head">
@@ -1528,35 +1558,7 @@ export function MobileHome({
                   </section>
                 )}
 
-                {/* ─── 공지 — 압축 한 줄 ─── */}
-                {latestNotices.length > 0 && (
-                  <section className="mobile-home-section">
-                    <div className="mh-sec-head">
-                      <h2>
-                        공지
-                        <span className="mh-cnt">{notices.length}</span>
-                      </h2>
-                      <button className="mh-all" onClick={() => navigate('/notices')} type="button">
-                        전체보기
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
-                      </button>
-                    </div>
-                    <div className="mh-notice-list">
-                      {latestNotices.map((notice) => (
-                        <button
-                          key={notice.id}
-                          type="button"
-                          className="mh-notice-row"
-                          onClick={() => navigate('/notices')}
-                        >
-                          <span className="mh-notice-pill">공지</span>
-                          <span className="mh-notice-title">{notice.title}</span>
-                          <span className="mh-notice-date">{notice.createdAt.slice(5, 10).replace('-', '/')}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-                )}
+                {/* 공지 섹션은 상단으로 이동됨 */}
 
                 </div>)}
               </>
