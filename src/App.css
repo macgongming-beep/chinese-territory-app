@@ -6095,16 +6095,16 @@ button:focus-visible {
 }
 
 .status-방문필요 {
-  background: #3b82f6;
+  background: #C44536;
 }
 .status-방문완료 {
-  background: var(--accent-700);
+  background: #4F7A4B;
 }
 .status-방문금지 {
-  background: var(--danger-600);
+  background: #1A1A18;
 }
 .status-정기방문 {
-  background: #facc15;
+  background: #B8862A;
 }
 
 /* ── Mobile form sheet (bottom sheet modal) ── */
@@ -16725,15 +16725,15 @@ button:focus-visible {
     display: none;
   }
 
-  .status-방문필요 { background: #3b82f6; }
-  .status-방문완료 { background: var(--accent-700); }
-  .status-방문금지 { background: var(--danger-600); }
-  .status-정기방문 { background: #facc15; }
+  .status-방문필요 { background: #C44536; }
+  .status-방문완료 { background: #4F7A4B; }
+  .status-방문금지 { background: #1A1A18; }
+  .status-정기방문 { background: #B8862A; }
 
-  .map-marker.status-방문필요 { border-color: #3b82f6; }
-  .map-marker.status-방문완료 { border-color: var(--accent-700); }
-  .map-marker.status-방문금지 { border-color: var(--danger-600); }
-  .map-marker.status-정기방문 { border-color: #facc15; }
+  .map-marker.status-방문필요 { border-color: #C44536; }
+  .map-marker.status-방문완료 { border-color: #4F7A4B; }
+  .map-marker.status-방문금지 { border-color: #1A1A18; }
+  .map-marker.status-정기방문 { border-color: #B8862A; }
 
   .map-detail-pane {
     display: grid;

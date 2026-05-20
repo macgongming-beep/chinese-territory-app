@@ -6,10 +6,10 @@ import { TERRITORY_BOUNDARY } from '../data/territoryBoundary'
 import { showToast } from '../lib/toast'
 
 const STATUS_COLORS: Record<BuildingStatus, string> = {
-  방문필요: 'var(--info-700, #3b82f6)',
-  방문완료: 'var(--accent-700, #1f6b43)',
-  방문금지: 'var(--danger-600, #d73b4a)',
-  정기방문: '#facc15',
+  방문필요: '#C44536',
+  방문완료: '#4F7A4B',
+  방문금지: '#1A1A18',
+  정기방문: '#B8862A',
 }
 
 function cssVar(name: string, fallback: string): string {
@@ -318,31 +318,20 @@ function markerHtml(
         height: 40px;
         display: flex;
         justify-content: center;
+        align-items: center;
       "
     >
       <div style="
-        width: 26px;
-        height: 26px;
+        width: 14px;
+        height: 14px;
         background: ${color};
-        border: 2.5px solid ${strokeColor};
+        border: 2px solid ${strokeColor};
         border-radius: 50% 50% 50% 0;
         box-sizing: border-box;
         transform: rotate(-45deg);
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.28);
         flex-shrink: 0;
-      ">
-        <div style="
-          width: 8px;
-          height: 8px;
-          background: white;
-          border-radius: 50%;
-          transform: rotate(45deg);
-        "></div>
-      </div>
-
+      "></div>
     </div>
   `
 }
@@ -534,7 +523,7 @@ function NaverMapCanvas({
           position: new naver.maps.LatLng(building.lat, building.lng),
           icon: {
             content: markerHtml(building, cardsRef.current, isSelected, isDimmed),
-            anchor: new naver.maps.Point(20, 38),
+            anchor: new naver.maps.Point(20, 30),
           },
           zIndex: isSelected ? 10 : isDimmed ? 0 : 1,
           draggable: !!editingBuildingLocationRef.current,
