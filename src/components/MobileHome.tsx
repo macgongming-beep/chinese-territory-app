@@ -1201,6 +1201,11 @@ export function MobileHome({
       .filter((value) => Number.isFinite(value))
   }, [searchParams])
   const focusedMapScopeLabel = searchParams.get('scope') === 'mine' ? t(language, 'zone.myTerritories') : undefined
+  const mapBackTarget = searchParams.get('return') === 'assignment'
+    ? '/assignment'
+    : role === 'user'
+      ? '/territory'
+      : '/zone'
   const userVisibleMapCardIds = useMemo(() => {
     const ids = new Set<number>()
     cards.forEach((card) => {
@@ -1312,7 +1317,7 @@ export function MobileHome({
             focusedCardId={safeFocusedMapCardId}
             focusedCardIds={safeFocusedMapCardIds}
             focusedScopeLabel={focusedMapScopeLabel}
-            onBack={() => navigate(role === 'user' ? '/territory' : '/zone')}
+            onBack={() => navigate(mapBackTarget)}
             onAddUnit={onAddUnit}
             onCreateBuilding={onCreateBuilding}
             onDeleteBuilding={onDeleteBuilding}
@@ -1787,6 +1792,12 @@ export function MobileHome({
                   leaderNames={leaderNames}
                   currentVisitor={currentVisitor}
                   onSetCardLeaders={onSetCardLeaders}
+                  onOpenMapView={(cardIds) => {
+                    const query = cardIds && cardIds.length > 0
+                      ? `?cardIds=${cardIds.join(',')}&return=assignment`
+                      : '?return=assignment'
+                    navigate(`/map${query}`)
+                  }}
                 />
               ) : (
                 <MobileLeaderAssignment

@@ -1,19 +1,18 @@
 // 관리자 모바일 배정 — design_handoff 07 / 08 화면
 //
-// Step 1 (인도자 선택):
-//   - Stepper [1 인도자 선택] → [2 구역 배정]
+// 인도자 선택:
+//   - 탭 [인도자 선택] / [구역 선택]
 //   - 필터 pills: 전체 / 활성 / 신규
 //   - 검색
 //   - 인도자 카드 리스트 (avatar + 이름 + 담당 N개)
 //   - 신규 인도자 섹션 (담당 없음)
 //   - sticky 하단: "○○ 담당 구역 배정하기 →" 솔리드 lg
 //
-// Step 2 (구역 배정):
-//   - 헤더: 누구에게 배정 + 미배정 N
-//   - Stepper [1] → [2 active]
+// 구역 선택:
+//   - 인도자 또는 구역 어느 쪽이든 먼저 선택 가능
 //   - 검색
 //   - 그룹 카드 (지역 · 동 / 전체 N · 미배정 M) + 펼쳐서 카드들
-//   - 각 카드: 배정 (free, ink solid) 또는 배정됨 (pill, 누구에게)
+//   - 각 카드: 배정 (free, ink solid) 또는 배정됨 (pill, 담당자 이름 목록)
 //   - sticky 하단: 이번 세션 N개 배정 + "완료"
 
 import { useMemo, useState } from 'react'
@@ -82,11 +81,13 @@ export function MobileAdminAssignment({
   leaderNames = [],
   currentVisitor = '',
   onSetCardLeaders,
+  onOpenMapView,
 }: {
   cards: TerritoryCard[]
   leaderNames?: string[]
   currentVisitor?: string
   onSetCardLeaders: (cardId: number, leaders: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
+  onOpenMapView?: (cardIds?: number[]) => void
 }) {
   const [step, setStep] = useState<1 | 2>(1)
   const [selectedLeaders, setSelectedLeaders] = useState<Set<string>>(new Set())
@@ -105,6 +106,15 @@ export function MobileAdminAssignment({
   const [regionPill, setRegionPill] = useState<string>('전체')
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [sessionAssigned, setSessionAssigned] = useState<Set<number>>(new Set())
+  // 카드를 먼저 선택하는 역방향 흐름: 인도자 없을 때 step 2 에서 탭하면 여기 누적
+  const [pendingCardIds, setPendingCardIds] = useState<Set<number>>(new Set())
+  const togglePendingCard = (cardId: number) => {
+    setPendingCardIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(cardId)) next.delete(cardId); else next.add(cardId)
+      return next
+    })
+  }
   const [unassignedOnly, setUnassignedOnly] = useState(true)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [actionTarget, setActionTarget] = useState<TerritoryCard | null>(null)
@@ -196,6 +206,33 @@ export function MobileAdminAssignment({
       return false
     }
     return true
+  }
+
+  const assignPendingCards = async () => {
+    if (!ensureSelected()) {
+      setStep(1)
+      return
+    }
+    const targets = cards.filter((card) => pendingCardIds.has(card.id))
+    if (targets.length === 0) {
+      setStep(2)
+      return
+    }
+
+    await Promise.all(
+      targets.map((card) => {
+        const next = Array.from(new Set([...getCardLeaders(card), ...selectedLeadersArr]))
+        return Promise.resolve(onSetCardLeaders(card.id, next, { silentSuccess: true }))
+      })
+    )
+    setSessionAssigned((prev) => {
+      const next = new Set(prev)
+      targets.forEach((card) => next.add(card.id))
+      return next
+    })
+    setPendingCardIds(new Set())
+    setStep(2)
+    showToast(`${targets.length}개 구역 배정 완료`, 'success')
   }
 
   // 1개 카드에 선택된 인도자들 모두 추가 (이미 있는 인도자는 유지)
@@ -296,19 +333,31 @@ export function MobileAdminAssignment({
     })
   }
 
+  const openAssignmentMap = () => {
+    const pendingIds = [...pendingCardIds]
+    if (pendingIds.length > 0) {
+      onOpenMapView?.(pendingIds)
+      return
+    }
+    if (cardQuery.trim() || regionPill !== '전체') {
+      onOpenMapView?.(filteredCards.map((card) => card.id))
+      return
+    }
+    onOpenMapView?.()
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', padding: '16px 16px 100px' }}>
-      {/* ── Stepper ─────────────────── */}
+      {/* ── 선택 탭 ─────────────────── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr auto 1fr',
+        gridTemplateColumns: '1fr 1fr',
         alignItems: 'center',
         gap: 8,
         marginBottom: 18,
       }}>
-        <StepPill no={1} label="인도자 선택" active={step === 1} onClick={() => setStep(1)} />
-        <ChevR size={14} color="var(--muted-2)" />
-        <StepPill no={2} label="구역 배정" active={step === 2} onClick={() => setStep(2)} />
+        <SelectionTab label="인도자 선택" active={step === 1} count={selectedLeaders.size || undefined} onClick={() => setStep(1)} />
+        <SelectionTab label="구역 선택" active={step === 2} count={pendingCardIds.size || undefined} onClick={() => setStep(2)} />
       </div>
 
       {/* ── Step 1: 인도자 선택 ───────────── */}
@@ -398,7 +447,11 @@ export function MobileAdminAssignment({
             <StickyBottom>
               <button
                 type="button"
-                onClick={() => { setStep(2); setSessionAssigned(new Set()) }}
+                onClick={() => {
+                  setSessionAssigned(new Set())
+                  if (pendingCardIds.size > 0) void assignPendingCards()
+                  else setStep(2)
+                }}
                 style={{
                   width: '100%', height: 48, minHeight: 48,
                   background: 'var(--ink)', color: '#fff',
@@ -408,7 +461,9 @@ export function MobileAdminAssignment({
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}
               >
-                {selectedLeaders.size === 1
+                {pendingCardIds.size > 0
+                  ? `${pendingCardIds.size}개 구역 배정하기`
+                  : selectedLeaders.size === 1
                   ? `${[...selectedLeaders][0]} 담당 구역 배정하기`
                   : `${selectedLeaders.size}명 담당 구역 배정하기`}
                 <ChevR color="#fff" />
@@ -418,34 +473,8 @@ export function MobileAdminAssignment({
         </>
       )}
 
-      {/* ── Step 2: 구역 배정 ───────────── */}
-      {step === 2 && selectedLeaders.size === 0 && (
-        <div style={{
-          padding: 18,
-          background: 'var(--surface)',
-          border: '1px dashed var(--line-2)',
-          borderRadius: 12,
-          textAlign: 'center',
-          color: 'var(--muted)',
-          fontSize: 13,
-        }}>
-          <p style={{ margin: '0 0 12px' }}>먼저 인도자를 선택하세요.</p>
-          <button
-            type="button"
-            onClick={() => setStep(1)}
-            style={{
-              height: 36, padding: '0 16px',
-              background: 'var(--ink)', color: '#fff',
-              border: 'none', borderRadius: 8,
-              fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              letterSpacing: '-0.005em',
-            }}
-          >
-            인도자 선택으로 가기
-          </button>
-        </div>
-      )}
-      {step === 2 && selectedLeaders.size > 0 && (
+      {/* ── Step 2: 구역 선택 ───────────── */}
+      {step === 2 && (
         <>
           {/* 선택된 인도자 chip 행 */}
           <div style={{
@@ -453,7 +482,7 @@ export function MobileAdminAssignment({
             marginBottom: 12, padding: '0 2px', alignItems: 'center',
           }}>
             <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500, marginRight: 2 }}>
-              선택된 인도자
+              {selectedLeaders.size > 0 ? '선택된 인도자' : '인도자 미선택'}
             </span>
             {[...selectedLeaders].map((name) => (
               <span
@@ -490,7 +519,7 @@ export function MobileAdminAssignment({
                 color: 'var(--muted)', borderRadius: 99,
                 fontSize: 12, fontWeight: 500, cursor: 'pointer',
               }}
-            >+ 추가</button>
+            >{selectedLeaders.size > 0 ? '+ 추가' : '인도자 선택'}</button>
           </div>
 
           {/* 검색 + 지도 버튼 */}
@@ -507,7 +536,7 @@ export function MobileAdminAssignment({
                 color: 'var(--text)', borderRadius: 10,
                 fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}
-              onClick={() => showToast('지도 보기는 다음 라운드', 'info')}
+              onClick={openAssignmentMap}
             >
               <MapIcon size={16} /> 지도
             </button>
@@ -577,6 +606,7 @@ export function MobileAdminAssignment({
                 return selectedLeadersArr.some((name) => cl.includes(name))
               }).length
               const allMine = mineInGroup === g.cards.length
+              const allPending = g.cards.every((card) => pendingCardIds.has(card.id))
               return (
                 <div
                   key={g.key}
@@ -615,16 +645,27 @@ export function MobileAdminAssignment({
                     </button>
                     <button
                       type="button"
-                      onClick={() => void (allMine ? unassignWholeGroup(g) : assignWholeGroup(g))}
+                      onClick={() => {
+                        if (selectedLeaders.size === 0) {
+                          setPendingCardIds((prev) => {
+                            const next = new Set(prev)
+                            if (allPending) g.cards.forEach((card) => next.delete(card.id))
+                            else g.cards.forEach((card) => next.add(card.id))
+                            return next
+                          })
+                          return
+                        }
+                        void (allMine ? unassignWholeGroup(g) : assignWholeGroup(g))
+                      }}
                       style={{
                         height: 28, minHeight: 28, padding: '0 10px',
                         border: 'none', borderRadius: 8,
-                        background: allMine ? 'var(--status-danger-bg)' : 'var(--tint)',
-                        color: allMine ? 'var(--status-danger)' : 'var(--text)',
+                        background: allMine ? 'var(--status-danger-bg)' : allPending ? 'var(--ink)' : 'var(--tint)',
+                        color: allMine ? 'var(--status-danger)' : allPending ? '#fff' : 'var(--text)',
                         fontSize: 12, fontWeight: 600, cursor: 'pointer',
                       }}
                     >
-                      {allMine ? '전체 해제' : '전체 배정'}
+                      {selectedLeaders.size === 0 ? (allPending ? '전체 해제' : '전체 선택') : allMine ? '전체 해제' : '전체 배정'}
                     </button>
                   </div>
 
@@ -638,6 +679,7 @@ export function MobileAdminAssignment({
                           const isFree = cardLeaders.length === 0
                           const isMine = selectedLeadersArr.some((name) => cardLeaders.includes(name))
                           const justAssigned = sessionAssigned.has(card.id)
+                          const isPending = pendingCardIds.has(card.id)
                           return (
                             <div
                               key={card.id}
@@ -652,11 +694,26 @@ export function MobileAdminAssignment({
                                 </span>
                                 {!isFree && (
                                   <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                                    {isMine ? '내가 담당' : `${cardLeaders.join(', ')}에게 배정됨`}
+                                    {cardLeaders.join(', ')}
                                   </span>
                                 )}
                               </div>
-                              {isFree ? (
+                              {selectedLeaders.size === 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => togglePendingCard(card.id)}
+                                  style={{
+                                    height: 30, minHeight: 30, padding: '0 12px',
+                                    border: isPending ? 'none' : '1px solid var(--line-2)',
+                                    borderRadius: 8,
+                                    background: isPending ? 'var(--ink)' : 'var(--surface)',
+                                    color: isPending ? '#fff' : 'var(--text)',
+                                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                  }}
+                                >
+                                  {isPending ? '선택됨' : '선택'}
+                                </button>
+                              ) : isFree ? (
                                 <button
                                   type="button"
                                   onClick={() => void assignCard(card)}
@@ -736,11 +793,20 @@ export function MobileAdminAssignment({
           <StickyBottom>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ flex: 1, fontSize: 13, color: 'var(--ink)', fontWeight: 600 }}>
-                이번 세션 {sessionAssigned.size}개 배정
+                {pendingCardIds.size > 0 ? `선택 구역 ${pendingCardIds.size}개` : `이번 세션 ${sessionAssigned.size}개 배정`}
               </span>
               <button
                 type="button"
                 onClick={() => {
+                  if (pendingCardIds.size > 0) {
+                    if (selectedLeaders.size === 0) {
+                      setStep(1)
+                      showToast('인도자를 선택하세요.', 'info')
+                      return
+                    }
+                    void assignPendingCards()
+                    return
+                  }
                   setStep(1)
                   setSelectedLeaders(new Set())
                   setSessionAssigned(new Set())
@@ -753,7 +819,7 @@ export function MobileAdminAssignment({
                   fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                완료
+                {pendingCardIds.size > 0 ? (selectedLeaders.size > 0 ? '배정' : '인도자 선택') : '완료'}
               </button>
             </div>
           </StickyBottom>
@@ -942,13 +1008,13 @@ function SectionDivider({ label, count, marginTop = 14 }: { label: string; count
 }
 
 // ── 헬퍼 컴포넌트 ───────────────────────────
-function StepPill({
-  no, label, active, disabled, onClick,
+function SelectionTab({
+  label, active, disabled, count, onClick,
 }: {
-  no: number
   label: string
   active: boolean
   disabled?: boolean
+  count?: number
   onClick: () => void
 }) {
   return (
@@ -957,7 +1023,7 @@ function StepPill({
       onClick={onClick}
       disabled={disabled}
       style={{
-        display: 'flex', alignItems: 'center', gap: 8,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         padding: '9px 14px', minHeight: 0,
         borderRadius: 10, border: 'none',
         background: active ? 'var(--ink)' : 'var(--tint)',
@@ -968,16 +1034,16 @@ function StepPill({
         letterSpacing: '-0.005em',
       }}
     >
-      <span style={{
-        width: 18, height: 18, borderRadius: '50%',
+      {count ? <span style={{
+        minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999,
         display: 'grid', placeItems: 'center',
         background: active ? '#fff' : 'var(--muted-2)',
         color: active ? 'var(--ink)' : '#fff',
         fontSize: 10.5, fontWeight: 700,
         fontVariantNumeric: 'tabular-nums',
       }}>
-        {no}
-      </span>
+        {count}
+      </span> : null}
       {label}
     </button>
   )

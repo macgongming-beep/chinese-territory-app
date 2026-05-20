@@ -286,8 +286,9 @@ export function MobileMap({
     setSelectedCardId(activeServiceSession.primaryCardId)
   }, [activeServiceSession?.primaryCardId, focusedCardId, isUserMap])
 
-  // focusedCardId로 직접 진입했는지 여부 (뒤로가기 시 외부 네비게이션으로 돌아가기 위함)
-  const enteredDirectly = focusedCardId != null || focusedCardIds.length > 0
+  // focusedCardId/배정 화면에서 직접 진입했는지 여부 (뒤로가기 시 외부 네비게이션으로 돌아가기 위함)
+  const enteredFromAssignment = searchParams.get('return') === 'assignment'
+  const enteredDirectly = focusedCardId != null || focusedCardIds.length > 0 || enteredFromAssignment
 
   // 뒤로가기 로직
   function handleBack() {
