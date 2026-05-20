@@ -211,7 +211,9 @@ export function MobileMap({
   const HALF_HEIGHT = window.innerHeight * 0.46
   const FULL_HEIGHT = window.innerHeight * 0.92
  
-  const [sheetHeight, setSheetHeight] = useState(HALF_HEIGHT)
+  // cardIds 로 진입한 경우(드릴 컨텍스트 지도) 는 바텀 시트 최소화로 시작 — 경계선 전체 보기
+  const enteredWithFocusedCardIds = focusedCardIds.length > 0
+  const [sheetHeight, setSheetHeight] = useState(enteredWithFocusedCardIds ? MIN_HEIGHT : HALF_HEIGHT)
   const [isDragging, setIsDragging] = useState(false)
   const dragStartY = useRef<number>(0)
   const dragStartHeight = useRef<number>(0)
