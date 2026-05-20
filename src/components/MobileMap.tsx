@@ -292,10 +292,13 @@ export function MobileMap({
 
   // 뒤로가기 로직
   function handleBack() {
+    // area/region/card 드릴 단계는 디자인 v2 이후 /zone 으로 통합돼 사용 안 함.
+    // 안전을 위해 단계별 복귀 로직은 유지하되 최상위에서는 이전 페이지로.
     if (navLevel === 'area') { onBack(); return }
     if (navLevel === 'region') { setNavLevel('area'); setSelectedArea(null); return }
     if (navLevel === 'card') { setNavLevel('region'); setSelectedRegion(null); return }
-    // 직접 진입(홈/구역탭에서 열기)한 경우 → 바로 onBack() 호출
+    // 지도 레벨: 항상 이전 페이지로 (지역 선택 페이지로 떨어지지 않도록)
+    if (navLevel === 'map') { onBack(); return }
     if (navLevel === 'map' && enteredDirectly) { onBack(); return }
     if (navLevel === 'map' && isUserMap) { onBack(); return }
     if (navLevel === 'map') {
