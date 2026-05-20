@@ -368,8 +368,7 @@ export function AdminMobileZone({
             setView(next)
             if (next === 'map') {
               if (scope === 'mine') {
-                const mineCardIds = baseCards.map((c) => c.id)
-                onOpenAssignedMap(mineCardIds)
+                onOpenAssignedMap(baseCards.map((c) => c.id))
               } else {
                 onShowMapView()
               }
@@ -416,12 +415,14 @@ export function AdminMobileZone({
           <ViewToggle value={view} onChange={(next) => {
             setView(next)
             if (next === 'map') {
-              if (scope === 'mine') {
-                const mineCardIds = baseCards.map((c) => c.id)
-                onOpenAssignedMap(mineCardIds)
-              } else {
-                onShowMapView()
-              }
+              // 현재 드릴 컨텍스트의 카드만 지도에 노출
+              // - region 만 선택: 그 구 전체 카드
+              // - region + dong 선택: 그 동의 카드
+              const ctxCardIds = baseCards
+                .filter((c) => !selectedRegion || c.region === selectedRegion)
+                .filter((c) => !selectedDong || c.area === selectedDong)
+                .map((c) => c.id)
+              onOpenAssignedMap(ctxCardIds)
             }
           }} />
         </div>
