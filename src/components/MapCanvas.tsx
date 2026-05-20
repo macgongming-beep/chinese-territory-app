@@ -195,7 +195,6 @@ function clusterMarkerHtml(count: number): string {
 }
 
 function aggregateMarkerHtml(marker: MapAggregateMarker): string {
-  const brandColor = cssVar('--brand-700', '#4267a5')
   const safeLabel = escapeAttr(marker.label)
   const safeTitle = escapeAttr(`${marker.label} · 건물 ${marker.count}개 · 세대 ${marker.unitCount}개`)
   return `<div title="${safeTitle}" style="
@@ -208,8 +207,8 @@ function aggregateMarkerHtml(marker: MapAggregateMarker): string {
     padding:0 10px 0 12px;
     border:3px solid #ffffff;
     border-radius:999px;
-    background:${brandColor};
-    box-shadow:0 5px 16px rgba(66,103,165,0.42);
+    background:#37352F;
+    box-shadow:0 5px 16px rgba(0,0,0,0.22);
     color:#ffffff;
     cursor:pointer;
     font-family:sans-serif;
