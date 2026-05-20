@@ -26197,12 +26197,23 @@ button:focus-visible {
 }
 .ma-v2-card-group-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
-  padding: 0 4px;
+  width: 100%;
+  padding: 6px 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  min-height: 0;
+}
+.ma-v2-card-group-head:active {
+  background: var(--tint);
+  border-radius: 6px;
 }
 .ma-v2-card-group-head svg {
   color: var(--muted-2);
+  flex-shrink: 0;
 }
 .ma-v2-card-group-title {
   font-size: 14px;

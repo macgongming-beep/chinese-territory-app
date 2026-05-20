@@ -171,6 +171,7 @@ export function MobileLeaderAssignment({
   const [areaFilter, _setAreaFilter] = useState<'전체' | string>('전체')
   void _setRegionFilter; void _setAreaFilter
   const [onlyUnusedCards, setOnlyUnusedCards] = useState(true)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [cardActionTarget, setCardActionTarget] = useState<{ teamId: string; mode: 'append' | 'replace' } | null>(null)
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1)
@@ -645,13 +646,30 @@ export function MobileLeaderAssignment({
                   {groups.map((group) => {
                     const selectedInGroup = group.cards.filter((c) => usedCardIds.includes(c.id)).length
                     const totalInGroup = group.cards.length
+                    const groupKey = `${group.region}::${group.area}`
+                    const isCollapsed = collapsedGroups.has(groupKey)
                     return (
-                      <section className="ma-v2-card-group" key={`${group.region}::${group.area}`}>
-                        <header className="ma-v2-card-group-head">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="6 9 12 15 18 9"/></svg>
+                      <section className="ma-v2-card-group" key={groupKey}>
+                        <button
+                          type="button"
+                          className="ma-v2-card-group-head"
+                          onClick={() => setCollapsedGroups((prev) => {
+                            const next = new Set(prev)
+                            if (next.has(groupKey)) next.delete(groupKey); else next.add(groupKey)
+                            return next
+                          })}
+                          aria-expanded={!isCollapsed}
+                        >
+                          <svg
+                            width="12" height="12" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" strokeWidth="2.2"
+                            aria-hidden
+                            style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }}
+                          ><polyline points="6 9 12 15 18 9"/></svg>
                           <span className="ma-v2-card-group-title">{group.region} · {group.area}</span>
                           <span className="ma-v2-card-group-cnt">선택 {selectedInGroup} / {totalInGroup}</span>
-                        </header>
+                        </button>
+                        {!isCollapsed && (
                         <div className="ma-v2-card-list">
                           {group.cards.map((card) => {
                             const selected = usedCardIds.includes(card.id)
@@ -688,6 +706,7 @@ export function MobileLeaderAssignment({
                             )
                           })}
                         </div>
+                        )}
                       </section>
                     )
                   })}
