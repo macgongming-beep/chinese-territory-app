@@ -1797,6 +1797,7 @@ export function MobileHome({
                   role={role}
                   onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
                   informalAssets={informalAssets}
+                  informalGroups={informalGroups}
                   eventInformalAssignments={eventInformalAssignments}
                   eventRestaurantAssignments={eventRestaurantAssignments}
                   onAssignInformalToUser={onAssignInformalToUser}

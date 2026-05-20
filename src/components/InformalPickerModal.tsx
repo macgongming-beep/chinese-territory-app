@@ -1,40 +1,44 @@
-// 비공식 증거 카드 선택 모달 (디자인 v2 28d — 시트 + 그룹화)
+// 비공식 증거 카드 선택 모달 (디자인 v2 28d — 시트 + 사용자 정의 그룹)
 import { useMemo } from 'react'
-import type { InformalAsset } from '../types'
+import type { InformalAsset, InformalGroup } from '../types'
 
 type Props = {
   open: boolean
   assets: InformalAsset[]
+  groups?: InformalGroup[]
   alreadyAssignedIds: Set<number>
   onSelect: (assetId: number) => Promise<void> | void
   onClose: () => void
 }
 
-// 자료명에서 그룹 추출. "용인대" / "단국대(평화이광장)" → 첫 토큰 (괄호/공백/-_ 이전).
-function parseGroup(name: string): string {
-  const match = name.match(/^[^\s(\-_·:[]+/)
-  return (match ? match[0] : name).trim() || '기타'
-}
-
 export function InformalPickerModal({
-  open, assets, alreadyAssignedIds, onSelect, onClose,
+  open, assets, groups = [], alreadyAssignedIds, onSelect, onClose,
 }: Props) {
-  const groups = useMemo(() => {
-    const map = new Map<string, InformalAsset[]>()
-    for (const a of assets) {
-      const g = parseGroup(a.name)
-      const list = map.get(g) ?? []
-      list.push(a)
-      map.set(g, list)
+  // 사용자가 구역-비공식카드 설정에서 만든 그룹 기준으로 묶기.
+  // groupId 가 null/없는 자료는 "그룹 없음" 으로 묶고 마지막에 노출.
+  const grouped = useMemo(() => {
+    const sortedGroups = [...groups].sort((a, b) => a.position - b.position || a.id - b.id)
+    const buckets = new Map<number | 'none', { name: string; position: number; items: InformalAsset[] }>()
+    for (const g of sortedGroups) {
+      buckets.set(g.id, { name: g.name, position: g.position, items: [] })
     }
-    // 각 그룹 안은 createdAt 최신순
-    for (const list of map.values()) {
-      list.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    for (const asset of assets) {
+      const key = asset.groupId != null && buckets.has(asset.groupId) ? asset.groupId : 'none'
+      if (key === 'none' && !buckets.has('none')) {
+        buckets.set('none', { name: '그룹 없음', position: Number.POSITIVE_INFINITY, items: [] })
+      }
+      buckets.get(key)!.items.push(asset)
     }
-    return [...map.entries()]
-      .map(([name, items]) => ({ name, items }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
-  }, [assets])
+    // 각 그룹 안 자료는 createdAt 최신순
+    for (const b of buckets.values()) {
+      b.items.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    }
+    // 비어있는 사용자 그룹은 숨김 (none 그룹도 비면 숨김)
+    return [...buckets.entries()]
+      .filter(([, b]) => b.items.length > 0)
+      .sort((a, b) => a[1].position - b[1].position)
+      .map(([, b]) => b)
+  }, [assets, groups])
 
   if (!open) return null
 
@@ -57,7 +61,7 @@ export function InformalPickerModal({
           </p>
         ) : (
           <div className="v2-informal-scroll">
-            {groups.map((group) => (
+            {grouped.map((group) => (
               <section className="v2-informal-group" key={group.name}>
                 <header className="v2-informal-group-head">
                   <span className="v2-informal-group-name">{group.name}</span>

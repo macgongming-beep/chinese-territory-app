@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { showToast } from '../lib/toast'
-import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, Role, TerritoryCard } from '../types'
+import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, TerritoryCard } from '../types'
 import { RestaurantPickerModal } from './RestaurantPickerModal'
 import { InformalPickerModal } from './InformalPickerModal'
 
@@ -99,6 +99,7 @@ export function MobileLeaderAssignment({
   onAssignCardsToEventParticipantsBulk,
   // v2 신 배정
   informalAssets = [],
+  informalGroups = [],
   eventInformalAssignments = [],
   eventRestaurantAssignments = [],
   onAssignInformalToUser,
@@ -118,6 +119,7 @@ export function MobileLeaderAssignment({
     options?: { silentSuccess?: boolean },
   ) => Promise<void> | void
   informalAssets?: InformalAsset[]
+  informalGroups?: InformalGroup[]
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
@@ -1045,6 +1047,7 @@ export function MobileLeaderAssignment({
       <InformalPickerModal
         open={informalPickerTeamId !== null}
         assets={informalAssets}
+        groups={informalGroups}
         alreadyAssignedIds={(() => {
           if (!informalPickerTeamId || !selectedEvent) return new Set()
           const team = draft?.teams.find((t) => t.id === informalPickerTeamId)
