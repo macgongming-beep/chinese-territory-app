@@ -773,8 +773,9 @@ export function MobileLeaderAssignment({
                         <div className="ma-team-members">
                           {team.members.map((member) => (
                             <button className="ma-team-member-chip" key={member} onClick={() => removeMemberFromTeam(team.id, member)} type="button">
+                              <span className="ma-team-member-avatar" aria-hidden>{member.slice(0, 1)}</span>
                               <strong>{member}</strong>
-                              <span aria-hidden="true">×</span>
+                              <span className="ma-team-member-x" aria-hidden>×</span>
                             </button>
                           ))}
                           <button
@@ -828,27 +829,27 @@ export function MobileLeaderAssignment({
                                   if (!asset) return null
                                   const ids = items.filter((i) => i.assetId === assetId).map((i) => i.id)
                                   return (
-                                    <div className="ma-team-card-item" key={`inf-${assetId}`} style={{ position: 'relative' }}>
-                                      <span style={{ width: 6, height: 6, borderRadius: 99, background: '#a855f7' }} />
-                                      <div>
+                                    <div className="ma-team-card-item ma-team-spot" key={`inf-${assetId}`}>
+                                      <span className="ma-team-spot-dot" style={{ background: '#8e6acb' }} />
+                                      <div className="ma-team-spot-body">
                                         <strong>{asset.name}</strong>
                                         <span>비공식 · {items.filter((i) => i.assetId === assetId).length}명</span>
                                       </div>
                                       <button
                                         type="button"
+                                        className="ma-team-spot-remove"
                                         onClick={async () => {
                                           if (!onRemoveInformalAssignment) return
                                           for (const id of ids) await onRemoveInformalAssignment(id)
                                         }}
                                         aria-label="제거"
-                                        style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#94a3b8', fontSize: 13, cursor: 'pointer' }}
-                                      >✕</button>
+                                      >×</button>
                                     </div>
                                   )
                                 })
                               })()}
                               <button
-                                className="ma-team-add-card"
+                                className="ma-team-add-card ma-team-add-informal"
                                 onClick={() => {
                                   if (team.members.length === 0) {
                                     showToast('먼저 팀원을 추가해 주세요.', 'info')
@@ -857,7 +858,6 @@ export function MobileLeaderAssignment({
                                   setInformalPickerTeamId(team.id)
                                 }}
                                 type="button"
-                                style={{ borderColor: '#e9d5ff', color: '#7c3aed' }}
                               >+ 비공식 추가</button>
                             </div>
                           </>
@@ -879,27 +879,27 @@ export function MobileLeaderAssignment({
                                   if (!b) return null
                                   const ids = items.filter((i) => i.buildingId === bId).map((i) => i.id)
                                   return (
-                                    <div className="ma-team-card-item" key={`rest-${bId}`} style={{ position: 'relative' }}>
-                                      <span style={{ width: 6, height: 6, borderRadius: 99, background: '#ea580c' }} />
-                                      <div>
+                                    <div className="ma-team-card-item ma-team-spot" key={`rest-${bId}`}>
+                                      <span className="ma-team-spot-dot" style={{ background: '#d88a3e' }} />
+                                      <div className="ma-team-spot-body">
                                         <strong>{b.name || b.address}</strong>
                                         <span>식당 · {items.filter((i) => i.buildingId === bId).length}명</span>
                                       </div>
                                       <button
                                         type="button"
+                                        className="ma-team-spot-remove"
                                         onClick={async () => {
                                           if (!onRemoveRestaurantAssignment) return
                                           for (const id of ids) await onRemoveRestaurantAssignment(id)
                                         }}
                                         aria-label="제거"
-                                        style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#94a3b8', fontSize: 13, cursor: 'pointer' }}
-                                      >✕</button>
+                                      >×</button>
                                     </div>
                                   )
                                 })
                               })()}
                               <button
-                                className="ma-team-add-card"
+                                className="ma-team-add-card ma-team-add-restaurant"
                                 onClick={() => {
                                   if (team.members.length === 0) {
                                     showToast('먼저 팀원을 추가해 주세요.', 'info')
@@ -908,7 +908,6 @@ export function MobileLeaderAssignment({
                                   setRestaurantPickerTeamId(team.id)
                                 }}
                                 type="button"
-                                style={{ borderColor: '#fed7aa', color: '#c2410c' }}
                               >+ 식당 추가</button>
                             </div>
                           </>

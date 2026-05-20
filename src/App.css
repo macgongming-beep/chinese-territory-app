@@ -26482,7 +26482,8 @@ button:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px 5px 5px;
+  height: 32px;
+  padding: 0 8px 0 4px;
   background: var(--surface);
   border: 1.5px solid var(--ink);
   border-radius: 99px;
@@ -26491,12 +26492,30 @@ button:focus-visible {
   font-weight: 600;
   color: var(--ink);
   letter-spacing: -0.005em;
+  min-height: 0;
 }
-.ma-team-member-chip span[aria-hidden] {
+.ma-team-member-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.ma-team-member-chip strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.ma-team-member-x {
   color: var(--muted-2);
   font-size: 14px;
   line-height: 1;
-  margin-left: 2px;
+  margin-left: 0;
 }
 .ma-team-add-member {
   display: inline-flex;
@@ -26506,11 +26525,12 @@ button:focus-visible {
   background: var(--surface);
   border: 1px solid var(--line-2);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text);
   cursor: pointer;
   letter-spacing: -0.005em;
+  min-height: 0;
 }
 .ma-team-add-member.active {
   background: var(--ink);
@@ -26749,4 +26769,336 @@ button:focus-visible {
 }
 .ma-v2-step3 ~ .ma-v2-bottom-bar .ma-v2-next-btn {
   flex: 1;
+}
+
+/* 디자인 v2 — 팀 카드 비공식/식당 spot item + dashed add 버튼 */
+.ma-team-spot {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  flex: 1 0 auto;
+  max-width: 100%;
+}
+.ma-team-spot-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+.ma-team-spot-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ma-team-spot-body strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ma-team-spot-body span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ma-team-spot-remove {
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  color: var(--muted-2);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ma-team-add-informal {
+  color: #8e6acb;
+  border-color: rgba(142, 106, 203, 0.4);
+}
+.ma-team-add-restaurant {
+  color: #d88a3e;
+  border-color: rgba(216, 138, 62, 0.4);
+}
+
+/* ============================================================
+   디자인 v2 — 28d 비공식 picker 시트
+   ============================================================ */
+
+.v2-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  background: rgba(0, 0, 0, 0.32);
+  display: flex;
+  align-items: flex-end;
+}
+.v2-picker-sheet {
+  width: 100%;
+  background: var(--bg);
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  padding: 8px 16px max(20px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 80vh;
+}
+.v2-picker-grabber {
+  width: 36px;
+  height: 4px;
+  background: var(--line-2);
+  border-radius: 99px;
+  align-self: center;
+  margin: 4px 0 6px;
+}
+.v2-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.v2-picker-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.v2-picker-close {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* 비공식 grid */
+.v2-informal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+.v2-informal-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.v2-informal-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: var(--paper);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.v2-informal-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.v2-informal-added {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 99px;
+}
+.v2-informal-cell-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v2-informal-cell:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.v2-picker-empty {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* 식당 search + 토글 */
+.v2-restaurant-search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.v2-restaurant-search {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.v2-restaurant-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  color: var(--ink);
+  font-family: inherit;
+}
+.v2-restaurant-only {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--status-warn-bg);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.v2-restaurant-only.off {
+  background: var(--tint);
+}
+.v2-restaurant-only-check {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--status-warn);
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+.v2-restaurant-only.off .v2-restaurant-only-check {
+  background: var(--muted-2);
+}
+.v2-restaurant-only span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--status-warn);
+  letter-spacing: -0.005em;
+}
+.v2-restaurant-only.off span {
+  color: var(--muted);
+}
+
+.v2-restaurant-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+.v2-restaurant-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.v2-restaurant-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--tint);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+.v2-restaurant-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.v2-restaurant-body strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v2-restaurant-body span {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v2-restaurant-pill-ok {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 3px 8px;
+  background: var(--status-ok-bg);
+  color: var(--status-ok);
+  border-radius: 99px;
+  font-weight: 600;
+}
+.v2-restaurant-mark-btn {
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 10px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.v2-restaurant-add-btn {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+.v2-restaurant-add-btn:disabled {
+  background: var(--tint);
+  color: var(--muted-2);
+  cursor: not-allowed;
 }
