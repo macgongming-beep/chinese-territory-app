@@ -813,10 +813,10 @@ function NaverMapCanvas({
       const isVisible = !(drawingBoundary && cardId === currentCardId)
 
       polygon.setOptions({
-        fillColor: isSelected ? palette.accent : palette.cardDraft,
-        fillOpacity: isSelected ? 0.14 : 0.05,
-        strokeColor: isSelected ? palette.accent : palette.cardDraft,
-        strokeOpacity: isSelected ? 0.9 : 0.5,
+        fillColor: isSelected ? '#5D5B54' : palette.cardDraft,
+        fillOpacity: isSelected ? 0.10 : 0.05,
+        strokeColor: isSelected ? '#5D5B54' : palette.cardDraft,
+        strokeOpacity: isSelected ? 0.85 : 0.5,
         strokeWeight: isSelected ? 3 : 2,
         strokeStyle: isSelected ? 'solid' : 'shortdash',
         zIndex: isSelected ? 20 : 5,
