@@ -23306,17 +23306,16 @@ button:focus-visible {
   margin-top: 20px;
 }
 
-.ma-team-panel .ma-team-card-item,
-.ma-team-add-card {
-  min-height: 72px;
-  padding: 12px;
-  border: 1px solid #d8e0ea;
-  border-radius: 14px;
-  background: #f9fbfd;
+.ma-team-panel .ma-team-card-item {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--paper);
   text-align: left;
 }
 
-.ma-team-member-chip {
+/* legacy ma-team-member-chip grid 무력화 — v2 inline-flex 가 처리 */
+.ma-team-member-chip-legacy-DISABLED {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 24px;
   align-items: center;
@@ -23330,15 +23329,14 @@ button:focus-visible {
 }
 
 .ma-team-panel .ma-team-card-item {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  align-items: start;
-  gap: 8px;
-  color: var(--ink-500);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
 }
 
 .ma-team-panel .ma-team-card-item svg {
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 .ma-team-panel .ma-team-card-item > div {
@@ -23363,47 +23361,18 @@ button:focus-visible {
   max-width: 100%;
 }
 
-.ma-team-panel .ma-team-card-item span,
-.ma-team-member-chip span {
+.ma-team-panel .ma-team-card-item span {
   margin-top: 0;
-  color: var(--ink-500);
+  color: var(--muted);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.35;
   white-space: normal;
 }
 
-.ma-team-member-chip strong {
-  font-size: 13px;
-  font-weight: 800;
-}
+/* legacy .ma-team-member-chip span 규칙 제거 — v2 .ma-team-member-avatar / -x 가 처리 */
 
-.ma-team-member-chip span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin-top: 0;
-  border-radius: 999px;
-  background: #ffffff;
-  color: var(--brand-700);
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.ma-team-add-card {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-style: solid;
-  background: #ffffff;
-  color: var(--brand-700);
-  font-size: 15px;
-  font-weight: 700;
-  text-align: center;
-}
+/* legacy .ma-team-add-card 무력화 — v2 dashed 32px 가 처리 */
 
 .ma-team-add-member {
   display: flex;
@@ -26460,13 +26429,16 @@ button:focus-visible {
 .ma-team-add-card {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 10px 14px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 12px;
   background: transparent;
   border: 1px dashed var(--line-2);
   border-radius: 8px;
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   letter-spacing: -0.005em;
@@ -26771,17 +26743,17 @@ button:focus-visible {
   flex: 1;
 }
 
-/* 디자인 v2 — 팀 카드 비공식/식당 spot item + dashed add 버튼 */
+/* 디자인 v2 — 팀 카드 비공식/식당 spot item (컴팩트 한 줄) */
 .ma-team-spot {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px 12px;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--paper);
+  border: none;
   border-radius: 8px;
   min-width: 0;
-  flex: 1 0 auto;
+  flex: 0 1 auto;
   max-width: 100%;
 }
 .ma-team-spot-dot {
@@ -26789,17 +26761,16 @@ button:focus-visible {
   height: 6px;
   border-radius: 99px;
   flex-shrink: 0;
-  margin-top: 8px;
+  margin-top: 0;
 }
 .ma-team-spot-body {
-  flex: 1;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
 }
 .ma-team-spot-body strong {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink);
   letter-spacing: -0.005em;
@@ -26808,22 +26779,24 @@ button:focus-visible {
   white-space: nowrap;
 }
 .ma-team-spot-body span {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--muted);
+  white-space: nowrap;
 }
 .ma-team-spot-remove {
-  width: 22px;
-  height: 22px;
-  min-height: 22px;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
   display: grid;
   place-items: center;
   background: transparent;
   border: none;
   color: var(--muted-2);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1;
   cursor: pointer;
   padding: 0;
+  margin-left: 2px;
 }
 
 .ma-team-add-informal {
@@ -26912,16 +26885,24 @@ button:focus-visible {
 }
 .v2-informal-thumb {
   position: relative;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
   background: var(--paper);
+  border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;
 }
 .v2-informal-thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  background: #fff;
+}
+.v2-informal-cell:disabled .v2-informal-thumb {
+  opacity: 0.55;
+}
+.v2-informal-cell:disabled .v2-informal-thumb img {
+  filter: grayscale(0.4);
 }
 .v2-informal-added {
   position: absolute;
@@ -26929,10 +26910,11 @@ button:focus-visible {
   right: 6px;
   background: var(--ink);
   color: #fff;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 3px 9px;
   border-radius: 99px;
+  letter-spacing: -0.005em;
 }
 .v2-informal-cell-name {
   font-size: 13px;
