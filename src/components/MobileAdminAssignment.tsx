@@ -89,7 +89,16 @@ export function MobileAdminAssignment({
   onSetCardLeaders: (cardId: number, leaders: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
 }) {
   const [step, setStep] = useState<1 | 2>(1)
-  const [selectedLeader, setSelectedLeader] = useState<string | null>(null)
+  const [selectedLeaders, setSelectedLeaders] = useState<Set<string>>(new Set())
+  // 단일 선택 호환용 — Set 의 첫 원소 또는 null
+  const selectedLeader = selectedLeaders.size > 0 ? [...selectedLeaders][0] : null
+  const toggleLeaderSelection = (name: string) => {
+    setSelectedLeaders((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name); else next.add(name)
+      return next
+    })
+  }
   const [leaderFilter, setLeaderFilter] = useState<'all' | 'active' | 'new'>('all')
   const [leaderSearch, setLeaderSearch] = useState('')
   const [cardQuery, setCardQuery] = useState('')
@@ -178,48 +187,61 @@ export function MobileAdminAssignment({
       .sort((a, b) => a.key.localeCompare(b.key, 'ko'))
   }, [filteredCards, cards])
 
-  const assignCard = async (card: TerritoryCard) => {
-    if (!selectedLeader) {
+  // 선택된 인도자 목록(배열). assign 함수들은 모두 이 배열을 union 으로 합침.
+  const selectedLeadersArr = useMemo(() => [...selectedLeaders], [selectedLeaders])
+
+  const ensureSelected = (): boolean => {
+    if (selectedLeadersArr.length === 0) {
       showToast('인도자를 먼저 선택하세요.', 'info')
-      return
+      return false
     }
+    return true
+  }
+
+  // 1개 카드에 선택된 인도자들 모두 추가 (이미 있는 인도자는 유지)
+  const assignCard = async (card: TerritoryCard) => {
+    if (!ensureSelected()) return
     const cardLeaders = getCardLeaders(card)
-    if (cardLeaders.includes(selectedLeader)) return
-    await Promise.resolve(onSetCardLeaders(card.id, [...cardLeaders, selectedLeader], { silentSuccess: true }))
+    const next = Array.from(new Set([...cardLeaders, ...selectedLeadersArr]))
+    if (next.length === cardLeaders.length) return // 변경 없음
+    await Promise.resolve(onSetCardLeaders(card.id, next, { silentSuccess: true }))
     setSessionAssigned((prev) => new Set([...prev, card.id]))
     showToast(`${card.name} 배정 완료`)
   }
 
   // 이미 다른 사람한테 배정된 카드: 추가 / 변경 / 해제
   const handleAddToAssignment = async (card: TerritoryCard) => {
-    if (!selectedLeader) return
+    if (!ensureSelected()) return
     const cardLeaders = getCardLeaders(card)
-    if (cardLeaders.includes(selectedLeader)) return
-    await Promise.resolve(onSetCardLeaders(card.id, [...cardLeaders, selectedLeader], { silentSuccess: true }))
+    const next = Array.from(new Set([...cardLeaders, ...selectedLeadersArr]))
+    await Promise.resolve(onSetCardLeaders(card.id, next, { silentSuccess: true }))
     setSessionAssigned((prev) => new Set([...prev, card.id]))
     setActionTarget(null)
-    showToast(`${card.name} 에 ${selectedLeader} 추가 배정`)
+    showToast(`${card.name} 에 ${selectedLeadersArr.join(', ')} 추가 배정`)
   }
   const handleReplaceAssignment = async (card: TerritoryCard) => {
-    if (!selectedLeader) return
-    await Promise.resolve(onSetCardLeaders(card.id, [selectedLeader], { silentSuccess: true }))
+    if (!ensureSelected()) return
+    await Promise.resolve(onSetCardLeaders(card.id, selectedLeadersArr, { silentSuccess: true }))
     setSessionAssigned((prev) => new Set([...prev, card.id]))
     setActionTarget(null)
-    showToast(`${card.name} 인도자를 ${selectedLeader} 로 변경`)
+    showToast(`${card.name} 인도자를 ${selectedLeadersArr.join(', ')} 로 변경`)
   }
 
   const assignWholeGroup = async (group: { key: string; cards: TerritoryCard[] }) => {
-    if (!selectedLeader) return
-    // 미배정/내 아닌 카드만 골라서 병렬 처리
-    const toAssign = group.cards.filter((card) => !getCardLeaders(card).includes(selectedLeader))
+    if (!ensureSelected()) return
+    const toAssign = group.cards.filter((card) => {
+      const cl = getCardLeaders(card)
+      return selectedLeadersArr.some((name) => !cl.includes(name))
+    })
     if (toAssign.length === 0) {
       showToast('새로 배정할 카드가 없습니다', 'info')
       return
     }
     await Promise.all(
-      toAssign.map((card) =>
-        Promise.resolve(onSetCardLeaders(card.id, [...getCardLeaders(card), selectedLeader], { silentSuccess: true }))
-      )
+      toAssign.map((card) => {
+        const next = Array.from(new Set([...getCardLeaders(card), ...selectedLeadersArr]))
+        return Promise.resolve(onSetCardLeaders(card.id, next, { silentSuccess: true }))
+      })
     )
     setSessionAssigned((prev) => {
       const next = new Set(prev)
@@ -229,34 +251,38 @@ export function MobileAdminAssignment({
     showToast(`${group.key} ${toAssign.length}개 배정 완료`, 'success')
   }
 
-  // 배정 해제 (현재 selectedLeader 를 카드에서 빼기)
+  // 배정 해제 (선택된 인도자들 모두를 카드에서 빼기)
   const handleUnassign = async (card: TerritoryCard) => {
-    if (!selectedLeader) return
+    if (!ensureSelected()) return
     const cardLeaders = getCardLeaders(card)
-    if (!cardLeaders.includes(selectedLeader)) return
-    await Promise.resolve(onSetCardLeaders(card.id, cardLeaders.filter((l) => l !== selectedLeader), { silentSuccess: true }))
+    const next = cardLeaders.filter((l) => !selectedLeaders.has(l))
+    if (next.length === cardLeaders.length) return
+    await Promise.resolve(onSetCardLeaders(card.id, next, { silentSuccess: true }))
     setSessionAssigned((prev) => {
-      const next = new Set(prev)
-      next.delete(card.id)
-      return next
+      const n = new Set(prev)
+      n.delete(card.id)
+      return n
     })
     showToast(`${card.name} 배정 해제`, 'info')
   }
 
-  // 그룹 전체 해제 (selectedLeader 가 담당하는 카드들만)
+  // 그룹 전체 해제 (선택된 인도자가 담당하는 카드들만)
   const unassignWholeGroup = async (group: { key: string; cards: TerritoryCard[] }) => {
-    if (!selectedLeader) return
-    const mine = group.cards.filter((card) => getCardLeaders(card).includes(selectedLeader))
+    if (!ensureSelected()) return
+    const mine = group.cards.filter((card) =>
+      getCardLeaders(card).some((l) => selectedLeaders.has(l)),
+    )
     if (mine.length === 0) return
     await Promise.all(
-      mine.map((card) =>
-        Promise.resolve(onSetCardLeaders(card.id, getCardLeaders(card).filter((l) => l !== selectedLeader), { silentSuccess: true }))
-      )
+      mine.map((card) => {
+        const next = getCardLeaders(card).filter((l) => !selectedLeaders.has(l))
+        return Promise.resolve(onSetCardLeaders(card.id, next, { silentSuccess: true }))
+      })
     )
     setSessionAssigned((prev) => {
-      const next = new Set(prev)
-      mine.forEach((c) => next.delete(c.id))
-      return next
+      const n = new Set(prev)
+      mine.forEach((c) => n.delete(c.id))
+      return n
     })
     showToast(`${group.key} ${mine.length}개 해제`, 'info')
   }
@@ -282,7 +308,7 @@ export function MobileAdminAssignment({
       }}>
         <StepPill no={1} label="인도자 선택" active={step === 1} onClick={() => setStep(1)} />
         <ChevR size={14} color="var(--muted-2)" />
-        <StepPill no={2} label="구역 배정" active={step === 2} disabled={!selectedLeader} onClick={() => selectedLeader && setStep(2)} />
+        <StepPill no={2} label="구역 배정" active={step === 2} onClick={() => setStep(2)} />
       </div>
 
       {/* ── Step 1: 인도자 선택 ───────────── */}
@@ -306,8 +332,8 @@ export function MobileAdminAssignment({
                   key={leader}
                   name={leader}
                   stats={leaderStats.get(leader) ?? { assigned: 0, inProgress: 0, done: 0 }}
-                  isSelected={selectedLeader === leader}
-                  onClick={() => setSelectedLeader(leader)}
+                  isSelected={selectedLeaders.has(leader)}
+                  onClick={() => toggleLeaderSelection(leader)}
                 />
               ))}
             </div>
@@ -323,8 +349,8 @@ export function MobileAdminAssignment({
                     key={leader}
                     name={leader}
                     stats={leaderStats.get(leader) ?? { assigned: 0, inProgress: 0, done: 0 }}
-                    isSelected={selectedLeader === leader}
-                    onClick={() => setSelectedLeader(leader)}
+                    isSelected={selectedLeaders.has(leader)}
+                    onClick={() => toggleLeaderSelection(leader)}
                     muted
                   />
                 ))}
@@ -341,8 +367,8 @@ export function MobileAdminAssignment({
                   key={filteredMe}
                   name={filteredMe}
                   stats={leaderStats.get(filteredMe) ?? { assigned: 0, inProgress: 0, done: 0 }}
-                  isSelected={selectedLeader === filteredMe}
-                  onClick={() => setSelectedLeader(filteredMe)}
+                  isSelected={selectedLeaders.has(filteredMe)}
+                  onClick={() => toggleLeaderSelection(filteredMe)}
                   isMe
                 />
               </div>
@@ -368,7 +394,7 @@ export function MobileAdminAssignment({
           })()}
 
           {/* sticky 하단: 다음 단계 */}
-          {selectedLeader && (
+          {selectedLeaders.size > 0 && (
             <StickyBottom>
               <button
                 type="button"
@@ -382,7 +408,9 @@ export function MobileAdminAssignment({
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}
               >
-                {selectedLeader} 담당 구역 배정하기
+                {selectedLeaders.size === 1
+                  ? `${[...selectedLeaders][0]} 담당 구역 배정하기`
+                  : `${selectedLeaders.size}명 담당 구역 배정하기`}
                 <ChevR color="#fff" />
               </button>
             </StickyBottom>
@@ -391,8 +419,80 @@ export function MobileAdminAssignment({
       )}
 
       {/* ── Step 2: 구역 배정 ───────────── */}
-      {step === 2 && selectedLeader && (
+      {step === 2 && selectedLeaders.size === 0 && (
+        <div style={{
+          padding: 18,
+          background: 'var(--surface)',
+          border: '1px dashed var(--line-2)',
+          borderRadius: 12,
+          textAlign: 'center',
+          color: 'var(--muted)',
+          fontSize: 13,
+        }}>
+          <p style={{ margin: '0 0 12px' }}>먼저 인도자를 선택하세요.</p>
+          <button
+            type="button"
+            onClick={() => setStep(1)}
+            style={{
+              height: 36, padding: '0 16px',
+              background: 'var(--ink)', color: '#fff',
+              border: 'none', borderRadius: 8,
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              letterSpacing: '-0.005em',
+            }}
+          >
+            인도자 선택으로 가기
+          </button>
+        </div>
+      )}
+      {step === 2 && selectedLeaders.size > 0 && (
         <>
+          {/* 선택된 인도자 chip 행 */}
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 6,
+            marginBottom: 12, padding: '0 2px', alignItems: 'center',
+          }}>
+            <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500, marginRight: 2 }}>
+              선택된 인도자
+            </span>
+            {[...selectedLeaders].map((name) => (
+              <span
+                key={name}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  height: 26, padding: '0 8px 0 8px',
+                  background: 'var(--ink)', color: '#fff',
+                  borderRadius: 99, fontSize: 12, fontWeight: 600,
+                  letterSpacing: '-0.005em',
+                }}
+              >
+                {name}
+                <button
+                  type="button"
+                  onClick={() => toggleLeaderSelection(name)}
+                  aria-label={`${name} 선택 해제`}
+                  style={{
+                    width: 16, height: 16, minHeight: 16,
+                    display: 'grid', placeItems: 'center',
+                    background: 'transparent', border: 'none',
+                    color: 'rgba(255,255,255,0.7)', cursor: 'pointer',
+                    fontSize: 13, lineHeight: 1, padding: 0, marginLeft: 2,
+                  }}
+                >×</button>
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              style={{
+                height: 26, padding: '0 10px',
+                background: 'transparent', border: '1px dashed var(--line-2)',
+                color: 'var(--muted)', borderRadius: 99,
+                fontSize: 12, fontWeight: 500, cursor: 'pointer',
+              }}
+            >+ 추가</button>
+          </div>
+
           {/* 검색 + 지도 버튼 */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
             <div style={{ flex: 1 }}>
@@ -471,8 +571,11 @@ export function MobileAdminAssignment({
               const isRowExpanded = expandedRows.has(g.key)
               const visibleCards = isRowExpanded ? g.cards : g.cards.slice(0, 5)
               const hiddenCount = g.cards.length - visibleCards.length
-              // selectedLeader 가 담당하는 카드 수 (전체 배정/해제 토글용)
-              const mineInGroup = g.cards.filter((c) => getCardLeaders(c).includes(selectedLeader)).length
+              // 선택된 인도자 중 하나라도 담당인 카드 수 (전체 배정/해제 토글용)
+              const mineInGroup = g.cards.filter((c) => {
+                const cl = getCardLeaders(c)
+                return selectedLeadersArr.some((name) => cl.includes(name))
+              }).length
               const allMine = mineInGroup === g.cards.length
               return (
                 <div
@@ -533,7 +636,7 @@ export function MobileAdminAssignment({
                         {visibleCards.map((card) => {
                           const cardLeaders = getCardLeaders(card)
                           const isFree = cardLeaders.length === 0
-                          const isMine = cardLeaders.includes(selectedLeader)
+                          const isMine = selectedLeadersArr.some((name) => cardLeaders.includes(name))
                           const justAssigned = sessionAssigned.has(card.id)
                           return (
                             <div
@@ -639,7 +742,7 @@ export function MobileAdminAssignment({
                 type="button"
                 onClick={() => {
                   setStep(1)
-                  setSelectedLeader(null)
+                  setSelectedLeaders(new Set())
                   setSessionAssigned(new Set())
                   showToast(sessionAssigned.size > 0 ? `${sessionAssigned.size}개 배정 완료` : '완료', sessionAssigned.size > 0 ? 'success' : 'info')
                 }}
