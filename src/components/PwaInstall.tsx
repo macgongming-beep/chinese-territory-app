@@ -52,33 +52,57 @@ export function PwaInstallBanner() {
           right: 12,
           bottom: 84, // 바텀 nav 위
           zIndex: 1000,
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 14,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.16)',
-          border: '1px solid #e2e8f0',
-          padding: 16,
+          boxShadow: '0 12px 32px rgba(26, 26, 24, 0.10)',
+          border: '1px solid var(--line)',
+          padding: 14,
           animation: 'pwaBannerSlideUp 0.3s ease-out',
+          letterSpacing: '-0.005em',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-          <div style={{
-            display: 'grid', width: 40, height: 40, placeItems: 'center',
-            borderRadius: 12, background: 'var(--primary-50)', color: 'var(--primary-600)',
-            flexShrink: 0,
-          }} aria-hidden>
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div
+            style={{
+              display: 'grid', width: 40, height: 40, placeItems: 'center',
+              borderRadius: 10, background: 'var(--tint)', color: 'var(--ink)',
+              flexShrink: 0,
+            }}
+            aria-hidden
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               <rect x="7" y="3" width="10" height="18" rx="2" />
               <path d="M11 18h2" />
             </svg>
           </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.005em' }}>
               봉사 알림 받으시려면
             </p>
-            <p style={{ margin: '2px 0 0', fontSize: 13, color: '#64748b' }}>
+            <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 500, color: 'var(--muted)', letterSpacing: '-0.005em' }}>
               홈 화면에 추가해주세요
             </p>
           </div>
+          <button
+            onClick={() => {
+              snooze()
+              setVisible(false)
+            }}
+            type="button"
+            aria-label="닫기"
+            style={{
+              width: 28, height: 28, minHeight: 28,
+              display: 'grid', placeItems: 'center',
+              padding: 0,
+              background: 'transparent',
+              border: 'none',
+              borderRadius: 8,
+              color: 'var(--muted-2)',
+              fontSize: 18, lineHeight: 1,
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >×</button>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <button
@@ -88,14 +112,15 @@ export function PwaInstallBanner() {
             }}
             style={{
               flex: 1,
-              padding: '9px 0',
-              borderRadius: 9,
-              border: '1px solid #e2e8f0',
-              background: '#fff',
-              color: '#64748b',
+              height: 36,
+              borderRadius: 8,
+              border: '1px solid var(--line-2)',
+              background: 'var(--surface)',
+              color: 'var(--text)',
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
+              letterSpacing: '-0.005em',
             }}
             type="button"
           >
@@ -108,14 +133,15 @@ export function PwaInstallBanner() {
             }}
             style={{
               flex: 2,
-              padding: '9px 0',
-              borderRadius: 9,
-              border: 'none',
-              background: '#2563eb',
+              height: 36,
+              borderRadius: 8,
+              border: '1px solid var(--ink)',
+              background: 'var(--ink)',
               color: '#fff',
               fontSize: 13,
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: 'pointer',
+              letterSpacing: '-0.005em',
             }}
             type="button"
           >
