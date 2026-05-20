@@ -6,7 +6,7 @@ import { TERRITORY_BOUNDARY } from '../data/territoryBoundary'
 import { showToast } from '../lib/toast'
 
 const STATUS_COLORS: Record<BuildingStatus, string> = {
-  방문필요: '#C44536',
+  방문필요: '#2D6CDF',
   방문완료: '#4F7A4B',
   방문금지: '#1A1A18',
   정기방문: '#B8862A',
@@ -1227,7 +1227,7 @@ function NaverMapCanvas({
       {/* Map Toolbar Overlay */}
       <div className="map-toolbar-overlay" style={{
         position: 'absolute',
-        top: '70px',
+        top: '100px',
         right: '12px',
         display: 'flex',
         flexDirection: 'column',
@@ -1316,7 +1316,7 @@ function NaverMapCanvas({
         }
         @media (max-width: 768px) {
           .map-toolbar-overlay {
-            top: 80px !important;
+            top: 112px !important;
             right: 12px !important;
             z-index: 40 !important;
           }

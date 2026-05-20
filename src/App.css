@@ -5726,7 +5726,7 @@ button:focus-visible {
 /* 디자인 23 매칭 — 압축 좌측 세로 legend */
 .mobile-map-legend-card {
   position: absolute;
-  top: calc(max(10px, env(safe-area-inset-top)) + 128px);
+  top: calc(max(10px, env(safe-area-inset-top)) + 96px);
   left: 12px;
   z-index: 20;
   display: flex;
@@ -6095,7 +6095,7 @@ button:focus-visible {
 }
 
 .status-방문필요 {
-  background: #C44536;
+  background: #2D6CDF;
 }
 .status-방문완료 {
   background: #4F7A4B;
@@ -16725,12 +16725,12 @@ button:focus-visible {
     display: none;
   }
 
-  .status-방문필요 { background: #C44536; }
+  .status-방문필요 { background: #2D6CDF; }
   .status-방문완료 { background: #4F7A4B; }
   .status-방문금지 { background: #1A1A18; }
   .status-정기방문 { background: #B8862A; }
 
-  .map-marker.status-방문필요 { border-color: #C44536; }
+  .map-marker.status-방문필요 { border-color: #2D6CDF; }
   .map-marker.status-방문완료 { border-color: #4F7A4B; }
   .map-marker.status-방문금지 { border-color: #1A1A18; }
   .map-marker.status-정기방문 { border-color: #B8862A; }
