@@ -118,37 +118,41 @@ export function AdminMobileZone({
   const urlLevel = (searchParams.get('level') as Level | null) ?? 'regions'
   const urlRegion = searchParams.get('region') ?? ''
   const urlDong = searchParams.get('dong') ?? ''
+  const defaultScope: Scope = role === 'admin' ? 'all' : 'mine'
+  const urlScope: Scope = (searchParams.get('scope') === 'all' || searchParams.get('scope') === 'mine')
+    ? (searchParams.get('scope') as Scope)
+    : defaultScope
 
   const [zoneKind, setZoneKind] = useState<ZoneKind>('territory')
-  // admin 은 '전체' 우선, leader/user 는 본인 담당 우선
-  const [scope, setScope] = useState<Scope>(role === 'admin' ? 'all' : 'mine')
+  const [scope, setScope] = useState<Scope>(urlScope)
   const [view, setView] = useState<ViewMode>('list')
   const [level, setLevel] = useState<Level>(urlLevel)
   const [selectedRegion, setSelectedRegion] = useState(urlRegion)
   const [selectedDong, setSelectedDong] = useState(urlDong)
   const [query, setQuery] = useState('')
 
-  // 드릴 상태 변경 시 URL 동기화 (replace — 히스토리 오염 방지)
+  // 드릴 상태 + scope URL 동기화 (replace — 히스토리 오염 방지)
   useEffect(() => {
     const next = new URLSearchParams(searchParams)
-    // 기본값(regions)이면 키 제거해서 깔끔하게
     if (level === 'regions') next.delete('level'); else next.set('level', level)
     if (selectedRegion) next.set('region', selectedRegion); else next.delete('region')
     if (selectedDong) next.set('dong', selectedDong); else next.delete('dong')
-    // 변경 없으면 스킵
+    // scope 는 default 와 같으면 키 제거
+    if (scope === defaultScope) next.delete('scope'); else next.set('scope', scope)
     if (next.toString() !== searchParams.toString()) {
       setSearchParams(next, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [level, selectedRegion, selectedDong])
+  }, [level, selectedRegion, selectedDong, scope])
 
   // 외부에서 URL 이 바뀐 경우 (브라우저 뒤로가기 등) 상태도 따라감
   useEffect(() => {
     if (urlLevel !== level) setLevel(urlLevel)
     if (urlRegion !== selectedRegion) setSelectedRegion(urlRegion)
     if (urlDong !== selectedDong) setSelectedDong(urlDong)
+    if (urlScope !== scope) setScope(urlScope)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlLevel, urlRegion, urlDong])
+  }, [urlLevel, urlRegion, urlDong, urlScope])
 
   const informalCount = informalAssets.length
   const restaurantCount = buildings.filter((b) => b.type === '상가' && b.isRestaurant).length
