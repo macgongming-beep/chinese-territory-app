@@ -113,7 +113,8 @@ export function AdminMobileZone({
   onToggleBuildingRestaurant,
 }: Props) {
   const [zoneKind, setZoneKind] = useState<ZoneKind>('territory')
-  const [scope, setScope] = useState<Scope>('all')
+  // admin 은 '전체' 우선, leader/user 는 본인 담당 우선
+  const [scope, setScope] = useState<Scope>(role === 'admin' ? 'all' : 'mine')
   const [view, setView] = useState<ViewMode>('list')
   const [level, setLevel] = useState<Level>('regions')
   const [selectedRegion, setSelectedRegion] = useState('')
@@ -332,7 +333,8 @@ export function AdminMobileZone({
           - dongs/cards: [← back] [전체 구역 › 처인구 (› 고림동)] [spacer] [ViewToggle] */}
       {level === 'regions' ? (
         <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-          <SegmentedScope value={scope} onChange={setScope} />
+          {/* user 는 본인 담당만 고정 — segmented 숨김 */}
+          {role !== 'user' && <SegmentedScope value={scope} onChange={setScope} />}
           <ViewToggle value={view} onChange={(next) => {
             setView(next)
             if (next === 'map') {
