@@ -10,7 +10,8 @@
 //
 // 비공식 / 식당 탭은 기존 InformalCardsTab / RestaurantsTab 재사용.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { Building, InformalAsset, InformalGroup, Role, TerritoryCard } from '../../types'
 import { InformalCardsTab } from '../InformalCardsTab'
 import { RestaurantsTab } from '../RestaurantsTab'
@@ -112,14 +113,42 @@ export function AdminMobileZone({
   onMoveAssetToGroup,
   onToggleBuildingRestaurant,
 }: Props) {
+  // URL 쿼리로 드릴 상태 보존 — 지도 진입 후 뒤로 오면 같은 위치로 복귀
+  const [searchParams, setSearchParams] = useSearchParams()
+  const urlLevel = (searchParams.get('level') as Level | null) ?? 'regions'
+  const urlRegion = searchParams.get('region') ?? ''
+  const urlDong = searchParams.get('dong') ?? ''
+
   const [zoneKind, setZoneKind] = useState<ZoneKind>('territory')
   // admin 은 '전체' 우선, leader/user 는 본인 담당 우선
   const [scope, setScope] = useState<Scope>(role === 'admin' ? 'all' : 'mine')
   const [view, setView] = useState<ViewMode>('list')
-  const [level, setLevel] = useState<Level>('regions')
-  const [selectedRegion, setSelectedRegion] = useState('')
-  const [selectedDong, setSelectedDong] = useState('')
+  const [level, setLevel] = useState<Level>(urlLevel)
+  const [selectedRegion, setSelectedRegion] = useState(urlRegion)
+  const [selectedDong, setSelectedDong] = useState(urlDong)
   const [query, setQuery] = useState('')
+
+  // 드릴 상태 변경 시 URL 동기화 (replace — 히스토리 오염 방지)
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams)
+    // 기본값(regions)이면 키 제거해서 깔끔하게
+    if (level === 'regions') next.delete('level'); else next.set('level', level)
+    if (selectedRegion) next.set('region', selectedRegion); else next.delete('region')
+    if (selectedDong) next.set('dong', selectedDong); else next.delete('dong')
+    // 변경 없으면 스킵
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [level, selectedRegion, selectedDong])
+
+  // 외부에서 URL 이 바뀐 경우 (브라우저 뒤로가기 등) 상태도 따라감
+  useEffect(() => {
+    if (urlLevel !== level) setLevel(urlLevel)
+    if (urlRegion !== selectedRegion) setSelectedRegion(urlRegion)
+    if (urlDong !== selectedDong) setSelectedDong(urlDong)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlLevel, urlRegion, urlDong])
 
   const informalCount = informalAssets.length
   const restaurantCount = buildings.filter((b) => b.type === '상가' && b.isRestaurant).length
