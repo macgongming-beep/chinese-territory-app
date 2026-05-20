@@ -640,8 +640,9 @@ function NaverMapCanvas({
   const getFitMargin = () => {
     if (!isMobile) return [80, 80, 80, 80]
     // 모바일에서는 바텀 시트 높이에 따라 하단 여백 가변 적용
+    // 상단 여백은 헤더(~56) + stats sub 행 정도만 비우면 됨 — 과도하게 잡으면 경계선 짤림
     const bp = bottomPadding ?? 450
-    return [160, 40, bp, 40]
+    return [90, 24, bp + 16, 24]
   }
  
   const fitTerritoryBoundary = () => {
