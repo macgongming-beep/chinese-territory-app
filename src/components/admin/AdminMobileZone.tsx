@@ -753,17 +753,6 @@ function CardRow({
   buildingCount: { house: number; shop: number }
   onClick: () => void
 }) {
-  const statePill = card.status === '완료' ? { label: '완료', tone: 'ok' as const }
-    : card.status === '진행중' ? { label: '정기방문', tone: 'warn' as const }
-    : card.status === '미배정' ? { label: '방문필요', tone: 'danger' as const }
-    : { label: card.status, tone: 'default' as const }
-  const toneColors: Record<string, { bg: string; color: string }> = {
-    ok: { bg: 'var(--status-ok-bg)', color: 'var(--status-ok)' },
-    warn: { bg: 'var(--status-warn-bg)', color: 'var(--status-warn)' },
-    danger: { bg: 'var(--status-danger-bg)', color: 'var(--status-danger)' },
-    default: { bg: 'var(--tint)', color: 'var(--text)' },
-  }
-  const c = toneColors[statePill.tone]
   return (
     <button
       type="button"
@@ -781,13 +770,6 @@ function CardRow({
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{card.name}</span>
-                <span style={{
-                  fontSize: 11.5, fontWeight: 600,
-                  padding: '3px 9px', borderRadius: 999,
-                  background: c.bg, color: c.color,
-                }}>
-                  {statePill.label}
-                </span>
               </div>
               <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
                 {card.assignedLeader ? `담당 ${card.assignedLeader} · ` : ''}
