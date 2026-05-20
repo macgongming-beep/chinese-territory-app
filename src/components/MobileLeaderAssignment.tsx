@@ -167,8 +167,9 @@ export function MobileLeaderAssignment({
   const [draft, setDraft] = useState<AssignmentDraft | null>(null)
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
   const [cardQuery, setCardQuery] = useState('')
-  const [regionFilter, setRegionFilter] = useState<'전체' | string>('전체')
-  const [areaFilter, setAreaFilter] = useState<'전체' | string>('전체')
+  const [regionFilter, _setRegionFilter] = useState<'전체' | string>('전체')
+  const [areaFilter, _setAreaFilter] = useState<'전체' | string>('전체')
+  void _setRegionFilter; void _setAreaFilter
   const [onlyUnusedCards, setOnlyUnusedCards] = useState(true)
   const [cardActionTarget, setCardActionTarget] = useState<{ teamId: string; mode: 'append' | 'replace' } | null>(null)
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
@@ -242,6 +243,7 @@ export function MobileLeaderAssignment({
     () => Array.from(new Set(accessibleCards.map((card) => card.area))).sort((a, b) => a.localeCompare(b, 'ko')),
     [accessibleCards],
   )
+  void areaOptions
 
   const filteredCards = useMemo(() => {
     const loweredQuery = cardQuery.trim().toLowerCase()
@@ -565,12 +567,19 @@ export function MobileLeaderAssignment({
         </div>
       ) : (
         <>
-          <nav className="ma-step-tabs" aria-label="배정 단계">
+          {/* WizardSteps pill — 디자인 v2 screens-h.jsx */}
+          <nav className="ma-v2-wsteps" aria-label="배정 단계">
             {stepLabels.map((label, index) => {
               const step = (index + 1) as 1 | 2 | 3
+              const cls = currentStep === step ? 'active' : currentStep > step ? 'done' : ''
               return (
-                <button className={currentStep === step ? 'active' : ''} key={label} onClick={() => setCurrentStep(step)} type="button">
-                  <span>{label}</span>
+                <button
+                  type="button"
+                  key={label}
+                  className={`ma-v2-wpill ${cls}`}
+                  onClick={() => setCurrentStep(step)}
+                >
+                  {label}
                 </button>
               )
             })}
@@ -578,62 +587,133 @@ export function MobileLeaderAssignment({
 
           <div className="ma-content">
 
-            {/* ━━━ STEP 1: 카드 선택 ━━━ */}
-            {currentStep === 1 && (
-              <>
-                <article className="leader-column leader-cards-column ma-pc-step-panel">
-                  <div className="leader-column-head">
-                    <h2>1. 사용할 카드 선택</h2>
+            {/* ━━━ STEP 1: 카드 선택 — 디자인 v2 ━━━ */}
+            {currentStep === 1 && (() => {
+              // 지역 × 동 그룹핑
+              const grouped = new Map<string, TerritoryCard[]>()
+              for (const card of filteredCards) {
+                const region = card.region || '기타'
+                const area = card.area || '기타'
+                const key = `${region}::${area}`
+                const list = grouped.get(key) ?? []
+                list.push(card)
+                grouped.set(key, list)
+              }
+              const groups = [...grouped.entries()].map(([key, list]) => {
+                const [region, area] = key.split('::')
+                return { region, area, cards: list }
+              }).sort((a, b) => `${a.region} ${a.area}`.localeCompare(`${b.region} ${b.area}`, 'ko'))
+
+              const renderStatePill = (state: '미사용' | '사용중' | '사용완료') => (
+                <span className={`ma-v2-state-pill ma-v2-state-${state === '미사용' ? 'unused' : state === '사용중' ? 'in-progress' : 'done'}`}>
+                  {state}
+                </span>
+              )
+
+              return (
+                <article className="ma-v2-step1">
+                  <div className="ma-v2-step-head">
+                    <h2>1. 카드 선택</h2>
+                    <span className="ma-v2-step-meta">선택 {usedCardIds.length}개 / 담당 {accessibleCards.length}개</span>
+                  </div>
+                  <p className="ma-v2-step-desc">이번 봉사에서 사용할 구역 카드를 골라주세요.</p>
+
+                  {/* 검색 */}
+                  <div className="ma-v2-search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <circle cx="11" cy="11" r="7"/>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input
+                      placeholder="카드 이름 검색"
+                      value={cardQuery}
+                      onChange={(e) => setCardQuery(e.target.value)}
+                    />
                   </div>
 
-                  {/* 검색 + 필터 */}
-                  <input className="leader-search-input" placeholder="카드명 검색" value={cardQuery} onChange={(e) => setCardQuery(e.target.value)} />
-                  <div className="leader-card-filters">
-                    <select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}>
-                      <option value="전체">지역 전체</option>
-                      {Array.from(new Set(accessibleCards.map((c) => c.region))).map((r) => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                    <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
-                      <option value="전체">동 전체</option>
-                      {areaOptions.map((a) => <option key={a} value={a}>{a}</option>)}
-                    </select>
-                    <label className="leader-inline-check">
-                      <input checked={onlyUnusedCards} onChange={(e) => setOnlyUnusedCards(e.target.checked)} type="checkbox" />
-                      미배정 카드만 보기
-                    </label>
-                  </div>
+                  {/* 미배정만 보기 토글 */}
+                  <label className="ma-v2-only-unused">
+                    <input
+                      type="checkbox"
+                      checked={onlyUnusedCards}
+                      onChange={(e) => setOnlyUnusedCards(e.target.checked)}
+                    />
+                    미배정 카드만
+                  </label>
 
-                  {/* 카드 리스트 */}
-                  <div className="leader-card-list ma-mobile-leader-card-list">
-                    {filteredCards.map((card) => {
-                      const selected = usedCardIds.includes(card.id)
-                      return (
-                        <button className={`leader-assign-card${selected ? ' used' : ''}`} key={card.id} onClick={() => applyCardToTeam(card.id)} type="button">
-                          <div>
-                            <strong>{card.name}</strong>
-                            <span>세대 {card.units} · 진행률 {card.progress}%</span>
-                          </div>
-                          <b>{selected ? '사용중' : cardActionTarget ? '추가' : '선택'}</b>
-                        </button>
-                      )
-                    })}
-                    {filteredCards.length === 0 && <p className="leader-muted-message">조건에 맞는 카드가 없습니다.</p>}
-                  </div>
-                  <button className="leader-add-card-direct" onClick={createEmptyTeam} type="button">+ 카드 직접 추가</button>
+                  {/* 그룹별 카드 */}
+                  {groups.map((group) => {
+                    const selectedInGroup = group.cards.filter((c) => usedCardIds.includes(c.id)).length
+                    const totalInGroup = group.cards.length
+                    return (
+                      <section className="ma-v2-card-group" key={`${group.region}::${group.area}`}>
+                        <header className="ma-v2-card-group-head">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="6 9 12 15 18 9"/></svg>
+                          <span className="ma-v2-card-group-title">{group.region} · {group.area}</span>
+                          <span className="ma-v2-card-group-cnt">선택 {selectedInGroup} / {totalInGroup}</span>
+                        </header>
+                        <div className="ma-v2-card-list">
+                          {group.cards.map((card) => {
+                            const selected = usedCardIds.includes(card.id)
+                            const totalUnits = card.units ?? 0
+                            const houseCount = (card as { houseUnits?: number }).houseUnits ?? 0
+                            const shopCount = totalUnits - houseCount
+                            const state: '미사용' | '사용중' | '사용완료' =
+                              card.progress >= 100 ? '사용완료' : card.progress > 0 ? '사용중' : '미사용'
+                            return (
+                              <button
+                                type="button"
+                                key={card.id}
+                                className={`ma-v2-card-row${selected ? ' is-selected' : ''}`}
+                                onClick={() => applyCardToTeam(card.id)}
+                              >
+                                <span className={`ma-v2-card-check${selected ? ' is-on' : ''}`}>
+                                  {selected && (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polyline points="20 6 9 17 4 12"/></svg>
+                                  )}
+                                </span>
+                                <div className="ma-v2-card-info">
+                                  <strong>{card.name}</strong>
+                                  <span>
+                                    전체 {totalUnits}
+                                    {houseCount > 0 && ` · 주택 ${houseCount}`}
+                                    {shopCount > 0 && ` · 상가 ${shopCount}`}
+                                    {card.progress > 0 && (
+                                      <> · <em className="ma-v2-progress">{card.progress}%</em></>
+                                    )}
+                                  </span>
+                                </div>
+                                {renderStatePill(state)}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </section>
+                    )
+                  })}
+
+                  {filteredCards.length === 0 && (
+                    <p className="ma-v2-empty">조건에 맞는 카드가 없습니다.</p>
+                  )}
+
+                  <button className="ma-v2-add-card-direct" onClick={createEmptyTeam} type="button">
+                    + 카드 직접 추가
+                  </button>
                 </article>
-              </>
-            )}
+              )
+            })()}
 
-            {/* ━━━ STEP 2: 팀 구성 ━━━ */}
+            {/* ━━━ STEP 2: 팀 구성 — 디자인 v2 ━━━ */}
             {currentStep === 2 && (
-              <article className="ma-step-panel ma-team-panel">
-                <div className="ma-section-title">
-                  <div>
-                    <h2>2. 팀 구성</h2>
-                    <span>선택 카드 {usedCardIds.length}개 · 팀 {draft?.teams.length ?? 0}개</span>
-                  </div>
-                  <button className="ma-mini-primary" onClick={createEmptyTeam} type="button">+ 팀 추가</button>
+              <article className="ma-v2-step2">
+                <div className="ma-v2-step-head">
+                  <h2>2. 팀 구성</h2>
+                  <button className="ma-v2-add-team-btn" onClick={createEmptyTeam} type="button">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    팀 추가
+                  </button>
                 </div>
+                <p className="ma-v2-step-desc">선택 카드 {usedCardIds.length}개 · 팀 {draft?.teams.length ?? 0}개</p>
                 {/* 팀 카드 목록 */}
                 <div className="mobile-assignment-team-list">
                   {(draft?.teams ?? []).map((team) => {
@@ -823,34 +903,40 @@ export function MobileLeaderAssignment({
               </article>
             )}
 
-            {/* ━━━ STEP 3: 참가자 배정 ━━━ */}
+            {/* ━━━ STEP 3: 참가자 — 디자인 v2 ━━━ */}
             {currentStep === 3 && (
-              <article className="ma-step-panel ma-participant-panel">
-                <div className="ma-section-title">
+              <article className="ma-v2-step3">
+                <div className="ma-v2-step-head">
                   <h2>3. 참가자</h2>
                 </div>
-                {/* 미배정 경고 */}
+
                 {unassignedParticipants.length > 0 && (
-                  <div className="ma-unassigned-warning">
-                    <span className="ma-warn-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" width="18" height="18"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" fill="#fef3c7" stroke="#d97706" strokeWidth="1.5"/><line x1="12" y1="9" x2="12" y2="13" stroke="#d97706" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="#d97706" strokeWidth="2" strokeLinecap="round"/></svg>
+                  <div className="ma-v2-warn-callout">
+                    <span className="ma-v2-warn-icon" aria-hidden>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                      </svg>
                     </span>
-                    <div className="ma-warn-text">
+                    <div className="ma-v2-warn-text">
                       <strong>미배정 인원이 있습니다.</strong>
                       <span>미배정 {unassignedParticipants.length}명: {unassignedParticipants.map((p) => p.name).join(', ')}</span>
                     </div>
                   </div>
                 )}
 
-                <p className="ma-participant-note">배정 공유 전까지는 참가자에게 보이지 않습니다.</p>
+                <p className="ma-v2-participant-note">배정 공유 전까지는 참가자에게 보이지 않습니다.</p>
 
-                <div className="ma-participant-list">
+                <div className="ma-v2-participant-list">
                   {participants.map((participant) => {
                     const assignedTeam = draft?.teams.find((team) => team.members.includes(participant.name))
+                    const initial = participant.name.slice(0, 1)
                     return (
                       <button
-                        className={assignedTeam ? 'assigned' : ''}
+                        type="button"
                         key={`${participant.tag}-${participant.name}`}
+                        className={`ma-v2-participant-row${assignedTeam ? ' is-assigned' : ''}`}
                         onClick={() => {
                           if (assignedTeam) {
                             setSelectedTeamId(assignedTeam.id)
@@ -859,38 +945,51 @@ export function MobileLeaderAssignment({
                           }
                           if (selectedTeamId) addMemberToTeam(selectedTeamId, participant.name)
                         }}
-                        type="button"
                       >
-                        <strong>{participant.name}</strong>
-                        <span className={participant.tag === '게스트' ? 'guest' : ''}>{assignedTeam ? assignedTeam.name : participant.tag}</span>
+                        <span className={`ma-v2-participant-avatar${assignedTeam ? '' : ' muted'}`}>
+                          {initial}
+                        </span>
+                        <span className="ma-v2-participant-name">{participant.name}</span>
+                        {assignedTeam ? (
+                          <span className="ma-v2-team-pill">{assignedTeam.name}</span>
+                        ) : (
+                          <span className="ma-v2-applicant-tag">{participant.tag}</span>
+                        )}
                       </button>
                     )
                   })}
+                  {participants.length === 0 && (
+                    <p className="ma-v2-empty">아직 참가자가 없습니다.</p>
+                  )}
                 </div>
               </article>
             )}
 
           </div>
 
-          {/* ━━━ 하단 바 ━━━ */}
-          <div className="ma-bottom-bar">
+          {/* 하단 sticky — 디자인 v2 */}
+          <div className="ma-v2-bottom-bar">
             {currentStep === 1 && (
               <>
-                <span className="ma-bottom-info">선택된 카드 {usedCardIds.length}개</span>
-                <button className="ma-next-btn" onClick={goNext} type="button">다음</button>
+                <span className="ma-v2-bottom-info">
+                  <span className="muted">선택</span> <b>{usedCardIds.length}개</b>
+                </span>
+                <button className="ma-v2-next-btn" onClick={goNext} type="button">다음 →</button>
               </>
             )}
             {currentStep === 2 && (
               <>
-                <span className="ma-bottom-info">팀 {draft?.teams.length ?? 0}개 · 카드 {usedCardIds.length}개</span>
-                <button className="ma-next-btn" onClick={goNext} type="button">다음</button>
+                <span className="ma-v2-bottom-info">
+                  <span className="muted">팀 {draft?.teams.length ?? 0}개 · 카드 {usedCardIds.length}개</span>
+                </span>
+                <button className="ma-v2-next-btn" onClick={goNext} type="button">다음 →</button>
               </>
             )}
             {currentStep === 3 && (
               <>
-                <button className="ma-prev-btn" onClick={goBack} type="button">이전</button>
-                <button className="ma-save-btn" onClick={() => void saveAssignmentState('draft')} type="button">임시 저장</button>
-                <button className="ma-next-btn" onClick={() => void saveAssignmentState('shared')} type="button">
+                <button className="ma-v2-ghost-btn" onClick={goBack} type="button">이전</button>
+                <button className="ma-v2-ghost-btn" onClick={() => void saveAssignmentState('draft')} type="button">임시 저장</button>
+                <button className="ma-v2-next-btn" onClick={() => void saveAssignmentState('shared')} type="button">
                   {draft?.status === 'shared' ? '배정 재공유' : '배정 공유'}
                 </button>
               </>

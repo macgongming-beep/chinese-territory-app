@@ -26064,3 +26064,678 @@ button:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ============================================================
+   디자인 v2 — 인도자 배정 wizard 공통 (28a / 28b / 28c)
+   ============================================================ */
+
+/* Wizard pills */
+.ma-v2-wsteps {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: var(--paper);
+  border-radius: 99px;
+  margin: 12px 0 16px;
+}
+.ma-v2-wpill {
+  flex: 1;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  background: transparent;
+  border: 1.5px solid transparent;
+  border-radius: 99px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: -0.005em;
+  transition: all .15s;
+}
+.ma-v2-wpill.active {
+  background: var(--surface);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.ma-v2-wpill.done {
+  background: var(--tint);
+  color: var(--text);
+}
+
+/* Step heading 공통 */
+.ma-v2-step-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0 4px;
+}
+.ma-v2-step-head h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+}
+.ma-v2-step-meta {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.ma-v2-step-desc {
+  margin: 6px 4px 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  letter-spacing: -0.005em;
+}
+.ma-v2-empty {
+  margin: 16px 0;
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+/* ── Step 1: 카드 선택 ── */
+.ma-v2-step1 {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 0 88px;
+}
+.ma-v2-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--muted-2);
+}
+.ma-v2-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  color: var(--ink);
+  font-family: inherit;
+  letter-spacing: -0.005em;
+}
+.ma-v2-search input::placeholder {
+  color: var(--muted-2);
+}
+.ma-v2-only-unused {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.ma-v2-only-unused input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+
+.ma-v2-card-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ma-v2-card-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 4px;
+}
+.ma-v2-card-group-head svg {
+  color: var(--muted-2);
+}
+.ma-v2-card-group-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.ma-v2-card-group-cnt {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ma-v2-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ma-v2-card-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.ma-v2-card-row.is-selected {
+  border: 1.5px solid var(--ink);
+}
+.ma-v2-card-check {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  border: 1.5px solid var(--line-2);
+  background: var(--surface);
+  color: transparent;
+  flex-shrink: 0;
+}
+.ma-v2-card-check.is-on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+.ma-v2-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ma-v2-card-info strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ma-v2-card-info span {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ma-v2-progress {
+  font-style: normal;
+  color: var(--status-info, var(--info, var(--ink)));
+  font-weight: 600;
+}
+
+/* StatePill */
+.ma-v2-state-pill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.ma-v2-state-unused {
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+}
+.ma-v2-state-in-progress {
+  background: var(--status-info-bg);
+  color: var(--status-info);
+}
+.ma-v2-state-done {
+  background: var(--status-ok-bg);
+  color: var(--status-ok);
+}
+
+.ma-v2-add-card-direct {
+  margin-top: 4px;
+  padding: 12px 14px;
+  background: transparent;
+  border: 1px dashed var(--line-2);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+
+/* ── Step 2: 팀 구성 ── */
+.ma-v2-step2 {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 0 88px;
+}
+.ma-v2-add-team-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+
+/* 팀 카드 override — 기존 ma-team-card 클래스 톤 v2 */
+.ma-team-card {
+  position: relative;
+  padding: 14px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.ma-team-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 16px;
+  bottom: 16px;
+  width: 3px;
+  border-radius: 99px;
+  background: var(--ink);
+}
+.ma-team-card.tone-blue::before { background: var(--ink); }
+.ma-team-card.tone-green::before { background: var(--status-info, #5B6B7C); }
+.ma-team-card.tone-orange::before { background: var(--status-ok, #4F7A4B); }
+.ma-team-card.tone-purple::before { background: var(--status-warn, #B8862A); }
+.ma-team-card.tone-slate::before { background: var(--muted); }
+
+.ma-team-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.ma-team-name-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ma-team-name-row strong {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.ma-icon-btn {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ma-team-head-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+.ma-outline-btn {
+  height: 26px;
+  padding: 0 10px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+.ma-outline-btn.danger {
+  color: var(--muted);
+  border-color: var(--line-2);
+}
+
+.ma-team-sub {
+  margin: 14px 0 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: -0.005em;
+}
+
+.ma-team-cards-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ma-team-card-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--paper);
+  border-radius: 8px;
+  min-width: 0;
+  font-size: 12.5px;
+}
+.ma-team-card-item strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.ma-team-card-item span {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.ma-team-add-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  background: transparent;
+  border: 1px dashed var(--line-2);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+
+.ma-team-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.ma-team-member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 5px;
+  background: var(--surface);
+  border: 1.5px solid var(--ink);
+  border-radius: 99px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.ma-team-member-chip span[aria-hidden] {
+  color: var(--muted-2);
+  font-size: 14px;
+  line-height: 1;
+  margin-left: 2px;
+}
+.ma-team-add-member {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+.ma-team-add-member.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.ma-inline-member-picker {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border-radius: 10px;
+}
+.ma-inline-member-head strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.ma-inline-member-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ma-inline-member-list button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  cursor: pointer;
+}
+.ma-inline-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+}
+.ma-inline-member-list button strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.ma-inline-member-list button em {
+  font-size: 11px;
+  font-style: normal;
+  color: var(--muted);
+}
+.ma-inline-member-picker p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ma-add-team-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 8px 0;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* ── Step 3: 참가자 ── */
+.ma-v2-step3 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 0 88px;
+}
+.ma-v2-warn-callout {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--status-warn-bg);
+  border: 1px solid #F2DDA8;
+  border-radius: 10px;
+  align-items: flex-start;
+}
+.ma-v2-warn-icon {
+  color: var(--status-warn);
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+}
+.ma-v2-warn-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ma-v2-warn-text strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.ma-v2-warn-text span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ma-v2-participant-note {
+  margin: 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: -0.005em;
+}
+.ma-v2-participant-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ma-v2-participant-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.ma-v2-participant-row.is-assigned {
+  border: 1.5px solid var(--ink);
+}
+.ma-v2-participant-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.ma-v2-participant-avatar.muted {
+  background: var(--muted-2);
+}
+.ma-v2-participant-name {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ma-v2-team-pill {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  background: var(--paper);
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+.ma-v2-applicant-tag {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* ── Bottom bar ── */
+.ma-v2-bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 60px;
+  padding: 10px 16px max(10px, env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: space-between;
+  z-index: 80;
+}
+.ma-v2-bottom-info {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ma-v2-bottom-info .muted {
+  color: var(--muted);
+  font-weight: 500;
+}
+.ma-v2-bottom-info b {
+  font-weight: 700;
+  color: var(--ink);
+}
+.ma-v2-next-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 22px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+.ma-v2-ghost-btn {
+  flex: 1;
+  height: 40px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+.ma-v2-step3 ~ .ma-v2-bottom-bar .ma-v2-next-btn {
+  flex: 1;
+}
