@@ -1034,7 +1034,14 @@ export function MobileHome({
                 informalAssets={informalAssets}
                 informalGroups={informalGroups}
                 onOpenMap={(cardId) => navigate(`/map?cardId=${cardId}`)}
-                onOpenAssignedMap={(cardIds) => navigate(`/map?cardIds=${cardIds.join(',')}&scope=mine`)}
+                onOpenAssignedMap={(cardIds, context) => {
+                  const params = new URLSearchParams()
+                  if (cardIds.length > 0) params.set('cardIds', cardIds.join(','))
+                  if (context?.scope === 'mine') params.set('scope', 'mine')
+                  if (context?.region) params.set('region', context.region)
+                  if (context?.dong) params.set('dong', context.dong)
+                  navigate(`/map${params.toString() ? `?${params.toString()}` : ''}`)
+                }}
                 onShowMapView={() => navigate('/map')}
                 /* 비공식 자료 업로드/삭제/그룹 관리는 admin 만 */
                 onUploadInformalAsset={role === 'admin' ? onUploadInformalAsset : undefined}

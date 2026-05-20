@@ -114,8 +114,10 @@ export function MobileMap({
   // (신) 항상 'map' 으로 시작 + 지역 칩 필터 (drill 폐기)
   //      과거 drill 함수들은 코드 호환 위해 남겨둠 (도달 안 됨)
   const [navLevel, setNavLevel] = useState<NavLevel>('map')
-  const [selectedArea, setSelectedArea] = useState<string | null>(null)
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
+  const initialMapRegion = searchParams.get('region')
+  const initialMapDong = searchParams.get('dong')
+  const [selectedArea, setSelectedArea] = useState<string | null>(initialMapRegion || null)
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(initialMapDong || null)
   const [selectedCardId, setSelectedCardId] = useState<number | null>(
     focusedCardId ?? null
   )
@@ -341,7 +343,7 @@ export function MobileMap({
 
   const scopedCards = useMemo(() =>
     cards.filter((card) => {
-      if (focusedCardIdSet.size > 0 && selectedCardId == null && !selectedArea && !selectedRegion && !focusedCardIdSet.has(card.id)) return false
+      if (focusedCardIdSet.size > 0 && selectedCardId == null && !focusedCardIdSet.has(card.id)) return false
       if (selectedArea && card.region !== selectedArea) return false
       if (selectedRegion && card.area !== selectedRegion) return false
       return true
@@ -389,7 +391,7 @@ export function MobileMap({
   const baseFilteredBuildings = useMemo(() =>
     buildings.filter((b) => {
       if (selectedCardId != null && b.cardId !== selectedCardId) return false
-      if (selectedCardId == null && focusedCardIdSet.size > 0 && !selectedArea && !selectedRegion && !focusedCardIdSet.has(b.cardId)) return false
+      if (selectedCardId == null && focusedCardIdSet.size > 0 && !focusedCardIdSet.has(b.cardId)) return false
       if (selectedCardId == null && (selectedArea || selectedRegion) && !scopedCardIds.has(b.cardId)) return false
       if (statusFilter !== '전체' && getBuildingStatus(b) !== statusFilter) return false
       if (b.units.length > 0 && !b.units.some(unitMatchesStrategyFilter)) return false
@@ -427,7 +429,7 @@ export function MobileMap({
     navLevel === 'map' &&
     selectedCardId == null &&
     !selectedRegion &&
-    focusedCardIdSet.size === 0 &&
+    (focusedCardIdSet.size === 0 || !!selectedArea) &&
     !addingBuildingMode &&
     !editingPinMode &&
     !drawingBoundaryMode
@@ -538,11 +540,6 @@ export function MobileMap({
   }
 
   const toggleStatusFromMap = (status: BuildingStatus) => {
-    if (status !== '방문완료' && status !== '정기방문') {
-      toggleStatusGroup(status)
-      return
-    }
-
     const nextHidden = !hiddenMapStatuses.has(status)
     setHiddenMapStatuses((prev) => {
       const next = new Set(prev)

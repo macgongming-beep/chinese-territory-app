@@ -39,7 +39,7 @@ type Props = {
   informalAssets?: InformalAsset[]
   informalGroups?: InformalGroup[]
   onOpenMap: (cardId: number) => void
-  onOpenAssignedMap: (cardIds: number[]) => void
+  onOpenAssignedMap: (cardIds: number[], context?: { region?: string; dong?: string; scope?: Scope }) => void
   onShowMapView: () => void
   onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
   onDeleteInformalAsset?: (assetId: number) => Promise<void>
@@ -372,7 +372,7 @@ export function AdminMobileZone({
             setView(next)
             if (next === 'map') {
               if (scope === 'mine') {
-                onOpenAssignedMap(baseCards.map((c) => c.id))
+                onOpenAssignedMap(baseCards.map((c) => c.id), { scope })
               } else {
                 onShowMapView()
               }
@@ -426,7 +426,7 @@ export function AdminMobileZone({
                 .filter((c) => !selectedRegion || c.region === selectedRegion)
                 .filter((c) => !selectedDong || c.area === selectedDong)
                 .map((c) => c.id)
-              onOpenAssignedMap(ctxCardIds)
+              onOpenAssignedMap(ctxCardIds, { region: selectedRegion || undefined, dong: selectedDong || undefined, scope })
             }
           }} />
         </div>
