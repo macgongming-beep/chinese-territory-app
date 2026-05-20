@@ -26865,13 +26865,43 @@ button:focus-visible {
   padding: 0;
 }
 
-/* 비공식 grid */
+/* 비공식 picker — 스크롤 영역 + 그룹 */
+.v2-informal-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 8px;
+  /* 모바일 스크롤 부드럽게 */
+  -webkit-overflow-scrolling: touch;
+}
+.v2-informal-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.v2-informal-group-head {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 2px;
+}
+.v2-informal-group-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.v2-informal-group-cnt {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 .v2-informal-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  overflow-y: auto;
-  padding-bottom: 8px;
 }
 .v2-informal-cell {
   display: flex;
@@ -26882,11 +26912,18 @@ button:focus-visible {
   padding: 0;
   cursor: pointer;
   text-align: left;
+  min-width: 0;
+  /* 디스에이블 기본 스타일 무력화 */
+  opacity: 1;
+  color: var(--ink);
+}
+.v2-informal-cell[aria-disabled="true"] {
+  cursor: default;
 }
 .v2-informal-thumb {
   position: relative;
   aspect-ratio: 4 / 5;
-  background: var(--paper);
+  background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;
@@ -26898,10 +26935,10 @@ button:focus-visible {
   display: block;
   background: #fff;
 }
-.v2-informal-cell:disabled .v2-informal-thumb {
+.v2-informal-cell.is-added .v2-informal-thumb {
   opacity: 0.55;
 }
-.v2-informal-cell:disabled .v2-informal-thumb img {
+.v2-informal-cell.is-added .v2-informal-thumb img {
   filter: grayscale(0.4);
 }
 .v2-informal-added {
@@ -26915,19 +26952,22 @@ button:focus-visible {
   padding: 3px 9px;
   border-radius: 99px;
   letter-spacing: -0.005em;
+  z-index: 2;
 }
 .v2-informal-cell-name {
-  font-size: 13px;
+  display: block;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--ink);
   letter-spacing: -0.005em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.35;
+  padding: 0 2px;
 }
-.v2-informal-cell:disabled {
-  opacity: 0.5;
-  cursor: default;
+.v2-informal-cell.is-added .v2-informal-cell-name {
+  color: var(--muted);
 }
 .v2-picker-empty {
   padding: 32px 16px;
