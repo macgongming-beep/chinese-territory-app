@@ -26880,23 +26880,52 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding: 10px 10px 12px;
+  background: var(--paper);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+.v2-informal-group.is-collapsed {
+  gap: 0;
+  padding: 10px;
 }
 .v2-informal-group-head {
-  display: inline-flex;
-  align-items: baseline;
+  display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 0 2px;
+  width: 100%;
+  padding: 4px 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  min-height: 0;
+  letter-spacing: -0.005em;
+}
+.v2-informal-group-head:active {
+  background: var(--tint);
+  border-radius: 6px;
+}
+.v2-informal-group-head svg {
+  color: var(--muted-2);
+  flex-shrink: 0;
 }
 .v2-informal-group-name {
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
   letter-spacing: -0.005em;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 .v2-informal-group-cnt {
   font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 .v2-informal-grid {
   display: grid;

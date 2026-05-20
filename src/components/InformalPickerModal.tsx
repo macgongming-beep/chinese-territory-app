@@ -1,5 +1,5 @@
 // 비공식 증거 카드 선택 모달 (디자인 v2 28d — 시트 + 사용자 정의 그룹)
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { InformalAsset, InformalGroup } from '../types'
 
 type Props = {
@@ -14,6 +14,7 @@ type Props = {
 export function InformalPickerModal({
   open, assets, groups = [], alreadyAssignedIds, onSelect, onClose,
 }: Props) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   // 사용자가 구역-비공식카드 설정에서 만든 그룹 기준으로 묶기.
   // groupId 가 null/없는 자료는 "그룹 없음" 으로 묶고 마지막에 노출.
   const grouped = useMemo(() => {
@@ -61,38 +62,58 @@ export function InformalPickerModal({
           </p>
         ) : (
           <div className="v2-informal-scroll">
-            {grouped.map((group) => (
-              <section className="v2-informal-group" key={group.name}>
-                <header className="v2-informal-group-head">
-                  <span className="v2-informal-group-name">{group.name}</span>
-                  <span className="v2-informal-group-cnt">{group.items.length}</span>
-                </header>
-                <div className="v2-informal-grid">
-                  {group.items.map((asset) => {
-                    const isAssigned = alreadyAssignedIds.has(asset.id)
-                    return (
-                      <button
-                        key={asset.id}
-                        type="button"
-                        className={`v2-informal-cell${isAssigned ? ' is-added' : ''}`}
-                        onClick={() => !isAssigned && onSelect(asset.id)}
-                        aria-disabled={isAssigned}
-                      >
-                        <div className="v2-informal-thumb">
-                          {asset.imageUrl && (
-                            <img src={asset.imageUrl} alt={asset.name} loading="lazy" />
-                          )}
-                          {isAssigned && (
-                            <span className="v2-informal-added">추가됨</span>
-                          )}
-                        </div>
-                        <span className="v2-informal-cell-name">{asset.name}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-            ))}
+            {grouped.map((group) => {
+              const isCollapsed = collapsed.has(group.name)
+              return (
+                <section className={`v2-informal-group${isCollapsed ? ' is-collapsed' : ''}`} key={group.name}>
+                  <button
+                    type="button"
+                    className="v2-informal-group-head"
+                    aria-expanded={!isCollapsed}
+                    onClick={() => setCollapsed((prev) => {
+                      const next = new Set(prev)
+                      if (next.has(group.name)) next.delete(group.name); else next.add(group.name)
+                      return next
+                    })}
+                  >
+                    <svg
+                      width="12" height="12" viewBox="0 0 24 24"
+                      fill="none" stroke="currentColor" strokeWidth="2.2"
+                      aria-hidden
+                      style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }}
+                    ><polyline points="6 9 12 15 18 9"/></svg>
+                    <span className="v2-informal-group-name">{group.name}</span>
+                    <span className="v2-informal-group-cnt">{group.items.length}</span>
+                  </button>
+                  {!isCollapsed && (
+                    <div className="v2-informal-grid">
+                      {group.items.map((asset) => {
+                        const isAssigned = alreadyAssignedIds.has(asset.id)
+                        return (
+                          <button
+                            key={asset.id}
+                            type="button"
+                            className={`v2-informal-cell${isAssigned ? ' is-added' : ''}`}
+                            onClick={() => !isAssigned && onSelect(asset.id)}
+                            aria-disabled={isAssigned}
+                          >
+                            <div className="v2-informal-thumb">
+                              {asset.imageUrl && (
+                                <img src={asset.imageUrl} alt={asset.name} loading="lazy" />
+                              )}
+                              {isAssigned && (
+                                <span className="v2-informal-added">추가됨</span>
+                              )}
+                            </div>
+                            <span className="v2-informal-cell-name">{asset.name}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </section>
+              )
+            })}
           </div>
         )}
       </div>
