@@ -684,8 +684,12 @@ export function MobileMap({
     return slot
   }
   const buildingTypeLabel = (type: Building['type']) => type === '상가' ? t(language, 'map.shop') : t(language, 'map.house')
+  const hasAreaChips = !isUserMap && !enteredDirectly && areas.length > 1
   return (
-    <main className={`mobile-map-shell${navLevel === 'map' ? ' mobile-map-shell--map' : ''}`}>
+    <main
+      className={`mobile-map-shell${navLevel === 'map' ? ' mobile-map-shell--map' : ''}`}
+      style={hasAreaChips && navLevel === 'map' ? { '--map-chips-push': '53px' } as React.CSSProperties : undefined}
+    >
       {/* 통합 헤더 — map 레벨에서는 floating + blur (디자인 23) */}
       <header className={`mobile-map-header${navLevel === 'map' ? ' mobile-map-header--floating' : ''}`}>
         <button onClick={handleBack} type="button" className="mm-back-btn" aria-label="Back">‹</button>

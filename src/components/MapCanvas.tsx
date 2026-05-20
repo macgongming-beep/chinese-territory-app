@@ -203,13 +203,13 @@ function aggregateMarkerHtml(marker: MapAggregateMarker): string {
     gap:7px;
     min-width:84px;
     max-width:128px;
-    height:42px;
+    height:38px;
     padding:0 10px 0 12px;
-    border:3px solid #ffffff;
+    border:1.5px solid rgba(0,0,0,0.10);
     border-radius:999px;
-    background:#37352F;
-    box-shadow:0 5px 16px rgba(0,0,0,0.22);
-    color:#ffffff;
+    background:rgba(255,255,255,0.92);
+    box-shadow:0 2px 10px rgba(0,0,0,0.12);
+    color:#37352F;
     cursor:pointer;
     font-family:sans-serif;
     user-select:none;
@@ -232,7 +232,7 @@ function aggregateMarkerHtml(marker: MapAggregateMarker): string {
       place-items:center;
       padding:0 6px;
       border-radius:999px;
-      background:rgba(255,255,255,0.18);
+      background:rgba(0,0,0,0.07);
       font-size:13px;
       font-weight:800;
       line-height:1;
@@ -1226,7 +1226,7 @@ function NaverMapCanvas({
       {/* Map Toolbar Overlay */}
       <div className="map-toolbar-overlay" style={{
         position: 'absolute',
-        top: '100px',
+        top: 'calc(100px - var(--map-chips-push, 0px))',
         right: '12px',
         display: 'flex',
         flexDirection: 'column',
@@ -1315,7 +1315,7 @@ function NaverMapCanvas({
         }
         @media (max-width: 768px) {
           .map-toolbar-overlay {
-            top: 112px !important;
+            top: calc(112px - var(--map-chips-push, 0px)) !important;
             right: 12px !important;
             z-index: 40 !important;
           }
