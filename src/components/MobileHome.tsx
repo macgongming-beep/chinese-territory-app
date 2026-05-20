@@ -505,7 +505,9 @@ export function MobileHome({
       .filter((value) => Number.isFinite(value))
   }, [searchParams])
   const focusedMapScopeLabel = searchParams.get('scope') === 'mine' ? t(language, 'zone.myTerritories') : undefined
-  const mapBackTarget = searchParams.get('return') === 'assignment'
+  // map 진입 직전 URL (드릴 위치 등) 로 정확히 복귀하기 위해 navigate(-1) 우선.
+  // 히스토리가 없을 때 (앱 직접 진입/딥링크) 만 fallback 경로 사용.
+  const mapBackFallback = searchParams.get('return') === 'assignment'
     ? '/assignment'
     : role === 'user'
       ? '/territory'
@@ -621,7 +623,14 @@ export function MobileHome({
             focusedCardId={safeFocusedMapCardId}
             focusedCardIds={safeFocusedMapCardIds}
             focusedScopeLabel={focusedMapScopeLabel}
-            onBack={() => navigate(mapBackTarget)}
+            onBack={() => {
+              // 직전 페이지(드릴 상태 포함) 로 정확히 복귀
+              if (window.history.length > 1) {
+                navigate(-1)
+              } else {
+                navigate(mapBackFallback)
+              }
+            }}
             onAddUnit={onAddUnit}
             onCreateBuilding={onCreateBuilding}
             onDeleteBuilding={onDeleteBuilding}
