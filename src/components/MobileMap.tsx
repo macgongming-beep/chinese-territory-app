@@ -682,19 +682,6 @@ export function MobileMap({
   }
 
   const editingBuilding = editingBuildingId != null ? buildings.find(b => b.id === editingBuildingId) ?? null : null
-  const visitResultLabel = (result: UnitStatus) => {
-    if (result === '만남') return t(language, 'map.met')
-    if (result === '부재') return t(language, 'map.absent')
-    if (result === '한국인') return t(language, 'map.korean')
-    if (result === '거절') return t(language, 'map.refused')
-    return result
-  }
-  const timeSlotLabel = (slot: TimeSlot | string) => {
-    if (slot === '오전') return t(language, 'map.morning')
-    if (slot === '오후') return t(language, 'map.afternoon')
-    if (slot === '저녁') return t(language, 'map.evening')
-    return slot
-  }
   const buildingTypeLabel = (type: Building['type']) => type === '상가' ? t(language, 'map.shop') : t(language, 'map.house')
   const hasAreaChips = !isUserMap && !enteredDirectly && areas.length > 1
   return (
@@ -1458,87 +1445,98 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
         </>
       )}
       {historyToEdit && (
-        <div className="admin-modal-overlay">
-          <div className="admin-modal-body" style={{ width: '90%', maxWidth: '340px' }}>
-            <h3>{t(language, 'map.editHistory')}</h3>
-            <div className="admin-modal-form">
-              <label>{t(language, 'map.status')}</label>
-              <select 
-                value={historyToEdit.result} 
-                onChange={e => setHistoryToEdit({ ...historyToEdit, result: e.target.value as any })}
-                style={{ width: '100%', padding: '10px', marginBottom: '16px', borderRadius: 'var(--r-md)', border: '1px solid #ddd' }}
-              >
-                <option value="만남">{visitResultLabel('만남')}</option>
-                <option value="부재">{visitResultLabel('부재')}</option>
-                <option value="한국인">{visitResultLabel('한국인')}</option>
-                <option value="거절">{visitResultLabel('거절')}</option>
-              </select>
-              
-              <label>{t(language, 'map.timeSlot')}</label>
-              <select 
-                value={historyToEdit.timeSlot} 
-                onChange={e => setHistoryToEdit({ ...historyToEdit, timeSlot: e.target.value as any })}
-                style={{ width: '100%', padding: '10px', marginBottom: '16px', borderRadius: 'var(--r-md)', border: '1px solid #ddd' }}
-              >
-                <option value="오전">{timeSlotLabel('오전')}</option>
-                <option value="오후">{timeSlotLabel('오후')}</option>
-                <option value="저녁">{timeSlotLabel('저녁')}</option>
-              </select>
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 700, display: 'grid', placeItems: 'center', padding: '0 20px' }}
+          onClick={() => setHistoryToEdit(null)}
+        >
+          <div
+            style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', width: '100%', maxWidth: 340 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>방문 기록 수정</h3>
 
-              <label>{t(language, 'map.dateIso')}</label>
-              <input 
-                type="text"
-                value={historyToEdit.visitedAt}
-                onChange={e => setHistoryToEdit({ ...historyToEdit, visitedAt: e.target.value })}
-                style={{ width: '100%', padding: '10px', marginBottom: '16px', borderRadius: 'var(--r-md)', border: '1px solid #ddd' }}
-              />
+            {/* 상태 */}
+            <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>상태</p>
+            <select
+              value={historyToEdit.result}
+              onChange={e => setHistoryToEdit({ ...historyToEdit, result: e.target.value as any })}
+              style={{ width: '100%', padding: '8px 10px', marginBottom: 12, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 13, boxSizing: 'border-box' }}
+            >
+              <option value="만남">만남</option>
+              <option value="부재">부재</option>
+              <option value="한국인">한국인</option>
+              <option value="거절">거절</option>
+            </select>
 
-              <label>{t(language, 'map.memo')}</label>
-              <textarea
-                value={historyToEdit.memo || ''}
-                onChange={e => setHistoryToEdit({ ...historyToEdit, memo: e.target.value })}
-                style={{ width: '100%', padding: '10px', height: '80px', marginBottom: '16px', borderRadius: 'var(--r-md)', border: '1px solid #ddd' }}
-              />
-
-              {/* 특별봉사 활성 시즌일 때만 표시 */}
-              {getActivePeriodForDate(historyToEdit.visitedAt) && (
-                <div style={{
-                  marginBottom: '12px',
-                  padding: '10px 12px',
-                  background: '#fffbeb',
-                  border: '1px solid #fde68a',
-                  borderRadius: '8px',
-                }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e', marginBottom: '6px' }}>
-                    🟠 {getActivePeriodForDate(historyToEdit.visitedAt)?.label}
-                  </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
-                    <input
-                      type="checkbox"
-                      checked={historyToEdit.invitationLeft ?? false}
-                      onChange={(e) => setHistoryToEdit({ ...historyToEdit, invitationLeft: e.target.checked })}
-                      style={{ width: '17px', height: '17px', accentColor: '#f59e0b', cursor: 'pointer' }}
-                    />
-                    {t(language, 'map.invitationLeft')}
-                  </label>
-                </div>
-              )}
+            {/* 시간대 + 날짜 나란히 */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>시간대</p>
+                <select
+                  value={historyToEdit.timeSlot}
+                  onChange={e => setHistoryToEdit({ ...historyToEdit, timeSlot: e.target.value as any })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 13, boxSizing: 'border-box' }}
+                >
+                  <option value="오전">오전</option>
+                  <option value="오후">오후</option>
+                  <option value="저녁">저녁</option>
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>날짜</p>
+                <input
+                  type="date"
+                  value={historyToEdit.visitedAt}
+                  onChange={e => setHistoryToEdit({ ...historyToEdit, visitedAt: e.target.value })}
+                  style={{ width: '100%', padding: '8px 6px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 12, boxSizing: 'border-box' }}
+                />
+              </div>
             </div>
-            <div className="admin-modal-footer">
+
+            {/* 메모 */}
+            <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>메모</p>
+            <textarea
+              value={historyToEdit.memo || ''}
+              onChange={e => setHistoryToEdit({ ...historyToEdit, memo: e.target.value })}
+              style={{ width: '100%', padding: '8px 10px', height: 64, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 13, boxSizing: 'border-box', resize: 'none', fontFamily: 'inherit', marginBottom: 12 }}
+            />
+
+            {/* 특별봉사 시즌 */}
+            {getActivePeriodForDate(historyToEdit.visitedAt) && (
+              <div style={{ marginBottom: 12, padding: '8px 10px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#92400e', marginBottom: 5 }}>
+                  🟠 {getActivePeriodForDate(historyToEdit.visitedAt)?.label}
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+                  <input
+                    type="checkbox"
+                    checked={historyToEdit.invitationLeft ?? false}
+                    onChange={e => setHistoryToEdit({ ...historyToEdit, invitationLeft: e.target.checked })}
+                    style={{ width: 16, height: 16, accentColor: '#f59e0b', cursor: 'pointer' }}
+                  />
+                  초대장 남김
+                </label>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={() => setHistoryToEdit(null)}
-                style={{ background: '#f1f5f9', color: 'var(--ink-500)', padding: '10px 16px', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer' }}
-              >{t(language, 'common.cancel')}</button>
-              <button onClick={() => {
-                onUpdateVisitHistory(historyToEdit.id, historyToEdit.unitId, {
-                  result: historyToEdit.result,
-                  timeSlot: historyToEdit.timeSlot,
-                  memo: historyToEdit.memo || '',
-                  visitedAt: historyToEdit.visitedAt,
-                  invitationLeft: historyToEdit.invitationLeft ?? false,
-                })
-                setHistoryToEdit(null)
-              }} style={{ background: 'var(--accent-700)', color: '#fff', padding: '10px 16px', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', fontWeight: 700 }}>{t(language, 'common.save')}</button>
+                style={{ flex: 1, padding: '9px', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >취소</button>
+              <button
+                onClick={() => {
+                  onUpdateVisitHistory(historyToEdit.id, historyToEdit.unitId, {
+                    result: historyToEdit.result,
+                    timeSlot: historyToEdit.timeSlot,
+                    memo: historyToEdit.memo || '',
+                    visitedAt: historyToEdit.visitedAt,
+                    invitationLeft: historyToEdit.invitationLeft ?? false,
+                  })
+                  setHistoryToEdit(null)
+                }}
+                style={{ flex: 2, padding: '9px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+              >저장</button>
             </div>
           </div>
         </div>
@@ -1770,10 +1768,10 @@ function UnitDetailScreen({
                     </div>
                     {h.memo && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--muted)', lineHeight: 1.4 }}>{h.memo}</p>}
                     {isMenuOpen && (
-                      <div style={{ display: 'flex', gap: 6, marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--line)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 5, paddingTop: 5, borderTop: '1px solid var(--line)' }}>
                         <button
                           onClick={() => { setHistoryToEdit(h); setEditingHistoryId(null) }}
-                          style={{ flex: 1, padding: '5px', border: '1px solid var(--line)', borderRadius: 6, background: 'var(--surface)', color: 'var(--ink)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                          style={{ padding: '3px 10px', border: '1px solid var(--line)', borderRadius: 5, background: 'var(--surface)', color: 'var(--ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
                           type="button"
                         >수정</button>
                         <button
@@ -1783,7 +1781,7 @@ function UnitDetailScreen({
                             }
                             setEditingHistoryId(null)
                           }}
-                          style={{ flex: 1, padding: '5px', border: '1px solid #fecaca', borderRadius: 6, background: '#fef2f2', color: '#dc2626', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                          style={{ padding: '3px 10px', border: '1px solid #fecaca', borderRadius: 5, background: '#fef2f2', color: '#dc2626', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
                           type="button"
                         >삭제</button>
                       </div>
@@ -1809,12 +1807,12 @@ function UnitDetailScreen({
                 onClick={() => { if (!requireRecordAccess()) return; flag.onToggle() }}
                 disabled={!canRecordVisits}
                 style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                  padding: '6px 4px', borderRadius: 7,
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
+                  padding: '5px 2px', borderRadius: 6,
                   border: flag.active ? 'none' : '1px solid var(--line)',
                   background: flag.active ? 'var(--ink)' : 'var(--surface)',
                   color: flag.active ? '#fff' : 'var(--muted)',
-                  fontSize: 11, fontWeight: 600,
+                  fontSize: 10.5, fontWeight: 600,
                   cursor: canRecordVisits ? 'pointer' : 'default',
                 }}
               >
