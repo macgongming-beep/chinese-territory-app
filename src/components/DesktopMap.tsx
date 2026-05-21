@@ -1081,10 +1081,10 @@ export function DesktopMap({
           <div className="map-canvas-panel">
               <div className="map-legend-card">
                 {[
-                  { status: '방문필요', color: 'var(--info-700, #3b82f6)', label: '방문필요' },
-                  { status: '방문완료', color: '#10B981', label: '방문완료' },
-                  { status: '방문금지', color: '#EF4444', label: '방문금지' },
-                  { status: '정기방문', color: '#F59E0B', label: '정기방문' },
+                  { status: '방문필요', color: '#2D6CDF', label: '방문필요' },
+                  { status: '방문완료', color: '#4F7A4B', label: '방문완료' },
+                  { status: '방문금지', color: '#1A1A18', label: '방문금지' },
+                  { status: '정기방문', color: '#B8862A', label: '정기방문' },
                 ].map(({ status, color, label }) => {
                   const typedStatus = status as BuildingStatus
                   const isCollapsed = collapsedStatusGroups.has(typedStatus)
