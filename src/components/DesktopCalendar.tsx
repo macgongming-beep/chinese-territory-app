@@ -436,10 +436,11 @@ export function DesktopCalendar({
               const isPeriodEnd = activePeriod && dayStr === activePeriod.endDate
               return (
                 <button
-                  className={['day-cell', day === selectedDay ? 'selected' : '', !day ? 'muted' : ''].join(' ')}
+                  className={['day-cell', day === selectedDay ? 'selected' : '', !day ? 'muted' : '', activePeriod ? 'in-period' : ''].join(' ')}
                   disabled={!day}
                   key={`${day ?? 'blank'}-${index}`}
                   onClick={() => { if (day) { setSelectedDay(day); setShowCreateForm(false) } }}
+                  style={activePeriod && day !== selectedDay ? { background: activePeriod.color + '14' } : undefined}
                   type="button"
                 >
                   <div className="day-head">

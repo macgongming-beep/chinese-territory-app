@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { SpecialPeriod } from '../types'
+import { PERIOD_COLORS } from '../types'
 
 export function SpecialPeriodSettings({
   specialPeriods = [],
@@ -21,6 +22,7 @@ export function SpecialPeriodSettings({
   const [newLabel, setNewLabel] = useState('')
   const [newStartDate, setNewStartDate] = useState(todayStr)
   const [newDurationDays, setNewDurationDays] = useState(7)
+  const [newColor, setNewColor] = useState(PERIOD_COLORS[0].value)
   const [submitting, setSubmitting] = useState(false)
 
   const calculateEndDate = (start: string, days: number): string => {
@@ -50,7 +52,7 @@ export function SpecialPeriodSettings({
       label: newLabel.trim(),
       startDate: newStartDate,
       endDate: newEndDate,
-      color: '#f59e0b',
+      color: newColor,
     }))
     setShowCreateModal(false)
     setNewLabel('')
@@ -216,10 +218,34 @@ export function SpecialPeriodSettings({
                   </div>
                 </div>
               </label>
-              <div style={{ padding: '10px 12px', background: '#fffbeb', borderRadius: '8px', fontSize: '12px', color: '#92400e' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#374151' }}>색상</span>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {PERIOD_COLORS.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      title={c.label}
+                      onClick={() => setNewColor(c.value)}
+                      style={{
+                        width: 28, height: 28, borderRadius: '50%',
+                        background: c.value,
+                        border: newColor === c.value ? `3px solid ${c.value}` : '2px solid transparent',
+                        outline: newColor === c.value ? `2px solid ${c.value}44` : 'none',
+                        outlineOffset: '2px',
+                        cursor: 'pointer',
+                        padding: 0,
+                        opacity: newColor === c.value ? 1 : 0.5,
+                        transition: 'opacity 0.15s, outline 0.15s',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div style={{ padding: '10px 12px', background: 'var(--surface)', border: `1px solid var(--line)`, borderLeft: `3px solid ${newColor}`, borderRadius: '8px', fontSize: '12px', color: 'var(--ink)' }}>
                 <strong>종료일:</strong> {newEndDate || '-'}
                 {newStartDate && newStartDate <= todayStr && newEndDate >= todayStr && (
-                  <span style={{ marginLeft: '8px', padding: '2px 8px', borderRadius: '4px', background: '#f59e0b', color: '#fff', fontSize: '11px' }}>오늘부터 활성화됨</span>
+                  <span style={{ marginLeft: '8px', padding: '2px 8px', borderRadius: '4px', background: newColor, color: '#fff', fontSize: '11px' }}>오늘부터 활성화됨</span>
                 )}
               </div>
             </div>

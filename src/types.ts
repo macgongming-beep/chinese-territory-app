@@ -189,11 +189,12 @@ export type SpecialPeriod = {
 }
 
 export const PERIOD_COLORS = [
-  { label: '보라', value: '#7c3aed' },
-  { label: '파랑', value: '#2563eb' },
-  { label: '초록', value: '#16a34a' },
-  { label: '주황', value: '#ea580c' },
-  { label: '빨강', value: '#dc2626' },
+  { label: '테라코타', value: '#C44536' },
+  { label: '호박',     value: '#B8862A' },
+  { label: '포레스트', value: '#4F7A4B' },
+  { label: '스틸블루', value: '#3A6BA8' },
+  { label: '머브',     value: '#7A5C8A' },
+  { label: '슬레이트', value: '#5D5B54' },
 ]
 
 export type Notice = {

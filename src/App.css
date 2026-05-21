@@ -9944,13 +9944,13 @@ button:focus-visible {
   /* 날짜 숫자 아래 특봉 기간 표시 — 셀 가로 전체 연결 */
   .period-full-bar {
     position: absolute;
-    top: 32px;
+    top: 30px;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 2px;
     margin: 0;
     flex-shrink: 0;
-    opacity: 0.75;
+    opacity: 0.6;
     pointer-events: none;
   }
 
@@ -9959,14 +9959,15 @@ button:focus-visible {
     max-width: 132px;
     overflow: hidden;
     margin-left: 4px;
-    padding: 1px 6px;
+    padding: 1px 5px;
     border-radius: var(--radius-sm);
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.4;
     text-overflow: ellipsis;
     vertical-align: middle;
     white-space: nowrap;
+    opacity: 0.9;
   }
 
   .day-cell:nth-child(7n) { border-right: 0; }
