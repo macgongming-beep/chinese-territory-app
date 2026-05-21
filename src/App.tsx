@@ -413,6 +413,7 @@ function App() {
               onAssignRestaurantToUser={assignRestaurantToUser}
               onRemoveRestaurantAssignment={removeRestaurantAssignment}
               onToggleBuildingRestaurant={toggleBuildingRestaurant}
+              onSetRegularVisitor={setRegularVisitor}
             />
           </div>
         )}

@@ -53,6 +53,8 @@ export function MobileMap({
   onToggleInvitationLeft,
   visitHistories,
   specialPeriods,
+  allUsers = [],
+  onSetRegularVisitor,
 }: {
   language: AppLanguage
   buildings: Building[]
@@ -81,6 +83,8 @@ export function MobileMap({
   onToggleInvitationLeft?: (buildingId: number, unitId: number) => void
   visitHistories: VisitHistory[]
   specialPeriods?: SpecialPeriod[]
+  allUsers?: { id: number; name: string }[]
+  onSetRegularVisitor?: (unitId: number, visitorName: string) => Promise<void>
 }) {
   // URL 파라미터 (가상 핀용)
   const [searchParams] = useSearchParams()
@@ -1296,7 +1300,11 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                   <span className="unit-number-text">{unit.number}</span>
                                   {unit.isChinese && <span className="unit-chinese-badge">中</span>}
                                   {unit.isForbidden && <span className="unit-forbidden-badge">방문금지</span>}
-                                  {unit.isRegularVisit && <span className="unit-regular-badge">{t(language, 'map.regularVisit')}</span>}
+                                  {unit.isRegularVisit && (
+                                    <span className="unit-regular-badge">
+                                      정기방문{unit.regularVisitor ? ` · ${unit.regularVisitor}` : ''}
+                                    </span>
+                                  )}
                                 </button>
                                 {activePeriod && (
                                   <button
@@ -1584,6 +1592,9 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               onDeleteUnit={onDeleteUnit}
               onDeleteVisitHistory={onDeleteVisitHistory}
               onClose={() => setFullScreenUnit(null)}
+              currentVisitor={currentVisitor}
+              allUsers={allUsers}
+              onSetRegularVisitor={onSetRegularVisitor}
             />
           </div>
         </div>
@@ -1610,6 +1621,9 @@ function UnitDetailScreen({
   onDeleteUnit,
   onDeleteVisitHistory,
   onClose,
+  currentVisitor,
+  allUsers = [],
+  onSetRegularVisitor,
 }: {
   unit: Unit
   building: Building
@@ -1622,15 +1636,20 @@ function UnitDetailScreen({
   setUnitMemos: React.Dispatch<React.SetStateAction<Record<number, string>>>
   requireRecordAccess: () => boolean
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
-  onToggleRegularVisit: (buildingId: number, unitId: number) => void
+  onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
   onClose: () => void
+  currentVisitor?: string
+  allUsers?: { id: number; name: string }[]
+  onSetRegularVisitor?: (unitId: number, visitorName: string) => Promise<void>
 }) {
   const [showDeleteMenu, setShowDeleteMenu] = useState(false)
   const [memoEditing, setMemoEditing] = useState(false)
   const [memoDraft, setMemoDraft] = useState<string | null>(null)
+  const [showRegularPopup, setShowRegularPopup] = useState(false)
+  const [regularNameDraft, setRegularNameDraft] = useState('')
 
   const TIME_SLOTS = ['오전', '오후', '저녁'] as const
   type RowKey = '평일' | '주말'
@@ -1772,9 +1791,9 @@ function UnitDetailScreen({
         {/* 플래그 */}
         <div style={sectionStyle}>
           <div style={{ display: 'flex', gap: 8 }}>
+            {/* 방문금지 */}
             {[
               { label: '방문금지', active: unit.isForbidden ?? false, onToggle: () => onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden }) },
-              { label: '정기방문', active: unit.isRegularVisit ?? false, onToggle: () => onToggleRegularVisit(building.id, unit.id) },
               { label: '중국인', active: unit.isChinese ?? false, onToggle: () => onToggleChinese(building.id, unit.id) },
             ].map(flag => (
               <button
@@ -1796,8 +1815,110 @@ function UnitDetailScreen({
                 {flag.label}
               </button>
             ))}
+            {/* 정기방문 — 팝업으로 담당자 지정 */}
+            <button
+              type="button"
+              disabled={!canRecordVisits}
+              onClick={() => {
+                if (!requireRecordAccess()) return
+                if (unit.isRegularVisit) {
+                  onToggleRegularVisit(building.id, unit.id)
+                } else {
+                  setRegularNameDraft(currentVisitor ?? '')
+                  setShowRegularPopup(true)
+                }
+              }}
+              style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                padding: '6px 4px', borderRadius: 7,
+                border: unit.isRegularVisit ? 'none' : '1px solid var(--line)',
+                background: unit.isRegularVisit ? '#B8862A' : 'var(--surface)',
+                color: unit.isRegularVisit ? '#fff' : 'var(--muted)',
+                fontSize: 11, fontWeight: 600,
+                cursor: canRecordVisits ? 'pointer' : 'default',
+              }}
+            >
+              {unit.isRegularVisit && <span style={{ fontSize: 11 }}>✓</span>}
+              정기방문
+            </button>
           </div>
+          {unit.isRegularVisit && unit.regularVisitor && (
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: '#B8862A', fontWeight: 600 }}>
+              담당: {unit.regularVisitor}
+              {canRecordVisits && (
+                <button
+                  type="button"
+                  onClick={() => { setRegularNameDraft(unit.regularVisitor ?? ''); setShowRegularPopup(true) }}
+                  style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--muted)', fontSize: 11, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                >변경</button>
+              )}
+            </p>
+          )}
         </div>
+
+        {/* 정기방문 담당자 팝업 */}
+        {showRegularPopup && (
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 700, display: 'grid', placeItems: 'center', padding: '0 24px' }}
+            onClick={() => setShowRegularPopup(false)}
+          >
+            <div
+              style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', width: '100%', maxWidth: 340 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>정기방문 담당자</h3>
+              {/* 사용자 선택 */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                {allUsers.map(u => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => setRegularNameDraft(u.name)}
+                    style={{
+                      padding: '5px 12px', borderRadius: 20,
+                      border: regularNameDraft === u.name ? 'none' : '1px solid var(--line)',
+                      background: regularNameDraft === u.name ? '#B8862A' : 'var(--bg)',
+                      color: regularNameDraft === u.name ? '#fff' : 'var(--ink)',
+                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >{u.name}</button>
+                ))}
+              </div>
+              {/* 직접 입력 */}
+              <input
+                value={regularNameDraft}
+                onChange={e => setRegularNameDraft(e.target.value)}
+                placeholder="직접 입력"
+                style={{
+                  width: '100%', padding: '8px 10px', border: '1px solid var(--line)',
+                  borderRadius: 8, fontSize: 13, background: 'var(--bg)', color: 'var(--ink)',
+                  boxSizing: 'border-box', marginBottom: 14,
+                }}
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowRegularPopup(false)}
+                  style={{ flex: 1, padding: '9px', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                >취소</button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const name = regularNameDraft.trim()
+                    if (!name) return
+                    if (unit.isRegularVisit && onSetRegularVisitor) {
+                      await onSetRegularVisitor(unit.id, name)
+                    } else {
+                      onToggleRegularVisit(building.id, unit.id, name)
+                    }
+                    setShowRegularPopup(false)
+                  }}
+                  style={{ flex: 2, padding: '9px', border: 'none', borderRadius: 8, background: '#B8862A', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                >등록</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 메모 */}
         <div style={sectionStyle}>
