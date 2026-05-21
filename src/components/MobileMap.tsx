@@ -1685,7 +1685,6 @@ function UnitDetailScreen({
           background: sColor + '18', color: sColor,
           fontSize: 12.5, fontWeight: 700,
         }}>{unitStatus}</span>
-        <span style={{ fontSize: 12, color: 'var(--muted)' }}>결과 자동 결정</span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px 0' }}>
@@ -1701,31 +1700,31 @@ function UnitDetailScreen({
             <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(3, 1fr)', background: 'var(--bg)' }}>
               <div />
               {TIME_SLOTS.map(s => (
-                <div key={s} style={{ textAlign: 'center', padding: '8px 4px', fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>{s}</div>
+                <div key={s} style={{ textAlign: 'center', padding: '7px 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{s}</div>
               ))}
             </div>
             {/* Rows */}
-            {(['평일', '주말'] as RowKey[]).map((row, ri) => (
+            {(['평일', '주말'] as RowKey[]).map((row) => (
               <div key={row} style={{
                 display: 'grid', gridTemplateColumns: '52px repeat(3, 1fr)',
                 borderTop: '1px solid var(--line)',
-                background: ri % 2 === 0 ? 'var(--surface)' : 'var(--bg)',
+                background: 'var(--surface)',
               }}>
-                <div style={{ padding: '10px 8px', fontSize: 12, fontWeight: 600, color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{row}</div>
+                <div style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{row}</div>
                 {TIME_SLOTS.map(slot => {
                   const cell = visitGrid[row][slot]
                   const c = resultColor(cell.lastResult)
                   return (
-                    <div key={slot} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 4px' }}>
+                    <div key={slot} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 4px', background: '#fff' }}>
                       {cell.total > 0 ? (
                         <span style={{
-                          width: 28, height: 28, borderRadius: '50%',
+                          width: 26, height: 26, borderRadius: '50%',
                           background: c + '22', color: c,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 13, fontWeight: 700,
+                          fontSize: 12, fontWeight: 700,
                         }}>{cell.total}</span>
                       ) : (
-                        <span style={{ color: 'var(--line)', fontSize: 16 }}>—</span>
+                        <span style={{ color: 'var(--line)', fontSize: 14 }}>—</span>
                       )}
                     </div>
                   )
@@ -1747,36 +1746,36 @@ function UnitDetailScreen({
                 const dayName = dayNames[new Date(h.visitedAt).getDay()]
                 return (
                   <div key={h.id} style={{
-                    background: 'var(--bg)', borderRadius: 10,
+                    background: 'var(--bg)', borderRadius: 8,
                     border: '1px solid var(--line)', borderLeft: `3px solid ${c}`,
-                    padding: '10px 12px',
+                    padding: '7px 10px',
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <span style={{ fontWeight: 700, color: c, fontSize: 14 }}>{h.result}</span>
-                        <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 8 }}>
+                        <span style={{ fontWeight: 700, color: c, fontSize: 13 }}>{h.result}</span>
+                        <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 7 }}>
                           {dayName}요일 {h.timeSlot}{h.visitor ? ` · ${h.visitor}` : ''}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                        <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+                        <span style={{ fontSize: 11, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
                           {h.visitedAt.slice(5).replace('-', '/')}
                         </span>
                         {canRecordVisits && (
                           <button
                             onClick={() => setEditingHistoryId(isMenuOpen ? null : h.id)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 18, padding: '0 2px', lineHeight: 1 }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
                             type="button"
                           >⋮</button>
                         )}
                       </div>
                     </div>
-                    {h.memo && <p style={{ margin: '5px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>{h.memo}</p>}
+                    {h.memo && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--muted)', lineHeight: 1.4 }}>{h.memo}</p>}
                     {isMenuOpen && (
-                      <div style={{ display: 'flex', gap: 6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--line)' }}>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--line)' }}>
                         <button
                           onClick={() => { setHistoryToEdit(h); setEditingHistoryId(null) }}
-                          style={{ flex: 1, padding: '6px', border: '1px solid var(--line)', borderRadius: 7, background: 'var(--surface)', color: 'var(--ink)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                          style={{ flex: 1, padding: '5px', border: '1px solid var(--line)', borderRadius: 6, background: 'var(--surface)', color: 'var(--ink)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                           type="button"
                         >수정</button>
                         <button
@@ -1786,7 +1785,7 @@ function UnitDetailScreen({
                             }
                             setEditingHistoryId(null)
                           }}
-                          style={{ flex: 1, padding: '6px', border: '1px solid #fecaca', borderRadius: 7, background: '#fef2f2', color: '#dc2626', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                          style={{ flex: 1, padding: '5px', border: '1px solid #fecaca', borderRadius: 6, background: '#fef2f2', color: '#dc2626', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                           type="button"
                         >삭제</button>
                       </div>
@@ -1800,35 +1799,30 @@ function UnitDetailScreen({
 
         {/* 플래그 */}
         <div style={sectionStyle}>
-          <h3 style={sectionTitleStyle}>플래그</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
             {[
-              { label: '방문금지', desc: '체크 시 더 이상 방문 안 함', active: unit.isForbidden ?? false, onToggle: () => onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden }) },
-              { label: '정기방문', desc: '정기방문으로 추가됨', active: unit.isRegularVisit ?? false, onToggle: () => onToggleRegularVisit(building.id, unit.id) },
-              { label: '중국인', desc: '거주자 언어', active: unit.isChinese ?? false, onToggle: () => onToggleChinese(building.id, unit.id) },
+              { label: '방문금지', active: unit.isForbidden ?? false, onToggle: () => onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden }) },
+              { label: '정기방문', active: unit.isRegularVisit ?? false, onToggle: () => onToggleRegularVisit(building.id, unit.id) },
+              { label: '중국인', active: unit.isChinese ?? false, onToggle: () => onToggleChinese(building.id, unit.id) },
             ].map(flag => (
-              <div key={flag.label} style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                background: 'var(--bg)', borderRadius: 10,
-                border: '1px solid var(--line)', padding: '12px 14px',
-              }}>
-                <button
-                  onClick={() => { if (!requireRecordAccess()) return; flag.onToggle() }}
-                  disabled={!canRecordVisits}
-                  style={{
-                    flexShrink: 0, width: 22, height: 22, borderRadius: 6,
-                    border: flag.active ? 'none' : '2px solid var(--line)',
-                    background: flag.active ? 'var(--ink)' : 'var(--surface)',
-                    color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: canRecordVisits ? 'pointer' : 'default', fontSize: 13, fontWeight: 700,
-                  }}
-                  type="button"
-                >{flag.active ? '✓' : ''}</button>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{flag.label}</div>
-                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{flag.desc}</div>
-                </div>
-              </div>
+              <button
+                key={flag.label}
+                type="button"
+                onClick={() => { if (!requireRecordAccess()) return; flag.onToggle() }}
+                disabled={!canRecordVisits}
+                style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '8px 6px', borderRadius: 8,
+                  border: flag.active ? 'none' : '1px solid var(--line)',
+                  background: flag.active ? 'var(--ink)' : 'var(--surface)',
+                  color: flag.active ? '#fff' : 'var(--muted)',
+                  fontSize: 12, fontWeight: 600,
+                  cursor: canRecordVisits ? 'pointer' : 'default',
+                }}
+              >
+                {flag.active && <span style={{ fontSize: 11 }}>✓</span>}
+                {flag.label}
+              </button>
             ))}
           </div>
         </div>
