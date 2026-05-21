@@ -22,6 +22,10 @@ function getLocalDateString() {
   return `${date.getFullYear()}-${month}-${day}`
 }
 
+function shortenAddress(addr: string): string {
+  return addr.replace(/^경기도\s*용인시\s*/, '')
+}
+
 export function MobileMap({
   language,
   buildings,
@@ -1189,8 +1193,8 @@ export function MobileMap({
                         >
                           <span className="bld-chevron">{isExpanded ? '▾' : '▸'}</span>
                           <div className="bld-head-text">
-                            <strong>{building.address}</strong>
-                            {building.name && <span className="bld-sub-name">{building.name}</span>}
+                            <strong>{building.name || shortenAddress(building.address)}</strong>
+                            {building.name && <span className="bld-sub-name">{shortenAddress(building.address)}</span>}
                             {card && selectedCardId === null && <span className="bld-sub-name" style={{ color: '#94a3b8' }}>{card.name}</span>}
                           </div>
                           <div className="bld-head-right">
@@ -1555,26 +1559,26 @@ export function MobileMap({
               aria-label="닫기"
             >‹</button>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--ink)' }}>
-                {fullScreenUnit.unit.number}
-                {fullScreenUnit.unit.isChinese && <span style={{ marginLeft: 5, fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fef2f2', color: '#dc2626', fontWeight: 700 }}>中</span>}
-                {fullScreenUnit.unit.isForbidden && <span style={{ marginLeft: 5, fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}>방문금지</span>}
+              <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                {fullScreenUnit.building.name
+                  ? `${fullScreenUnit.building.name} ${fullScreenUnit.unit.number}`
+                  : fullScreenUnit.unit.number}
+                {fullScreenUnit.unit.isChinese && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fef2f2', color: '#dc2626', fontWeight: 700 }}>中</span>}
+                {fullScreenUnit.unit.isForbidden && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}>방문금지</span>}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {fullScreenUnit.building.address}
-                {fullScreenUnit.building.name && ` · ${fullScreenUnit.building.name}`}
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {shortenAddress(fullScreenUnit.building.address)}
               </div>
             </div>
           </div>
 
           {/* 본문 */}
-          <div style={{ flex: 1, padding: '8px 0 40px' }}>
-            <UnitDetail
+          <div style={{ flex: 1 }}>
+            <UnitDetailScreen
               unit={fullScreenUnit.unit}
+              building={fullScreenUnit.building}
               unitHistories={fullScreenUnit.unitHistories}
-              buildingId={fullScreenUnit.building.id}
               canRecordVisits={canRecordVisits}
-              language={language}
               editingHistoryId={editingHistoryId}
               setEditingHistoryId={setEditingHistoryId}
               setHistoryToEdit={setHistoryToEdit}
@@ -1586,8 +1590,7 @@ export function MobileMap({
               onToggleChinese={onToggleChinese}
               onDeleteUnit={onDeleteUnit}
               onDeleteVisitHistory={onDeleteVisitHistory}
-              onQuickLogVisit={onQuickLogVisit}
-              onSetExpandedUnitId={() => setFullScreenUnit(null)}
+              onClose={() => setFullScreenUnit(null)}
             />
           </div>
         </div>
@@ -1596,7 +1599,328 @@ export function MobileMap({
   )
 }
 
-// ── 호수 상세 패널 ────────────────────────────────────────────
+// ── 세대 상세 풀스크린 (신) ────────────────────────────────────
+function UnitDetailScreen({
+  unit,
+  building,
+  unitHistories,
+  canRecordVisits,
+  editingHistoryId,
+  setEditingHistoryId,
+  setHistoryToEdit,
+  unitMemos,
+  setUnitMemos,
+  requireRecordAccess,
+  onUpdateUnitFlags,
+  onToggleRegularVisit,
+  onToggleChinese,
+  onDeleteUnit,
+  onDeleteVisitHistory,
+  onClose,
+}: {
+  unit: Unit
+  building: Building
+  unitHistories: VisitHistory[]
+  canRecordVisits: boolean
+  editingHistoryId: number | null
+  setEditingHistoryId: (id: number | null) => void
+  setHistoryToEdit: (h: VisitHistory) => void
+  unitMemos: Record<number, string>
+  setUnitMemos: React.Dispatch<React.SetStateAction<Record<number, string>>>
+  requireRecordAccess: () => boolean
+  onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
+  onToggleRegularVisit: (buildingId: number, unitId: number) => void
+  onToggleChinese: (buildingId: number, unitId: number) => void
+  onDeleteUnit: (buildingId: number, unitId: number) => void
+  onDeleteVisitHistory: (historyId: number, unitId: number) => void
+  onClose: () => void
+}) {
+  const [showDeleteMenu, setShowDeleteMenu] = useState(false)
+  const [memoEditing, setMemoEditing] = useState(false)
+  const [memoDraft, setMemoDraft] = useState<string | null>(null)
+
+  const TIME_SLOTS = ['오전', '오후', '저녁'] as const
+  type RowKey = '평일' | '주말'
+
+  // Build visit history grid
+  const visitGrid: Record<RowKey, Record<string, { total: number; lastResult: string }>> = {
+    평일: Object.fromEntries(TIME_SLOTS.map(s => [s, { total: 0, lastResult: '' }])),
+    주말: Object.fromEntries(TIME_SLOTS.map(s => [s, { total: 0, lastResult: '' }])),
+  }
+  for (const h of unitHistories) {
+    const d = new Date(h.visitedAt).getDay()
+    const row: RowKey = d === 0 || d === 6 ? '주말' : '평일'
+    const slot = h.timeSlot
+    if (!(slot in visitGrid[row])) continue
+    visitGrid[row][slot].total++
+    if (!visitGrid[row][slot].lastResult) visitGrid[row][slot].lastResult = h.result
+  }
+
+  const resultColor = (r: string) => r === '만남' ? '#4F7A4B' : r === '부재' ? '#C44536' : '#94a3b8'
+
+  const unitStatus = unit.isForbidden ? '방문금지'
+    : unit.isRegularVisit ? '정기방문'
+    : unit.status === '만남' ? '만남'
+    : unit.status === '부재' ? '부재'
+    : unit.status === '한국인' ? '한국인'
+    : '방문필요'
+  const statusColor: Record<string, string> = {
+    방문필요: '#2D6CDF', 만남: '#4F7A4B', 부재: '#C44536',
+    방문금지: '#1A1A18', 정기방문: '#B8862A', 한국인: '#94A3B8',
+  }
+  const sColor = statusColor[unitStatus] ?? '#2D6CDF'
+
+  const memo = unitMemos[unit.id] ?? unit.memo ?? ''
+
+  const sectionStyle: React.CSSProperties = { padding: '16px', marginBottom: 8, background: 'var(--surface)', borderRadius: 12 }
+  const sectionTitleStyle: React.CSSProperties = { margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }
+
+  return (
+    <div style={{ background: 'var(--bg)', minHeight: '100%', paddingBottom: 40 }}>
+
+      {/* 상태 칩 */}
+      <div style={{ padding: '10px 16px', background: 'var(--surface)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{
+          padding: '3px 10px', borderRadius: 999,
+          background: sColor + '18', color: sColor,
+          fontSize: 12.5, fontWeight: 700,
+        }}>{unitStatus}</span>
+        <span style={{ fontSize: 12, color: 'var(--muted)' }}>결과 자동 결정</span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px 0' }}>
+
+        {/* 방문 이력 표 */}
+        <div style={sectionStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h3 style={sectionTitleStyle}>방문 이력</h3>
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>총 {unitHistories.length}건</span>
+          </div>
+          <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
+            {/* Header */}
+            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(3, 1fr)', background: 'var(--bg)' }}>
+              <div />
+              {TIME_SLOTS.map(s => (
+                <div key={s} style={{ textAlign: 'center', padding: '8px 4px', fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>{s}</div>
+              ))}
+            </div>
+            {/* Rows */}
+            {(['평일', '주말'] as RowKey[]).map((row, ri) => (
+              <div key={row} style={{
+                display: 'grid', gridTemplateColumns: '52px repeat(3, 1fr)',
+                borderTop: '1px solid var(--line)',
+                background: ri % 2 === 0 ? 'var(--surface)' : 'var(--bg)',
+              }}>
+                <div style={{ padding: '10px 8px', fontSize: 12, fontWeight: 600, color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{row}</div>
+                {TIME_SLOTS.map(slot => {
+                  const cell = visitGrid[row][slot]
+                  const c = resultColor(cell.lastResult)
+                  return (
+                    <div key={slot} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 4px' }}>
+                      {cell.total > 0 ? (
+                        <span style={{
+                          width: 28, height: 28, borderRadius: '50%',
+                          background: c + '22', color: c,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 13, fontWeight: 700,
+                        }}>{cell.total}</span>
+                      ) : (
+                        <span style={{ color: 'var(--line)', fontSize: 16 }}>—</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 기록 */}
+        {unitHistories.length > 0 && (
+          <div style={sectionStyle}>
+            <h3 style={{ ...sectionTitleStyle, marginBottom: 10 }}>기록 {unitHistories.length}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {unitHistories.map(h => {
+                const c = resultColor(h.result)
+                const isMenuOpen = editingHistoryId === h.id
+                const dayNames = ['일', '월', '화', '수', '목', '금', '토']
+                const dayName = dayNames[new Date(h.visitedAt).getDay()]
+                return (
+                  <div key={h.id} style={{
+                    background: 'var(--bg)', borderRadius: 10,
+                    border: '1px solid var(--line)', borderLeft: `3px solid ${c}`,
+                    padding: '10px 12px',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <span style={{ fontWeight: 700, color: c, fontSize: 14 }}>{h.result}</span>
+                        <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 8 }}>
+                          {dayName}요일 {h.timeSlot}{h.visitor ? ` · ${h.visitor}` : ''}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                        <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+                          {h.visitedAt.slice(5).replace('-', '/')}
+                        </span>
+                        {canRecordVisits && (
+                          <button
+                            onClick={() => setEditingHistoryId(isMenuOpen ? null : h.id)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 18, padding: '0 2px', lineHeight: 1 }}
+                            type="button"
+                          >⋮</button>
+                        )}
+                      </div>
+                    </div>
+                    {h.memo && <p style={{ margin: '5px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>{h.memo}</p>}
+                    {isMenuOpen && (
+                      <div style={{ display: 'flex', gap: 6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--line)' }}>
+                        <button
+                          onClick={() => { setHistoryToEdit(h); setEditingHistoryId(null) }}
+                          style={{ flex: 1, padding: '6px', border: '1px solid var(--line)', borderRadius: 7, background: 'var(--surface)', color: 'var(--ink)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                          type="button"
+                        >수정</button>
+                        <button
+                          onClick={() => {
+                            if (confirm('이 기록을 삭제할까요?')) {
+                              onDeleteVisitHistory(h.id, unit.id)
+                            }
+                            setEditingHistoryId(null)
+                          }}
+                          style={{ flex: 1, padding: '6px', border: '1px solid #fecaca', borderRadius: 7, background: '#fef2f2', color: '#dc2626', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                          type="button"
+                        >삭제</button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 플래그 */}
+        <div style={sectionStyle}>
+          <h3 style={sectionTitleStyle}>플래그</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              { label: '방문금지', desc: '체크 시 더 이상 방문 안 함', active: unit.isForbidden ?? false, onToggle: () => onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden }) },
+              { label: '정기방문', desc: '정기방문으로 추가됨', active: unit.isRegularVisit ?? false, onToggle: () => onToggleRegularVisit(building.id, unit.id) },
+              { label: '중국인', desc: '거주자 언어', active: unit.isChinese ?? false, onToggle: () => onToggleChinese(building.id, unit.id) },
+            ].map(flag => (
+              <div key={flag.label} style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                background: 'var(--bg)', borderRadius: 10,
+                border: '1px solid var(--line)', padding: '12px 14px',
+              }}>
+                <button
+                  onClick={() => { if (!requireRecordAccess()) return; flag.onToggle() }}
+                  disabled={!canRecordVisits}
+                  style={{
+                    flexShrink: 0, width: 22, height: 22, borderRadius: 6,
+                    border: flag.active ? 'none' : '2px solid var(--line)',
+                    background: flag.active ? 'var(--ink)' : 'var(--surface)',
+                    color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: canRecordVisits ? 'pointer' : 'default', fontSize: 13, fontWeight: 700,
+                  }}
+                  type="button"
+                >{flag.active ? '✓' : ''}</button>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{flag.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{flag.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 메모 */}
+        <div style={sectionStyle}>
+          <h3 style={sectionTitleStyle}>메모</h3>
+          {memoEditing ? (
+            <div>
+              <textarea
+                autoFocus
+                value={memoDraft ?? ''}
+                onChange={e => setMemoDraft(e.target.value)}
+                style={{
+                  width: '100%', minHeight: 72, padding: '8px 10px',
+                  border: '1px solid var(--line)', borderRadius: 8,
+                  background: 'var(--bg)', color: 'var(--ink)',
+                  fontSize: 13, lineHeight: 1.5, fontFamily: 'inherit',
+                  resize: 'none', boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <button
+                  onClick={() => {
+                    setUnitMemos(prev => ({ ...prev, [unit.id]: memoDraft ?? '' }))
+                    setMemoEditing(false)
+                  }}
+                  style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                  type="button"
+                >저장</button>
+                <button
+                  onClick={() => { setMemoEditing(false); setMemoDraft(null) }}
+                  style={{ flex: 1, padding: '8px', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                  type="button"
+                >취소</button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => { if (!requireRecordAccess()) return; setMemoDraft(memo); setMemoEditing(true) }}
+              style={{
+                width: '100%', textAlign: 'left', background: 'var(--bg)',
+                border: '1px solid var(--line)', borderRadius: 8,
+                padding: '8px 10px', fontSize: 13, color: memo ? 'var(--ink)' : 'var(--muted)',
+                cursor: canRecordVisits ? 'pointer' : 'default',
+                whiteSpace: 'pre-wrap', lineHeight: 1.5, fontFamily: 'inherit',
+              }}
+              type="button"
+            >{memo || '메모 추가...'}</button>
+          )}
+        </div>
+
+        {/* 세대 삭제 */}
+        {canRecordVisits && (
+          <div style={{ position: 'relative', textAlign: 'center', paddingBottom: 8 }}>
+            <button
+              onClick={() => setShowDeleteMenu(v => !v)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 13, padding: '8px 16px' }}
+              type="button"
+            >세대 삭제</button>
+            {showDeleteMenu && (
+              <>
+                <div onClick={() => setShowDeleteMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 1 }} />
+                <div style={{
+                  position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: '100%',
+                  zIndex: 2, background: 'var(--surface)', borderRadius: 10,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.12)', border: '1px solid var(--line)',
+                  overflow: 'hidden', minWidth: 140,
+                }}>
+                  <button
+                    onClick={() => {
+                      setShowDeleteMenu(false)
+                      if (confirm(`"${unit.number}" 세대를 삭제할까요?`)) {
+                        onDeleteUnit(building.id, unit.id)
+                        onClose()
+                      }
+                    }}
+                    style={{ display: 'block', width: '100%', padding: '13px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#dc2626', textAlign: 'center' }}
+                    type="button"
+                  >세대 삭제</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── 호수 상세 패널 (레거시 — UnitDetailScreen 으로 대체됨) ────
+// @ts-ignore: kept for reference; replaced by UnitDetailScreen above
 function UnitDetail({
   unit,
   unitHistories,
