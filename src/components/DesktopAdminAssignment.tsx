@@ -253,6 +253,7 @@ export function DesktopAdminAssignment({
       <header className="page-header">
         <div className="page-header-text">
           <h1 className="page-header-title">관리자 배정</h1>
+          <p className="page-header-subtitle">전체 카드 {cards.length}개 · 미배정 {unassignedCount}개</p>
         </div>
         <div className="page-header-actions">
           <button className="la-header-btn" type="button" onClick={() => setShowStatusModal(true)}>배정 현황 보기</button>

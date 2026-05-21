@@ -533,6 +533,9 @@ export function DesktopApp({
               onSetRegularVisitor={onSetRegularVisitor}
               onUpdateUnitFlags={onUpdateUnitFlags}
               onUpdateUnitStatus={onUpdateUnitStatus}
+              onAddVisitHistory={onAddVisitHistory}
+              onUpdateVisitHistory={onUpdateVisitHistory}
+              onDeleteVisitHistory={onDeleteVisitHistory}
               onOpenCardMap={openCardOnMap}
               onOpenBuildingMap={openBuildingOnMap}
               visitHistories={visitHistories}
@@ -622,6 +625,9 @@ export function DesktopApp({
                 onSetRegularVisitor={onSetRegularVisitor}
                 onUpdateUnitFlags={onUpdateUnitFlags}
                 onUpdateUnitStatus={onUpdateUnitStatus}
+                onAddVisitHistory={onAddVisitHistory}
+                onUpdateVisitHistory={onUpdateVisitHistory}
+                onDeleteVisitHistory={onDeleteVisitHistory}
                 onOpenCardMap={openCardOnMap}
                 onOpenBuildingMap={openBuildingOnMap}
                 visitHistories={visitHistories}

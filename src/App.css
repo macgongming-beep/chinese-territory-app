@@ -10935,6 +10935,10 @@ button:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .territory-layout.point-detail-open {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  }
+
   .territory-main,
   .territory-side {
     min-width: 0;
@@ -12381,7 +12385,7 @@ button:focus-visible {
   .point-management-head,
   .point-management-row {
     display: grid;
-    grid-template-columns: minmax(130px, 0.85fr) minmax(150px, 1fr) minmax(150px, 1.1fr) 82px 68px 72px 104px minmax(130px, 1fr) 52px;
+    grid-template-columns: minmax(130px, 0.9fr) minmax(160px, 1.1fr) minmax(150px, 1.1fr) minmax(90px, 0.65fr) minmax(150px, 1fr) minmax(150px, 1fr) 56px;
     gap: 10px;
     align-items: center;
   }
@@ -12405,6 +12409,11 @@ button:focus-visible {
 
   .point-management-row:hover {
     background: #f8fbff;
+  }
+
+  .point-management-row.selected {
+    background: #f7f9fc;
+    box-shadow: inset 3px 0 0 var(--ink-900);
   }
 
   .point-management-row strong,
@@ -12453,6 +12462,309 @@ button:focus-visible {
     border-color: #d9c6ff;
     background: #f4efff;
     color: #6b46c1;
+  }
+
+  .point-management-row .point-visit-cell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .point-management-row .point-visit-cell > span {
+    min-width: 0;
+  }
+
+  .point-management-row .point-visit-edit-btn {
+    min-height: 26px;
+    padding: 0 7px;
+    border-color: var(--line-2);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .point-detail-pane {
+    align-self: start;
+    top: 108px;
+    margin-top: var(--point-detail-offset, 386px);
+    max-height: calc(100svh - 132px);
+    border-color: #e4e1dc;
+    border-radius: 24px;
+    background: #f8f7f4;
+    box-shadow: 0 14px 34px rgba(32, 35, 31, 0.08);
+  }
+
+  .point-detail-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: calc(100svh - 132px);
+    overflow-y: auto;
+    padding: 18px;
+  }
+
+  .point-detail-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid #e5e2dc;
+    border-radius: 20px;
+    background: #ffffff;
+  }
+
+  .point-detail-head p {
+    margin: 0 0 4px;
+    color: var(--ink-500);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .point-detail-head h3 {
+    margin: 0;
+    color: #1c1c1a;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .point-detail-head span {
+    display: block;
+    margin-top: 4px;
+    color: var(--ink-400);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .point-detail-head button,
+  .point-detail-actions button,
+  .point-history-menu-popover button {
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid #dedbd5;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #33332f;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .point-detail-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .point-detail-summary > div,
+  .point-detail-info {
+    padding: 14px;
+    border: 1px solid #e5e2dc;
+    border-radius: 18px;
+    background: #ffffff;
+  }
+
+  .point-detail-summary strong,
+  .point-detail-info strong {
+    display: block;
+    color: #1c1c1a;
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .point-detail-summary span,
+  .point-detail-info span {
+    display: block;
+    margin-top: 4px;
+    color: var(--ink-500);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .point-detail-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .point-detail-actions .primary {
+    flex: 1;
+    border-color: #1c1c1a;
+    background: #1c1c1a;
+    color: #ffffff;
+  }
+
+  .point-history-list {
+    display: grid;
+    gap: 7px;
+  }
+
+  .point-history-title {
+    color: #1c1c1a;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .point-history-item {
+    padding: 8px 10px;
+    border: 1px solid #e5e2dc;
+    border-radius: 12px;
+    background: #ffffff;
+  }
+
+  .point-history-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .point-history-date-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .point-history-main strong {
+    display: inline-flex;
+    margin-bottom: 0;
+    color: #1c1c1a;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .point-history-result {
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: #f1f0ec;
+    color: #33332f;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1.3;
+  }
+
+  .point-history-result.result-만남 {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .point-history-result.result-부재 {
+    background: #fef9c3;
+    color: #854d0e;
+  }
+
+  .point-history-result.result-한국인 {
+    background: #f2f4f7;
+    color: var(--ink-500);
+  }
+
+  .point-history-result.result-미방문 {
+    background: #f1f0ec;
+    color: #6f6b63;
+  }
+
+  .point-history-item p {
+    margin: 5px 0 0;
+    color: var(--ink-500);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.45;
+  }
+
+  .point-history-menu {
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .point-history-menu-btn {
+    display: grid;
+    width: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    place-items: center;
+    padding: 0 0 4px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: #f5f4f0;
+    color: #6f6b63;
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .point-history-menu-btn:hover {
+    background: #eceae4;
+  }
+
+  .point-history-menu-popover {
+    position: absolute;
+    top: 40px;
+    right: 0;
+    z-index: 8;
+    display: grid;
+    min-width: 92px;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid #e5e2dc;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 12px 28px rgba(32, 35, 31, 0.12);
+  }
+
+  .point-history-menu-popover .danger {
+    border-color: #f2d7d0;
+    color: #d04437;
+  }
+
+  .point-history-empty {
+    padding: 18px;
+    border: 1px dashed var(--line-2);
+    border-radius: var(--r-lg);
+    color: var(--ink-500);
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .point-visit-editor-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .point-visit-editor-form label {
+    display: grid;
+    gap: 6px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .point-visit-editor-form label.wide {
+    grid-column: 1 / -1;
+  }
+
+  .point-visit-editor-form input,
+  .point-visit-editor-form select,
+  .point-visit-editor-form textarea {
+    width: 100%;
+    min-height: 38px;
+    padding: 0 11px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .point-visit-editor-form textarea {
+    min-height: 76px;
+    padding-top: 10px;
+    resize: vertical;
   }
 
   .territory-confirm-modal {
@@ -16109,8 +16421,55 @@ button:focus-visible {
 
   .map-card-list {
     display: grid;
+    align-content: start;
     max-height: 692px;
     overflow-y: auto;
+  }
+
+  /* 구/동 드릴다운 nav 아이템 */
+  .map-nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 9px 14px;
+    border: none;
+    border-bottom: 1px solid #eef1f4;
+    background: #fff;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+  }
+
+  .map-nav-item:hover {
+    background: #f5f8ff;
+  }
+
+  .map-nav-item__name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-900);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .map-nav-item__badge {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 7px;
+    border-radius: 99px;
+    background: #eef5ff;
+    color: var(--brand-700);
+    font-size: 11px;
+    font-weight: 700;
   }
 
   .map-card-list article {
@@ -21526,10 +21885,6 @@ button:focus-visible {
   background: #fff;
 }
 
-.unit-grid-row.ugr-regular {
-  border-left: 3px solid var(--accent-700);
-}
-
 .unit-grid-row.ugr-expanded {
   background: #fff;
 }
@@ -25285,7 +25640,7 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 4px 0 24px;
+  padding: 20px 16px 24px;
 }
 .mh-page .mobile-home-section {
   margin-bottom: 0;
@@ -25295,7 +25650,7 @@ button:focus-visible {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: 0 4px;
+  padding: 0;
 }
 .mh-sec-head h2 {
   margin: 0;
@@ -25504,7 +25859,7 @@ button:focus-visible {
   color: var(--muted);
 }
 
-/* 인도자 담당 카드 chip */
+/* 인도자 담당 카드 chip — legacy (지금은 미사용) */
 .mh-leader-chips {
   display: flex;
   flex-wrap: wrap;
@@ -25529,6 +25884,321 @@ button:focus-visible {
   color: var(--muted);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+}
+
+/* 담당 카드 미니 그리드 (2x2) */
+.mh-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.mh-card-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mh-card-tile:active {
+  background: var(--tint);
+}
+.mh-card-tile-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.mh-card-tile-pct {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.mh-card-tile-pct.high { color: #4F7A4B; }
+.mh-card-tile-pct.mid { color: #B8862A; }
+.mh-card-tile-pct.low { color: #C44536; }
+.mh-card-tile-meta {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 진행률 바 리스트 */
+.mh-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.mh-progress-row {
+  display: grid;
+  grid-template-columns: minmax(0, 100px) 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.mh-progress-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mh-progress-bar-track {
+  height: 6px;
+  background: var(--tint);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.mh-progress-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.3s;
+}
+.mh-progress-bar-fill.high { background: #4F7A4B; }
+.mh-progress-bar-fill.mid { background: #B8862A; }
+.mh-progress-bar-fill.low { background: #C44536; }
+.mh-progress-pct {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* [A·F안 공통] featured 일정 카드 (큰 카드) */
+.mh-upcoming-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 10px;
+}
+.mh-upcoming-row:active {
+  background: var(--tint);
+}
+.mh-upcoming-row--featured {
+  margin-top: 10px;
+}
+.mh-upcoming-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: #B8862A;
+  letter-spacing: -0.005em;
+}
+.mh-upcoming-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mh-upcoming-meta {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* dim 표식 (안 비교용) */
+.mh-cnt-dim {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  background: var(--tint);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 2px;
+}
+
+/* [A안] 7일 dot row */
+.mh-week-dots {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.mh-week-dot-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.mh-week-dot-cell.is-today {
+  background: var(--tint);
+}
+.mh-week-dot-wd {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.mh-week-dot-day {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.mh-week-dot-cell.is-today .mh-week-dot-day {
+  color: var(--brand-700);
+}
+.mh-week-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: transparent;
+  margin-top: 1px;
+}
+.mh-week-dot.filled {
+  background: #B8862A;
+}
+
+/* [B안] 이번 주 일정 자세한 카드 리스트 */
+.mh-week-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.mh-week-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mh-week-row:last-child {
+  border-bottom: none;
+}
+.mh-week-row:active {
+  background: var(--tint);
+}
+.mh-week-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mh-week-row-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: #B8862A;
+  letter-spacing: -0.005em;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.mh-week-row-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mh-week-row-meta {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* [F안] 다가올 일정 컴팩트 한 줄 리스트 */
+.mh-compact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.mh-compact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mh-compact-row:last-child {
+  border-bottom: none;
+}
+.mh-compact-row:active {
+  background: var(--tint);
+}
+.mh-compact-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: #B8862A;
+  letter-spacing: -0.005em;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  min-width: 70px;
+}
+.mh-compact-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.mh-compact-meta {
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
 }
 
 /* 공지 압축 */

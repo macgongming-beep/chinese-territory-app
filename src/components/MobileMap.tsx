@@ -1465,10 +1465,10 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               onChange={e => setHistoryToEdit({ ...historyToEdit, result: e.target.value as any })}
               style={{ width: '100%', padding: '8px 10px', marginBottom: 12, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 13, boxSizing: 'border-box' }}
             >
+              <option value="미방문">미방문</option>
               <option value="만남">만남</option>
               <option value="부재">부재</option>
               <option value="한국인">한국인</option>
-              <option value="거절">거절</option>
             </select>
 
             {/* 시간대 + 날짜 나란히 */}
@@ -1553,29 +1553,29 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
           display: 'flex', flexDirection: 'column',
           overflowY: 'auto',
         }}>
-          {/* 헤더 */}
+          {/* 헤더 — 지도 헤더(.mobile-map-header) 스타일 일치 */}
           <div style={{
             position: 'sticky', top: 0, zIndex: 10,
-            background: 'var(--surface, #fff)',
+            background: 'var(--bg)',
             borderBottom: '1px solid var(--line)',
-            padding: '12px 16px',
-            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 12px',
+            display: 'flex', alignItems: 'flex-start', gap: 10,
           }}>
             <button
               onClick={() => setFullScreenUnit(null)}
               type="button"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--ink)', padding: '0 4px', lineHeight: 1 }}
+              style={{ width: 36, height: 36, padding: 0, border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--text)', cursor: 'pointer', fontSize: 22, lineHeight: 1, marginLeft: -4, flexShrink: 0 }}
               aria-label="닫기"
             >‹</button>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <div style={{ margin: 0, fontWeight: 700, fontSize: 20, letterSpacing: '-0.015em', color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 {liveFullScreenUnit.building.name
                   ? `${liveFullScreenUnit.building.name} ${liveFullScreenUnit.unit.number}`
                   : liveFullScreenUnit.unit.number}
                 {liveFullScreenUnit.unit.isChinese && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fef2f2', color: '#dc2626', fontWeight: 700 }}>中</span>}
                 {liveFullScreenUnit.unit.isForbidden && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}>방문금지</span>}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ margin: '0 0 4px', fontSize: 12.5, fontWeight: 500, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {shortenAddress(liveFullScreenUnit.building.address)}
               </div>
             </div>
@@ -1584,7 +1584,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               <button
                 type="button"
                 onClick={() => setShowUnitHeaderMenu(v => !v)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--muted)', padding: '4px 6px', lineHeight: 1 }}
+                style={{ width: 36, height: 36, padding: 0, border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}
               >⋯</button>
               {showUnitHeaderMenu && (
                 <>

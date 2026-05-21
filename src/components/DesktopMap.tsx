@@ -153,7 +153,7 @@ export function DesktopMap({
   const [drawingBoundary, setDrawingBoundary] = useState(false)
   const [savingBoundary, setSavingBoundary] = useState(false)
   const [draftBoundaryPoints, setDraftBoundaryPoints] = useState<GeoPoint[]>([])
-  const [detailOpen, setDetailOpen] = useState(true)
+  const [detailOpen, setDetailOpen] = useState(false)
   const [undoStack, setUndoStack] = useState<GeoPoint[][]>([])
   const [expandedUnitId, setExpandedUnitId] = useState<number | null>(null)
   const [unitDeleteMenuId, setUnitDeleteMenuId] = useState<number | null>(null)
@@ -494,7 +494,27 @@ export function DesktopMap({
   // 필터링된 카드 ID 세트 (하이라이트용)
   const highlightedCardIds = useMemo(() => new Set(orderedCards.map((c) => c.id)), [orderedCards])
 
+  // 구/동 드릴다운용 파생 데이터
+  const regionCardCounts = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const c of cards) map.set(c.region, (map.get(c.region) ?? 0) + 1)
+    return map
+  }, [cards])
 
+  const dongList = useMemo(() => {
+    if (regionFilter === '전체') return []
+    const areas = cards.filter((c) => c.region === regionFilter).map((c) => c.area)
+    const unique = Array.from(new Set(areas))
+    return unique.sort((a, b) => a.localeCompare(b, 'ko'))
+  }, [cards, regionFilter])
+
+  const dongCardCounts = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const c of cards) {
+      if (c.region === regionFilter) map.set(c.area, (map.get(c.area) ?? 0) + 1)
+    }
+    return map
+  }, [cards, regionFilter])
 
   // areaFilterOptions 는 동 dropdown 제거 후 미사용 — 추후 필요 시 부활
 
@@ -549,6 +569,7 @@ export function DesktopMap({
 
   // 집계 마커 (항상 동 단위) — 동 미선택 + 카드 미선택 + 그리기 모드 X 일 때 활성
   // 구 단위 클러스터는 건너뜀 — 처음부터 동별 묶음을 보고, 동 클릭 시 개별 마커
+  // 카드·동 미선택 시 집계 마커 사용 (구 선택 여부와 무관)
   const shouldUseAggregateMap =
     cardFilter === '전체' &&
     areaFilter === '전체' &&
@@ -561,30 +582,59 @@ export function DesktopMap({
     if (!shouldUseAggregateMap) return []
     type Acc = MapAggregateMarker & { latSum: number; lngSum: number; pointCount: number }
     const groups = new Map<string, Acc>()
-    mapBuildings.forEach((building) => {
-      const card = cardMap.get(building.cardId)
-      if (!card) return
-      const region = String(card.region)
-      const area = card.area
-      if (!area) return
-      // region+area 복합 키 (다른 구에 같은 동 이름이 있을 수도 있어 분리)
-      const id = `area:${region}::${area}`
-      const current = groups.get(id) ?? {
-        id, label: area,
-        count: 0, unitCount: 0, houseCount: 0, shopCount: 0,
-        lat: 0, lng: 0, latSum: 0, lngSum: 0, pointCount: 0,
-      }
-      current.count += 1
-      current.unitCount += building.units.length
-      if (building.type === '주택') current.houseCount += 1
-      if (building.type === '상가') current.shopCount += 1
-      if (Number.isFinite(building.lat) && Number.isFinite(building.lng)) {
-        current.latSum += building.lat
-        current.lngSum += building.lng
-        current.pointCount += 1
-      }
-      groups.set(id, current)
-    })
+
+    // 구 미선택 → 구 단위 집계 (건물 전체를 처리하지 않고 buildings 전체를 사용하면 무거우므로
+    //   contextBuildings 대신 buildings를 직접 순회하되 구 단위라 마커 수가 5~6개로 매우 적음)
+    if (regionFilter === '전체') {
+      buildings.forEach((building) => {
+        const card = cardMap.get(building.cardId)
+        if (!card) return
+        const region = String(card.region)
+        if (!region) return
+        const id = `region:${region}`
+        const current = groups.get(id) ?? {
+          id, label: region,
+          count: 0, unitCount: 0, houseCount: 0, shopCount: 0,
+          lat: 0, lng: 0, latSum: 0, lngSum: 0, pointCount: 0,
+        }
+        current.count += 1
+        current.unitCount += building.units.length
+        if (building.type === '주택') current.houseCount += 1
+        if (building.type === '상가') current.shopCount += 1
+        if (Number.isFinite(building.lat) && Number.isFinite(building.lng)) {
+          current.latSum += building.lat
+          current.lngSum += building.lng
+          current.pointCount += 1
+        }
+        groups.set(id, current)
+      })
+    } else {
+      // 구 선택 → 동 단위 집계 (해당 구 건물만)
+      mapBuildings.forEach((building) => {
+        const card = cardMap.get(building.cardId)
+        if (!card) return
+        const region = String(card.region)
+        const area = card.area
+        if (!area) return
+        const id = `area:${region}::${area}`
+        const current = groups.get(id) ?? {
+          id, label: area,
+          count: 0, unitCount: 0, houseCount: 0, shopCount: 0,
+          lat: 0, lng: 0, latSum: 0, lngSum: 0, pointCount: 0,
+        }
+        current.count += 1
+        current.unitCount += building.units.length
+        if (building.type === '주택') current.houseCount += 1
+        if (building.type === '상가') current.shopCount += 1
+        if (Number.isFinite(building.lat) && Number.isFinite(building.lng)) {
+          current.latSum += building.lat
+          current.lngSum += building.lng
+          current.pointCount += 1
+        }
+        groups.set(id, current)
+      })
+    }
+
     return Array.from(groups.values())
       .filter((g) => g.pointCount > 0)
       .map((g) => ({
@@ -594,18 +644,28 @@ export function DesktopMap({
         lat: g.latSum / g.pointCount, lng: g.lngSum / g.pointCount,
       }))
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'))
-  }, [mapBuildings, cardMap, shouldUseAggregateMap])
+  }, [buildings, mapBuildings, cardMap, shouldUseAggregateMap, regionFilter])
 
   const aggregateMapBuildings = shouldUseAggregateMap ? [] : mapBuildings
 
   const handleSelectAggregateMarker = (id: string) => {
-    // id 형식: "area:{region}::{area}"
-    const m = id.match(/^area:(.+?)::(.+)$/)
-    if (!m) return
-    const [, region, area] = m
-    // 구 + 동 동시 설정 → 그 동의 개별 마커로 진입
-    setRegionFilter(region as TerritoryRegion | '전체')
-    setAreaFilter(area)
+    if (id.startsWith('region:')) {
+      // 구 클릭 → 구 선택 (동 목록으로 이동)
+      const region = id.replace('region:', '')
+      setRegionFilter(region as TerritoryRegion | '전체')
+      setAreaFilter('전체')
+      setCardFilter('전체')
+      setDetailOpen(false)
+    } else {
+      // 동 클릭 → 구+동 동시 설정 → 개별 마커
+      const m = id.match(/^area:(.+?)::(.+)$/)
+      if (!m) return
+      const [, region, area] = m
+      setRegionFilter(region as TerritoryRegion | '전체')
+      setAreaFilter(area)
+      setCardFilter('전체')
+      setDetailOpen(false)
+    }
   }
   const panelBuildingGroups = useMemo(() => {
     const order: BuildingStatus[] = ['방문금지', '방문필요', '정기방문', '방문완료']
@@ -739,8 +799,10 @@ export function DesktopMap({
       setSelectedBuildingId(null)
       setExpandedBuildingIds(new Set())
       setExpandedUnitId(null)
+      setDetailOpen(false)
       return
     }
+    setDetailOpen(true)
     const firstBuilding = buildings.find((b) => b.cardId === cardId)
     if (firstBuilding) {
       setSelectedBuildingId(firstBuilding.id)
@@ -1029,52 +1091,123 @@ export function DesktopMap({
 
         <div className="map-workspace">
           <aside className="map-card-panel" aria-label="지도 카드 목록">
-            <div className="map-panel-head">
-              <div>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>구역 카드</p>
-                <strong style={{ fontSize: 18, fontWeight: 700, color: 'var(--gray-900)', lineHeight: 1.2 }}>{orderedCards.length}개</strong>
-              </div>
-              <button
-                className="tbl-soft-btn sm"
-                style={{ flexShrink: 0 }}
-                onClick={toggleAllBoundaries}
-                type="button"
-              >
-                전체 보기
-              </button>
-            </div>
-            <div className="map-card-list">
-              {orderedCards.length === 0 && (
-                <div className="map-empty-state">
-                  <p>조건에 맞는 카드가 없습니다</p>
+            {/* 패널 헤더 */}
+            <div className="map-card-panel-head">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                {regionFilter !== '전체' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (areaFilter !== '전체') { setAreaFilter('전체'); setCardFilter('전체'); setDetailOpen(false) }
+                      else { setRegionFilter('전체'); setAreaFilter('전체'); setCardFilter('전체'); setDetailOpen(false) }
+                    }}
+                    style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--gray-50)', color: 'var(--gray-700)', fontSize: 18, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  >‹</button>
+                )}
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {regionFilter === '전체' ? '구역 카드' : areaFilter === '전체' ? regionFilter : `${regionFilter} · ${areaFilter}`}
+                  </p>
+                  <strong style={{ fontSize: 15, fontWeight: 700, color: 'var(--gray-900)', lineHeight: 1.3 }}>
+                    {regionFilter === '전체'
+                      ? '지역 선택'
+                      : areaFilter === '전체'
+                        ? `${dongList.length}개 동`
+                        : `${orderedCards.length}개 카드`}
+                  </strong>
                 </div>
+              </div>
+              {areaFilter !== '전체' && (
+                <button
+                  className="tbl-soft-btn sm"
+                  style={{ flexShrink: 0 }}
+                  onClick={toggleAllBoundaries}
+                  type="button"
+                >
+                  전체 보기
+                </button>
               )}
-              {orderedCards.map((card) => {
-                const cardBuildings = buildingsByCardId.get(card.id) ?? []
-                const hasBoundary = boundariesByCardId.has(card.id)
-                const boundaryVisible = visibleBoundarySelection === card.id || visibleBoundarySelection === '전체'
-                return (
-                  <article
-                    className={cardFilter === card.id ? 'map-card-item selected' : 'map-card-item'}
-                    key={card.id}
-                  >
-                    <button className="map-card-item__content" onClick={() => handleSelectCardForMap(card.id)} type="button">
-                      <strong>{card.name}</strong>
-                      <span>
-                        건물 <b className="tnum">{cardBuildings.length}</b> · 세대 <b className="tnum">{card.units}</b> · <b className="tnum">{card.progress}%</b>
-                      </span>
-                    </button>
-                    <button
-                      className={`map-card-boundary-btn${boundaryVisible ? ' active' : ''}`}
-                      disabled={!hasBoundary}
-                      onClick={(e) => { e.stopPropagation(); setVisibleBoundarySelection((prev) => prev === card.id ? null : card.id) }}
-                      type="button"
-                    >
-                      구역선
-                    </button>
-                  </article>
-                )
-              })}
+            </div>
+
+            {/* 패널 콘텐츠 — 3단계 드릴다운 */}
+            <div className="map-card-list">
+              {/* 1단계: 구/시 목록 */}
+              {regionFilter === '전체' && (
+                <>
+                  {territoryRegions.map((region) => {
+                    const count = regionCardCounts.get(region) ?? 0
+                    if (count === 0) return null
+                    return (
+                      <button
+                        key={region}
+                        type="button"
+                        className="map-nav-item"
+                        onClick={() => { setRegionFilter(region); setAreaFilter('전체'); setCardFilter('전체'); setDetailOpen(false) }}
+                      >
+                        <span className="map-nav-item__name">{region}</span>
+                        <span className="map-nav-item__badge">{count}</span>
+                      </button>
+                    )
+                  })}
+                </>
+              )}
+
+              {/* 2단계: 동 목록 */}
+              {regionFilter !== '전체' && areaFilter === '전체' && (
+                <>
+                  {dongList.map((area) => {
+                    const count = dongCardCounts.get(area) ?? 0
+                    return (
+                      <button
+                        key={area}
+                        type="button"
+                        className="map-nav-item"
+                        onClick={() => { setAreaFilter(area); setCardFilter('전체'); setDetailOpen(false) }}
+                      >
+                        <span className="map-nav-item__name">{area}</span>
+                        <span className="map-nav-item__badge">{count}</span>
+                      </button>
+                    )
+                  })}
+                </>
+              )}
+
+              {/* 3단계: 카드 목록 */}
+              {areaFilter !== '전체' && (
+                <>
+                  {orderedCards.length === 0 && (
+                    <div className="map-empty-state">
+                      <p>카드가 없습니다</p>
+                    </div>
+                  )}
+                  {orderedCards.map((card) => {
+                    const cardBuildings = buildingsByCardId.get(card.id) ?? []
+                    const hasBoundary = boundariesByCardId.has(card.id)
+                    const boundaryVisible = visibleBoundarySelection === card.id || visibleBoundarySelection === '전체'
+                    return (
+                      <article
+                        className={cardFilter === card.id ? 'map-card-item selected' : 'map-card-item'}
+                        key={card.id}
+                      >
+                        <button className="map-card-item__content" onClick={() => handleSelectCardForMap(card.id)} type="button">
+                          <strong>{card.name}</strong>
+                          <span>
+                            건물 <b className="tnum">{cardBuildings.length}</b> · 세대 <b className="tnum">{card.units}</b> · <b className="tnum">{card.progress}%</b>
+                          </span>
+                        </button>
+                        <button
+                          className={`map-card-boundary-btn${boundaryVisible ? ' active' : ''}`}
+                          disabled={!hasBoundary}
+                          onClick={(e) => { e.stopPropagation(); setVisibleBoundarySelection((prev) => prev === card.id ? null : card.id) }}
+                          type="button"
+                        >
+                          구역선
+                        </button>
+                      </article>
+                    )
+                  })}
+                </>
+              )}
             </div>
           </aside>
 
@@ -1968,11 +2101,10 @@ export function DesktopMap({
                 onChange={e => setHistoryEditor({ ...historyEditor, result: e.target.value as UnitStatus })}
                 style={{ width: '100%', padding: '8px', marginBottom: '12px' }}
               >
+                <option value="미방문">미방문</option>
                 <option value="만남">만남</option>
                 <option value="부재">부재</option>
                 <option value="한국인">한국인</option>
-                <option value="거절">거절</option>
-                <option value="확인필요">확인 필요</option>
               </select>
               
               <label>시간대</label>

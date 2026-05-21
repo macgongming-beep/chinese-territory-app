@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
 import { showToast } from '../lib/toast'
 import { findCardForCoordinates, formatDisplayAddress, isValidMapCoordinate, normalizeMapCoordinates, parseCoordinate } from '../utils/mapUtils'
-import type { Building, CardBoundary, InformalAsset, InformalGroup, Role, TerritoryCard, TerritoryRegion, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, CardBoundary, InformalAsset, InformalGroup, Role, TerritoryCard, TerritoryRegion, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import { InformalCardsTab } from './InformalCardsTab'
 import { RestaurantsTab } from './RestaurantsTab'
 import {
@@ -38,6 +38,21 @@ function formatRelativeDate(iso: string): string {
   return iso.slice(0, 10)
 }
 
+function getDefaultTimeSlot(): TimeSlot {
+  const hour = new Date().getHours()
+  if (hour < 12) return '오전'
+  if (hour < 18) return '오후'
+  return '저녁'
+}
+
+function getTodayDateInputValue() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 export function DesktopTerritory({
   buildings,
   cardBoundaries,
@@ -60,6 +75,9 @@ export function DesktopTerritory({
   onDeleteUnit,
   onUpdateUnitFlags,
   onUpdateUnitStatus,
+  onAddVisitHistory,
+  onUpdateVisitHistory,
+  onDeleteVisitHistory,
   onOpenCardMap,
   onOpenBuildingMap,
   visitHistories,
@@ -97,6 +115,17 @@ export function DesktopTerritory({
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
   onUpdateUnitStatus: (buildingId: number, unitId: number, status: UnitStatus, memo?: string) => void
+  onAddVisitHistory: (
+    buildingId: number,
+    unitId: number,
+    input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string },
+  ) => void
+  onUpdateVisitHistory: (
+    historyId: number,
+    unitId: number,
+    input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string },
+  ) => void
+  onDeleteVisitHistory?: (historyId: number, unitId: number) => void
   onOpenCardMap: (cardId: number, editBoundary?: boolean) => void
   onOpenBuildingMap: (buildingId: number) => void
   visitHistories: VisitHistory[]
@@ -192,6 +221,19 @@ export function DesktopTerritory({
   const [reassigningByBoundary, setReassigningByBoundary] = useState(false)
   const [bulkLeaderNames, setBulkLeaderNames] = useState<string[]>([])
   const [bulkAssigning, setBulkAssigning] = useState(false)
+  const [pointVisitEditor, setPointVisitEditor] = useState<{
+    mode: 'add' | 'edit'
+    buildingId: number
+    unitId: number
+    historyId?: number
+    label: string
+    result: UnitStatus
+    timeSlot: TimeSlot
+    visitedAt: string
+    memo: string
+  } | null>(null)
+  const [selectedPointDetail, setSelectedPointDetail] = useState<{ buildingId: number; unitId: number } | null>(null)
+  const [openHistoryActionId, setOpenHistoryActionId] = useState<number | null>(null)
 
   useEffect(() => {
     if (isAdmin && allUsers.length === 0) {
@@ -216,8 +258,58 @@ export function DesktopTerritory({
       if (list) list.push(history)
       else map.set(history.unitId, [history])
     })
+    map.forEach((list) => {
+      list.sort((a, b) => {
+        const at = new Date(a.visitedAt).getTime()
+        const bt = new Date(b.visitedAt).getTime()
+        if (bt !== at) return bt - at
+        return b.id - a.id
+      })
+    })
     return map
   }, [visitHistories])
+
+  const openPointVisitEditor = (input: {
+    building: Building
+    unit: Unit
+    history?: VisitHistory
+  }) => {
+    const { building, unit, history } = input
+    setPointVisitEditor({
+      mode: history ? 'edit' : 'add',
+      buildingId: building.id,
+      unitId: unit.id,
+      historyId: history?.id,
+      label: `${building.name || formatDisplayAddress(building.address)} · ${unit.number}`,
+      result: history?.result ?? unit.status,
+      timeSlot: history?.timeSlot ?? getDefaultTimeSlot(),
+      visitedAt: history?.visitedAt?.slice(0, 10) ?? getTodayDateInputValue(),
+      memo: history?.memo ?? unit.memo ?? '',
+    })
+  }
+
+  const savePointVisitEditor = () => {
+    if (!pointVisitEditor) return
+    const payload = {
+      result: pointVisitEditor.result,
+      timeSlot: pointVisitEditor.timeSlot,
+      memo: pointVisitEditor.memo,
+      visitedAt: pointVisitEditor.visitedAt,
+    }
+    if (pointVisitEditor.mode === 'edit' && pointVisitEditor.historyId) {
+      onUpdateVisitHistory(pointVisitEditor.historyId, pointVisitEditor.unitId, payload)
+    } else {
+      onAddVisitHistory(pointVisitEditor.buildingId, pointVisitEditor.unitId, payload)
+    }
+    setPointVisitEditor(null)
+  }
+
+  const deletePointVisitHistory = (history: VisitHistory) => {
+    if (!onDeleteVisitHistory) return
+    if (!window.confirm('이 방문 기록을 삭제할까요?')) return
+    onDeleteVisitHistory(history.id, history.unitId)
+    setOpenHistoryActionId(null)
+  }
 
   const areaFilterOptions =
     regionFilter === '전체'
@@ -516,6 +608,37 @@ export function DesktopTerritory({
     if (pointMemoFilter === '없음' && hasMemo) return false
     return true
   })
+  const selectedPointDetailData = useMemo(() => {
+    if (!selectedPointDetail) return null
+    const building = buildings.find((item) => item.id === selectedPointDetail.buildingId)
+    const unit = building?.units.find((item) => item.id === selectedPointDetail.unitId)
+    if (!building || !unit) return null
+    const card = cardMap.get(building.cardId)
+    const histories = visitHistoriesByUnitId.get(unit.id) ?? []
+    const rowIndex = pointRows.findIndex((row) => row.building.id === building.id && row.unit.id === unit.id)
+    return { building, unit, card, histories, rowIndex }
+  }, [buildings, cardMap, pointRows, selectedPointDetail, visitHistoriesByUnitId])
+  const selectedPointDetailOffset = (() => {
+    if (!selectedPointDetailData) return 386
+    const rowIndex = Math.max(selectedPointDetailData.rowIndex, 0)
+    const tableTopOffset = 438
+    const tableHeaderHeight = 54
+    const rowHeight = 72
+    const visibleRows = Math.min(Math.max(pointRows.length, 1), 8)
+    const historyRows = Math.max(selectedPointDetailData.histories.length, 1)
+    const estimatedPanelHeight = Math.min(
+      620,
+      330
+        + Math.min(historyRows, 5) * 46
+        + (selectedPointDetailData.unit.isRegularVisit ? 72 : 0)
+        + (hasText(selectedPointDetailData.unit.memo) ? 76 : 0),
+    )
+    const desiredOffset = tableTopOffset + tableHeaderHeight + rowIndex * rowHeight
+    const visibleListHeight = tableHeaderHeight + visibleRows * rowHeight
+    const maxOffsetByList = tableTopOffset + Math.max(0, visibleListHeight - estimatedPanelHeight)
+    const maxOffsetByViewport = 620
+    return Math.max(tableTopOffset, Math.min(desiredOffset, maxOffsetByList, maxOffsetByViewport))
+  })()
   // const chinesePointTotal = pointRows.filter(({ unit }) => unit.isChinese).length
   // const regularPointTotal = pointRows.filter(({ unit }) => unit.isRegularVisit).length
   const startBuildingEdit = (building: Building) => {
@@ -762,7 +885,7 @@ export function DesktopTerritory({
   const downloadFilteredBuildingCsv = () => {
     const isPointList = buildingSubTab === '중국인 포인트'
     const headers = isPointList
-      ? ['카드명', '지역', '동', '건물명', '주소', '유형', '호수', '상태', '중국인', '정기방문', '정기방문자', '최근 방문', '메모']
+      ? ['카드명', '지역', '동', '건물명', '주소', '유형', '호수', '정기방문', '정기방문자', '최근 방문', '메모']
       : ['카드명', '지역', '동', '건물명', '주소', '유형', '세대', '중국인', '중국인 다수', '정기방문', '건물 메모', '세대 메모']
     const rows = isPointList
       ? pointRows.map(({ building, unit, latestHistory }) => {
@@ -775,8 +898,6 @@ export function DesktopTerritory({
             building.address,
             building.type,
             unit.number,
-            unit.status,
-            unit.isChinese ? 'Y' : '',
             unit.isRegularVisit ? 'Y' : '',
             unit.regularVisitor ?? '',
             latestHistory ? `${latestHistory.visitedAt.slice(0, 10)} ${latestHistory.timeSlot} ${latestHistory.result}` : '',
@@ -911,8 +1032,15 @@ export function DesktopTerritory({
 
 
 
+  const showPointDetailPane = activeTab === '건물 관리' && buildingSubTab === '중국인 포인트' && selectedPointDetailData
+  const territoryLayoutClassName = showPointDetailPane
+    ? 'territory-layout point-detail-open'
+    : activeTab === '건물 관리' || !detailPaneOpen
+      ? 'territory-layout building-management-only'
+      : 'territory-layout'
+
   return (
-    <section className={activeTab === '건물 관리' || !detailPaneOpen ? 'territory-layout building-management-only' : 'territory-layout'}>
+    <section className={territoryLayoutClassName}>
       {/* ── 카드 추가 모달 ── */}
       {showCardModal && (
         <CardCreateModal
@@ -981,6 +1109,73 @@ export function DesktopTerritory({
                 type="button"
               >
                 해제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pointVisitEditor && (
+        <div className="cal-modal-backdrop" onClick={() => setPointVisitEditor(null)}>
+          <div className="cal-modal territory-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cal-modal-head">
+              <div className="cal-modal-title">
+                <h2>{pointVisitEditor.mode === 'edit' ? '방문 기록 수정' : '방문 기록 등록'}</h2>
+                <p className="merge-name-modal-sub">{pointVisitEditor.label}</p>
+              </div>
+            </div>
+            <div className="cal-modal-body">
+              <div className="point-visit-editor-form">
+                <label>
+                  <span>방문일</span>
+                  <input
+                    type="date"
+                    value={pointVisitEditor.visitedAt}
+                    onChange={(event) => setPointVisitEditor((prev) => prev ? { ...prev, visitedAt: event.target.value } : prev)}
+                  />
+                </label>
+                <label>
+                  <span>시간대</span>
+                  <select
+                    value={pointVisitEditor.timeSlot}
+                    onChange={(event) => setPointVisitEditor((prev) => prev ? { ...prev, timeSlot: event.target.value as TimeSlot } : prev)}
+                  >
+                    <option value="오전">오전</option>
+                    <option value="오후">오후</option>
+                    <option value="저녁">저녁</option>
+                  </select>
+                </label>
+                <label>
+                  <span>결과</span>
+                  <select
+                    value={pointVisitEditor.result}
+                    onChange={(event) => setPointVisitEditor((prev) => prev ? { ...prev, result: event.target.value as UnitStatus } : prev)}
+                  >
+                    <option value="미방문">미방문</option>
+                    <option value="만남">만남</option>
+                    <option value="부재">부재</option>
+                    <option value="한국인">한국인</option>
+                  </select>
+                </label>
+                <label className="wide">
+                  <span>메모</span>
+                  <textarea
+                    value={pointVisitEditor.memo}
+                    onChange={(event) => setPointVisitEditor((prev) => prev ? { ...prev, memo: event.target.value } : prev)}
+                    placeholder="방문 당시 메모"
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="cal-modal-foot">
+              <button className="cal-cancel-btn" onClick={() => setPointVisitEditor(null)} type="button">취소</button>
+              <button
+                className="cal-save-btn"
+                disabled={!pointVisitEditor.visitedAt}
+                onClick={savePointVisitEditor}
+                type="button"
+              >
+                저장
               </button>
             </div>
           </div>
@@ -2122,8 +2317,6 @@ export function DesktopTerritory({
               <span>카드</span>
               <span>건물/주소</span>
               <span>포인트</span>
-              <span>상태</span>
-              <span>중국인</span>
               <span>정기</span>
               <span>최근 방문</span>
               <span>메모</span>
@@ -2131,66 +2324,76 @@ export function DesktopTerritory({
             </div>
             {pointRows.map(({ building, unit, latestHistory }) => {
               const card = cardMap.get(building.cardId)
-              const isConfirmedChinese = unit.isChinese || unit.isRegularVisit
               return (
-                <div className="point-management-row" key={`${building.id}-${unit.id}`} role="row">
+                <div
+                  className={`point-management-row${selectedPointDetail?.buildingId === building.id && selectedPointDetail?.unitId === unit.id ? ' selected' : ''}`}
+                  key={`${building.id}-${unit.id}`}
+                  onClick={() => setSelectedPointDetail({ buildingId: building.id, unitId: unit.id })}
+                  role="row"
+                >
                   <span>{card?.name ?? '카드 없음'}</span>
                   <span title={building.address}>{building.name || formatDisplayAddress(building.address)}</span>
                   <strong title={unit.number}>{unit.number}</strong>
-                  <select
-                    aria-label={`${unit.number} 상태`}
-                    value={unit.status}
-                    onChange={(event) => onUpdateUnitStatus(building.id, unit.id, event.target.value as UnitStatus, unit.memo)}
-                  >
-                    <option value="미방문">미방문</option>
-                    <option value="만남">만남</option>
-                    <option value="부재">부재</option>
-                    <option value="한국인">한국인</option>
-                  </select>
-                  <button
-                    className={isConfirmedChinese ? 'point-toggle active' : 'point-toggle'}
-                    onClick={() => {
-                      if (!isConfirmedChinese) {
-                        onToggleChinese(building.id, unit.id)
-                        return
-                      }
-                      setPendingChineseToggle({
-                        buildingId: building.id,
-                        unitId: unit.id,
-                        cardName: card?.name ?? '카드 없음',
-                        buildingName: building.name || formatDisplayAddress(building.address),
-                        unitNumber: unit.number,
-                      })
-                    }}
-                    type="button"
-                  >
-                    {isConfirmedChinese ? '중국인' : '확인 필요'}
-                  </button>
-                  {unit.isRegularVisit ? (
-                    <input
-                      aria-label={`${unit.number} 정기방문자`}
-                      className="regular-visitor-input"
-                      defaultValue={unit.regularVisitor ?? ''}
-                      onBlur={(event) => onSetRegularVisitor(unit.id, event.currentTarget.value)}
-                      placeholder="방문자"
-                    />
-                  ) : (
-                    <button
-                      className="point-toggle"
-                      onClick={() => onToggleRegularVisit(building.id, unit.id)}
-                      type="button"
-                    >
-                      등록
+	                  {unit.isRegularVisit ? (
+	                    <input
+	                      aria-label={`${unit.number} 정기방문자`}
+	                      className="regular-visitor-input"
+	                      defaultValue={unit.regularVisitor ?? ''}
+                        onClick={(event) => event.stopPropagation()}
+	                      onBlur={(event) => onSetRegularVisitor(unit.id, event.currentTarget.value)}
+	                      placeholder="방문자"
+	                    />
+	                  ) : (
+	                    <button
+	                      className="point-toggle"
+	                      onClick={(event) => {
+                          event.stopPropagation()
+                          onToggleRegularVisit(building.id, unit.id)
+                        }}
+	                      type="button"
+	                    >
+	                      등록
                     </button>
                   )}
-                  <span>{latestHistory ? `${latestHistory.visitedAt.slice(5)} ${latestHistory.timeSlot} ${latestHistory.result}` : '-'}</span>
-                  <input
-                    aria-label={`${unit.number} 메모`}
-                    defaultValue={unit.memo ?? ''}
-                    onBlur={(event) => onUpdateUnitFlags(unit.id, { memo: event.currentTarget.value })}
-                  />
-                  <button onClick={() => onOpenBuildingMap(building.id)} type="button">지도</button>
-                </div>
+                  <span className="point-visit-cell">
+                    <span title={latestHistory ? `${latestHistory.visitedAt} ${latestHistory.timeSlot} ${latestHistory.result}` : undefined}>
+                      {latestHistory ? `${latestHistory.visitedAt.slice(5)} ${latestHistory.timeSlot} ${latestHistory.result}` : '-'}
+                    </span>
+	                    <button
+	                      className="point-visit-edit-btn"
+	                      onClick={(event) => {
+                          event.stopPropagation()
+                          openPointVisitEditor({ building, unit, history: latestHistory })
+                        }}
+	                      type="button"
+	                    >
+	                      {latestHistory ? '수정' : '등록'}
+	                    </button>
+	                    <button
+	                      className="point-visit-edit-btn"
+	                      onClick={(event) => {
+                          event.stopPropagation()
+                          setSelectedPointDetail({ buildingId: building.id, unitId: unit.id })
+                        }}
+	                      type="button"
+	                    >
+	                      기록
+	                    </button>
+	                  </span>
+	                  <input
+	                    aria-label={`${unit.number} 메모`}
+	                    defaultValue={unit.memo ?? ''}
+                      onClick={(event) => event.stopPropagation()}
+	                    onBlur={(event) => onUpdateUnitFlags(unit.id, { memo: event.currentTarget.value })}
+	                  />
+	                  <button
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onOpenBuildingMap(building.id)
+                      }}
+                      type="button"
+                    >지도</button>
+	                </div>
               )
             })}
             {pointRows.length === 0 && (
@@ -2203,6 +2406,107 @@ export function DesktopTerritory({
         </div>{/* /desk-card */}
         </>)}
       </div>{/* /territory-main */}
+
+      {showPointDetailPane && selectedPointDetailData && (
+        <aside
+          className="territory-side point-detail-pane"
+          style={{ '--point-detail-offset': `${selectedPointDetailOffset}px` } as React.CSSProperties}
+        >
+          <div className="point-detail-scroll">
+            <div className="point-detail-head">
+              <div>
+                <p>{selectedPointDetailData.card?.name ?? '카드 없음'}</p>
+                <h3>{selectedPointDetailData.unit.number}</h3>
+                <span>{selectedPointDetailData.building.name || formatDisplayAddress(selectedPointDetailData.building.address)}</span>
+              </div>
+              <button onClick={() => setSelectedPointDetail(null)} type="button">닫기</button>
+            </div>
+
+            <div className="point-detail-summary">
+              <div>
+                <strong>{selectedPointDetailData.histories[0] ? `${selectedPointDetailData.histories[0].visitedAt.slice(5)} ${selectedPointDetailData.histories[0].timeSlot} ${selectedPointDetailData.histories[0].result}` : '아직 없음'}</strong>
+                <span>최근 방문</span>
+              </div>
+              <div>
+                <strong>{selectedPointDetailData.histories.length}건</strong>
+                <span>누적 기록</span>
+              </div>
+            </div>
+
+            <div className="point-detail-actions">
+              <button
+                className="primary"
+                onClick={() => openPointVisitEditor({ building: selectedPointDetailData.building, unit: selectedPointDetailData.unit })}
+                type="button"
+              >
+                + 방문 기록 추가
+              </button>
+              <button onClick={() => onOpenBuildingMap(selectedPointDetailData.building.id)} type="button">지도</button>
+            </div>
+
+            {selectedPointDetailData.unit.isRegularVisit && (
+              <div className="point-detail-info">
+                <span>정기방문</span>
+                <strong>{selectedPointDetailData.unit.regularVisitor || '방문자 미지정'}</strong>
+              </div>
+            )}
+
+            <div className="point-history-list">
+              <div className="point-history-title">방문 기록</div>
+              {selectedPointDetailData.histories.length > 0 ? (
+                selectedPointDetailData.histories.map((history) => (
+                  <div className="point-history-item" key={history.id}>
+                    <div className="point-history-main">
+                      <div className="point-history-date-line">
+                        <strong>{history.visitedAt.slice(0, 10)} {history.timeSlot}</strong>
+                        <span className={`point-history-result result-${history.result}`}>{history.result}</span>
+                      </div>
+                      <div className="point-history-menu">
+                        <button
+                          aria-label="방문 기록 작업"
+                          className="point-history-menu-btn"
+                          onClick={() => setOpenHistoryActionId((current) => current === history.id ? null : history.id)}
+                          type="button"
+                        >
+                          ...
+                        </button>
+                        {openHistoryActionId === history.id && (
+                          <div className="point-history-menu-popover">
+                            <button
+                              onClick={() => {
+                                setOpenHistoryActionId(null)
+                                openPointVisitEditor({
+                                  building: selectedPointDetailData.building,
+                                  unit: selectedPointDetailData.unit,
+                                  history,
+                                })
+                              }}
+                              type="button"
+                            >
+                              수정
+                            </button>
+                            {onDeleteVisitHistory && (
+                              <button className="danger" onClick={() => deletePointVisitHistory(history)} type="button">삭제</button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {history.memo && <p>{history.memo}</p>}
+                  </div>
+                ))
+              ) : (
+                <div className="point-history-empty">등록된 방문 기록이 없습니다.</div>
+              )}
+            </div>
+
+            <div className="point-detail-info">
+              <span>메모</span>
+              <strong>{selectedPointDetailData.unit.memo || '메모 없음'}</strong>
+            </div>
+          </div>
+        </aside>
+      )}
 
       {zoneKind === 'territory' && activeTab === '카드 관리' && detailPaneOpen && (
       <aside className="territory-side">

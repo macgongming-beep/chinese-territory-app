@@ -295,6 +295,14 @@ function DesktopLeaderAssignmentView({
       <header className="page-header">
         <div className="page-header-text">
           <h1 className="page-header-title">인도자 배정</h1>
+          <p className="page-header-subtitle">{(() => {
+            if (todayEvents.length === 0) return '오늘 일정 없음'
+            const total = todayEvents.reduce((sum, e) => {
+              const participants = new Set([...(e.assigned ?? []), ...(e.applicants ?? [])])
+              return sum + participants.size
+            }, 0)
+            return `오늘 참여자 ${total}명`
+          })()}</p>
         </div>
         <div className="page-header-actions">
           {draft && <span className={`dla-status-badge ${draftStatus}`}>{statusLabel}</span>}

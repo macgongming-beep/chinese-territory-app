@@ -78,7 +78,6 @@ export function SpecialPeriodBanner({
           padding: '7px 12px',
           background: 'var(--surface)',
           border: '1px solid var(--line)',
-          borderLeft: `3px solid ${color}`,
           borderRadius: '8px',
           fontSize: '12px',
           fontWeight: 600,

@@ -17,7 +17,7 @@
 
 import { useMemo, useState } from 'react'
 import { showToast } from '../lib/toast'
-import type { TerritoryCard } from '../types'
+import type { Building, TerritoryCard } from '../types'
 
 function getCardLeaders(card: TerritoryCard) {
   return card.assignedLeaders && card.assignedLeaders.length > 0
@@ -78,12 +78,14 @@ function Avatar({ name, muted, size = 36 }: { name: string; muted?: boolean; siz
 
 export function MobileAdminAssignment({
   cards,
+  buildings = [],
   leaderNames = [],
   currentVisitor = '',
   onSetCardLeaders,
   onOpenMapView,
 }: {
   cards: TerritoryCard[]
+  buildings?: Building[]
   leaderNames?: string[]
   currentVisitor?: string
   onSetCardLeaders: (cardId: number, leaders: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
@@ -140,6 +142,21 @@ export function MobileAdminAssignment({
     })
     return m
   }, [cards])
+
+  const cardBuildingStats = useMemo(() => {
+    const m = new Map<number, { total: number; house: number; shop: number }>()
+    buildings.forEach((building) => {
+      const prev = m.get(building.cardId) ?? { total: 0, house: 0, shop: 0 }
+      prev.total += 1
+      if (building.type === '주택') prev.house += 1
+      if (building.type === '상가') prev.shop += 1
+      m.set(building.cardId, prev)
+    })
+    cards.forEach((card) => {
+      if (!m.has(card.id)) m.set(card.id, { total: card.buildings, house: 0, shop: 0 })
+    })
+    return m
+  }, [buildings, cards])
 
   const activeLeaders = leaders.filter((l) => l !== currentVisitor && (leaderStats.get(l)?.assigned ?? 0) > 0)
   const newLeaders = leaders.filter((l) => l !== currentVisitor && (leaderStats.get(l)?.assigned ?? 0) === 0)
@@ -680,6 +697,7 @@ export function MobileAdminAssignment({
                           const isMine = selectedLeadersArr.some((name) => cardLeaders.includes(name))
                           const justAssigned = sessionAssigned.has(card.id)
                           const isPending = pendingCardIds.has(card.id)
+                          const stats = cardBuildingStats.get(card.id) ?? { total: card.buildings, house: 0, shop: 0 }
                           return (
                             <div
                               key={card.id}
@@ -692,8 +710,11 @@ export function MobileAdminAssignment({
                                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
                                   {card.name}
                                 </span>
+                                <span style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.35 }}>
+                                  전체 {stats.total} · 주택 {stats.house} · 상가 {stats.shop}
+                                </span>
                                 {!isFree && (
-                                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+                                  <span style={{ fontSize: 11.5, color: 'var(--muted-2)', lineHeight: 1.35 }}>
                                     {cardLeaders.join(', ')}
                                   </span>
                                 )}
