@@ -1866,36 +1866,45 @@ function UnitDetailScreen({
               style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', width: '100%', maxWidth: 340 }}
               onClick={e => e.stopPropagation()}
             >
-              <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>정기방문 담당자</h3>
-              {/* 사용자 선택 */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-                {allUsers.map(u => (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => setRegularNameDraft(u.name)}
-                    style={{
-                      padding: '5px 12px', borderRadius: 20,
-                      border: regularNameDraft === u.name ? 'none' : '1px solid var(--line)',
-                      background: regularNameDraft === u.name ? '#B8862A' : 'var(--bg)',
-                      color: regularNameDraft === u.name ? '#fff' : 'var(--ink)',
-                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    }}
-                  >{u.name}</button>
-                ))}
-              </div>
-              {/* 직접 입력 */}
+              <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>정기방문 담당자</h3>
+              {/* 검색 입력 */}
               <input
+                autoFocus
                 value={regularNameDraft}
                 onChange={e => setRegularNameDraft(e.target.value)}
-                placeholder="직접 입력"
+                placeholder="이름 검색"
                 style={{
-                  width: '100%', padding: '8px 10px', border: '1px solid var(--line)',
+                  width: '100%', padding: '9px 12px', border: '1px solid var(--line)',
                   borderRadius: 8, fontSize: 13, background: 'var(--bg)', color: 'var(--ink)',
-                  boxSizing: 'border-box', marginBottom: 14,
+                  boxSizing: 'border-box',
                 }}
               />
-              <div style={{ display: 'flex', gap: 8 }}>
+              {/* 검색 결과 목록 */}
+              {(() => {
+                const q = regularNameDraft.trim()
+                const matched = q
+                  ? allUsers.filter(u => u.name.includes(q))
+                  : allUsers.slice(0, 6)
+                return matched.length > 0 ? (
+                  <div style={{ marginTop: 6, borderRadius: 8, border: '1px solid var(--line)', overflow: 'hidden', maxHeight: 180, overflowY: 'auto' }}>
+                    {matched.map((u, i) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => setRegularNameDraft(u.name)}
+                        style={{
+                          display: 'block', width: '100%', textAlign: 'left',
+                          padding: '9px 12px', background: regularNameDraft === u.name ? '#B8862A1a' : 'var(--surface)',
+                          border: 'none', borderTop: i > 0 ? '1px solid var(--line)' : 'none',
+                          color: regularNameDraft === u.name ? '#B8862A' : 'var(--ink)',
+                          fontSize: 13, fontWeight: regularNameDraft === u.name ? 700 : 400, cursor: 'pointer',
+                        }}
+                      >{u.name}</button>
+                    ))}
+                  </div>
+                ) : null
+              })()}
+              <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                 <button
                   type="button"
                   onClick={() => setShowRegularPopup(false)}
