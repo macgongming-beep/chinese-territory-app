@@ -16729,10 +16729,10 @@ button:focus-visible {
     display: none;
   }
 
-  .status-방문필요 { background: #2F6FDB; }
-  .status-방문완료 { background: #059669; }
+  .status-방문필요 { background: #2D6CDF; }
+  .status-방문완료 { background: #4F7A4B; }
   .status-방문금지 { background: #1A1A18; }
-  .status-정기방문 { background: #F59E0B; }
+  .status-정기방문 { background: #B8862A; }
 
   .map-marker.status-방문필요,
   .map-marker.status-방문완료,

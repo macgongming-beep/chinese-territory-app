@@ -6,10 +6,10 @@ import { TERRITORY_BOUNDARY } from '../data/territoryBoundary'
 import { showToast } from '../lib/toast'
 
 const STATUS_COLORS: Record<BuildingStatus, string> = {
-  방문필요: '#2F6FDB',
-  방문완료: '#059669',
+  방문필요: '#2D6CDF',
+  방문완료: '#4F7A4B',
   방문금지: '#1A1A18',
-  정기방문: '#F59E0B',
+  정기방문: '#B8862A',
 }
 
 function cssVar(name: string, fallback: string): string {
