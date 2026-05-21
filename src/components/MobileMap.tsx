@@ -84,7 +84,7 @@ export function MobileMap({
   visitHistories: VisitHistory[]
   specialPeriods?: SpecialPeriod[]
   allUsers?: { id: number; name: string }[]
-  onSetRegularVisitor?: (unitId: number, visitorName: string) => Promise<void>
+  onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
 }) {
   // URL 파라미터 (가상 핀용)
   const [searchParams] = useSearchParams()
@@ -1711,12 +1711,13 @@ function UnitDetailScreen({
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
   currentVisitor?: string
   allUsers?: { id: number; name: string }[]
-  onSetRegularVisitor?: (unitId: number, visitorName: string) => Promise<void>
+  onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
 }) {
   const [memoEditing, setMemoEditing] = useState(false)
   const [memoDraft, setMemoDraft] = useState<string | null>(null)
   const [showRegularPopup, setShowRegularPopup] = useState(false)
   const [regularNameDraft, setRegularNameDraft] = useState('')
+  const [regularDateDraft, setRegularDateDraft] = useState('')
 
   const TIME_SLOTS = ['오전', '오후', '저녁'] as const
   type RowKey = '평일' | '주말'
@@ -1896,6 +1897,7 @@ function UnitDetailScreen({
                   onToggleRegularVisit(building.id, unit.id)
                 } else {
                   setRegularNameDraft(currentVisitor ?? '')
+                  setRegularDateDraft(new Date().toISOString().slice(0, 10))
                   setShowRegularPopup(true)
                 }
               }}
@@ -1928,7 +1930,11 @@ function UnitDetailScreen({
               {canRecordVisits && (
                 <button
                   type="button"
-                  onClick={() => { setRegularNameDraft(unit.regularVisitor ?? ''); setShowRegularPopup(true) }}
+                  onClick={() => {
+                    setRegularNameDraft(unit.regularVisitor ?? '')
+                    setRegularDateDraft(unit.regularVisitStart ? unit.regularVisitStart.slice(0, 10) : '')
+                    setShowRegularPopup(true)
+                  }}
                   style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 11, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
                 >변경</button>
               )}
@@ -1955,6 +1961,18 @@ function UnitDetailScreen({
                 placeholder="이름 검색"
                 style={{
                   width: '100%', padding: '9px 12px', border: '1px solid var(--line)',
+                  borderRadius: 8, fontSize: 13, background: 'var(--bg)', color: 'var(--ink)',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {/* 시작 날짜 */}
+              <p style={{ margin: '10px 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>시작 날짜</p>
+              <input
+                type="date"
+                value={regularDateDraft}
+                onChange={e => setRegularDateDraft(e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 10px', border: '1px solid var(--line)',
                   borderRadius: 8, fontSize: 13, background: 'var(--bg)', color: 'var(--ink)',
                   boxSizing: 'border-box',
                 }}
@@ -1995,10 +2013,14 @@ function UnitDetailScreen({
                   onClick={async () => {
                     const name = regularNameDraft.trim()
                     if (!name) return
+                    const dateIso = regularDateDraft ? new Date(regularDateDraft).toISOString() : undefined
                     if (unit.isRegularVisit && onSetRegularVisitor) {
-                      await onSetRegularVisitor(unit.id, name)
+                      await onSetRegularVisitor(unit.id, name, dateIso)
                     } else {
                       onToggleRegularVisit(building.id, unit.id, name)
+                      if (dateIso && onSetRegularVisitor) {
+                        await onSetRegularVisitor(unit.id, name, dateIso)
+                      }
                     }
                     setShowRegularPopup(false)
                   }}

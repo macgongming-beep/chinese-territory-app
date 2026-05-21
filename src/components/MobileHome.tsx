@@ -403,7 +403,7 @@ export function MobileHome({
   onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
   onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
-  onSetRegularVisitor?: (unitId: number, visitorName: string) => Promise<void>
+  onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
 }) {
   const navigate = useNavigate()
   const location = useLocation()

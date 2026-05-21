@@ -60,7 +60,7 @@ export function makeRegularVisitMutations(deps: {
     }
   }
 
-  const setRegularVisitor = async (unitId: number, visitorName: string) => {
+  const setRegularVisitor = async (unitId: number, visitorName: string, registeredAt?: string) => {
     const name = visitorName.trim()
     if (!name) {
       const result = await supabase.from('regular_visits').delete().eq('unit_id', unitId)
@@ -73,9 +73,12 @@ export function makeRegularVisitMutations(deps: {
       return
     }
 
+    const upsertData: Record<string, unknown> = { unit_id: unitId, visitor_name: name }
+    if (registeredAt) upsertData.registered_at = registeredAt
+
     const result = await supabase
       .from('regular_visits')
-      .upsert({ unit_id: unitId, visitor_name: name }, { onConflict: 'unit_id' })
+      .upsert(upsertData, { onConflict: 'unit_id' })
 
     if (result.error) {
       reportMutationError('정기방문자를 저장하지 못했습니다.', result.error)
