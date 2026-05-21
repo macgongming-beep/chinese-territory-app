@@ -6,7 +6,7 @@ type PeriodInput = { label: string; startDate: string; endDate: string; color: s
 
 function ColorPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
       {PERIOD_COLORS.map((c) => (
         <button
           key={c.value}
@@ -14,15 +14,20 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (v: string)
           title={c.label}
           onClick={() => onChange(c.value)}
           style={{
-            width: 20, height: 20, borderRadius: '50%',
+            flexShrink: 0,
+            flexGrow: 0,
+            width: 24, height: 24,
+            minWidth: 24, minHeight: 24,
+            borderRadius: '50%',
             background: c.value,
-            border: value === c.value ? `2px solid ${c.value}` : '2px solid transparent',
-            outline: value === c.value ? `2px solid ${c.value}55` : 'none',
+            border: value === c.value ? `2.5px solid ${c.value}` : '2.5px solid transparent',
+            outline: value === c.value ? `2px solid ${c.value}66` : 'none',
             outlineOffset: '2px',
             cursor: 'pointer',
             padding: 0,
             opacity: value === c.value ? 1 : 0.45,
             transition: 'opacity 0.15s, outline 0.15s',
+            display: 'block',
           }}
         />
       ))}
@@ -174,21 +179,16 @@ export function SpecialPeriodSettings({
     <div className="special-period-settings">
       {activePeriod && (
         <div style={{ marginBottom: 16, padding: 16, background: 'var(--surface)', border: `1px solid var(--line)`, borderLeft: `4px solid ${activePeriod.color || 'var(--ink)'}`, borderRadius: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 6, height: 6, borderRadius: 99, background: activePeriod.color || 'var(--ink)', flexShrink: 0 }} />
-                <h2 style={{ fontSize: 12, fontWeight: 600, margin: 0, color: 'var(--muted)', letterSpacing: '0.04em' }}>특별봉사 진행 중</h2>
-              </div>
-              <p style={{ fontSize: 15, fontWeight: 700, margin: '4px 0', color: 'var(--ink)' }}>{activePeriod.label}</p>
-              <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                {activePeriod.startDate} ~ {activePeriod.endDate}
-                {dDay !== null && (
-                  <span style={{ padding: '2px 8px', borderRadius: 999, background: activePeriod.color || 'var(--ink)', color: '#fff', fontWeight: 600, fontSize: 11 }}>
-                    {dDay > 0 ? `D-${dDay}` : dDay === 0 ? '오늘 마지막' : `D+${Math.abs(dDay)}`}
-                  </span>
-                )}
-              </p>
+          {/* 헤더 행: 상태 라벨 + D-day + 액션 버튼 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              <span style={{ width: 6, height: 6, borderRadius: 99, background: activePeriod.color || 'var(--ink)', flexShrink: 0 }} />
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>특별봉사 진행 중</span>
+              {dDay !== null && (
+                <span style={{ flexShrink: 0, padding: '1px 7px', borderRadius: 999, background: activePeriod.color || 'var(--ink)', color: '#fff', fontWeight: 700, fontSize: 11 }}>
+                  {dDay > 0 ? `D-${dDay}` : dDay === 0 ? '오늘 마지막' : `D+${Math.abs(dDay)}`}
+                </span>
+              )}
             </div>
             {isAdmin && (
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -197,7 +197,13 @@ export function SpecialPeriodSettings({
               </div>
             )}
           </div>
-          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
+          {/* 시즌 이름 */}
+          <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: 'var(--ink)' }}>{activePeriod.label}</p>
+          {/* 날짜: 한 줄 고정 */}
+          <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 10px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontVariantNumeric: 'tabular-nums' }}>
+            {activePeriod.startDate} ~ {activePeriod.endDate}
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>
             기간 동안의 모든 방문 기록은 자동으로 이 시즌에 태깅됩니다.
           </p>
         </div>
