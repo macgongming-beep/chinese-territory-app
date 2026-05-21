@@ -152,6 +152,9 @@ export function MobileMap({
   }, [buildings, fullScreenUnit])
   const [editingHistoryId, setEditingHistoryId] = useState<number | null>(null)
   const [historyToEdit, setHistoryToEdit] = useState<VisitHistory | null>(null)
+  const [showUnitHeaderMenu, setShowUnitHeaderMenu] = useState(false)
+  const [editingUnitNumber, setEditingUnitNumber] = useState(false)
+  const [unitNumberDraft, setUnitNumberDraft] = useState('')
 
   // 특정 날짜에 활성화된 특별봉사 시즌 (없으면 null)
   const getActivePeriodForDate = (dateStr: string): SpecialPeriod | null => {
@@ -1576,7 +1579,73 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                 {shortenAddress(liveFullScreenUnit.building.address)}
               </div>
             </div>
+            {/* 헤더 ⋮ 메뉴 */}
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setShowUnitHeaderMenu(v => !v)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--muted)', padding: '4px 6px', lineHeight: 1 }}
+              >⋯</button>
+              {showUnitHeaderMenu && (
+                <>
+                  <div onClick={() => setShowUnitHeaderMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 9 }} />
+                  <div style={{
+                    position: 'absolute', right: 0, top: '100%', zIndex: 10,
+                    background: 'var(--surface)', borderRadius: 10,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.14)', border: '1px solid var(--line)',
+                    overflow: 'hidden', minWidth: 120,
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUnitHeaderMenu(false)
+                        setUnitNumberDraft(liveFullScreenUnit.unit.number)
+                        setEditingUnitNumber(true)
+                      }}
+                      style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--line)', cursor: 'pointer', fontSize: 13, color: 'var(--ink)', textAlign: 'left' }}
+                    >세대 수정</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUnitHeaderMenu(false)
+                        if (confirm(`"${liveFullScreenUnit.unit.number}" 세대를 삭제할까요?`)) {
+                          onDeleteUnit(liveFullScreenUnit.building.id, liveFullScreenUnit.unit.id)
+                          setFullScreenUnit(null)
+                        }
+                      }}
+                      style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#dc2626', textAlign: 'left' }}
+                    >세대 삭제</button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
+          {/* 호수 편집 인라인 */}
+          {editingUnitNumber && (
+            <div style={{ padding: '8px 16px', background: 'var(--surface)', borderTop: '1px solid var(--line)', display: 'flex', gap: 8 }}>
+              <input
+                autoFocus
+                value={unitNumberDraft}
+                onChange={e => setUnitNumberDraft(e.target.value)}
+                placeholder="호수 (예: 101호)"
+                style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--line)', borderRadius: 7, fontSize: 13, background: 'var(--bg)', color: 'var(--ink)' }}
+              />
+              <button
+                type="button"
+                onClick={() => setEditingUnitNumber(false)}
+                style={{ padding: '7px 10px', border: '1px solid var(--line)', borderRadius: 7, background: 'var(--surface)', color: 'var(--muted)', fontSize: 12, cursor: 'pointer' }}
+              >취소</button>
+              <button
+                type="button"
+                onClick={() => {
+                  const v = unitNumberDraft.trim()
+                  if (v) onUpdateUnitFlags(liveFullScreenUnit.unit.id, { number: v })
+                  setEditingUnitNumber(false)
+                }}
+                style={{ padding: '7px 12px', border: 'none', borderRadius: 7, background: 'var(--ink)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+              >저장</button>
+            </div>
+          )}
 
           {/* 본문 */}
           <div style={{ flex: 1 }}>
@@ -1594,9 +1663,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               onUpdateUnitFlags={onUpdateUnitFlags}
               onToggleRegularVisit={onToggleRegularVisit}
               onToggleChinese={onToggleChinese}
-              onDeleteUnit={onDeleteUnit}
               onDeleteVisitHistory={onDeleteVisitHistory}
-              onClose={() => setFullScreenUnit(null)}
               currentVisitor={currentVisitor}
               allUsers={allUsers}
               onSetRegularVisitor={onSetRegularVisitor}
@@ -1623,9 +1690,7 @@ function UnitDetailScreen({
   onUpdateUnitFlags,
   onToggleRegularVisit,
   onToggleChinese,
-  onDeleteUnit,
   onDeleteVisitHistory,
-  onClose,
   currentVisitor,
   allUsers = [],
   onSetRegularVisitor,
@@ -1643,14 +1708,11 @@ function UnitDetailScreen({
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
-  onDeleteUnit: (buildingId: number, unitId: number) => void
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
-  onClose: () => void
   currentVisitor?: string
   allUsers?: { id: number; name: string }[]
   onSetRegularVisitor?: (unitId: number, visitorName: string) => Promise<void>
 }) {
-  const [showDeleteMenu, setShowDeleteMenu] = useState(false)
   const [memoEditing, setMemoEditing] = useState(false)
   const [memoDraft, setMemoDraft] = useState<string | null>(null)
   const [showRegularPopup, setShowRegularPopup] = useState(false)
@@ -1753,39 +1815,43 @@ function UnitDetailScreen({
                           {dayName}요일 {h.timeSlot}{h.visitor ? ` · ${h.visitor}` : ''}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                        <span style={{ fontSize: 11, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
-                          {h.visitedAt.slice(5).replace('-', '/')}
-                        </span>
-                        {canRecordVisits && (
+                      {isMenuOpen ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
                           <button
-                            onClick={() => setEditingHistoryId(isMenuOpen ? null : h.id)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+                            onClick={() => { setHistoryToEdit(h); setEditingHistoryId(null) }}
+                            style={{ padding: '3px 9px', border: '1px solid var(--line)', borderRadius: 5, background: 'var(--surface)', color: 'var(--ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
                             type="button"
-                          >⋮</button>
-                        )}
-                      </div>
+                          >수정</button>
+                          <button
+                            onClick={() => {
+                              if (confirm('이 기록을 삭제할까요?')) onDeleteVisitHistory(h.id, unit.id)
+                              setEditingHistoryId(null)
+                            }}
+                            style={{ padding: '3px 9px', border: '1px solid #fecaca', borderRadius: 5, background: '#fef2f2', color: '#dc2626', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                            type="button"
+                          >삭제</button>
+                          <button
+                            onClick={() => setEditingHistoryId(null)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 14, padding: '0 2px', lineHeight: 1 }}
+                            type="button"
+                          >✕</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                          <span style={{ fontSize: 11, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+                            {h.visitedAt.slice(5).replace('-', '/')}
+                          </span>
+                          {canRecordVisits && (
+                            <button
+                              onClick={() => setEditingHistoryId(h.id)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+                              type="button"
+                            >⋮</button>
+                          )}
+                        </div>
+                      )}
                     </div>
                     {h.memo && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--muted)', lineHeight: 1.4 }}>{h.memo}</p>}
-                    {isMenuOpen && (
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 5, paddingTop: 5, borderTop: '1px solid var(--line)' }}>
-                        <button
-                          onClick={() => { setHistoryToEdit(h); setEditingHistoryId(null) }}
-                          style={{ padding: '3px 10px', border: '1px solid var(--line)', borderRadius: 5, background: 'var(--surface)', color: 'var(--ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                          type="button"
-                        >수정</button>
-                        <button
-                          onClick={() => {
-                            if (confirm('이 기록을 삭제할까요?')) {
-                              onDeleteVisitHistory(h.id, unit.id)
-                            }
-                            setEditingHistoryId(null)
-                          }}
-                          style={{ padding: '3px 10px', border: '1px solid #fecaca', borderRadius: 5, background: '#fef2f2', color: '#dc2626', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                          type="button"
-                        >삭제</button>
-                      </div>
-                    )}
                   </div>
                 )
               })}
@@ -1991,39 +2057,6 @@ function UnitDetailScreen({
           )}
         </div>
 
-        {/* 세대 삭제 */}
-        {canRecordVisits && (
-          <div style={{ position: 'relative', textAlign: 'center', paddingBottom: 8 }}>
-            <button
-              onClick={() => setShowDeleteMenu(v => !v)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 13, padding: '8px 16px' }}
-              type="button"
-            >세대 삭제</button>
-            {showDeleteMenu && (
-              <>
-                <div onClick={() => setShowDeleteMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 1 }} />
-                <div style={{
-                  position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: '100%',
-                  zIndex: 2, background: 'var(--surface)', borderRadius: 10,
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.12)', border: '1px solid var(--line)',
-                  overflow: 'hidden', minWidth: 140,
-                }}>
-                  <button
-                    onClick={() => {
-                      setShowDeleteMenu(false)
-                      if (confirm(`"${unit.number}" 세대를 삭제할까요?`)) {
-                        onDeleteUnit(building.id, unit.id)
-                        onClose()
-                      }
-                    }}
-                    style={{ display: 'block', width: '100%', padding: '13px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#dc2626', textAlign: 'center' }}
-                    type="button"
-                  >세대 삭제</button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )

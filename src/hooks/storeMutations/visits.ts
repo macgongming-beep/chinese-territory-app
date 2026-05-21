@@ -205,6 +205,7 @@ export function makeVisitMutations(deps: {
     if (flags.isChinese !== undefined) dbFlags.is_chinese = flags.isChinese
     if (flags.isKorean !== undefined) dbFlags.is_korean = flags.isKorean
     if (flags.memo !== undefined) dbFlags.memo = flags.memo
+    if (flags.number !== undefined) dbFlags.number = flags.number
 
     if (Object.keys(dbFlags).length > 0) {
       const result = await supabase.from('units').update(dbFlags).eq('id', unitId)
