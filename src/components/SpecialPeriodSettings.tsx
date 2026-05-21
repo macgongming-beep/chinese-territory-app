@@ -2,15 +2,131 @@ import { useState } from 'react'
 import type { SpecialPeriod } from '../types'
 import { PERIOD_COLORS } from '../types'
 
+type PeriodInput = { label: string; startDate: string; endDate: string; color: string }
+
+function ColorPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+      {PERIOD_COLORS.map((c) => (
+        <button
+          key={c.value}
+          type="button"
+          title={c.label}
+          onClick={() => onChange(c.value)}
+          style={{
+            width: 20, height: 20, borderRadius: '50%',
+            background: c.value,
+            border: value === c.value ? `2px solid ${c.value}` : '2px solid transparent',
+            outline: value === c.value ? `2px solid ${c.value}55` : 'none',
+            outlineOffset: '2px',
+            cursor: 'pointer',
+            padding: 0,
+            opacity: value === c.value ? 1 : 0.45,
+            transition: 'opacity 0.15s, outline 0.15s',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function PeriodForm({
+  title,
+  initial,
+  todayStr,
+  onSubmit,
+  onCancel,
+  submitLabel,
+  submitting,
+}: {
+  title: string
+  initial: { label: string; startDate: string; durationDays: number; color: string }
+  todayStr: string
+  onSubmit: (input: PeriodInput) => void
+  onCancel: () => void
+  submitLabel: string
+  submitting: boolean
+}) {
+  const [label, setLabel] = useState(initial.label)
+  const [startDate, setStartDate] = useState(initial.startDate)
+  const [durationDays, setDurationDays] = useState(initial.durationDays)
+  const [color, setColor] = useState(initial.color)
+
+  const calcEnd = (start: string, days: number) => {
+    if (!start) return ''
+    const d = new Date(start)
+    d.setDate(d.getDate() + days - 1)
+    return d.toISOString().slice(0, 10)
+  }
+  const endDate = calcEnd(startDate, durationDays)
+  const canSubmit = label.trim() && startDate && endDate && !submitting
+
+  const fieldStyle = { padding: '8px 12px', border: '1px solid var(--line)', borderRadius: '8px', fontSize: '13px', fontFamily: 'inherit', background: 'var(--bg)', color: 'var(--ink)' }
+  const labelStyle = { fontSize: '12px', fontWeight: 600 as const, color: 'var(--muted)' }
+
+  return (
+    <div className="cal-modal-backdrop" onClick={onCancel}>
+      <div className="cal-modal" style={{ maxWidth: '420px', width: '100%' }} onClick={(e) => e.stopPropagation()}>
+        <div className="cal-modal-head">
+          <div className="cal-modal-title"><h2>{title}</h2></div>
+        </div>
+        <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '13px' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <span style={labelStyle}>라벨 <em style={{ color: 'var(--status-danger)', fontStyle: 'normal' }}>*</em></span>
+            <input placeholder="예) 봄 특별봉사 2026" value={label} onChange={(e) => setLabel(e.target.value)} style={fieldStyle} />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <span style={labelStyle}>시작일</span>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={fieldStyle} />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <span style={labelStyle}>기간 (일)</span>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input type="number" min={1} value={durationDays} onChange={(e) => setDurationDays(Math.max(1, Number(e.target.value)))} style={{ ...fieldStyle, width: '80px' }} />
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                {[3, 5, 7, 10, 14].map((days) => (
+                  <button key={days} type="button" onClick={() => setDurationDays(days)}
+                    style={{ padding: '4px 10px', border: `1px solid ${durationDays === days ? color : 'var(--line)'}`, borderRadius: '6px', background: durationDays === days ? color + '18' : 'var(--surface)', color: durationDays === days ? color : 'var(--muted)', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                    {days}일
+                  </button>
+                ))}
+              </div>
+            </div>
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <span style={labelStyle}>색상</span>
+            <ColorPicker value={color} onChange={setColor} />
+          </div>
+          <div style={{ padding: '9px 12px', background: 'var(--surface)', border: `1px solid var(--line)`, borderLeft: `3px solid ${color}`, borderRadius: '8px', fontSize: '12px', color: 'var(--ink)' }}>
+            <strong>종료일:</strong> {endDate || '-'}
+            {startDate && startDate <= todayStr && endDate >= todayStr && (
+              <span style={{ marginLeft: '8px', padding: '2px 7px', borderRadius: '4px', background: color, color: '#fff', fontSize: '11px' }}>오늘부터 활성화됨</span>
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '12px 24px 20px', borderTop: '1px solid var(--line)' }}>
+          <button onClick={onCancel} type="button" style={{ padding: '8px 16px', border: '1px solid var(--line)', borderRadius: '7px', background: 'var(--surface)', color: 'var(--muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>취소</button>
+          <button onClick={() => canSubmit && onSubmit({ label: label.trim(), startDate, endDate, color })} type="button" disabled={!canSubmit}
+            style={{ padding: '8px 18px', border: 0, borderRadius: '7px', background: canSubmit ? 'var(--ink)' : 'var(--line)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
+            {submitting ? '저장 중...' : submitLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function SpecialPeriodSettings({
   specialPeriods = [],
   isAdmin,
   onCreateSpecialPeriod,
+  onUpdateSpecialPeriod,
   onDeleteSpecialPeriod,
 }: {
   specialPeriods?: SpecialPeriod[]
   isAdmin: boolean
-  onCreateSpecialPeriod?: (input: { label: string; startDate: string; endDate: string; color: string }) => Promise<void> | void
+  onCreateSpecialPeriod?: (input: PeriodInput) => Promise<void> | void
+  onUpdateSpecialPeriod?: (id: number, input: PeriodInput) => Promise<void> | void
   onDeleteSpecialPeriod?: (id: number) => Promise<void> | void
 }) {
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -19,20 +135,9 @@ export function SpecialPeriodSettings({
   const pastPeriods = specialPeriods.filter((p) => todayStr > p.endDate).sort((a, b) => b.startDate.localeCompare(a.startDate))
 
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [newLabel, setNewLabel] = useState('')
-  const [newStartDate, setNewStartDate] = useState(todayStr)
-  const [newDurationDays, setNewDurationDays] = useState(7)
-  const [newColor, setNewColor] = useState(PERIOD_COLORS[0].value)
+  const [editingPeriod, setEditingPeriod] = useState<SpecialPeriod | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  const calculateEndDate = (start: string, days: number): string => {
-    if (!start) return ''
-    const d = new Date(start)
-    d.setDate(d.getDate() + days - 1)
-    return d.toISOString().slice(0, 10)
-  }
-
-  const newEndDate = calculateEndDate(newStartDate, newDurationDays)
   const dDay = (() => {
     if (!activePeriod) return null
     const end = new Date(activePeriod.endDate)
@@ -40,59 +145,56 @@ export function SpecialPeriodSettings({
     return Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
   })()
 
-  const handleCreate = async () => {
-    if (!newLabel.trim() || !newStartDate || !newEndDate || !onCreateSpecialPeriod) return
-    const overlaps = specialPeriods.find((p) => !(newEndDate < p.startDate || newStartDate > p.endDate))
-    if (overlaps) {
-      alert(`기존 시즌 "${overlaps.label}" (${overlaps.startDate} ~ ${overlaps.endDate})와 겹칩니다.`)
-      return
-    }
+  const calcDuration = (start: string, end: string) => {
+    if (!start || !end) return 7
+    const s = new Date(start), e = new Date(end)
+    return Math.max(1, Math.round((e.getTime() - s.getTime()) / 86400000) + 1)
+  }
+
+  const handleCreate = async (input: PeriodInput) => {
+    if (!onCreateSpecialPeriod) return
     setSubmitting(true)
-    await Promise.resolve(onCreateSpecialPeriod({
-      label: newLabel.trim(),
-      startDate: newStartDate,
-      endDate: newEndDate,
-      color: newColor,
-    }))
+    await Promise.resolve(onCreateSpecialPeriod(input))
     setShowCreateModal(false)
-    setNewLabel('')
-    setNewStartDate(todayStr)
-    setNewDurationDays(7)
     setSubmitting(false)
   }
+
+  const handleUpdate = async (input: PeriodInput) => {
+    if (!editingPeriod || !onUpdateSpecialPeriod) return
+    setSubmitting(true)
+    await Promise.resolve(onUpdateSpecialPeriod(editingPeriod.id, input))
+    setEditingPeriod(null)
+    setSubmitting(false)
+  }
+
+  const rowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between' as const, gap: '10px', padding: '8px 12px', borderRadius: '8px', background: 'var(--surface)', marginBottom: '6px', border: '1px solid var(--line)' }
+  const actionBtnStyle = (danger?: boolean) => ({ padding: '3px 10px', border: `1px solid var(--line)`, borderRadius: '6px', background: 'var(--bg)', color: danger ? 'var(--status-danger)' : 'var(--muted)', fontSize: '12px', fontWeight: 600 as const, cursor: 'pointer' })
 
   return (
     <div className="special-period-settings">
       {activePeriod && (
-        <div style={{ marginBottom: 16, padding: 16, background: 'var(--status-warn-bg)', border: '1px solid var(--status-warn)', borderRadius: 12 }}>
+        <div style={{ marginBottom: 16, padding: 16, background: 'var(--surface)', border: `1px solid var(--line)`, borderLeft: `4px solid ${activePeriod.color || 'var(--ink)'}`, borderRadius: 12 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 6, height: 6, borderRadius: 99, background: 'var(--status-warn)' }} />
-                <h2 style={{ fontSize: 13, fontWeight: 600, margin: 0, color: 'var(--status-warn)', letterSpacing: '0.04em' }}>특별봉사 진행 중</h2>
+                <span style={{ width: 6, height: 6, borderRadius: 99, background: activePeriod.color || 'var(--ink)', flexShrink: 0 }} />
+                <h2 style={{ fontSize: 12, fontWeight: 600, margin: 0, color: 'var(--muted)', letterSpacing: '0.04em' }}>특별봉사 진행 중</h2>
               </div>
-              <p style={{ fontSize: 15, fontWeight: 600, margin: '4px 0', color: 'var(--ink)' }}>{activePeriod.label}</p>
+              <p style={{ fontSize: 15, fontWeight: 700, margin: '4px 0', color: 'var(--ink)' }}>{activePeriod.label}</p>
               <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                 {activePeriod.startDate} ~ {activePeriod.endDate}
                 {dDay !== null && (
-                  <span style={{ padding: '2px 8px', borderRadius: 999, background: 'var(--status-warn)', color: '#fff', fontWeight: 600, fontSize: 11 }}>
-                    {dDay > 0 ? `D-${dDay}` : dDay === 0 ? '오늘 마지막 날' : `D+${Math.abs(dDay)}`}
+                  <span style={{ padding: '2px 8px', borderRadius: 999, background: activePeriod.color || 'var(--ink)', color: '#fff', fontWeight: 600, fontSize: 11 }}>
+                    {dDay > 0 ? `D-${dDay}` : dDay === 0 ? '오늘 마지막' : `D+${Math.abs(dDay)}`}
                   </span>
                 )}
               </p>
             </div>
             {isAdmin && (
-              <button
-                onClick={() => {
-                  if (window.confirm(`"${activePeriod.label}" 시즌을 즉시 종료할까요?\n이미 기록된 방문은 보존됩니다.`)) {
-                    void onDeleteSpecialPeriod?.(activePeriod.id)
-                  }
-                }}
-                type="button"
-                style={{ height: 30, minHeight: 30, padding: '0 12px', border: '1px solid var(--line-2)', borderRadius: 8, background: 'var(--surface)', color: 'var(--status-danger)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
-              >
-                종료
-              </button>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <button onClick={() => setEditingPeriod(activePeriod)} type="button" style={actionBtnStyle()}>수정</button>
+                <button onClick={() => { if (window.confirm(`"${activePeriod.label}" 시즌을 즉시 종료할까요?\n이미 기록된 방문은 보존됩니다.`)) void onDeleteSpecialPeriod?.(activePeriod.id) }} type="button" style={actionBtnStyle(true)}>종료</button>
+              </div>
             )}
           </div>
           <p style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
@@ -105,33 +207,28 @@ export function SpecialPeriodSettings({
         <div className="detail-card" style={{ marginBottom: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
             <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>특별봉사 시즌 관리</h2>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              type="button"
-              style={{ padding: '6px 14px', border: 0, borderRadius: '7px', background: '#f59e0b', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
-            >
+            <button onClick={() => setShowCreateModal(true)} type="button"
+              style={{ padding: '6px 14px', border: 0, borderRadius: '7px', background: 'var(--ink)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               + 새 시즌
             </button>
           </div>
 
           {upcomingPeriods.length > 0 && (
             <div style={{ marginBottom: '14px' }}>
-              <p style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', margin: '0 0 6px', letterSpacing: '0.05em' }}>예정</p>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)', margin: '0 0 6px', letterSpacing: '0.05em' }}>예정</p>
               {upcomingPeriods.map((period) => (
-                <div key={period.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '8px 12px', borderRadius: '8px', background: '#f8fafc', marginBottom: '6px' }}>
-                  <div>
-                    <strong style={{ fontSize: '13px' }}>{period.label}</strong>
-                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{period.startDate} ~ {period.endDate}</div>
+                <div key={period.id} style={rowStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: period.color, flexShrink: 0 }} />
+                    <div style={{ minWidth: 0 }}>
+                      <strong style={{ fontSize: '13px', display: 'block' }}>{period.label}</strong>
+                      <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{period.startDate} ~ {period.endDate}</div>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`"${period.label}" 예정 시즌을 삭제할까요?`)) void onDeleteSpecialPeriod?.(period.id)
-                    }}
-                    type="button"
-                    style={{ padding: '4px 10px', border: '1px solid #fecaca', borderRadius: '6px', background: '#fff', color: '#dc2626', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    삭제
-                  </button>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button onClick={() => setEditingPeriod(period)} type="button" style={actionBtnStyle()}>수정</button>
+                    <button onClick={() => { if (window.confirm(`"${period.label}" 예정 시즌을 삭제할까요?`)) void onDeleteSpecialPeriod?.(period.id) }} type="button" style={actionBtnStyle(true)}>삭제</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -139,135 +236,53 @@ export function SpecialPeriodSettings({
 
           {pastPeriods.length > 0 && (
             <div>
-              <p style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', margin: '0 0 6px', letterSpacing: '0.05em' }}>지난 시즌</p>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)', margin: '0 0 6px', letterSpacing: '0.05em' }}>지난 시즌</p>
               {pastPeriods.slice(0, 5).map((period) => (
-                <div key={period.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '8px 12px', borderRadius: '8px', background: '#fff', marginBottom: '4px', border: '1px solid #f1f5f9' }}>
-                  <div>
-                    <strong style={{ fontSize: '13px', color: '#475569' }}>{period.label}</strong>
-                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{period.startDate} ~ {period.endDate}</div>
+                <div key={period.id} style={{ ...rowStyle, opacity: 0.7 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: period.color, flexShrink: 0 }} />
+                    <div style={{ minWidth: 0 }}>
+                      <strong style={{ fontSize: '13px', color: 'var(--ink)', display: 'block' }}>{period.label}</strong>
+                      <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{period.startDate} ~ {period.endDate}</div>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`"${period.label}" 시즌을 삭제할까요? 방문 기록은 보존됩니다.`)) void onDeleteSpecialPeriod?.(period.id)
-                    }}
-                    type="button"
-                    style={{ padding: '4px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', background: '#fff', color: '#94a3b8', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    삭제
-                  </button>
+                  <button onClick={() => { if (window.confirm(`"${period.label}" 시즌을 삭제할까요? 방문 기록은 보존됩니다.`)) void onDeleteSpecialPeriod?.(period.id) }} type="button" style={actionBtnStyle(true)}>삭제</button>
                 </div>
               ))}
               {pastPeriods.length > 5 && (
-                <p style={{ fontSize: '11px', color: '#94a3b8', margin: '6px 0 0', textAlign: 'center' }}>외 {pastPeriods.length - 5}건</p>
+                <p style={{ fontSize: '11px', color: 'var(--muted)', margin: '6px 0 0', textAlign: 'center' }}>외 {pastPeriods.length - 5}건</p>
               )}
             </div>
           )}
 
           {specialPeriods.length === 0 && (
-            <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, textAlign: 'center', padding: '16px 0' }}>등록된 시즌이 없습니다.</p>
+            <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, textAlign: 'center', padding: '16px 0' }}>등록된 시즌이 없습니다.</p>
           )}
         </div>
       )}
 
       {showCreateModal && (
-        <div className="cal-modal-backdrop" onClick={() => setShowCreateModal(false)}>
-          <div className="cal-modal" style={{ maxWidth: '460px', width: '100%' }} onClick={(event) => event.stopPropagation()}>
-            <div className="cal-modal-head">
-              <div className="cal-modal-title"><h2>새 특별봉사 시즌</h2></div>
-            </div>
-            <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#374151' }}>라벨 <em style={{ color: '#ef4444', fontStyle: 'normal' }}>*</em></span>
-                <input
-                  placeholder="예) 봄 특별봉사 2026"
-                  value={newLabel}
-                  onChange={(event) => setNewLabel(event.target.value)}
-                  style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', fontFamily: 'inherit' }}
-                />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#374151' }}>시작일</span>
-                <input
-                  type="date"
-                  value={newStartDate}
-                  onChange={(event) => setNewStartDate(event.target.value)}
-                  style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', fontFamily: 'inherit' }}
-                />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#374151' }}>기간 (일)</span>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <input
-                    type="number"
-                    min={1}
-                    value={newDurationDays}
-                    onChange={(event) => setNewDurationDays(Math.max(1, Number(event.target.value)))}
-                    style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', width: '80px', fontFamily: 'inherit' }}
-                  />
-                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                    {[3, 5, 7, 10, 14].map((days) => (
-                      <button
-                        key={days}
-                        type="button"
-                        onClick={() => setNewDurationDays(days)}
-                        style={{ padding: '4px 10px', border: newDurationDays === days ? '1px solid #f59e0b' : '1px solid #e2e8f0', borderRadius: '6px', background: newDurationDays === days ? '#fef3c7' : '#fff', color: newDurationDays === days ? '#92400e' : '#64748b', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        {days}일
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#374151' }}>색상</span>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {PERIOD_COLORS.map((c) => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      title={c.label}
-                      onClick={() => setNewColor(c.value)}
-                      style={{
-                        width: 28, height: 28, borderRadius: '50%',
-                        background: c.value,
-                        border: newColor === c.value ? `3px solid ${c.value}` : '2px solid transparent',
-                        outline: newColor === c.value ? `2px solid ${c.value}44` : 'none',
-                        outlineOffset: '2px',
-                        cursor: 'pointer',
-                        padding: 0,
-                        opacity: newColor === c.value ? 1 : 0.5,
-                        transition: 'opacity 0.15s, outline 0.15s',
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div style={{ padding: '10px 12px', background: 'var(--surface)', border: `1px solid var(--line)`, borderLeft: `3px solid ${newColor}`, borderRadius: '8px', fontSize: '12px', color: 'var(--ink)' }}>
-                <strong>종료일:</strong> {newEndDate || '-'}
-                {newStartDate && newStartDate <= todayStr && newEndDate >= todayStr && (
-                  <span style={{ marginLeft: '8px', padding: '2px 8px', borderRadius: '4px', background: newColor, color: '#fff', fontSize: '11px' }}>오늘부터 활성화됨</span>
-                )}
-              </div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '12px 24px 20px', borderTop: '1px solid #f1f5f9' }}>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                type="button"
-                style={{ padding: '8px 16px', border: '1px solid #e2e8f0', borderRadius: '7px', background: '#fff', color: '#64748b', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
-              >
-                취소
-              </button>
-              <button
-                onClick={() => void handleCreate()}
-                type="button"
-                disabled={!newLabel.trim() || submitting}
-                style={{ padding: '8px 18px', border: 0, borderRadius: '7px', background: !newLabel.trim() || submitting ? '#cbd5e1' : '#f59e0b', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: !newLabel.trim() || submitting ? 'not-allowed' : 'pointer' }}
-              >
-                {submitting ? '생성 중...' : '시즌 생성'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <PeriodForm
+          title="새 특별봉사 시즌"
+          initial={{ label: '', startDate: todayStr, durationDays: 7, color: PERIOD_COLORS[0].value }}
+          todayStr={todayStr}
+          onSubmit={(input) => void handleCreate(input)}
+          onCancel={() => setShowCreateModal(false)}
+          submitLabel="시즌 생성"
+          submitting={submitting}
+        />
+      )}
+
+      {editingPeriod && (
+        <PeriodForm
+          title="시즌 수정"
+          initial={{ label: editingPeriod.label, startDate: editingPeriod.startDate, durationDays: calcDuration(editingPeriod.startDate, editingPeriod.endDate), color: editingPeriod.color || PERIOD_COLORS[0].value }}
+          todayStr={todayStr}
+          onSubmit={(input) => void handleUpdate(input)}
+          onCancel={() => setEditingPeriod(null)}
+          submitLabel="저장"
+          submitting={submitting}
+        />
       )}
     </div>
   )

@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { CalendarEvent, Role } from '../../types'
+import type { CalendarEvent, Role, SpecialPeriod } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { Card } from '../ui'
 import { AdminEventDetailSheet } from './AdminEventDetailSheet'
@@ -67,6 +67,7 @@ type Props = {
   onUpdateEvent?: (id: number, input: EventInput) => void
   onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput) => void
   onApplyToEvent?: (eventId: number) => void
+  specialPeriods?: SpecialPeriod[]
 }
 
 function pad2(n: number) {
@@ -190,6 +191,7 @@ export function AdminMobileCalendar({
   onUpdateEvent,
   onUpdateEventSeries,
   onApplyToEvent,
+  specialPeriods = [],
 }: Props) {
   const today = useMemo(() => new Date(), [])
   const [year, setYear] = useState(today.getFullYear())
@@ -365,6 +367,7 @@ export function AdminMobileCalendar({
             const isSelected = day === selectedDay
             const isSun = idx % 7 === 0
             const hasEvent = monthEvents.some((e) => e.date === dayStr)
+            const activePeriod = specialPeriods.find((p) => dayStr >= p.startDate && dayStr <= p.endDate)
             return (
               <button
                 key={`d-${day}-${idx}`}
@@ -377,7 +380,7 @@ export function AdminMobileCalendar({
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 3,
-                  background: 'transparent',
+                  background: activePeriod && !isSelected ? activePeriod.color + '14' : 'transparent',
                   border: 'none',
                   padding: 0,
                   cursor: 'pointer',

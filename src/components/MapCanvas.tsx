@@ -6,10 +6,10 @@ import { TERRITORY_BOUNDARY } from '../data/territoryBoundary'
 import { showToast } from '../lib/toast'
 
 const STATUS_COLORS: Record<BuildingStatus, string> = {
-  방문필요: '#2D6CDF',
-  방문완료: '#4F7A4B',
+  방문필요: '#2F6FDB',
+  방문완료: '#059669',
   방문금지: '#1A1A18',
-  정기방문: '#B8862A',
+  정기방문: '#F59E0B',
 }
 
 function cssVar(name: string, fallback: string): string {
@@ -175,7 +175,7 @@ function clusterBuildings(buildings: Building[], zoom: number): BuildingCluster[
 function clusterMarkerHtml(count: number): string {
   const size = count >= 50 ? 52 : count >= 10 ? 44 : 36
   const fontSize = count >= 50 ? 16 : count >= 10 ? 15 : 14
-  const brandColor = cssVar('--brand-700', '#4267a5')
+  const clusterColor = '#334155'
   return `<div title="${count}개 건물" style="
     display:grid;
     width:${size}px;
@@ -183,8 +183,8 @@ function clusterMarkerHtml(count: number): string {
     place-items:center;
     border:3px solid #ffffff;
     border-radius:999px;
-    background:${brandColor};
-    box-shadow:0 4px 14px rgba(66,103,165,0.5);
+    background:${clusterColor};
+    box-shadow:0 4px 14px rgba(15,23,42,0.28);
     color:#ffffff;
     cursor:pointer;
     font-size:${fontSize}px;
@@ -291,15 +291,7 @@ function markerHtml(
   const cardName = getCardName(cards, building.cardId)
   const hasRegularVisit = building.units.some((unit) => unit.isRegularVisit)
   const hasChineseNeedsReview = building.units.some((unit) => unit.isChinese && !unit.isRegularVisit)
-  const infoColor = cssVar('--info-700', '#3b82f6')
-  const accentColor = cssVar('--accent-700', '#1f6b43')
-  const strokeColor = hasChineseNeedsReview
-    ? infoColor
-    : hasRegularVisit
-      ? accentColor
-      : isSelected
-        ? '#ffffff'
-        : 'rgba(255,255,255,0.85)'
+  const strokeColor = '#ffffff'
   const scale = isSelected ? 1.22 : 1
   const opacity = isDimmed ? 0.38 : 1
   const label = escapeAttr(`${building.name} · ${status} · ${cardName}${hasChineseNeedsReview ? ' · 중국인 발견' : hasRegularVisit ? ' · 정기방문 있음' : ''}`)
@@ -328,7 +320,7 @@ function markerHtml(
         border-radius: 50% 50% 50% 0;
         box-sizing: border-box;
         transform: rotate(-45deg);
-        box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+        box-shadow: ${isSelected ? '0 0 0 3px rgba(255,255,255,0.72), 0 3px 9px rgba(15,23,42,0.34)' : '0 2px 6px rgba(15,23,42,0.26)'};
         flex-shrink: 0;
       "></div>
     </div>

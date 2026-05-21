@@ -118,6 +118,7 @@ function App() {
     deleteNotice,
     specialPeriods,
     createSpecialPeriod,
+    updateSpecialPeriod,
     deleteSpecialPeriod,
     reviewTasks,
     createReviewTask,
@@ -277,6 +278,7 @@ function App() {
             onImportBuildings={importBuildings}
             onCreateNotice={createNotice}
             onCreateSpecialPeriod={createSpecialPeriod}
+            onUpdateSpecialPeriod={updateSpecialPeriod}
             onDeleteBuilding={deleteBuilding}
             onDeleteBuildings={deleteBuildings}
             onDeleteCards={deleteCards}
@@ -394,6 +396,7 @@ function App() {
               visitHistories={visitHistories}
               specialPeriods={specialPeriods}
               onCreateSpecialPeriod={createSpecialPeriod}
+              onUpdateSpecialPeriod={updateSpecialPeriod}
               onDeleteSpecialPeriod={deleteSpecialPeriod}
               informalAssets={informalAssets}
               eventInformalAssignments={eventInformalAssignments}

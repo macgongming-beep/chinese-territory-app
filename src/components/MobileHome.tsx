@@ -302,6 +302,7 @@ export function MobileHome({
   visitHistories,
   specialPeriods,
   onCreateSpecialPeriod,
+  onUpdateSpecialPeriod,
   onDeleteSpecialPeriod,
   // v2 신 배정 모델
   informalAssets = [],
@@ -383,6 +384,7 @@ export function MobileHome({
   visitHistories: VisitHistory[]
   specialPeriods?: SpecialPeriod[]
   onCreateSpecialPeriod?: (input: { label: string; startDate: string; endDate: string; color: string }) => Promise<void> | void
+  onUpdateSpecialPeriod?: (id: number, input: { label: string; startDate: string; endDate: string; color: string }) => Promise<void> | void
   onDeleteSpecialPeriod?: (id: number) => Promise<void> | void
   // v2 신 배정 모델
   informalAssets?: InformalAsset[]
@@ -938,6 +940,7 @@ export function MobileHome({
                   onUpdateEvent={role === 'user' ? undefined : onUpdateCalendarEvent}
                   onUpdateEventSeries={role === 'user' ? undefined : onUpdateCalendarEventSeries}
                   onApplyToEvent={onApplyToEvent}
+                  specialPeriods={specialPeriods}
                 />
                 {/* (legacy MobileCalendar 유지 — 향후 제거 가능. 일정 상세 시트 시점별 액션은
                     AdminEventDetailSheet 가 role prop 받아 분기.) */}
@@ -1148,6 +1151,7 @@ export function MobileHome({
                     isAdmin
                     specialPeriods={specialPeriods}
                     onCreateSpecialPeriod={onCreateSpecialPeriod}
+                    onUpdateSpecialPeriod={onUpdateSpecialPeriod}
                     onDeleteSpecialPeriod={onDeleteSpecialPeriod}
                   />
                 </div>

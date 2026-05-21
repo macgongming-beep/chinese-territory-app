@@ -16688,8 +16688,8 @@ button:focus-visible {
   }
 
   .map-marker.has-regular {
-    border-color: var(--accent-700);
-    box-shadow: 0 0 0 4px rgba(31, 107, 67, 0.2), 0 8px 22px rgba(31, 41, 55, 0.2);
+    border-color: #ffffff;
+    box-shadow: 0 8px 20px rgba(31, 41, 55, 0.2);
   }
 
   .map-marker.has-regular::after {
@@ -16729,15 +16729,17 @@ button:focus-visible {
     display: none;
   }
 
-  .status-방문필요 { background: #2D6CDF; }
-  .status-방문완료 { background: #4F7A4B; }
+  .status-방문필요 { background: #2F6FDB; }
+  .status-방문완료 { background: #059669; }
   .status-방문금지 { background: #1A1A18; }
-  .status-정기방문 { background: #B8862A; }
+  .status-정기방문 { background: #F59E0B; }
 
-  .map-marker.status-방문필요 { border-color: #2D6CDF; }
-  .map-marker.status-방문완료 { border-color: #4F7A4B; }
-  .map-marker.status-방문금지 { border-color: #1A1A18; }
-  .map-marker.status-정기방문 { border-color: #B8862A; }
+  .map-marker.status-방문필요,
+  .map-marker.status-방문완료,
+  .map-marker.status-방문금지,
+  .map-marker.status-정기방문 {
+    border-color: #ffffff;
+  }
 
   .map-detail-pane {
     display: grid;

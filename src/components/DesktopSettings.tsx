@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Role, SpecialPeriod } from '../types'
-import { PERIOD_COLORS, roleLabels } from '../types'
+import { roleLabels } from '../types'
 import { supabase } from '../lib/supabase'
 import { PwaInstallSection } from './PwaInstall'
 import { NotificationSettings } from './NotificationSettings'
 import { AppUpdateCard } from './AppUpdateCard'
+import { SpecialPeriodSettings } from './SpecialPeriodSettings'
 function isAdminLike(role: Role): boolean {
   return role === 'admin' || role === 'developer'
 }
@@ -16,12 +17,6 @@ function formatLoginAt(iso: string): string {
   return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
-function calculateEndDate(start: string, days: number): string {
-  if (!start) return ''
-  const d = new Date(start)
-  d.setDate(d.getDate() + days - 1)
-  return d.toISOString().slice(0, 10)
-}
 
 type GroupId = 'notifications' | 'account' | 'env' | 'admin'
 
@@ -58,6 +53,7 @@ export function DesktopSettings({
   onLogout,
   specialPeriods = [],
   onCreateSpecialPeriod,
+  onUpdateSpecialPeriod,
   onDeleteSpecialPeriod,
 }: {
   currentVisitor: string
@@ -66,15 +62,10 @@ export function DesktopSettings({
   onLogout: () => void
   specialPeriods?: SpecialPeriod[]
   onCreateSpecialPeriod?: (input: { label: string; startDate: string; endDate: string; color: string }) => Promise<void> | void
+  onUpdateSpecialPeriod?: (id: number, input: { label: string; startDate: string; endDate: string; color: string }) => Promise<void> | void
   onDeleteSpecialPeriod?: (id: number) => Promise<void> | void
 }) {
   const navigate = useNavigate()
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const activePeriod = specialPeriods.find((period) => todayStr >= period.startDate && todayStr <= period.endDate)
-  const upcomingPeriods = specialPeriods.filter((period) => todayStr < period.startDate).sort((a, b) => a.startDate.localeCompare(b.startDate))
-  const pastPeriods = specialPeriods.filter((period) => todayStr > period.endDate).sort((a, b) => b.startDate.localeCompare(a.startDate))
-
-  const [showCreateModal, setShowCreateModal] = useState(false)
   // 아코디언 펼침 상태
   const [expanded, setExpanded] = useState<Set<GroupId>>(() => getInitialExpanded())
   const toggleGroup = (id: GroupId) => {
@@ -86,11 +77,6 @@ export function DesktopSettings({
       return next
     })
   }
-  const [newLabel, setNewLabel] = useState('')
-  const [newStartDate, setNewStartDate] = useState(todayStr)
-  const [newDurationDays, setNewDurationDays] = useState(7)
-  const [submitting, setSubmitting] = useState(false)
-
   const [myLogs, setMyLogs]           = useState<{ id: number; logged_in_at: string }[]>([])
   const [showOldLogs, setShowOldLogs] = useState(false)
 
@@ -108,35 +94,6 @@ export function DesktopSettings({
         setMyLogs((data ?? []) as { id: number; logged_in_at: string }[])
       })
   }, [currentUserId])
-
-  const newEndDate = calculateEndDate(newStartDate, newDurationDays)
-  const dDay = (() => {
-    if (!activePeriod) return null
-    const end = new Date(activePeriod.endDate)
-    const today = new Date(todayStr)
-    return Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-  })()
-
-  const handleCreate = async () => {
-    if (!newLabel.trim() || !newStartDate || !newEndDate || !onCreateSpecialPeriod) return
-    const overlaps = specialPeriods.find((period) => !(newEndDate < period.startDate || newStartDate > period.endDate))
-    if (overlaps) {
-      alert(`기존 시즌 "${overlaps.label}" (${overlaps.startDate} ~ ${overlaps.endDate})와 겹칩니다.`)
-      return
-    }
-    setSubmitting(true)
-    await Promise.resolve(onCreateSpecialPeriod({
-      label: newLabel.trim(),
-      startDate: newStartDate,
-      endDate: newEndDate,
-      color: PERIOD_COLORS.find((color) => color.label === '주황')?.value ?? PERIOD_COLORS[0].value,
-    }))
-    setShowCreateModal(false)
-    setNewLabel('')
-    setNewStartDate(todayStr)
-    setNewDurationDays(7)
-    setSubmitting(false)
-  }
 
   return (
     <section className="desk-settings-page">
@@ -308,95 +265,13 @@ export function DesktopSettings({
 
                 {/* 특별 봉사 시즌 — admin/developer 만 */}
                 {isAdminLike(actualRole) && (
-                  <article className="desk-card ds-card">
-                    <div className="desk-card__head">
-                      <h2 className="desk-card__title"><span className="desk-card__title-dot ds-dot-warning" />특별 봉사 시즌</h2>
-                      <button className="ds-btn ds-btn-primary ds-btn-sm" onClick={() => setShowCreateModal(true)} type="button">
-                        + 새 시즌
-                      </button>
-                    </div>
-
-                    {activePeriod ? (
-                      <div className="ds-season-banner">
-                        <span className="ds-season-dot" aria-hidden="true" />
-                        <div className="ds-season-main">
-                          <strong>{activePeriod.label}</strong>
-                          <span className="tnum">{activePeriod.startDate} ~ {activePeriod.endDate}</span>
-                          <p>기간 동안의 모든 방문 기록은 자동으로 이 시즌에 태깅됩니다. 방문 모달에 초대장 남김 체크박스가 표시됩니다.</p>
-                        </div>
-                        <div className="ds-season-actions">
-                          {dDay !== null && (
-                            <span className="ds-dday tnum">{dDay > 0 ? `D-${dDay}` : dDay === 0 ? '오늘 마지막 날' : `D+${Math.abs(dDay)}`}</span>
-                          )}
-                          <button
-                            className="ds-btn ds-btn-ghost ds-btn-sm"
-                            onClick={() => {
-                              if (window.confirm(`"${activePeriod.label}" 시즌을 즉시 종료할까요? 이미 기록된 방문은 보존됩니다.`)) {
-                                void onDeleteSpecialPeriod?.(activePeriod.id)
-                              }
-                            }}
-                            type="button"
-                          >
-                            종료/삭제
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="ds-empty-season">
-                        <strong>진행 중인 특별 봉사가 없습니다.</strong>
-                        <span>새 시즌을 추가하면 방문 기록에 시즌 정보가 자동으로 연결됩니다.</span>
-                      </div>
-                    )}
-
-                    {(upcomingPeriods.length > 0 || pastPeriods.length > 0) && (
-                      <div className="ds-season-lists">
-                        {upcomingPeriods.length > 0 && (
-                          <section>
-                            <h3>예정</h3>
-                            {upcomingPeriods.map((period) => (
-                              <div className="ds-season-row" key={period.id}>
-                                <div>
-                                  <strong>{period.label}</strong>
-                                  <span className="tnum">{period.startDate} ~ {period.endDate}</span>
-                                </div>
-                                <button
-                                  className="ds-btn ds-btn-ghost ds-btn-sm"
-                                  onClick={() => {
-                                    if (window.confirm(`"${period.label}" 예정 시즌을 삭제할까요?`)) void onDeleteSpecialPeriod?.(period.id)
-                                  }}
-                                  type="button"
-                                >
-                                  삭제
-                                </button>
-                              </div>
-                            ))}
-                          </section>
-                        )}
-                        {pastPeriods.length > 0 && (
-                          <section>
-                            <h3>지난 시즌</h3>
-                            {pastPeriods.slice(0, 5).map((period) => (
-                              <div className="ds-season-row muted" key={period.id}>
-                                <div>
-                                  <strong>{period.label}</strong>
-                                  <span className="tnum">{period.startDate} ~ {period.endDate}</span>
-                                </div>
-                                <button
-                                  className="ds-btn ds-btn-ghost ds-btn-sm"
-                                  onClick={() => {
-                                    if (window.confirm(`"${period.label}" 시즌을 삭제할까요? 방문 기록은 보존됩니다.`)) void onDeleteSpecialPeriod?.(period.id)
-                                  }}
-                                  type="button"
-                                >
-                                  삭제
-                                </button>
-                              </div>
-                            ))}
-                          </section>
-                        )}
-                      </div>
-                    )}
-                  </article>
+                  <SpecialPeriodSettings
+                    isAdmin
+                    specialPeriods={specialPeriods}
+                    onCreateSpecialPeriod={onCreateSpecialPeriod}
+                    onUpdateSpecialPeriod={onUpdateSpecialPeriod}
+                    onDeleteSpecialPeriod={onDeleteSpecialPeriod}
+                  />
                 )}
               </div>
             )}
@@ -443,63 +318,6 @@ export function DesktopSettings({
         </section>
       </div>
 
-      {showCreateModal && (
-        <div className="cal-modal-backdrop" onClick={() => setShowCreateModal(false)}>
-          <div className="cal-modal ds-season-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="cal-modal-head">
-              <div className="cal-modal-title"><h2>새 특별봉사 시즌</h2></div>
-            </div>
-            <div className="ds-season-form">
-              <label>
-                <span>라벨</span>
-                <input
-                  placeholder="예) 봄 특별봉사 2026"
-                  value={newLabel}
-                  onChange={(event) => setNewLabel(event.target.value)}
-                />
-              </label>
-              <label>
-                <span>시작일</span>
-                <input type="date" value={newStartDate} onChange={(event) => setNewStartDate(event.target.value)} />
-              </label>
-              <label>
-                <span>기간</span>
-                <div className="ds-duration-row">
-                  <input
-                    className="tnum"
-                    min={1}
-                    type="number"
-                    value={newDurationDays}
-                    onChange={(event) => setNewDurationDays(Math.max(1, Number(event.target.value)))}
-                  />
-                  <div>
-                    {[3, 5, 7, 10, 14].map((days) => (
-                      <button
-                        className={newDurationDays === days ? 'active' : ''}
-                        key={days}
-                        onClick={() => setNewDurationDays(days)}
-                        type="button"
-                      >
-                        {days}일
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </label>
-              <div className="ds-end-preview">
-                <span>종료일</span>
-                <strong className="tnum">{newEndDate || '-'}</strong>
-              </div>
-            </div>
-            <div className="cal-modal-foot">
-              <button className="cal-cancel-btn" onClick={() => setShowCreateModal(false)} type="button">취소</button>
-              <button className="cal-save-btn" disabled={!newLabel.trim() || submitting} onClick={() => void handleCreate()} type="button">
-                {submitting ? '생성 중...' : '시즌 생성'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   )
 }

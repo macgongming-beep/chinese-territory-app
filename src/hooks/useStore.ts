@@ -388,7 +388,7 @@ export function useStore() {
 
   // ── 도메인별 mutation 분리 (storeMutations.ts) ──────────────
   const { createNotice, deleteNotice } = makeNoticeMutations({ fetchAll })
-  const { createSpecialPeriod, deleteSpecialPeriod } = makeSpecialPeriodMutations({ fetchAll })
+  const { createSpecialPeriod, updateSpecialPeriod, deleteSpecialPeriod } = makeSpecialPeriodMutations({ fetchAll })
   const {
     createReviewTask,
     completeReviewTask,
@@ -479,6 +479,7 @@ export function useStore() {
     deleteNotice,
     specialPeriods,
     createSpecialPeriod,
+    updateSpecialPeriod,
     deleteSpecialPeriod,
     getActiveSpecialPeriodIdForDate,
     reviewTasks,

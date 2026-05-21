@@ -75,6 +75,7 @@ export function DesktopApp({
   onImportBuildings,
   onCreateNotice,
   onCreateSpecialPeriod,
+  onUpdateSpecialPeriod,
   onDeleteBuilding,
   onDeleteBuildings,
   onDeleteCards,
@@ -205,6 +206,7 @@ export function DesktopApp({
   }>) => Promise<{ inserted: number; skipped: number }>
   onCreateNotice: (input: { title: string; content: string; priority: Notice['priority']; author: string }) => void
   onCreateSpecialPeriod: (input: { label: string; startDate: string; endDate: string; color: string }) => void
+  onUpdateSpecialPeriod: (id: number, input: { label: string; startDate: string; endDate: string; color: string }) => void
   onDeleteBuilding: (buildingId: number) => void
   onDeleteBuildings: (buildingIds: number[]) => void
   onDeleteCards: (cardIds: number[]) => void
@@ -735,6 +737,7 @@ export function DesktopApp({
             onLogout={onLogout}
             specialPeriods={specialPeriods}
             onCreateSpecialPeriod={async (input) => onCreateSpecialPeriod(input)}
+            onUpdateSpecialPeriod={async (id, input) => onUpdateSpecialPeriod(id, input)}
             onDeleteSpecialPeriod={async (id) => onDeleteSpecialPeriod(id)}
           />
         } />
