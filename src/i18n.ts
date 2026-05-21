@@ -132,7 +132,7 @@ const dictionary = {
     'map.noBuildings': '표시할 건물이 없습니다',
     'map.building': '건물',
     'map.unit': '세대',
-    'map.unitInfo': '세대 정보',
+    'map.unitInfo': '세대',
     'map.invitation': '초대장',
     'map.met': '만남',
     'map.absent': '부재',

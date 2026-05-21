@@ -1296,12 +1296,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                   <span className="unit-number-text">{unit.number}</span>
                                   {unit.isChinese && <span className="unit-chinese-badge">中</span>}
                                   {unit.isForbidden && <span className="unit-forbidden-badge">방문금지</span>}
-                                  {unit.isRegularVisit && <span className="unit-regular-badge">{t(language, 'map.regularShort')}</span>}
-                                  {latestHistory && (
-                                    <span className="unit-recent-visit">
-                                      [{latestHistory.visitedAt.slice(5).replace('-', '/')} {latestHistory.timeSlot}]
-                                    </span>
-                                  )}
+                                  {unit.isRegularVisit && <span className="unit-regular-badge">{t(language, 'map.regularVisit')}</span>}
                                 </button>
                                 {activePeriod && (
                                   <button

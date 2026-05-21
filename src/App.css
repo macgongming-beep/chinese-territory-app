@@ -21589,11 +21589,11 @@ button:focus-visible {
 
 .unit-regular-badge {
   font-size: 10px;
-  font-weight: 600;
-  color: var(--accent-700);
-  background: #dcfce7;
+  font-weight: 700;
+  color: #B8862A;
+  background: #B8862A1a;
   border-radius: 3px;
-  padding: 0 3px;
+  padding: 0 4px;
   flex-shrink: 0;
 }
 
