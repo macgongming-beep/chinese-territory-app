@@ -1742,9 +1742,9 @@ function UnitDetailScreen({
                 const dayName = dayNames[new Date(h.visitedAt).getDay()]
                 return (
                   <div key={h.id} style={{
-                    background: 'var(--bg)', borderRadius: 8,
+                    background: 'var(--bg)', borderRadius: 7,
                     border: '1px solid var(--line)', borderLeft: `3px solid ${c}`,
-                    padding: '7px 10px',
+                    padding: '5px 8px',
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
@@ -1812,7 +1812,7 @@ function UnitDetailScreen({
                   border: flag.active ? 'none' : '1px solid var(--line)',
                   background: flag.active ? 'var(--ink)' : 'var(--surface)',
                   color: flag.active ? '#fff' : 'var(--muted)',
-                  fontSize: 10.5, fontWeight: 600,
+                  fontSize: 11, fontWeight: 600,
                   cursor: canRecordVisits ? 'pointer' : 'default',
                 }}
               >
