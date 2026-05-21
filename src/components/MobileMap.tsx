@@ -1658,18 +1658,6 @@ function UnitDetailScreen({
 
   const resultColor = (r: string) => r === '만남' ? '#4F7A4B' : r === '부재' ? '#C44536' : '#94a3b8'
 
-  const unitStatus = unit.isForbidden ? '방문금지'
-    : unit.isRegularVisit ? '정기방문'
-    : unit.status === '만남' ? '만남'
-    : unit.status === '부재' ? '부재'
-    : unit.status === '한국인' ? '한국인'
-    : '방문필요'
-  const statusColor: Record<string, string> = {
-    방문필요: '#2D6CDF', 만남: '#4F7A4B', 부재: '#C44536',
-    방문금지: '#1A1A18', 정기방문: '#B8862A', 한국인: '#94A3B8',
-  }
-  const sColor = statusColor[unitStatus] ?? '#2D6CDF'
-
   const memo = unitMemos[unit.id] ?? unit.memo ?? ''
 
   const sectionStyle: React.CSSProperties = { padding: '16px', marginBottom: 8, background: 'var(--surface)', borderRadius: 12 }
@@ -1678,22 +1666,13 @@ function UnitDetailScreen({
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100%', paddingBottom: 40 }}>
 
-      {/* 상태 칩 */}
-      <div style={{ padding: '10px 16px', background: 'var(--surface)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{
-          padding: '3px 10px', borderRadius: 999,
-          background: sColor + '18', color: sColor,
-          fontSize: 12.5, fontWeight: 700,
-        }}>{unitStatus}</span>
-      </div>
-
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px 0' }}>
 
         {/* 방문 이력 표 */}
         <div style={sectionStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <h3 style={sectionTitleStyle}>방문 이력</h3>
-            <span style={{ fontSize: 12, color: 'var(--muted)' }}>총 {unitHistories.length}건</span>
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>총 {unitHistories.length}건</span>
           </div>
           <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
             {/* Header */}
@@ -1811,12 +1790,12 @@ function UnitDetailScreen({
                 onClick={() => { if (!requireRecordAccess()) return; flag.onToggle() }}
                 disabled={!canRecordVisits}
                 style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  padding: '8px 6px', borderRadius: 8,
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                  padding: '6px 4px', borderRadius: 7,
                   border: flag.active ? 'none' : '1px solid var(--line)',
                   background: flag.active ? 'var(--ink)' : 'var(--surface)',
                   color: flag.active ? '#fff' : 'var(--muted)',
-                  fontSize: 12, fontWeight: 600,
+                  fontSize: 11, fontWeight: 600,
                   cursor: canRecordVisits ? 'pointer' : 'default',
                 }}
               >
