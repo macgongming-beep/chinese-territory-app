@@ -1164,8 +1164,7 @@ export function MobileMap({
                     {!isGroupCollapsed && groupedBuildings.map((building) => {
                 const isExpanded = expandedBuildingIds.has(building.id)
                 const handledUnits = building.units.filter(u => u.status !== '미방문').length
-                const regularUnitCount = building.units.filter(u => u.isRegularVisit).length
-                const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / building.units.length) * 100)
+const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / building.units.length) * 100)
                 const isEditing = building.id === editingBuildingId
                 const card = cardMap.get(building.cardId)
 
@@ -1199,7 +1198,6 @@ export function MobileMap({
                           </div>
                           <div className="bld-head-right">
                             <small>{handledUnits}/{building.units.length} · {completion}%</small>
-                            {regularUnitCount > 0 && <b className="bld-regular-badge">정{regularUnitCount}</b>}
                           </div>
                         </button>
                         <div className="bld-menu-wrap">
@@ -1293,7 +1291,7 @@ export function MobileMap({
                           return (
                             <div className={`unit-grid-row${unit.isRegularVisit ? ' ugr-regular' : ''}`} key={unit.id}>
                               <div className={`unit-grid-main${activePeriod ? ' with-invitation' : ''}`}>
-                                <button className="unit-name-btn" onClick={() => setFullScreenUnit({ unit, building, unitHistories })} type="button">
+                                <button className="unit-name-btn" onClick={() => setFullScreenUnit(prev => prev?.unit.id === unit.id ? null : { unit, building, unitHistories })} type="button">
                                   <span className="unit-chevron">›</span>
                                   <span className="unit-number-text">{unit.number}</span>
                                   {unit.isChinese && <span className="unit-chinese-badge">中</span>}
