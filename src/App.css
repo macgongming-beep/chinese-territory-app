@@ -5945,11 +5945,9 @@ button:focus-visible {
 }
 
 .mobile-building-status-group {
-  overflow: visible;
+  overflow: hidden;
   position: relative;
-  border-color: #3b82f6 #e4eaf2 #e4eaf2;
-  border-style: solid;
-  border-width: 3px 1px 1px;
+  border: 1px solid #e4eaf2;
   border-radius: 11px;
   background: #ffffff;
 }
@@ -5958,20 +5956,18 @@ button:focus-visible {
   content: none;
 }
 
+/* 상태별 왼쪽 막대 — 그룹 컨테이너 왼쪽에 색 띠 */
 .mobile-building-status-group.mobile-status-방문필요 {
-  border-top-color: #3b82f6;
+  border-left: 3px solid #2D6CDF;
 }
-
 .mobile-building-status-group.mobile-status-방문완료 {
-  border-top-color: var(--accent-700);
+  border-left: 3px solid #4F7A4B;
 }
-
 .mobile-building-status-group.mobile-status-방문금지 {
-  border-top-color: var(--danger-600);
+  border-left: 3px solid #1A1A18;
 }
-
 .mobile-building-status-group.mobile-status-정기방문 {
-  border-top-color: #facc15;
+  border-left: 3px solid #B8862A;
 }
 
 .mobile-building-status-group + .mobile-building-status-group {

@@ -134,7 +134,7 @@ export function MobileMap({
   const [expandedBuildingIds, setExpandedBuildingIds] = useState<Set<number>>(new Set())
   const [collapsedStatusGroups, setCollapsedStatusGroups] = useState<Set<BuildingStatus>>(new Set(['방문완료']))
   const [hiddenMapStatuses, setHiddenMapStatuses] = useState<Set<BuildingStatus>>(new Set())
-  const [expandedUnitId, setExpandedUnitId] = useState<number | null>(null)
+  const [fullScreenUnit, setFullScreenUnit] = useState<{ unit: Unit; building: Building; unitHistories: VisitHistory[] } | null>(null)
   const [editingHistoryId, setEditingHistoryId] = useState<number | null>(null)
   const [historyToEdit, setHistoryToEdit] = useState<VisitHistory | null>(null)
 
@@ -488,7 +488,7 @@ export function MobileMap({
     const [kind, label] = id.split(':')
     setSelectedBuildingId(null)
     setExpandedBuildingIds(new Set())
-    setExpandedUnitId(null)
+    setFullScreenUnit(null)
     setSheetHeight(HALF_HEIGHT)
     if (kind === 'region') {
       setSelectedArea(label)
@@ -527,7 +527,7 @@ export function MobileMap({
     if (filteredBuildings.some((building) => building.id === selectedBuildingId)) return
     setSelectedBuildingId(null)
     setExpandedBuildingIds(new Set())
-    setExpandedUnitId(null)
+    setFullScreenUnit(null)
   }, [filteredBuildings, selectedBuildingId])
 
   const toggleStatusGroup = (status: BuildingStatus) => {
@@ -970,13 +970,13 @@ export function MobileMap({
                   // 이미 선택된 포인트를 다시 클릭하면 해제 및 시트 내리기
                   setSelectedBuildingId(null)
                   setExpandedBuildingIds(new Set())
-                  setExpandedUnitId(null)
+                  setFullScreenUnit(null)
                   setSheetHeight(MIN_HEIGHT)
                 } else {
                   // 새로운 포인트 클릭 시 선택 및 상세내역 펴기
                   setSelectedBuildingId(id)
                   setExpandedBuildingIds(new Set([id]))
-                  setExpandedUnitId(null) // 다른 건물로 넘어갈 때도 호수 상세 내역 초기화
+                  setFullScreenUnit(null) // 다른 건물로 넘어갈 때도 호수 상세 내역 초기화
                   
                   // 포인트 클릭 시 바텀 시트 자동 대응 (최소 HALF 이상)
                   if (sheetHeight < HALF_HEIGHT) {
@@ -1003,7 +1003,7 @@ export function MobileMap({
                   // 배경 클릭 시 상세내역 닫기 및 시트 내리기
                   setSelectedBuildingId(null)
                   setExpandedBuildingIds(new Set())
-                  setExpandedUnitId(null)
+                  setFullScreenUnit(null)
                   setSheetHeight(MIN_HEIGHT)
                 }
               }}
@@ -1285,13 +1285,12 @@ export function MobileMap({
                         ).map((unit) => {
                           const unitHistories = visitHistoriesByUnitId.get(unit.id) ?? []
                           const latestHistory = unitHistories[0]
-                          const isUnitExpanded = expandedUnitId === unit.id
 
                           return (
-                            <div className={`unit-grid-row${isUnitExpanded ? ' ugr-expanded' : ''}${unit.isRegularVisit ? ' ugr-regular' : ''}`} key={unit.id}>
+                            <div className={`unit-grid-row${unit.isRegularVisit ? ' ugr-regular' : ''}`} key={unit.id}>
                               <div className={`unit-grid-main${activePeriod ? ' with-invitation' : ''}`}>
-                                <button className="unit-name-btn" onClick={() => setExpandedUnitId(isUnitExpanded ? null : unit.id)} type="button">
-                                  <span className="unit-chevron">{isUnitExpanded ? '▾' : '▸'}</span>
+                                <button className="unit-name-btn" onClick={() => setFullScreenUnit({ unit, building, unitHistories })} type="button">
+                                  <span className="unit-chevron">›</span>
                                   <span className="unit-number-text">{unit.number}</span>
                                   {unit.isChinese && <span className="unit-chinese-badge">中</span>}
                                   {unit.isForbidden && <span className="unit-forbidden-badge">방문금지</span>}
@@ -1334,28 +1333,6 @@ export function MobileMap({
                                   type="button">{unit.status === '한국인' ? '✓' : ''}</button>
                               </div>
 
-                              {isUnitExpanded && (
-                                <UnitDetail
-                                  unit={unit}
-                                  unitHistories={unitHistories}
-                                  buildingId={building.id}
-                                  canRecordVisits={canRecordVisits}
-                                  language={language}
-                                  editingHistoryId={editingHistoryId}
-                                  setEditingHistoryId={setEditingHistoryId}
-                                  setHistoryToEdit={setHistoryToEdit}
-                                  unitMemos={unitMemos}
-                                  setUnitMemos={setUnitMemos}
-                                  requireRecordAccess={requireRecordAccess}
-                                  onUpdateUnitFlags={onUpdateUnitFlags}
-                                  onToggleRegularVisit={onToggleRegularVisit}
-                                  onToggleChinese={onToggleChinese}
-                                  onDeleteUnit={onDeleteUnit}
-                                  onDeleteVisitHistory={onDeleteVisitHistory}
-                                  onQuickLogVisit={onQuickLogVisit}
-                                  onSetExpandedUnitId={(id) => setExpandedUnitId(id)}
-                                />
-                              )}
                             </div>
                           )
                         })}
@@ -1551,6 +1528,67 @@ export function MobileMap({
                 setHistoryToEdit(null)
               }} style={{ background: 'var(--accent-700)', color: '#fff', padding: '10px 16px', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', fontWeight: 700 }}>{t(language, 'common.save')}</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 세대 상세 풀스크린 오버레이 ── */}
+      {fullScreenUnit && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 600,
+          background: 'var(--bg, #f5f6f8)',
+          display: 'flex', flexDirection: 'column',
+          overflowY: 'auto',
+        }}>
+          {/* 헤더 */}
+          <div style={{
+            position: 'sticky', top: 0, zIndex: 10,
+            background: 'var(--surface, #fff)',
+            borderBottom: '1px solid var(--line)',
+            padding: '12px 16px',
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <button
+              onClick={() => setFullScreenUnit(null)}
+              type="button"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--ink)', padding: '0 4px', lineHeight: 1 }}
+              aria-label="닫기"
+            >‹</button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--ink)' }}>
+                {fullScreenUnit.unit.number}
+                {fullScreenUnit.unit.isChinese && <span style={{ marginLeft: 5, fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fef2f2', color: '#dc2626', fontWeight: 700 }}>中</span>}
+                {fullScreenUnit.unit.isForbidden && <span style={{ marginLeft: 5, fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}>방문금지</span>}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {fullScreenUnit.building.address}
+                {fullScreenUnit.building.name && ` · ${fullScreenUnit.building.name}`}
+              </div>
+            </div>
+          </div>
+
+          {/* 본문 */}
+          <div style={{ flex: 1, padding: '8px 0 40px' }}>
+            <UnitDetail
+              unit={fullScreenUnit.unit}
+              unitHistories={fullScreenUnit.unitHistories}
+              buildingId={fullScreenUnit.building.id}
+              canRecordVisits={canRecordVisits}
+              language={language}
+              editingHistoryId={editingHistoryId}
+              setEditingHistoryId={setEditingHistoryId}
+              setHistoryToEdit={setHistoryToEdit}
+              unitMemos={unitMemos}
+              setUnitMemos={setUnitMemos}
+              requireRecordAccess={requireRecordAccess}
+              onUpdateUnitFlags={onUpdateUnitFlags}
+              onToggleRegularVisit={onToggleRegularVisit}
+              onToggleChinese={onToggleChinese}
+              onDeleteUnit={onDeleteUnit}
+              onDeleteVisitHistory={onDeleteVisitHistory}
+              onQuickLogVisit={onQuickLogVisit}
+              onSetExpandedUnitId={() => setFullScreenUnit(null)}
+            />
           </div>
         </div>
       )}
