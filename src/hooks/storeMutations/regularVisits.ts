@@ -24,7 +24,7 @@ export function makeRegularVisitMutations(deps: {
       showToast('정기방문이 해제됐습니다')
     } else {
       const name = visitorName || (localStorage.getItem('currentVisitor') ?? '김민준')
-      const result = await supabase.from('regular_visits').insert({ unit_id: unitId, visitor_name: name })
+      const result = await supabase.from('regular_visits').insert({ unit_id: unitId, visitor_name: name, registered_at: new Date().toISOString() })
       if (result.error) {
         reportMutationError('정기방문을 등록하지 못했습니다.', result.error)
         return

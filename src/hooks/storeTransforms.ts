@@ -43,7 +43,7 @@ export type RawUnit = {
   is_chinese: boolean
   is_forbidden?: boolean | null
   memo: string | null
-  regular_visits: { visitor_name: string }[]
+  regular_visits: { visitor_name: string; registered_at?: string | null }[]
 }
 
 export type RawBuilding = {
@@ -229,6 +229,9 @@ export function toBuilding(raw: RawBuilding): Building {
         isRegularVisit: !!(u.regular_visits && (Array.isArray(u.regular_visits) ? u.regular_visits.length > 0 : true)),
         regularVisitor: u.regular_visits
           ? (Array.isArray(u.regular_visits) ? u.regular_visits[0]?.visitor_name : (u.regular_visits as any).visitor_name)
+          : undefined,
+        regularVisitStart: u.regular_visits
+          ? (Array.isArray(u.regular_visits) ? u.regular_visits[0]?.registered_at ?? undefined : (u.regular_visits as any).registered_at ?? undefined)
           : undefined,
       })),
   }

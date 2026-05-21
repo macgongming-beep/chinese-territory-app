@@ -143,6 +143,13 @@ export function MobileMap({
   const [collapsedStatusGroups, setCollapsedStatusGroups] = useState<Set<BuildingStatus>>(new Set(['방문완료']))
   const [hiddenMapStatuses, setHiddenMapStatuses] = useState<Set<BuildingStatus>>(new Set())
   const [fullScreenUnit, setFullScreenUnit] = useState<{ unit: Unit; building: Building; unitHistories: VisitHistory[] } | null>(null)
+  // buildings가 fetchAll 후 업데이트될 때 스냅샷이 아닌 최신 unit 사용
+  const liveFullScreenUnit = useMemo(() => {
+    if (!fullScreenUnit) return null
+    const b = buildings.find(b => b.id === fullScreenUnit.building.id)
+    const u = b?.units.find(u => u.id === fullScreenUnit.unit.id)
+    return u && b ? { ...fullScreenUnit, unit: u, building: b } : fullScreenUnit
+  }, [buildings, fullScreenUnit])
   const [editingHistoryId, setEditingHistoryId] = useState<number | null>(null)
   const [historyToEdit, setHistoryToEdit] = useState<VisitHistory | null>(null)
 
@@ -1538,7 +1545,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
       )}
 
       {/* ── 세대 상세 풀스크린 오버레이 ── */}
-      {fullScreenUnit && (
+      {liveFullScreenUnit && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 600,
           background: 'var(--bg, #f5f6f8)',
@@ -1561,14 +1568,14 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
             >‹</button>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                {fullScreenUnit.building.name
-                  ? `${fullScreenUnit.building.name} ${fullScreenUnit.unit.number}`
-                  : fullScreenUnit.unit.number}
-                {fullScreenUnit.unit.isChinese && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fef2f2', color: '#dc2626', fontWeight: 700 }}>中</span>}
-                {fullScreenUnit.unit.isForbidden && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}>방문금지</span>}
+                {liveFullScreenUnit.building.name
+                  ? `${liveFullScreenUnit.building.name} ${liveFullScreenUnit.unit.number}`
+                  : liveFullScreenUnit.unit.number}
+                {liveFullScreenUnit.unit.isChinese && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fef2f2', color: '#dc2626', fontWeight: 700 }}>中</span>}
+                {liveFullScreenUnit.unit.isForbidden && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}>방문금지</span>}
               </div>
               <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {shortenAddress(fullScreenUnit.building.address)}
+                {shortenAddress(liveFullScreenUnit.building.address)}
               </div>
             </div>
           </div>
@@ -1576,9 +1583,9 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
           {/* 본문 */}
           <div style={{ flex: 1 }}>
             <UnitDetailScreen
-              unit={fullScreenUnit.unit}
-              building={fullScreenUnit.building}
-              unitHistories={fullScreenUnit.unitHistories}
+              unit={liveFullScreenUnit.unit}
+              building={liveFullScreenUnit.building}
+              unitHistories={liveFullScreenUnit.unitHistories}
               canRecordVisits={canRecordVisits}
               editingHistoryId={editingHistoryId}
               setEditingHistoryId={setEditingHistoryId}
@@ -1842,17 +1849,26 @@ function UnitDetailScreen({
               정기방문
             </button>
           </div>
-          {unit.isRegularVisit && unit.regularVisitor && (
-            <p style={{ margin: '6px 0 0', fontSize: 11, color: '#B8862A', fontWeight: 600 }}>
-              담당: {unit.regularVisitor}
+          {unit.isRegularVisit && (
+            <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {unit.regularVisitor && (
+                <span style={{ fontSize: 11, color: '#B8862A', fontWeight: 600 }}>
+                  담당: {unit.regularVisitor}
+                </span>
+              )}
+              {unit.regularVisitStart && (
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                  시작: {unit.regularVisitStart.slice(0, 10).replace(/-/g, '/')}
+                </span>
+              )}
               {canRecordVisits && (
                 <button
                   type="button"
                   onClick={() => { setRegularNameDraft(unit.regularVisitor ?? ''); setShowRegularPopup(true) }}
-                  style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--muted)', fontSize: 11, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                  style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 11, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
                 >변경</button>
               )}
-            </p>
+            </div>
           )}
         </div>
 

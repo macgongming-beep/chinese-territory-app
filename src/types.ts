@@ -116,6 +116,7 @@ export type Unit = {
   isForbidden?: boolean
   isRegularVisit?: boolean
   regularVisitor?: string
+  regularVisitStart?: string
   memo?: string
 }
 
