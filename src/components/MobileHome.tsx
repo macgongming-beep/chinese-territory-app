@@ -1136,19 +1136,7 @@ export function MobileHome({
             } />
 
             {/* 사용자 */}
-            <Route path="/users" element={
-              <>
-              <AppHeader
-                pageTitle="사용자"
-                userId={currentUser.id}
-                userName={currentVisitor}
-                role={role}
-                chatUsers={headerChatUsers}
-                onOpenMenu={() => navigate('/settings')}
-              />
-              <MobileUsers />
-              </>
-            } />
+            <Route path="/users" element={<MobileUsers />} />
 
             {/* 가입 신청 관리 */}
             <Route path="/signup-requests" element={
