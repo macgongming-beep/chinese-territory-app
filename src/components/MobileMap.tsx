@@ -148,8 +148,12 @@ export function MobileMap({
     if (!fullScreenUnit) return null
     const b = buildings.find(b => b.id === fullScreenUnit.building.id)
     const u = b?.units.find(u => u.id === fullScreenUnit.unit.id)
-    return u && b ? { ...fullScreenUnit, unit: u, building: b } : fullScreenUnit
-  }, [buildings, fullScreenUnit])
+    // visitHistoriesByUnitId 는 아직 계산되기 전이므로 visitHistories prop에서 직접 필터
+    const liveHistories = visitHistories
+      .filter(h => h.unitId === fullScreenUnit.unit.id)
+      .sort((a, b) => b.visitedAt.localeCompare(a.visitedAt))
+    return { unit: u ?? fullScreenUnit.unit, building: b ?? fullScreenUnit.building, unitHistories: liveHistories }
+  }, [buildings, visitHistories, fullScreenUnit])
   const [editingHistoryId, setEditingHistoryId] = useState<number | null>(null)
   const [historyToEdit, setHistoryToEdit] = useState<VisitHistory | null>(null)
   const [showUnitHeaderMenu, setShowUnitHeaderMenu] = useState(false)
