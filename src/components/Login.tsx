@@ -58,14 +58,10 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
       <div className="login-card">
         <div className="login-header">
           <div className="login-logo">
-            <svg viewBox="0 0 28 28">
-              <path d="M6 7.5 12.5 5l6 2.5L22 6v15l-6.5 2.5-6-2.5L6 22Z" fill="currentColor" />
-              <path d="M12.5 5v16M18.5 7.5v16" stroke="white" strokeWidth="2" fill="none" />
-              <circle cx="14" cy="13.5" r="2.6" fill="white" />
-            </svg>
+            <img src="/icons/icon-192.png" alt="" />
           </div>
           <h1>{isSignup ? t(language, 'login.signupTitle') : t(language, 'login.appName')}</h1>
-          <p>{isSignup ? t(language, 'login.signupSubtitle') : t(language, 'login.subtitle')}</p>
+          <p className={!isSignup ? 'login-yongin' : ''}>{isSignup ? t(language, 'login.signupSubtitle') : t(language, 'login.subtitle')}</p>
           <div className="login-language-switcher" aria-label={t(language, 'settings.language')}>
             {LANGUAGES.map((item) => (
               <button

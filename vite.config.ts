@@ -14,10 +14,10 @@ export default defineConfig({
       injectRegister: false, // src/lib/pwa.ts에서 직접 등록
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: '중국 구역 봉사 관리',
-        short_name: '구역봉사',
-        description: '한국 회중 중국인 봉사 관리 도구',
-        theme_color: '#2563eb',
+        name: 'Field Map',
+        short_name: 'Field Map',
+        description: 'Yongin Chinese Territory Field Map',
+        theme_color: '#1A1A1A',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',

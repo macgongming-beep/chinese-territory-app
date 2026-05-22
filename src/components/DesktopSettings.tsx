@@ -301,7 +301,7 @@ export function DesktopSettings({
                 <dl className="ds-info-grid">
                   <div>
                     <dt>앱 이름</dt>
-                    <dd>Chinese Territory Manager</dd>
+                    <dd>Field Map · Yongin</dd>
                   </div>
                   <div>
                     <dt>버전</dt>
