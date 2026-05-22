@@ -4,6 +4,8 @@
 // 헤더는 상위(MobileHome.tsx)의 AppHeader 가 그림.
 
 import type { CalendarEvent, Notice, TerritoryCard } from '../../types'
+import type { AppLanguage } from '../../i18n'
+import { t, formatLeaderOf, formatJoined, formatPeriod, weekdayShortLabels } from '../../i18n'
 import { Card } from '../ui'
 
 type WeekDay = { date: Date; iso: string; hasEvent: boolean }
@@ -36,6 +38,7 @@ function UserIcon() {
 }
 
 type Props = {
+  language: AppLanguage
   notices: Notice[]
   todayEvents: CalendarEvent[]
   cards: TerritoryCard[]
@@ -56,16 +59,15 @@ type Props = {
   onOpenEventDetail: (eventId: number) => void
 }
 
-function timeBlock(time: string) {
-  // "13:00" → { hour: 13, period: '오후', display: '13' }
+function timeBlock(time: string, lang: AppLanguage) {
   const [hh] = time.split(':')
   const hour = Number(hh)
   if (!Number.isFinite(hour)) return { display: time, period: '' }
-  const period = hour < 12 ? '오전' : hour < 18 ? '오후' : '저녁'
-  return { display: String(hour), period }
+  return { display: String(hour), period: formatPeriod(lang, hour) }
 }
 
 export function AdminMobileHome({
+  language,
   notices,
   todayEvents,
   cards,
@@ -99,7 +101,7 @@ export function AdminMobileHome({
     >
       {/* ── 공지 ────────────────────────── */}
       <section>
-        <SectionHeader title="공지" onAll={onOpenNotices} />
+        <SectionHeader title={t(language, 'home.notice')} onAll={onOpenNotices} viewAllLabel={t(language, 'home.viewAllBtn')} />
         {latestNotice ? (
           <button
             type="button"
@@ -132,7 +134,7 @@ export function AdminMobileHome({
                       flexShrink: 0,
                     }}
                   >
-                    공지
+                    {t(language, 'home.noticePill')}
                   </span>
                   <span
                     style={{
@@ -149,7 +151,7 @@ export function AdminMobileHome({
                 </div>
                 {noticeReadCount && (
                   <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                    {noticeReadCount.read}/{noticeReadCount.total} 읽음
+                    {noticeReadCount.read}/{noticeReadCount.total} {t(language, 'home.readSuffix')}
                   </span>
                 )}
               </div>
@@ -157,7 +159,7 @@ export function AdminMobileHome({
           </button>
         ) : (
           <Card padding={14} style={{ marginTop: 10, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-            공지가 없습니다
+            {t(language, 'home.noNoticesShort')}
           </Card>
         )}
       </section>
@@ -167,19 +169,20 @@ export function AdminMobileHome({
         <SectionHeader
           title={
             <>
-              오늘의 봉사 <span style={{ fontWeight: 500, color: 'var(--muted)', fontSize: 13, marginLeft: 6 }}>{todayEvents.length}</span>
+              {t(language, 'home.todayServiceAdmin')} <span style={{ fontWeight: 500, color: 'var(--muted)', fontSize: 13, marginLeft: 6 }}>{todayEvents.length}</span>
             </>
           }
           onAll={onOpenCalendar}
+          viewAllLabel={t(language, 'home.viewAllBtn')}
         />
         {todayEvents.length === 0 ? (
           <Card padding={18} style={{ marginTop: 10, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-            오늘 일정이 없습니다
+            {t(language, 'home.noEventsShort')}
           </Card>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
             {todayEvents.slice(0, 3).map((event) => {
-              const tb = timeBlock(event.time || '')
+              const tb = timeBlock(event.time || '', language)
               return (
                 <button
                   key={event.id}
@@ -246,13 +249,13 @@ export function AdminMobileHome({
       {/* ── 이번 주 일정 (A안) ────────────── */}
       {(() => {
         const activeDate = selectedWeekDate ?? today
-        const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+        const wdShort = weekdayShortLabels[language]
         return (
           <section>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0 4px' }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>이번 주 일정</h2>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>{t(language, 'home.weekSchedule')}</h2>
               <button type="button" onClick={onOpenCalendar} style={{ border: 'none', background: 'transparent', font: 'inherit', fontSize: 13, fontWeight: 500, color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 2, cursor: 'pointer', padding: 0 }}>
-                전체보기 <ChevR size={12} color="var(--muted)" />
+                {t(language, 'home.viewAllBtn')} <ChevR size={12} color="var(--muted)" />
               </button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginTop: 10, padding: 10, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
@@ -271,7 +274,7 @@ export function AdminMobileHome({
                       cursor: 'pointer', borderRadius: 8,
                     }}
                   >
-                    <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>{weekdays[d.date.getDay()]}</span>
+                    <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>{wdShort[d.date.getDay()]}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: isToday || isSelected ? 'var(--brand-700)' : 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{d.date.getDate()}</span>
                     <span style={{ width: 5, height: 5, borderRadius: 99, background: d.hasEvent ? '#B8862A' : 'transparent', marginTop: 1 }} />
                   </button>
@@ -280,7 +283,7 @@ export function AdminMobileHome({
             </div>
             {selectedDateEvents.length === 0 ? (
               <Card padding={14} style={{ marginTop: 10, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-                {activeDate === today ? '오늘 일정이 없습니다' : '이 날 일정이 없습니다'}
+                {activeDate === today ? t(language, 'home.noEventsToday') : t(language, 'home.noEventsThisDay')}
               </Card>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
@@ -288,7 +291,7 @@ export function AdminMobileHome({
                   const date = new Date(event.date + 'T00:00:00')
                   const todayDate = new Date(today + 'T00:00:00')
                   const diff = Math.round((date.getTime() - todayDate.getTime()) / 86400000)
-                  const dateLabel = diff === 0 ? '오늘' : diff === 1 ? '내일' : diff === 2 ? '모레' : `${date.getMonth() + 1}/${date.getDate()}(${weekdays[date.getDay()]})`
+                  const dateLabel = diff === 0 ? t(language, 'home.dateToday') : diff === 1 ? t(language, 'home.dateTomorrow') : diff === 2 ? t(language, 'home.dateDayAfter') : `${date.getMonth() + 1}/${date.getDate()}(${wdShort[date.getDay()]})`
                   const participantCount = new Set([...(event.assigned ?? []), ...(event.applicants ?? [])]).size
                   return (
                     <button key={event.id} type="button" onClick={() => onOpenEventDetail(event.id)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
@@ -297,8 +300,8 @@ export function AdminMobileHome({
                           <span style={{ fontSize: 12, fontWeight: 700, color: '#B8862A' }}>{dateLabel} {event.time}</span>
                           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{event.title}</span>
                           <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                            {event.leader ? `${event.leader} 인도자` : ''}
-                            {participantCount > 0 ? ` · 참여 ${participantCount}명` : ''}
+                            {event.leader ? formatLeaderOf(language, event.leader) : ''}
+                            {participantCount > 0 ? ` · ${formatJoined(language, participantCount)}` : ''}
                           </span>
                         </div>
                       </Card>
@@ -313,7 +316,7 @@ export function AdminMobileHome({
 
       {/* ── 운영 현황 ────────────────────── */}
       <section>
-        <SectionHeader title="운영 현황" onAll={onOpenZone} />
+        <SectionHeader title={t(language, 'home.operationStatus')} onAll={onOpenZone} viewAllLabel={t(language, 'home.viewAllBtn')} />
         <div
           style={{
             display: 'grid',
@@ -322,17 +325,17 @@ export function AdminMobileHome({
             marginTop: 10,
           }}
         >
-          <StatTile num={cards.length} sub="전체 카드" />
-          <StatTile num={inProgressCount} sub="진행중" />
-          <StatTile num={unassignedCount} sub="미배정" danger />
-          <StatTile num={completedPctText} unit="%" sub={`완료 세대 ${completedUnits} / ${totalUnits}`} />
+          <StatTile num={cards.length} sub={t(language, 'home.totalCards')} />
+          <StatTile num={inProgressCount} sub={t(language, 'home.inProgress')} />
+          <StatTile num={unassignedCount} sub={t(language, 'zone.unassigned')} danger />
+          <StatTile num={completedPctText} unit="%" sub={`${t(language, 'home.completedUnits')} ${completedUnits} / ${totalUnits}`} />
         </div>
       </section>
     </div>
   )
 }
 
-function SectionHeader({ title, onAll }: { title: React.ReactNode; onAll?: () => void }) {
+function SectionHeader({ title, onAll, viewAllLabel = '전체보기' }: { title: React.ReactNode; onAll?: () => void; viewAllLabel?: string }) {
   return (
     <div
       style={{
@@ -372,7 +375,7 @@ function SectionHeader({ title, onAll }: { title: React.ReactNode; onAll?: () =>
             minHeight: 0,
           }}
         >
-          전체보기 <ChevR size={12} color="var(--muted)" />
+          {viewAllLabel} <ChevR size={12} color="var(--muted)" />
         </button>
       )}
     </div>

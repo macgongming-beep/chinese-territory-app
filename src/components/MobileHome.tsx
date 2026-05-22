@@ -18,7 +18,7 @@ import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, Ev
 // InformalCardsTab / RestaurantsTab 은 AdminMobileZone 내부에서 사용됨 (직접 import 불필요)
 import type { AuthUser } from '../hooks/useAuth'
 import type { AppLanguage } from '../i18n'
-import { languageLabels, t } from '../i18n'
+import { languageLabels, t, formatLeaderOf, formatJoined, formatApplied, formatLeadSub, formatPeriod, weekdayShortLabels } from '../i18n'
 import { SpecialPeriodBanner } from './SpecialPeriodBanner'
 import { SpecialPeriodSettings } from './SpecialPeriodSettings'
 import { PwaInstallSection } from './PwaInstall'
@@ -624,6 +624,7 @@ export function MobileHome({
 
                 {role === 'admin' ? (
                   <AdminMobileHome
+                    language={language}
                     notices={notices}
                     todayEvents={todayEvents}
                     cards={cards}
@@ -648,11 +649,11 @@ export function MobileHome({
                   <section className="mobile-home-section">
                     <div className="mh-sec-head">
                       <h2>
-                        공지
+                        {t(language, 'home.notice')}
                         <span className="mh-cnt">{notices.length}</span>
                       </h2>
                       <button className="mh-all" onClick={() => navigate('/notices')} type="button">
-                        전체보기
+                        {t(language, 'home.viewAllBtn')}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
                       </button>
                     </div>
@@ -664,7 +665,7 @@ export function MobileHome({
                           className="mh-notice-row"
                           onClick={() => navigate('/notices')}
                         >
-                          <span className="mh-notice-pill">공지</span>
+                          <span className="mh-notice-pill">{t(language, 'home.noticePill')}</span>
                           <span className="mh-notice-title">{notice.title}</span>
                           <span className="mh-notice-date">{notice.createdAt.slice(5, 10).replace('-', '/')}</span>
                         </button>
@@ -677,32 +678,32 @@ export function MobileHome({
                 <section className="mobile-home-section">
                   <div className="mh-sec-head">
                     <h2>
-                      오늘 봉사
+                      {t(language, 'home.todayServiceShort')}
                       {myTodayEvents.length > 0 && <span className="mh-cnt">{myTodayEvents.length}</span>}
                     </h2>
                     <button className="mh-all" onClick={() => navigate('/calendar')} type="button">
-                      전체보기
+                      {t(language, 'home.viewAllBtn')}
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
                     </button>
                   </div>
                   {myTodayEvents.length === 0 ? (
                     <div className="mh-empty-line">
-                      <span>오늘 예정된 봉사가 없습니다.</span>
+                      <span>{t(language, 'home.noTodayServiceShort')}</span>
                     </div>
                   ) : (
                     <div className="mh-today-list">
                       {myTodayEvents.map(({ event, kind }) => {
                         const hour = Number(event.time.split(':')[0] ?? 0)
-                        const period = hour < 12 ? '오전' : hour < 17 ? '오후' : '저녁'
+                        const period = formatPeriod(language, hour)
                         const sub = kind === 'lead'
-                          ? `신청 ${event.applicants.length}명 · 카드 ${event.cardAssignments.length}개`
+                          ? formatLeadSub(language, event.applicants.length, event.cardAssignments.length)
                           : kind === 'join'
                             ? (event.leader
-                              ? `인도자 ${event.leader}${event.applicants.length > 0 ? ` · 신청 ${event.applicants.length}명` : ''}`
+                              ? `${formatLeaderOf(language, event.leader)}${event.applicants.length > 0 ? ` · ${formatApplied(language, event.applicants.length)}` : ''}`
                               : '')
                             : (event.leader
-                              ? `인도자 ${event.leader} · 신청 ${event.applicants.length}명${event.allowApplications ? ' · 신청 가능' : ''}`
-                              : `신청 ${event.applicants.length}명${event.allowApplications ? ' · 신청 가능' : ''}`)
+                              ? `${formatLeaderOf(language, event.leader)} · ${formatApplied(language, event.applicants.length)}${event.allowApplications ? ` · ${t(language, 'home.signupOpen')}` : ''}`
+                              : `${formatApplied(language, event.applicants.length)}${event.allowApplications ? ` · ${t(language, 'home.signupOpen')}` : ''}`)
                         return (
                           <button
                             key={event.id}
@@ -717,7 +718,7 @@ export function MobileHome({
                             <span className="mh-today-body">
                               <span className="mh-today-title-row">
                                 <span className="mh-today-title">{event.title}</span>
-                                {kind === 'lead' && <span className="mh-today-pill-lead">인도</span>}
+                                {kind === 'lead' && <span className="mh-today-pill-lead">{t(language, 'home.leadPill')}</span>}
                               </span>
                               {event.place && (
                                 <span className="mh-today-where">
@@ -738,13 +739,13 @@ export function MobileHome({
                 {/* ─── 이번 주 일정 (A안) ─── */}
                 {(() => {
                   const activeDate = selectedWeekDate ?? today
-                  const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+                  const wdShort = weekdayShortLabels[language]
                   return (
                     <section className="mobile-home-section">
                       <div className="mh-sec-head">
-                        <h2>이번 주 일정</h2>
+                        <h2>{t(language, 'home.weekSchedule')}</h2>
                         <button className="mh-all" onClick={() => navigate('/calendar')} type="button">
-                          전체보기
+                          {t(language, 'home.viewAllBtn')}
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
                         </button>
                       </div>
@@ -759,7 +760,7 @@ export function MobileHome({
                               className={`mh-week-dot-cell${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`}
                               onClick={() => setSelectedWeekDate(d.iso)}
                             >
-                              <span className="mh-week-dot-wd">{weekdays[d.date.getDay()]}</span>
+                              <span className="mh-week-dot-wd">{wdShort[d.date.getDay()]}</span>
                               <span className="mh-week-dot-day">{d.date.getDate()}</span>
                               <span className={`mh-week-dot${d.hasEvent ? ' filled' : ''}`} />
                             </button>
@@ -768,14 +769,14 @@ export function MobileHome({
                       </div>
                       {selectedDateEvents.length === 0 ? (
                         <div className="mh-empty-line" style={{ marginTop: 10 }}>
-                          <span>{activeDate === today ? '오늘 일정이 없습니다.' : '이 날 일정이 없습니다.'}</span>
+                          <span>{activeDate === today ? t(language, 'home.noEventsToday') : t(language, 'home.noEventsThisDay')}</span>
                         </div>
                       ) : (
                         selectedDateEvents.map((event) => {
                           const date = new Date(event.date + 'T00:00:00')
                           const todayDate = new Date(today + 'T00:00:00')
                           const diff = Math.round((date.getTime() - todayDate.getTime()) / 86400000)
-                          const dateLabel = diff === 0 ? '오늘' : diff === 1 ? '내일' : diff === 2 ? '모레' : `${date.getMonth() + 1}/${date.getDate()}(${weekdays[date.getDay()]})`
+                          const dateLabel = diff === 0 ? t(language, 'home.dateToday') : diff === 1 ? t(language, 'home.dateTomorrow') : diff === 2 ? t(language, 'home.dateDayAfter') : `${date.getMonth() + 1}/${date.getDate()}(${wdShort[date.getDay()]})`
                           const participantCount = new Set([...(event.assigned ?? []), ...(event.applicants ?? [])]).size
                           return (
                             <button
@@ -787,8 +788,8 @@ export function MobileHome({
                               <span className="mh-upcoming-date">{dateLabel} {event.time}</span>
                               <span className="mh-upcoming-title">{event.title}</span>
                               <span className="mh-upcoming-meta">
-                                {event.leader ? `${event.leader} 인도자` : ''}
-                                {participantCount > 0 ? ` · 참여 ${participantCount}명` : ''}
+                                {event.leader ? formatLeaderOf(language, event.leader) : ''}
+                                {participantCount > 0 ? ` · ${formatJoined(language, participantCount)}` : ''}
                               </span>
                             </button>
                           )
@@ -803,12 +804,12 @@ export function MobileHome({
                   <section className="mobile-home-section">
                     <div className="mh-sec-head">
                       <h2>
-                        담당 카드
+                        {t(language, 'home.assignedCards')}
                         <span className="mh-cnt">{leaderCards.length}</span>
                       </h2>
                       {leaderCards.length > 4 && (
                         <button className="mh-all" onClick={() => navigate('/zone?reset=true')} type="button">
-                          전체보기
+                          {t(language, 'home.viewAllBtn')}
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
                         </button>
                       )}
@@ -838,7 +839,7 @@ export function MobileHome({
                 {role === 'leader' && leaderCards.length > 0 && (
                   <section className="mobile-home-section">
                     <div className="mh-sec-head">
-                      <h2>진행률</h2>
+                      <h2>{t(language, 'home.progressRate')}</h2>
                     </div>
                     <div className="mh-progress-list">
                       {leaderCards.slice(0, 5).map((card) => {

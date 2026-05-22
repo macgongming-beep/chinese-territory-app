@@ -259,6 +259,26 @@ const dictionary = {
     'home.completedCards': '완료 카드',
     'home.completedUnits': '완료 세대',
     'home.assignedCards': '담당 카드',
+    'home.weekSchedule': '이번 주 일정',
+    'home.todayServiceShort': '오늘 봉사',
+    'home.noTodayServiceShort': '오늘 예정된 봉사가 없습니다.',
+    'home.noEventsToday': '오늘 일정이 없습니다.',
+    'home.noEventsThisDay': '이 날 일정이 없습니다.',
+    'home.progressRate': '진행률',
+    'home.dateToday': '오늘',
+    'home.dateTomorrow': '내일',
+    'home.dateDayAfter': '모레',
+    'home.leadPill': '인도',
+    'home.noticePill': '공지',
+    'home.leaderSuffix': '인도자',
+    'home.joinedLabel': '참여',
+    'home.appliedLabel': '신청',
+    'home.signupOpen': '신청 가능',
+    'home.viewAllBtn': '전체보기',
+    'home.todayServiceAdmin': '오늘의 봉사',
+    'home.noEventsShort': '오늘 일정이 없습니다',
+    'home.noNoticesShort': '공지가 없습니다',
+    'home.readSuffix': '읽음',
   },
   zh: {
     'nav.home': '首页',
@@ -512,6 +532,26 @@ const dictionary = {
     'home.completedCards': '完成卡片',
     'home.completedUnits': '完成住户',
     'home.assignedCards': '负责卡片',
+    'home.weekSchedule': '本周日程',
+    'home.todayServiceShort': '今日传道',
+    'home.noTodayServiceShort': '今天没有预定的传道。',
+    'home.noEventsToday': '今天没有日程。',
+    'home.noEventsThisDay': '本日没有日程。',
+    'home.progressRate': '进度',
+    'home.dateToday': '今天',
+    'home.dateTomorrow': '明天',
+    'home.dateDayAfter': '后天',
+    'home.leadPill': '带领',
+    'home.noticePill': '公告',
+    'home.leaderSuffix': '带头人',
+    'home.joinedLabel': '参与',
+    'home.appliedLabel': '申请',
+    'home.signupOpen': '可申请',
+    'home.viewAllBtn': '查看全部',
+    'home.todayServiceAdmin': '今日的传道',
+    'home.noEventsShort': '今天没有日程',
+    'home.noNoticesShort': '没有公告',
+    'home.readSuffix': '已读',
   },
   en: {
     'nav.home': 'Home',
@@ -765,11 +805,71 @@ const dictionary = {
     'home.completedCards': 'Completed cards',
     'home.completedUnits': 'Completed units',
     'home.assignedCards': 'Assigned cards',
+    'home.weekSchedule': 'This Week',
+    'home.todayServiceShort': "Today's Service",
+    'home.noTodayServiceShort': 'No service scheduled today.',
+    'home.noEventsToday': 'No events today.',
+    'home.noEventsThisDay': 'No events on this day.',
+    'home.progressRate': 'Progress',
+    'home.dateToday': 'Today',
+    'home.dateTomorrow': 'Tomorrow',
+    'home.dateDayAfter': 'Day after',
+    'home.leadPill': 'Leading',
+    'home.noticePill': 'Notice',
+    'home.leaderSuffix': 'Leader',
+    'home.joinedLabel': 'joined',
+    'home.appliedLabel': 'applied',
+    'home.signupOpen': 'Open',
+    'home.viewAllBtn': 'View all',
+    'home.todayServiceAdmin': "Today's Service",
+    'home.noEventsShort': 'No events today',
+    'home.noNoticesShort': 'No notices',
+    'home.readSuffix': 'read',
   },
 } satisfies Record<AppLanguage, Record<string, string>>
 
 export function t(language: AppLanguage, key: keyof typeof dictionary.ko) {
   return dictionary[language][key] ?? dictionary.ko[key]
+}
+
+export function formatLeaderOf(lang: AppLanguage, name: string): string {
+  if (lang === 'en') return `Leader: ${name}`
+  if (lang === 'zh') return `带头人 ${name}`
+  return `${name} 인도자`
+}
+
+export function formatJoined(lang: AppLanguage, count: number): string {
+  if (lang === 'en') return `${count} joined`
+  if (lang === 'zh') return `参与 ${count}人`
+  return `참여 ${count}명`
+}
+
+export function formatApplied(lang: AppLanguage, count: number): string {
+  if (lang === 'en') return `${count} applied`
+  if (lang === 'zh') return `申请 ${count}人`
+  return `신청 ${count}명`
+}
+
+export function formatCardCount(lang: AppLanguage, count: number): string {
+  if (lang === 'en') return `${count} cards`
+  if (lang === 'zh') return `${count}张卡片`
+  return `카드 ${count}개`
+}
+
+export function formatLeadSub(lang: AppLanguage, applied: number, cards: number): string {
+  return `${formatApplied(lang, applied)} · ${formatCardCount(lang, cards)}`
+}
+
+export function formatPeriod(lang: AppLanguage, hour: number): string {
+  if (lang === 'en') return hour < 12 ? 'AM' : hour < 18 ? 'PM' : 'Eve'
+  if (lang === 'zh') return hour < 12 ? '上午' : hour < 18 ? '下午' : '晚上'
+  return hour < 12 ? '오전' : hour < 18 ? '오후' : '저녁'
+}
+
+export const weekdayShortLabels: Record<AppLanguage, string[]> = {
+  ko: ['일', '월', '화', '수', '목', '금', '토'],
+  zh: ['日', '一', '二', '三', '四', '五', '六'],
+  en: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
 }
 
 export function isAppLanguage(value: unknown): value is AppLanguage {
