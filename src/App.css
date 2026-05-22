@@ -387,7 +387,7 @@ button:focus-visible {
   flex-direction: column;
   background: var(--bg-card);
   color: var(--gray-800);
-  animation: headerPanelSlideIn 0.2s ease-out;
+  animation: headerPanelFadeIn 0.15s ease-out;
 }
 
 .header-action-panel__head {
@@ -633,20 +633,14 @@ button:focus-visible {
   word-break: break-word;
 }
 
-@keyframes headerPanelSlideIn {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+@keyframes headerPanelFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @media (max-width: 480px) {
   .header-action-panel {
     max-width: none;
-    animation-name: headerPanelDropIn;
-  }
-
-  @keyframes headerPanelDropIn {
-    from { transform: translateY(-100%); }
-    to { transform: translateY(0); }
   }
 }
 
