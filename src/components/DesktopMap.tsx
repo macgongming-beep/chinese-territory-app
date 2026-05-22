@@ -809,6 +809,7 @@ export function DesktopMap({
   }
 
   const handleSelectCardForMap = (cardId: number) => {
+    if (drawingBoundary) return
     if (boundaryMultiSelectMode) {
       setSelectedBoundaryCardIds((current) => {
         const next = new Set(current)
