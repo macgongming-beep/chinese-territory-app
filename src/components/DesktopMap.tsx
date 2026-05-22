@@ -138,6 +138,7 @@ export function DesktopMap({
   const [cardFilter, setCardFilter] = useState<number | '전체'>('전체')
   const [regionFilter, setRegionFilter] = useState<TerritoryRegion | '전체'>('전체')
   const [areaFilter, setAreaFilter] = useState('전체')
+  const [regionAllCards, setRegionAllCards] = useState(false)
   const [targetTypeFilter, setTargetTypeFilter] = useState<VisitTargetType>('전체')
   const [editingHistoryId, setEditingHistoryId] = useState<number | null>(null)
   const [historyEditor, setHistoryEditor] = useState<HistoryEditor | null>(null)
@@ -670,6 +671,7 @@ export function DesktopMap({
       const region = id.replace('region:', '')
       setRegionFilter(region as TerritoryRegion | '전체')
       setAreaFilter('전체')
+      setRegionAllCards(false)
       setCardFilter('전체')
       setDetailOpen(false)
     } else {
@@ -679,6 +681,7 @@ export function DesktopMap({
       const [, region, area] = m
       setRegionFilter(region as TerritoryRegion | '전체')
       setAreaFilter(area)
+      setRegionAllCards(false)
       setCardFilter('전체')
       setDetailOpen(false)
     }
@@ -726,6 +729,7 @@ export function DesktopMap({
         : '전체',
     )
     setAreaFilter(focusedCard.area)
+    setRegionAllCards(false)
     setTargetTypeFilter('전체')
     setCardFilter(focusedCardId)
     setBoundaryCardId(focusedCardId)
@@ -745,6 +749,7 @@ export function DesktopMap({
           : '전체',
       )
       setAreaFilter(focusedCard.area)
+      setRegionAllCards(false)
     }
     setTargetTypeFilter('전체')
     setStatusFilter('전체')
@@ -1328,26 +1333,27 @@ export function DesktopMap({
                   <button
                     type="button"
                     onClick={() => {
-                      if (areaFilter !== '전체') { setAreaFilter('전체'); setCardFilter('전체'); setDetailOpen(false) }
-                      else { setRegionFilter('전체'); setAreaFilter('전체'); setCardFilter('전체'); setDetailOpen(false) }
+                      if (areaFilter !== '전체') { setAreaFilter('전체'); setRegionAllCards(false); setCardFilter('전체'); setDetailOpen(false) }
+                      else if (regionAllCards) { setRegionAllCards(false); setCardFilter('전체'); setDetailOpen(false) }
+                      else { setRegionFilter('전체'); setAreaFilter('전체'); setRegionAllCards(false); setCardFilter('전체'); setDetailOpen(false) }
                     }}
                     style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--gray-50)', color: 'var(--gray-700)', fontSize: 18, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                   >‹</button>
                 )}
                 <div style={{ minWidth: 0 }}>
                   <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {regionFilter === '전체' ? '구역 카드' : areaFilter === '전체' ? regionFilter : `${regionFilter} · ${areaFilter}`}
+                    {regionFilter === '전체' ? '구역 카드' : (areaFilter !== '전체') ? `${regionFilter} · ${areaFilter}` : regionFilter}
                   </p>
                   <strong style={{ fontSize: 15, fontWeight: 700, color: 'var(--gray-900)', lineHeight: 1.3 }}>
                     {regionFilter === '전체'
                       ? '지역 선택'
-                      : areaFilter === '전체'
-                        ? `${dongList.length}개 동`
-                        : `${orderedCards.length}개 카드`}
+                      : (areaFilter !== '전체' || regionAllCards)
+                        ? `${orderedCards.length}개 카드`
+                        : `${dongList.length}개 동`}
                   </strong>
                 </div>
               </div>
-              {areaFilter !== '전체' && (
+              {(areaFilter !== '전체' || regionAllCards) && (
                 <button
                   className="tbl-soft-btn sm"
                   style={{ flexShrink: 0 }}
@@ -1372,7 +1378,7 @@ export function DesktopMap({
                         key={region}
                         type="button"
                         className="map-nav-item"
-                        onClick={() => { setRegionFilter(region); setAreaFilter('전체'); setCardFilter('전체'); setDetailOpen(false) }}
+                        onClick={() => { setRegionFilter(region); setAreaFilter('전체'); setRegionAllCards(false); setCardFilter('전체'); setDetailOpen(false) }}
                       >
                         <span className="map-nav-item__name">{region}</span>
                         <span className="map-nav-item__badge">{count}</span>
@@ -1383,8 +1389,17 @@ export function DesktopMap({
               )}
 
               {/* 2단계: 동 목록 */}
-              {regionFilter !== '전체' && areaFilter === '전체' && (
+              {regionFilter !== '전체' && areaFilter === '전체' && !regionAllCards && (
                 <>
+                  <button
+                    key="__all__"
+                    type="button"
+                    className="map-nav-item"
+                    onClick={() => { setRegionAllCards(true); setCardFilter('전체'); setDetailOpen(false) }}
+                  >
+                    <span className="map-nav-item__name">{regionFilter} 전체</span>
+                    <span className="map-nav-item__badge">{regionCardCounts.get(regionFilter as string) ?? 0}</span>
+                  </button>
                   {dongList.map((area) => {
                     const count = dongCardCounts.get(area) ?? 0
                     return (
@@ -1403,7 +1418,7 @@ export function DesktopMap({
               )}
 
               {/* 3단계: 카드 목록 */}
-              {areaFilter !== '전체' && (
+              {(areaFilter !== '전체' || regionAllCards) && (
                 <>
                   {orderedCards.length === 0 && (
                     <div className="map-empty-state">
