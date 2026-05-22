@@ -857,7 +857,12 @@ export function DesktopMap({
     const lat = Number(building.lat)
     const lng = Number(building.lng)
     if (!naver?.maps || !map || !Number.isFinite(lat) || !Number.isFinite(lng)) return
-    map.morph(new naver.maps.LatLng(lat, lng), 17)
+    const latLng = new naver.maps.LatLng(lat, lng)
+    if (map.getZoom() >= 16) {
+      map.panTo(latLng)
+    } else {
+      map.morph(latLng, 17)
+    }
   }
 
   const focusBuildingFromPanel = (building: Building) => {
@@ -1802,7 +1807,7 @@ export function DesktopMap({
                       return (
                         <div className={`unit-grid-row${isUnitExpanded ? ' ugr-expanded' : ''}${unit.isRegularVisit ? ' ugr-regular' : ''}`} key={unit.id}>
                           <div className={`unit-grid-main${getActivePeriodForDate(getLocalDateString()) ? ' with-invitation' : ''}`}>
-                            <button className="unit-name-btn" onClick={() => setExpandedUnitId(isUnitExpanded ? null : unit.id)} type="button">
+                            <button className="unit-name-btn" onClick={() => { setExpandedUnitId(isUnitExpanded ? null : unit.id); if (!isUnitExpanded) moveMapToBuilding(building) }} type="button">
                               <span className="unit-chevron">{isUnitExpanded ? '▾' : '▸'}</span>
                               <span className="unit-number-text">{unit.number}</span>
                               {unit.isChinese && <span className="unit-chinese-badge">中</span>}

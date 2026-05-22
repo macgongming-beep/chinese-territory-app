@@ -686,6 +686,20 @@ export function MobileMap({
 
   const editingBuilding = editingBuildingId != null ? buildings.find(b => b.id === editingBuildingId) ?? null : null
   const buildingTypeLabel = (type: Building['type']) => type === '상가' ? t(language, 'map.shop') : t(language, 'map.house')
+
+  const moveMobileMapToBuilding = (building: Building) => {
+    const naver = (window as any).naver
+    const map = (window as any).__mobileMapInstance
+    const lat = Number(building.lat)
+    const lng = Number(building.lng)
+    if (!naver?.maps || !map || !Number.isFinite(lat) || !Number.isFinite(lng)) return
+    const latLng = new naver.maps.LatLng(lat, lng)
+    if (map.getZoom() >= 16) {
+      map.panTo(latLng)
+    } else {
+      map.morph(latLng, 17)
+    }
+  }
   const hasAreaChips = !isUserMap && !enteredDirectly && areas.length > 1
   return (
     <main
@@ -1181,6 +1195,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                         <button
                           className="bld-row-head-btn"
                           onClick={() => {
+                            const wasExpanded = expandedBuildingIds.has(building.id)
                             setSelectedBuildingId(building.id)
                             setExpandedBuildingIds(prev => {
                               const n = new Set(prev)
@@ -1188,6 +1203,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                               else n.add(building.id)
                               return n
                             })
+                            if (!wasExpanded) moveMobileMapToBuilding(building)
                           }}
                           type="button"
                         >
@@ -1292,7 +1308,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                           return (
                             <div className={`unit-grid-row${unit.isRegularVisit ? ' ugr-regular' : ''}`} key={unit.id}>
                               <div className={`unit-grid-main${activePeriod ? ' with-invitation' : ''}`}>
-                                <button className="unit-name-btn" onClick={() => setFullScreenUnit(prev => prev?.unit.id === unit.id ? null : { unit, building, unitHistories })} type="button">
+                                <button className="unit-name-btn" onClick={() => { const opening = !(fullScreenUnit?.unit.id === unit.id); setFullScreenUnit(prev => prev?.unit.id === unit.id ? null : { unit, building, unitHistories }); if (opening) moveMobileMapToBuilding(building) }} type="button">
                                   <span className="unit-chevron">›</span>
                                   <span className="unit-number-text">{unit.number}</span>
                                   {unit.isChinese && <span className="unit-chinese-badge">中</span>}

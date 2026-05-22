@@ -1025,6 +1025,16 @@ function NaverMapCanvas({
       if (isMobile) (window as any).__mobileMapInstance = mapInstanceRef.current
       else (window as any).__desktopMapInstance = mapInstanceRef.current
 
+      // ResizeObserver: 컨테이너 크기 변경 시 Naver 지도에 알림 (패널 열림/닫힘 보정)
+      if (mapRef.current) {
+        const ro = new ResizeObserver(() => {
+          if (mapInstanceRef.current) {
+            naver.maps.Event.trigger(mapInstanceRef.current, 'resize')
+          }
+        })
+        ro.observe(mapRef.current)
+      }
+
       rebuildMarkers()
       focusBuildingOnMap(focusBuildingIdRef.current)
 
