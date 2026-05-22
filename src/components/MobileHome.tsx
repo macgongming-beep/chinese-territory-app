@@ -379,6 +379,9 @@ export function MobileHome({
   )
   void todayCardsCollapsed; void setTodayCardsCollapsed
 
+  // A안 선택 날짜 (dot row 클릭으로 변경)
+  const [selectedWeekDate, setSelectedWeekDate] = useState<string | null>(null)
+
   const rawActiveTab = pathToTab[location.pathname] || '홈'
   // 인도자는 '지도' 탭이 없으므로 /map 접근 시 '구역' 탭 활성화
   const activeTab: MobileTab =
@@ -428,6 +431,14 @@ export function MobileHome({
       .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
       .slice(0, 5)
   }, [calendarEvents, today])
+  // A안: 선택된 날짜의 일정 목록
+  const selectedDateEvents = useMemo(() => {
+    const date = selectedWeekDate ?? today
+    return calendarEvents
+      .filter((e) => e.date === date)
+      .sort((a, b) => a.time.localeCompare(b.time))
+  }, [calendarEvents, selectedWeekDate, today])
+
   // 디자인 v2: 활동 탭으로 이동. 홈에서는 사용 안 함.
   const myTodaySessions = useMemo(() =>
     serviceSessions.filter((session) => session.serviceDate === today && session.userName === currentVisitor),
@@ -796,57 +807,68 @@ export function MobileHome({
                   </section>
                 )}
 
-                {/* ─── A안: 이번 주 dot row + 다음 일정 카드 1개 ─── */}
-                <section className="mobile-home-section">
-                  <div className="mh-sec-head">
-                    <h2>이번 주 일정 <span className="mh-cnt mh-cnt-dim">[A안]</span></h2>
-                    <button className="mh-all" onClick={() => navigate('/calendar')} type="button">
-                      전체보기
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
-                    </button>
-                  </div>
-                  <div className="mh-week-dots">
-                    {weekDays.map((d, i) => {
-                      const weekdays = ['일', '월', '화', '수', '목', '금', '토']
-                      const isToday = i === 0
-                      return (
-                        <button
-                          key={d.iso}
-                          type="button"
-                          className={`mh-week-dot-cell${isToday ? ' is-today' : ''}`}
-                          onClick={() => navigate('/calendar')}
-                        >
-                          <span className="mh-week-dot-wd">{weekdays[d.date.getDay()]}</span>
-                          <span className="mh-week-dot-day">{d.date.getDate()}</span>
-                          <span className={`mh-week-dot${d.hasEvent ? ' filled' : ''}`} />
+                {/* ─── A안: 이번 주 dot row + 선택 날짜 일정 ─── */}
+                {(() => {
+                  const activeDate = selectedWeekDate ?? today
+                  const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+                  return (
+                    <section className="mobile-home-section">
+                      <div className="mh-sec-head">
+                        <h2>이번 주 일정</h2>
+                        <button className="mh-all" onClick={() => navigate('/calendar')} type="button">
+                          전체보기
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
                         </button>
-                      )
-                    })}
-                  </div>
-                  {upcomingEvents[0] && (() => {
-                    const event = upcomingEvents[0]
-                    const date = new Date(event.date + 'T00:00:00')
-                    const todayDate = new Date(today + 'T00:00:00')
-                    const diff = Math.round((date.getTime() - todayDate.getTime()) / 86400000)
-                    const weekdays = ['일', '월', '화', '수', '목', '금', '토']
-                    const dateLabel = diff === 1 ? '내일' : diff === 2 ? '모레' : `${date.getMonth() + 1}/${date.getDate()}(${weekdays[date.getDay()]})`
-                    const participantCount = new Set([...(event.assigned ?? []), ...(event.applicants ?? [])]).size
-                    return (
-                      <button
-                        type="button"
-                        className="mh-upcoming-row mh-upcoming-row--featured"
-                        onClick={() => navigate('/calendar')}
-                      >
-                        <span className="mh-upcoming-date">{dateLabel} {event.time}</span>
-                        <span className="mh-upcoming-title">{event.title}</span>
-                        <span className="mh-upcoming-meta">
-                          {event.leader ? `${event.leader} 인도자` : ''}
-                          {participantCount > 0 ? ` · 참여 ${participantCount}명` : ''}
-                        </span>
-                      </button>
-                    )
-                  })()}
-                </section>
+                      </div>
+                      <div className="mh-week-dots">
+                        {weekDays.map((d, i) => {
+                          const isToday = i === 0
+                          const isSelected = d.iso === activeDate
+                          return (
+                            <button
+                              key={d.iso}
+                              type="button"
+                              className={`mh-week-dot-cell${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`}
+                              onClick={() => setSelectedWeekDate(d.iso)}
+                            >
+                              <span className="mh-week-dot-wd">{weekdays[d.date.getDay()]}</span>
+                              <span className="mh-week-dot-day">{d.date.getDate()}</span>
+                              <span className={`mh-week-dot${d.hasEvent ? ' filled' : ''}`} />
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {selectedDateEvents.length === 0 ? (
+                        <div className="mh-empty-line" style={{ marginTop: 10 }}>
+                          <span>{activeDate === today ? '오늘 일정이 없습니다.' : '이 날 일정이 없습니다.'}</span>
+                        </div>
+                      ) : (
+                        selectedDateEvents.map((event) => {
+                          const date = new Date(event.date + 'T00:00:00')
+                          const todayDate = new Date(today + 'T00:00:00')
+                          const diff = Math.round((date.getTime() - todayDate.getTime()) / 86400000)
+                          const dateLabel = diff === 0 ? '오늘' : diff === 1 ? '내일' : diff === 2 ? '모레' : `${date.getMonth() + 1}/${date.getDate()}(${weekdays[date.getDay()]})`
+                          const participantCount = new Set([...(event.assigned ?? []), ...(event.applicants ?? [])]).size
+                          return (
+                            <button
+                              key={event.id}
+                              type="button"
+                              className="mh-upcoming-row mh-upcoming-row--featured"
+                              onClick={() => navigate(`/calendar?openEvent=${event.id}`)}
+                            >
+                              <span className="mh-upcoming-date">{dateLabel} {event.time}</span>
+                              <span className="mh-upcoming-title">{event.title}</span>
+                              <span className="mh-upcoming-meta">
+                                {event.leader ? `${event.leader} 인도자` : ''}
+                                {participantCount > 0 ? ` · 참여 ${participantCount}명` : ''}
+                              </span>
+                            </button>
+                          )
+                        })
+                      )}
+                    </section>
+                  )
+                })()}
 
                 {/* ─── B안: 이번 주 일정 (오늘 포함, 자세한 카드 리스트) ─── */}
                 <section className="mobile-home-section">

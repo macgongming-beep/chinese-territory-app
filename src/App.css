@@ -26061,6 +26061,14 @@ button:focus-visible {
 .mh-week-dot-cell.is-today {
   background: var(--tint);
 }
+.mh-week-dot-cell.is-selected {
+  background: var(--tint);
+  outline: 2px solid var(--brand-700);
+  outline-offset: -2px;
+}
+.mh-week-dot-cell.is-selected .mh-week-dot-day {
+  color: var(--brand-700);
+}
 .mh-week-dot-wd {
   font-size: 10px;
   color: var(--muted);
