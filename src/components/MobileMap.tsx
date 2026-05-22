@@ -1002,12 +1002,19 @@ export function MobileMap({
                   setSelectedBuildingId(id)
                   setExpandedBuildingIds(new Set([id]))
                   setFullScreenUnit(null) // 다른 건물로 넘어갈 때도 호수 상세 내역 초기화
-                  
+
+                  // 해당 건물 그룹이 접혀 있으면 자동으로 펼치기 (예: 방문완료 그룹)
+                  const b = buildings.find(item => item.id === id)
+                  if (b) {
+                    const grp = getBuildingStatus(b)
+                    setCollapsedStatusGroups((prev) => { const n = new Set(prev); n.delete(grp); return n })
+                  }
+
                   // 포인트 클릭 시 바텀 시트 자동 대응 (최소 HALF 이상)
                   if (sheetHeight < HALF_HEIGHT) {
                     setSheetHeight(HALF_HEIGHT)
                   }
-                  
+
                   // 해당 카드로 스크롤 (렌더링 후 실행을 위해 딜레이)
                   setTimeout(() => {
                     const el = document.getElementById(`building-card-${id}`)
