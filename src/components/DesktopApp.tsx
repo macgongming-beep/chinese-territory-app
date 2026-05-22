@@ -384,15 +384,11 @@ export function DesktopApp({
       <header className="desktop-header">
         <div className="nav-brand">
           <div className="nav-mark" aria-hidden="true">
-            <svg viewBox="0 0 28 28">
-              <path d="M6 7.5 12.5 5l6 2.5L22 6v15l-6.5 2.5-6-2.5L6 22Z" />
-              <path d="M12.5 5v16M18.5 7.5v16" />
-              <circle cx="14" cy="13.5" r="2.6" />
-            </svg>
+            <img src="/icons/icon-192.png" alt="" />
           </div>
           <div className="nav-brand-text">
-            <strong>CHS-Yongin</strong>
-            <span>용인 중국어</span>
+            <strong>Field Map</strong>
+            <span style={{ letterSpacing: '0.2em', fontSize: '10px' }}>YONGIN</span>
           </div>
         </div>
         <nav className="desktop-nav" aria-label="관리 메뉴">
