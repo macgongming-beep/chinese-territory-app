@@ -23,6 +23,8 @@ import type {
 import { formatDisplayAddress, getBuildingStatus, getCardName, findCardForCoordinates, isValidMapCoordinate, normalizeMapCoordinates } from '../utils/mapUtils'
 import { showToast } from '../lib/toast'
 import { getCurrentTimeSlot } from '../utils/timeUtils'
+import { mergeCardBoundaryPoints } from '../utils/boundaryMerge'
+import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 
 type VisitResultFilter = '전체' | '부재' | '만남'
 type HistoryEditor = {
@@ -60,6 +62,8 @@ export function DesktopMap({
   onDeleteCardBoundary,
   onDeleteUnit,
   onSaveCardBoundary,
+  onMergeCardBoundaries,
+  onUndoMergeCardBoundaries,
   onToggleRegularVisit,
   onToggleChinese,
   onUndoLatestVisit,
@@ -97,6 +101,12 @@ export function DesktopMap({
   onDeleteCardBoundary: (cardId: number) => void
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onSaveCardBoundary: (cardId: number, points: GeoPoint[]) => Promise<void> | void
+  onMergeCardBoundaries?: (input: {
+    targetCardId: number
+    sourceCardIds: number[]
+    mergedPoints: GeoPoint[]
+  }) => Promise<void> | void
+  onUndoMergeCardBoundaries?: (snapshot: CardMergeUndoSnapshot) => Promise<void>
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
   onUndoLatestVisit: (buildingId: number, unitId: number) => void
@@ -145,11 +155,17 @@ export function DesktopMap({
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'ok' | 'fail'>('idle')
   const [addingBuilding, setAddingBuilding] = useState(false)
   const [showMapActionMenu, setShowMapActionMenu] = useState(false)
+  const [showBoundaryActionMenu, setShowBoundaryActionMenu] = useState(false)
   const [editingPinMode, setEditingPinMode] = useState(false)
   const [showAddBuildingModal, setShowAddBuildingModal] = useState(false)
   const [newUnitNumber, setNewUnitNumber] = useState('101호')
   const [boundaryCardId, setBoundaryCardId] = useState<number>(cards[0]?.id ?? 1)
   const [visibleBoundarySelection, setVisibleBoundarySelection] = useState<number | '전체' | null>('전체')
+  const [boundaryMultiSelectMode, setBoundaryMultiSelectMode] = useState(false)
+  const [selectedBoundaryCardIds, setSelectedBoundaryCardIds] = useState<Set<number>>(new Set())
+  const [mergeTargetCardId, setMergeTargetCardId] = useState<number | null>(null)
+  const [showMapMergeModal, setShowMapMergeModal] = useState(false)
+  const [mapMergeUndo, setMapMergeUndo] = useState<CardMergeUndoSnapshot | null>(null)
   const [drawingBoundary, setDrawingBoundary] = useState(false)
   const [savingBoundary, setSavingBoundary] = useState(false)
   const [draftBoundaryPoints, setDraftBoundaryPoints] = useState<GeoPoint[]>([])
@@ -760,8 +776,13 @@ export function DesktopMap({
 
   const selectedBoundaryCard = useMemo(() => cardMap.get(boundaryCardId), [cardMap, boundaryCardId])
   const savedBoundary = useMemo(() => boundariesByCardId.get(boundaryCardId), [boundariesByCardId, boundaryCardId])
+  const selectedBoundaryCards = useMemo(
+    () => cards.filter((card) => selectedBoundaryCardIds.has(card.id)),
+    [cards, selectedBoundaryCardIds],
+  )
 
   const handleStartBoundaryDrawing = () => {
+    setShowBoundaryActionMenu(false)
     const points = savedBoundary?.points ?? []
     setDraftBoundaryPoints(points)
     setUndoStack([]) // history 초기화
@@ -788,6 +809,20 @@ export function DesktopMap({
   }
 
   const handleSelectCardForMap = (cardId: number) => {
+    if (boundaryMultiSelectMode) {
+      setSelectedBoundaryCardIds((current) => {
+        const next = new Set(current)
+        if (next.has(cardId)) next.delete(cardId)
+        else next.add(cardId)
+        return next
+      })
+      setBoundaryCardId(cardId)
+      setVisibleBoundarySelection('전체')
+      setDrawingBoundary(false)
+      setDraftBoundaryPoints([])
+      setUndoStack([])
+      return
+    }
     setBoundaryCardId(cardId)
     const isSameVisibleCard = visibleBoundarySelection === cardId
     setCardFilter(isSameVisibleCard ? '전체' : cardId)
@@ -926,6 +961,85 @@ export function DesktopMap({
     setCardFilter('전체')
   }
 
+  const toggleBoundaryMultiSelectMode = () => {
+    setShowBoundaryActionMenu(false)
+    setBoundaryMultiSelectMode((current) => {
+      const next = !current
+      if (next) {
+        const seed = typeof visibleBoundarySelection === 'number' ? visibleBoundarySelection : boundaryCardId
+        setSelectedBoundaryCardIds(seed ? new Set([seed]) : new Set())
+        setMergeTargetCardId(seed || null)
+        setVisibleBoundarySelection('전체')
+        setCardFilter('전체')
+        setDrawingBoundary(false)
+      } else {
+        setSelectedBoundaryCardIds(new Set())
+        setMergeTargetCardId(null)
+      }
+      return next
+    })
+  }
+
+  const openMapMergeModal = () => {
+    if (!onMergeCardBoundaries) return
+    if (selectedBoundaryCardIds.size < 2) {
+      showToast('병합할 구역 카드를 2개 이상 선택해 주세요.', 'error')
+      return
+    }
+    const firstWithBoundary = Array.from(selectedBoundaryCardIds).find((id) => boundariesByCardId.has(id))
+    setMergeTargetCardId(firstWithBoundary ?? Array.from(selectedBoundaryCardIds)[0] ?? null)
+    setShowMapMergeModal(true)
+  }
+
+  const applyMapBoundaryMerge = async () => {
+    if (!onMergeCardBoundaries || !mergeTargetCardId) return
+    const selectedIds = Array.from(selectedBoundaryCardIds)
+    const targetCard = cardMap.get(mergeTargetCardId)
+    if (!targetCard || selectedIds.length < 2) return
+
+    const selectedBoundaries = selectedIds
+      .map((id) => boundariesByCardId.get(id))
+      .filter((boundary): boundary is CardBoundary => Boolean(boundary))
+    if (selectedBoundaries.length < 2) {
+      showToast('구역선이 있는 카드를 2개 이상 선택해야 병합할 수 있습니다.', 'error')
+      return
+    }
+
+    const mergeResult = mergeCardBoundaryPoints(selectedBoundaries)
+    if (!mergeResult || mergeResult.points.length < 3) {
+      showToast('선택한 구역선을 병합하지 못했습니다.', 'error')
+      return
+    }
+
+    const confirmed = window.confirm(
+      `${targetCard.name} 카드로 ${selectedIds.length}개 카드의 건물과 구역선을 합칠까요?\n` +
+      '원본 카드는 남기고, 원본 카드의 구역선만 비워집니다.\n병합 후 되돌리기 버튼으로 취소할 수 있습니다.',
+    )
+    if (!confirmed) return
+
+    const allMergeIds = [mergeTargetCardId, ...selectedIds.filter((id) => id !== mergeTargetCardId)]
+    const undoBoundaries = allMergeIds.map((id) => ({
+      cardId: id,
+      points: cardBoundaries.find((b) => b.cardId === id)?.points ?? null,
+    }))
+    const undoBuildingCards = buildings
+      .filter((b) => allMergeIds.includes(b.cardId))
+      .map((b) => ({ buildingId: b.id, cardId: b.cardId }))
+
+    await Promise.resolve(onMergeCardBoundaries({
+      targetCardId: mergeTargetCardId,
+      sourceCardIds: selectedIds.filter((id) => id !== mergeTargetCardId),
+      mergedPoints: mergeResult.points,
+    }))
+    setMapMergeUndo({ boundaries: undoBoundaries, buildingCards: undoBuildingCards, targetCardName: targetCard.name })
+    setShowMapMergeModal(false)
+    setBoundaryMultiSelectMode(false)
+    setSelectedBoundaryCardIds(new Set())
+    setBoundaryCardId(mergeTargetCardId)
+    setVisibleBoundarySelection(mergeTargetCardId)
+    setCardFilter(mergeTargetCardId)
+  }
+
   const handleDeleteBoundary = (cardId: number) => {
     onDeleteCardBoundary(cardId)
     if (cardId === boundaryCardId) {
@@ -958,6 +1072,79 @@ export function DesktopMap({
 
   return (
     <section className={detailOpen ? 'map-layout ots-theme' : 'map-layout detail-collapsed ots-theme'}>
+      {mapMergeUndo && (
+        <div style={{
+          position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 900, display: 'flex', alignItems: 'center', gap: 12,
+          background: 'var(--gray-900)', color: '#fff', borderRadius: 12,
+          padding: '12px 20px', boxShadow: '0 4px 20px rgba(0,0,0,.3)',
+          fontSize: 14, whiteSpace: 'nowrap',
+        }}>
+          <span>"{mapMergeUndo.targetCardName}" 카드로 병합 완료</span>
+          <button
+            onClick={async () => {
+              if (!onUndoMergeCardBoundaries) return
+              await onUndoMergeCardBoundaries(mapMergeUndo)
+              setMapMergeUndo(null)
+            }}
+            style={{ background: 'var(--primary-500)', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}
+            type="button"
+          >
+            병합 취소
+          </button>
+          <button
+            onClick={() => setMapMergeUndo(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--gray-400)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
+            type="button"
+            aria-label="닫기"
+          >×</button>
+        </div>
+      )}
+
+      {showMapMergeModal && (
+        <div className="cal-modal-backdrop" onClick={() => setShowMapMergeModal(false)}>
+          <div className="cal-modal merge-name-modal" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="cal-modal-head">
+              <div className="cal-modal-title">
+                <h2>지도에서 구역 병합</h2>
+                <p className="merge-name-modal-sub">지도에서 선택한 카드의 건물과 구역선을 기준 카드로 합칩니다.</p>
+              </div>
+            </div>
+            <div className="cal-modal-body">
+              <label className="merge-name-field">
+                <span>기준 카드</span>
+                <select
+                  value={mergeTargetCardId ?? ''}
+                  onChange={(event) => setMergeTargetCardId(Number(event.target.value))}
+                >
+                  {selectedBoundaryCards.map((card) => (
+                    <option key={card.id} value={card.id}>{card.name}</option>
+                  ))}
+                </select>
+              </label>
+              <div className="merge-name-list">
+                {selectedBoundaryCards.map((card) => {
+                  const buildingCount = buildingsByCardId.get(card.id)?.length ?? 0
+                  const hasBoundary = boundariesByCardId.has(card.id)
+                  return (
+                    <div className="merge-name-row" key={card.id}>
+                      <div>
+                        <strong>{card.name}</strong>
+                        <span>{card.region} · {card.area} · 건물 {buildingCount}개</span>
+                      </div>
+                      <em>{card.id === mergeTargetCardId ? '기준' : hasBoundary ? '병합' : '구역선 없음'}</em>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="cal-modal-foot">
+              <button className="cal-cancel-btn" onClick={() => setShowMapMergeModal(false)} type="button">취소</button>
+              <button className="cal-save-btn" onClick={applyMapBoundaryMerge} type="button">병합 실행</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="map-main">
         {specialPeriods && (
           <div style={{ padding: '8px 16px 0' }}>
@@ -1076,14 +1263,56 @@ export function DesktopMap({
           )}
           {/* 구역선 버튼 */}
           {isAdmin && (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="tbl-ghost-btn" onClick={handleStartBoundaryDrawing} disabled={drawingBoundary} type="button">
-                {savedBoundary ? '구역선 변경' : '구역선 그리기'}
-              </button>
-              {savedBoundary && (
-                <button className="tbl-ghost-btn" style={{ color: 'var(--danger-600)', borderColor: 'var(--danger-200)' }} onClick={() => { if (confirm(`${selectedBoundaryCard?.name ?? '선택 카드'} 구역선을 삭제할까요?`)) { handleDeleteBoundary(boundaryCardId) } }} disabled={drawingBoundary} type="button">
-                  삭제
+            <div className="map-boundary-action-wrap">
+              {boundaryMultiSelectMode ? (
+                <>
+                  <button className="tbl-ghost-btn" onClick={() => setSelectedBoundaryCardIds(new Set())} disabled={selectedBoundaryCardIds.size === 0} type="button">
+                    선택 해제
+                  </button>
+                  <button className="tbl-primary-btn" onClick={openMapMergeModal} disabled={selectedBoundaryCardIds.size < 2} type="button">
+                    구역 병합{selectedBoundaryCardIds.size > 1 ? ` ${selectedBoundaryCardIds.size}` : ''}
+                  </button>
+                  <button className="tbl-ghost-btn" onClick={toggleBoundaryMultiSelectMode} type="button">완료</button>
+                </>
+              ) : (
+                <button
+                  aria-label="구역선 작업"
+                  className="tbl-toolbar-btn"
+                  onClick={() => setShowBoundaryActionMenu((open) => !open)}
+                  type="button"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />
+                  </svg>
                 </button>
+              )}
+              {showBoundaryActionMenu && !boundaryMultiSelectMode && (
+                <div className="map-boundary-action-popover">
+                  <button onClick={handleStartBoundaryDrawing} disabled={drawingBoundary} type="button">
+                    {savedBoundary ? '구역선 변경' : '구역선 그리기'}
+                  </button>
+                  <button onClick={toggleBoundaryMultiSelectMode} type="button">
+                    카드 다중 선택
+                  </button>
+                  <button onClick={openMapMergeModal} disabled={selectedBoundaryCardIds.size < 2 || !onMergeCardBoundaries} type="button">
+                    구역 병합
+                  </button>
+                  {savedBoundary && (
+                    <button
+                      className="danger"
+                      disabled={drawingBoundary}
+                      onClick={() => {
+                        setShowBoundaryActionMenu(false)
+                        if (confirm(`${selectedBoundaryCard?.name ?? '선택 카드'} 구역선을 삭제할까요?`)) {
+                          handleDeleteBoundary(boundaryCardId)
+                        }
+                      }}
+                      type="button"
+                    >
+                      구역선 삭제
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -1186,7 +1415,11 @@ export function DesktopMap({
                     const boundaryVisible = visibleBoundarySelection === card.id || visibleBoundarySelection === '전체'
                     return (
                       <article
-                        className={cardFilter === card.id ? 'map-card-item selected' : 'map-card-item'}
+                        className={[
+                          'map-card-item',
+                          cardFilter === card.id || selectedBoundaryCardIds.has(card.id) ? 'selected' : '',
+                          boundaryMultiSelectMode ? 'multi-selecting' : '',
+                        ].filter(Boolean).join(' ')}
                         key={card.id}
                       >
                         <button className="map-card-item__content" onClick={() => handleSelectCardForMap(card.id)} type="button">
@@ -1198,10 +1431,17 @@ export function DesktopMap({
                         <button
                           className={`map-card-boundary-btn${boundaryVisible ? ' active' : ''}`}
                           disabled={!hasBoundary}
-                          onClick={(e) => { e.stopPropagation(); setVisibleBoundarySelection((prev) => prev === card.id ? null : card.id) }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (boundaryMultiSelectMode) {
+                              handleSelectCardForMap(card.id)
+                              return
+                            }
+                            setVisibleBoundarySelection((prev) => prev === card.id ? null : card.id)
+                          }}
                           type="button"
                         >
-                          구역선
+                          {boundaryMultiSelectMode ? selectedBoundaryCardIds.has(card.id) ? '선택됨' : '선택' : '구역선'}
                         </button>
                       </article>
                     )
@@ -1308,6 +1548,7 @@ export function DesktopMap({
               onSelectAggregate={handleSelectAggregateMarker}
               cardBoundaries={cardBoundaries}
               highlightedCardIds={highlightedCardIds}
+              selectedCardIds={boundaryMultiSelectMode ? selectedBoundaryCardIds : undefined}
               cards={cards}
               drawingBoundary={drawingBoundary}
               addingBuilding={addingBuilding}

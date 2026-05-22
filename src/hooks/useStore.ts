@@ -357,7 +357,7 @@ export function useStore() {
     reassignBuildingsToCards,
   } = makeBuildingMutations({ fetchAll, buildings })
 
-  const { saveCardBoundary, deleteCardBoundary } = makeCardBoundaryMutations({ fetchAll, cardBoundaries })
+  const { saveCardBoundary, deleteCardBoundary, restoreCardBoundaries, mergeCardBoundaries, undoMergeCardBoundaries } = makeCardBoundaryMutations({ fetchAll, cardBoundaries, buildings })
 
   const {
     createCalendarEvent,
@@ -451,6 +451,9 @@ export function useStore() {
     reassignBuildingsToCards,
     saveCardBoundary,
     deleteCardBoundary,
+    restoreCardBoundaries,
+    mergeCardBoundaries,
+    undoMergeCardBoundaries,
     returnVisits,
     returnVisitLogs,
     createManualReturnVisit,

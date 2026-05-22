@@ -9188,19 +9188,16 @@ button:focus-visible {
     height: 36px;
     place-items: center;
     border-radius: 10px;
-    background: var(--gray-900);
-    color: #ffffff;
+    background: transparent;
     flex-shrink: 0;
+    overflow: hidden;
   }
 
-  .nav-mark svg {
-    width: 22px;
-    height: 22px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.9;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  .nav-mark img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
   }
 
   .nav-brand-text {
@@ -11806,6 +11803,74 @@ button:focus-visible {
     padding: 12px 24px 8px;
     max-height: 60vh;
     overflow-y: auto;
+  }
+
+  .merge-name-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted, #6b7280);
+  }
+
+  .merge-name-field select {
+    height: 42px;
+    border: 1px solid var(--line-2, #d8dbe0);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ink, #111827);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 0 12px;
+  }
+
+  .merge-name-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .merge-name-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--line, #e9ebef);
+    border-radius: 10px;
+    background: var(--surface, #fff);
+  }
+
+  .merge-name-row > div {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .merge-name-row strong {
+    color: var(--ink, #111827);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .merge-name-row span {
+    color: var(--muted, #6b7280);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .merge-name-row em {
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--tint, #f3f4f6);
+    color: var(--muted, #6b7280);
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 700;
+    padding: 4px 8px;
   }
 
   .merge-name-toolbar {
@@ -16863,6 +16928,53 @@ button:focus-visible {
     border-color: var(--accent-700);
     background: var(--accent-700);
     color: #ffffff;
+  }
+
+  .map-boundary-action-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .map-boundary-action-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 80;
+    min-width: 168px;
+    padding: 6px;
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    background: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .map-boundary-action-popover button {
+    width: 100%;
+    height: 34px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--gray-800);
+    font-size: 13px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .map-boundary-action-popover button:hover {
+    background: var(--gray-100);
+  }
+
+  .map-boundary-action-popover button:disabled {
+    color: var(--gray-400);
+    cursor: not-allowed;
+  }
+
+  .map-boundary-action-popover button.danger {
+    color: var(--danger-600);
   }
 
   .boundary-editor > span {

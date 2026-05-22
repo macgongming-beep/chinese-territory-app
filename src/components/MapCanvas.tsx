@@ -347,6 +347,7 @@ function NaverMapCanvas({
   selectedBuildingId,
   focusBuildingId,
   selectedCardId,
+  selectedCardIds,
   onAddBoundaryPoint,
   onInsertBoundaryPoint,
   onRemoveBoundaryPoint,
@@ -383,6 +384,7 @@ function NaverMapCanvas({
   selectedBuildingId: number
   focusBuildingId?: number | null
   selectedCardId: number | '전체' | null
+  selectedCardIds?: Set<number>
   onAddBoundaryPoint?: (point: GeoPoint) => void
   onInsertBoundaryPoint?: (index: number, point: GeoPoint) => void
   onRemoveBoundaryPoint?: (index: number) => void
@@ -423,6 +425,8 @@ function NaverMapCanvas({
   aggregateMarkersRef.current = aggregateMarkers
   const highlightedCardIdsRef = useRef(highlightedCardIds)
   highlightedCardIdsRef.current = highlightedCardIds
+  const selectedCardIdsRef = useRef(selectedCardIds)
+  selectedCardIdsRef.current = selectedCardIds
 
   const onMapRightClickRef = useRef(onMapRightClick)
   onMapRightClickRef.current = onMapRightClick
@@ -794,11 +798,14 @@ function NaverMapCanvas({
 
     const currentCardId = selectedCardIdRef.current
     const hIds = highlightedCardIdsRef.current || new Set()
+    const selectedIds = selectedCardIdsRef.current
 
     cardPolygonsRef.current.forEach((polygon, cardId) => {
       // 해당 구역이 하이라이트(선택됨/필터됨) 대상인지 결정
       const isSelected = 
-        currentCardId === '전체' 
+        selectedIds && selectedIds.size > 0
+          ? selectedIds.has(cardId)
+        : currentCardId === '전체'
           ? hIds.has(cardId) 
           : cardId === currentCardId
 
@@ -1204,7 +1211,7 @@ function NaverMapCanvas({
       prevHighlightedCardIdsSignatureRef.current = highlightedCardIdsSignature
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardBoundaries, draftBoundaryPoints, selectedCardId, drawingBoundary, addingBuilding, editingBuildingLocation, buildings.length, highlightedCardIds])
+  }, [cardBoundaries, draftBoundaryPoints, selectedCardId, selectedCardIds, drawingBoundary, addingBuilding, editingBuildingLocation, buildings.length, highlightedCardIds])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -1352,6 +1359,7 @@ export function MapCanvas({
   onMapClick,
   onMapLongClick,
   highlightedCardIds,
+  selectedCardIds,
   isMobile = false,
   bottomPadding,
   onToggleAddingBuilding,
@@ -1387,6 +1395,7 @@ export function MapCanvas({
   onMapClick?: (lat: number, lng: number) => void
   onMapLongClick?: (lat: number, lng: number) => void
   highlightedCardIds?: Set<number>
+  selectedCardIds?: Set<number>
   isMobile?: boolean
   bottomPadding?: number
   onToggleAddingBuilding?: (val: boolean) => void
@@ -1422,6 +1431,7 @@ export function MapCanvas({
           selectedBuildingId={selectedBuildingId}
           focusBuildingId={focusBuildingId}
           selectedCardId={selectedCardId}
+          selectedCardIds={selectedCardIds}
           onAddBoundaryPoint={onAddBoundaryPoint}
           onInsertBoundaryPoint={onInsertBoundaryPoint}
           onRemoveBoundaryPoint={onRemoveBoundaryPoint}
@@ -1469,7 +1479,9 @@ export function MapCanvas({
           .filter((boundary) => !(drawingBoundary && boundary.cardId === selectedCardId))
           .map((boundary) => {
             const isSelected = 
-              selectedCardId === '전체' 
+              selectedCardIds && selectedCardIds.size > 0
+                ? selectedCardIds.has(boundary.cardId)
+              : selectedCardId === '전체' 
                 ? highlightedCardIds?.has(boundary.cardId)
                 : boundary.cardId === selectedCardId
             return (

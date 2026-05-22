@@ -1,20 +1,25 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
 import { showToast } from '../lib/toast'
 import { findCardForCoordinates, formatDisplayAddress, isValidMapCoordinate, normalizeMapCoordinates, parseCoordinate } from '../utils/mapUtils'
-import type { Building, CardBoundary, InformalAsset, InformalGroup, Role, TerritoryCard, TerritoryRegion, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import { downloadCardBoundaryBackup, mergeCardBoundaryPoints, parseCardBoundaryBackup } from '../utils/boundaryMerge'
+import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
+import type { Building, CardBoundary, GeoPoint, InformalAsset, InformalGroup, Role, TerritoryCard, TerritoryRegion, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import { InformalCardsTab } from './InformalCardsTab'
 import { RestaurantsTab } from './RestaurantsTab'
 import {
   type CsvBuildingImport,
   type CsvPreviewRow,
   type CsvSkippedRow,
+  type CsvVisitHistory,
   normalizeCsvKey,
   parseCsv,
   normalizeUnitStatus,
   looksTruthy,
-  createCsvUnits,
+  parseCsvDate,
+  normalizeTimeSlot,
+  normalizeWarning,
   downloadCsvExample,
 } from '../utils/csvBuildingImport'
 import { AddUnitRow } from './AddUnitRow'
@@ -78,6 +83,9 @@ export function DesktopTerritory({
   onAddVisitHistory,
   onUpdateVisitHistory,
   onDeleteVisitHistory,
+  onRestoreCardBoundaries,
+  onMergeCardBoundaries,
+  onUndoMergeCardBoundaries,
   onOpenCardMap,
   onOpenBuildingMap,
   visitHistories,
@@ -126,6 +134,13 @@ export function DesktopTerritory({
     input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string },
   ) => void
   onDeleteVisitHistory?: (historyId: number, unitId: number) => void
+  onRestoreCardBoundaries?: (boundaries: CardBoundary[]) => Promise<void> | void
+  onMergeCardBoundaries?: (input: {
+    targetCardId: number
+    sourceCardIds: number[]
+    mergedPoints: GeoPoint[]
+  }) => Promise<void> | void
+  onUndoMergeCardBoundaries?: (snapshot: CardMergeUndoSnapshot) => Promise<void>
   onOpenCardMap: (cardId: number, editBoundary?: boolean) => void
   onOpenBuildingMap: (buildingId: number) => void
   visitHistories: VisitHistory[]
@@ -153,6 +168,9 @@ export function DesktopTerritory({
   const [selectedCardId, setSelectedCardId] = useState<number | null>(null)
   const [checkedCardIds, setCheckedCardIds] = useState<Set<number>>(new Set())
   const [checkedBuildingIds, setCheckedBuildingIds] = useState<Set<number>>(new Set())
+  const [cardMergeModalOpen, setCardMergeModalOpen] = useState(false)
+  const [cardMergeTargetId, setCardMergeTargetId] = useState<number | null>(null)
+  const [cardMergeUndo, setCardMergeUndo] = useState<CardMergeUndoSnapshot | null>(null)
   const [detailPaneOpen, setDetailPaneOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'카드 관리' | '건물 관리'>('카드 관리')
   // v2: 종류 sub-tab
@@ -233,7 +251,12 @@ export function DesktopTerritory({
     memo: string
   } | null>(null)
   const [selectedPointDetail, setSelectedPointDetail] = useState<{ buildingId: number; unitId: number } | null>(null)
+  const [selectedPointDetailOffset, setSelectedPointDetailOffset] = useState(386)
   const [openHistoryActionId, setOpenHistoryActionId] = useState<number | null>(null)
+  const pointTableRef = useRef<HTMLDivElement | null>(null)
+  const pointDetailPaneRef = useRef<HTMLElement | null>(null)
+  const pointRowRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const boundaryImportInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (isAdmin && allUsers.length === 0) {
@@ -380,6 +403,7 @@ export function DesktopTerritory({
     if (cardStatusFilter !== '전체' && card.status !== cardStatusFilter) return false
     return true
   })
+  const selectedMergeCards = cards.filter((card) => checkedCardIds.has(card.id))
 
   const activeAdvancedCardFilterCount =
     (leaderFilter !== '전체' ? 1 : 0) +
@@ -618,27 +642,44 @@ export function DesktopTerritory({
     const rowIndex = pointRows.findIndex((row) => row.building.id === building.id && row.unit.id === unit.id)
     return { building, unit, card, histories, rowIndex }
   }, [buildings, cardMap, pointRows, selectedPointDetail, visitHistoriesByUnitId])
-  const selectedPointDetailOffset = (() => {
-    if (!selectedPointDetailData) return 386
-    const rowIndex = Math.max(selectedPointDetailData.rowIndex, 0)
-    const tableTopOffset = 438
-    const tableHeaderHeight = 54
-    const rowHeight = 72
-    const visibleRows = Math.min(Math.max(pointRows.length, 1), 8)
-    const historyRows = Math.max(selectedPointDetailData.histories.length, 1)
-    const estimatedPanelHeight = Math.min(
-      620,
-      330
-        + Math.min(historyRows, 5) * 46
-        + (selectedPointDetailData.unit.isRegularVisit ? 72 : 0)
-        + (hasText(selectedPointDetailData.unit.memo) ? 76 : 0),
-    )
-    const desiredOffset = tableTopOffset + tableHeaderHeight + rowIndex * rowHeight
-    const visibleListHeight = tableHeaderHeight + visibleRows * rowHeight
-    const maxOffsetByList = tableTopOffset + Math.max(0, visibleListHeight - estimatedPanelHeight)
-    const maxOffsetByViewport = 620
-    return Math.max(tableTopOffset, Math.min(desiredOffset, maxOffsetByList, maxOffsetByViewport))
-  })()
+  const selectedPointDetailKey = selectedPointDetail
+    ? `${selectedPointDetail.buildingId}-${selectedPointDetail.unitId}`
+    : null
+
+  useEffect(() => {
+    if (!selectedPointDetailKey || !selectedPointDetailData) return
+
+    const updatePointDetailOffset = () => {
+      const rowEl = pointRowRefs.current.get(selectedPointDetailKey)
+      const tableEl = pointTableRef.current
+      const paneEl = pointDetailPaneRef.current
+      const layoutEl = tableEl?.closest('.territory-layout') as HTMLElement | null
+      if (!rowEl || !tableEl || !paneEl || !layoutEl) return
+
+      const rowRect = rowEl.getBoundingClientRect()
+      const tableRect = tableEl.getBoundingClientRect()
+      const layoutRect = layoutEl.getBoundingClientRect()
+      const layoutStyle = window.getComputedStyle(layoutEl)
+      const layoutPaddingTop = parseFloat(layoutStyle.paddingTop) || 0
+      const layoutContentTop = layoutRect.top + layoutPaddingTop
+      const paneHeight = Math.min(paneEl.scrollHeight || paneEl.getBoundingClientRect().height, window.innerHeight - 132)
+      const desiredTop = rowRect.top
+      const minTop = tableRect.top
+      const maxTop = Math.max(minTop, tableRect.bottom - paneHeight)
+      const clampedTop = Math.max(minTop, Math.min(desiredTop, maxTop))
+      const nextOffset = Math.max(0, Math.round(clampedTop - layoutContentTop))
+      setSelectedPointDetailOffset((current) => current === nextOffset ? current : nextOffset)
+    }
+
+    const frame = window.requestAnimationFrame(updatePointDetailOffset)
+    window.addEventListener('resize', updatePointDetailOffset)
+    window.addEventListener('scroll', updatePointDetailOffset, true)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', updatePointDetailOffset)
+      window.removeEventListener('scroll', updatePointDetailOffset, true)
+    }
+  }, [selectedPointDetailData, selectedPointDetailKey])
   // const chinesePointTotal = pointRows.filter(({ unit }) => unit.isChinese).length
   // const regularPointTotal = pointRows.filter(({ unit }) => unit.isRegularVisit).length
   const startBuildingEdit = (building: Building) => {
@@ -764,6 +805,29 @@ export function DesktopTerritory({
       skippedDetails.push({ rowNumber, reason, hint, address })
     }
 
+    // buildingKey → accumulated data (group rows by building)
+    type AccumUnit = {
+      status: UnitStatus
+      isChinese: boolean
+      regularVisitor: string
+      regularVisitorStartDate: string
+      memo: string
+      visitHistories: CsvVisitHistory[]
+    }
+    type AccumBuilding = {
+      rowNumber: number
+      cardId: number
+      cardName: string
+      name: string
+      address: string
+      type: CsvBuildingImport['type']
+      lat: number
+      lng: number
+      warning: string
+      units: Map<string, AccumUnit>
+    }
+    const buildingAccumulator = new Map<string, AccumBuilding>()
+
     for (const [index, row] of rows.slice(1).entries()) {
       const rowNumber = index + 2
       const cardIdValue = findValue(row, ['cardId', 'card_id', '카드ID', '카드아이디'])
@@ -780,12 +844,22 @@ export function DesktopTerritory({
       const nameValue = findValue(row, ['name', 'buildingName', '건물명', '건물']) || detailAddressValue
       const typeValue = findValue(row, ['type', '유형', '건물유형'])
       const unitsValue = findValue(row, ['unit', 'units', '호수', '세대', '호수목록'])
-      const statusValue = findValue(row, ['status', '상태', '방문결과', '결과'])
+      const statusValue = findValue(row, ['status', '상태'])
+      const divisionValue = findValue(row, ['구분', 'division'])
       const chineseValue = findValue(row, ['chinese', 'isChinese', '중국인', '중국인여부'])
+      const warningValue = findValue(row, ['warning', '방문금지', '경고'])
       const regularVisitorValue = findValue(row, ['regularVisitor', 'regular', '정기방문자', '재방문자', '정기방문'])
+      const regularStartValue = findValue(row, ['정기방문시작일', 'regularStart', 'regularVisitorStartDate'])
       const memoValue = findValue(row, ['memo', 'note', '메모', '비고', '备注'])
       const latValue = findValue(row, ['lat', 'latitude', '위도'])
       const lngValue = findValue(row, ['lng', 'lon', 'longitude', '경도'])
+      // 방문기록 컬럼
+      const visitDateValue = findValue(row, ['방문일자', 'visitDate', 'visited_at', '방문날짜'])
+      const visitResultValue = findValue(row, ['방문결과', 'visitResult', 'result'])
+      const visitVisitorValue = findValue(row, ['방문자', 'visitor', 'visitVisitor'])
+      const visitTimeSlotValue = findValue(row, ['시간대', 'timeSlot', 'time_slot'])
+      const visitMemoValue = findValue(row, ['방문메모', 'visitMemo', 'visitNote'])
+
       const inferredRegion = territoryRegions.find((region) => regionValue === region || fullRegionValue.includes(region))
       const inferredArea = areaValue || cards.find((item) => item.area && detailAddressValue.includes(item.area))?.area
       const inferredCardName = inferredRegion && inferredArea && cardIndexValue
@@ -840,22 +914,97 @@ export function DesktopTerritory({
         continue
       }
 
-      const name = nameValue || address.split(' ').slice(-2).join(' ') || '새 건물'
-      previewRows.push({
-        rowNumber,
-        cardId: card.id,
-        cardName: card.name,
-        name,
-        address,
-        type: typeValue.includes('상가') ? '상가' : '주택',
-        lat,
-        lng,
-        units: createCsvUnits(unitsValue, {
-          status: normalizeUnitStatus(statusValue),
-          isChinese: looksTruthy(chineseValue),
+      const buildingName = nameValue || address.split(' ').slice(-2).join(' ') || '새 건물'
+      const buildingType: CsvBuildingImport['type'] = typeValue.includes('상가') ? '상가' : '주택'
+      const buildingKey = `${card.id}|${address}|${buildingName}`
+
+      // 구분 컬럼: 한국인 → false, 중국인 → true, 없으면 heuristic
+      const status = normalizeUnitStatus(statusValue)
+      let isChinese: boolean
+      if (divisionValue === '한국인') {
+        isChinese = false
+      } else if (divisionValue === '중국인') {
+        isChinese = true
+      } else if (chineseValue) {
+        isChinese = looksTruthy(chineseValue)
+      } else {
+        isChinese = Boolean(regularVisitorValue) || status === '만남' || status === '부재'
+      }
+
+      // 방문기록 파싱
+      const visitedAt = visitDateValue ? parseCsvDate(visitDateValue) : null
+      const visitHistory: CsvVisitHistory | null = visitedAt
+        ? {
+          visitedAt,
+          result: normalizeUnitStatus(visitResultValue || statusValue) as string,
+          visitor: visitVisitorValue,
+          timeSlot: normalizeTimeSlot(visitTimeSlotValue),
+          memo: visitMemoValue || undefined,
+        }
+        : null
+
+      // 건물 누산
+      if (!buildingAccumulator.has(buildingKey)) {
+        buildingAccumulator.set(buildingKey, {
+          rowNumber,
+          cardId: card.id,
+          cardName: card.name,
+          name: buildingName,
+          address,
+          type: buildingType,
+          lat,
+          lng,
+          warning: normalizeWarning(warningValue) ?? '',
+          units: new Map(),
+        })
+      }
+      const accum = buildingAccumulator.get(buildingKey)!
+      // warning: if any row sets it, keep it
+      if (!accum.warning && warningValue) {
+        accum.warning = normalizeWarning(warningValue) ?? ''
+      }
+
+      // 세대 누산
+      const unitNumber = unitsValue.trim() || '101호'
+      if (!accum.units.has(unitNumber)) {
+        accum.units.set(unitNumber, {
+          status,
+          isChinese,
           regularVisitor: regularVisitorValue,
+          regularVisitorStartDate: regularStartValue ? (parseCsvDate(regularStartValue) ?? regularStartValue) : '',
           memo: memoValue,
-        }),
+          visitHistories: [],
+        })
+      }
+      if (visitHistory) {
+        accum.units.get(unitNumber)!.visitHistories.push(visitHistory)
+      }
+    }
+
+    // buildingAccumulator → previewRows
+    for (const accum of buildingAccumulator.values()) {
+      const builtUnits = Array.from(accum.units.entries()).map(([number, u]) => ({
+        number,
+        status: u.status,
+        isChinese: u.isChinese,
+        isRegularVisit: Boolean(u.regularVisitor),
+        regularVisitor: u.regularVisitor || undefined,
+        regularVisitorStartDate: u.regularVisitorStartDate || undefined,
+        memo: u.memo || undefined,
+        visitHistories: u.visitHistories,
+      }))
+
+      previewRows.push({
+        rowNumber: accum.rowNumber,
+        cardId: accum.cardId,
+        cardName: accum.cardName,
+        name: accum.name,
+        address: accum.address,
+        type: accum.type,
+        lat: accum.lat,
+        lng: accum.lng,
+        warning: accum.warning || undefined,
+        units: builtUnits.length > 0 ? builtUnits : [{ number: '101호', status: '미방문', isChinese: false, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }],
       })
     }
 
@@ -863,7 +1012,9 @@ export function DesktopTerritory({
     setCsvSkippedRows(skipped)
     setCsvSkippedDetails(skippedDetails)
     setCsvParsing(false)
-    showToast(`CSV 확인 완료: ${previewRows.length}개 준비, ${skipped}개 제외`, previewRows.length > 0 ? 'success' : 'info')
+    const totalVisits = previewRows.reduce((sum, r) => sum + r.units.reduce((s, u) => s + u.visitHistories.length, 0), 0)
+    const visitMsg = totalVisits > 0 ? `, 방문기록 ${totalVisits}건` : ''
+    showToast(`CSV 확인 완료: 건물 ${previewRows.length}개 준비${visitMsg}, ${skipped}개 제외`, previewRows.length > 0 ? 'success' : 'info')
   }
 
   const handleImportCsv = async () => {
@@ -1021,6 +1172,98 @@ export function DesktopTerritory({
     if (selectedCardId && ids.includes(selectedCardId)) setSelectedCardId(null)
   }
 
+  const handleExportCardBoundaries = () => {
+    downloadCardBoundaryBackup(cards, cardBoundaries)
+    showToast('구역선 백업 파일을 내보냈습니다.', 'success')
+  }
+
+  const handleImportCardBoundaries = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !onRestoreCardBoundaries) return
+    try {
+      const text = await file.text()
+      const boundaries = parseCardBoundaryBackup(text)
+      if (boundaries.length === 0) {
+        showToast('가져올 구역선이 없습니다.', 'error')
+        return
+      }
+      const confirmed = window.confirm(`백업 파일의 구역선 ${boundaries.length}개를 현재 카드에 복구할까요?`)
+      if (!confirmed) return
+      await Promise.resolve(onRestoreCardBoundaries(boundaries))
+    } catch (error) {
+      console.error(error)
+      showToast('구역선 백업 파일을 읽지 못했습니다.', 'error')
+    }
+  }
+
+  const handleOpenCardMergeModal = () => {
+    if (!onMergeCardBoundaries) return
+    const ids = Array.from(checkedCardIds)
+    if (ids.length < 2) {
+      showToast('병합할 카드를 2개 이상 선택해 주세요.', 'error')
+      return
+    }
+    const firstWithBoundary = ids.find((id) => cardBoundaries.some((boundary) => boundary.cardId === id))
+    setCardMergeTargetId(firstWithBoundary ?? ids[0] ?? null)
+    setCardMergeModalOpen(true)
+  }
+
+  const handleApplyCardMerge = async () => {
+    if (!onMergeCardBoundaries || !cardMergeTargetId) return
+    const selectedIds = Array.from(checkedCardIds)
+    const targetCard = cards.find((card) => card.id === cardMergeTargetId)
+    if (!targetCard || selectedIds.length < 2) return
+
+    const selectedBoundaries = selectedIds
+      .map((id) => cardBoundaries.find((boundary) => boundary.cardId === id))
+      .filter((boundary): boundary is CardBoundary => Boolean(boundary))
+
+    if (selectedBoundaries.length < 2) {
+      showToast('구역선이 있는 카드를 2개 이상 선택해야 병합할 수 있습니다.', 'error')
+      return
+    }
+
+    const mergeResult = mergeCardBoundaryPoints(selectedBoundaries)
+    if (!mergeResult || mergeResult.points.length < 3) {
+      showToast('선택한 구역선을 병합하지 못했습니다.', 'error')
+      return
+    }
+
+    const confirmed = window.confirm(
+      `${targetCard.name} 카드로 ${selectedIds.length}개 카드의 건물과 구역선을 합칠까요?\n` +
+      '원본 카드는 남기고, 원본 카드의 구역선만 비워집니다.\n병합 후 화면에서 되돌리기 버튼으로 취소할 수 있습니다.',
+    )
+    if (!confirmed) return
+
+    // 되돌리기용 스냅샷 캡처 (경계선 없는 카드는 null로 기록)
+    const allMergeIds = [cardMergeTargetId, ...selectedIds.filter((id) => id !== cardMergeTargetId)]
+    const undoBoundaries = allMergeIds.map((id) => ({
+      cardId: id,
+      points: cardBoundaries.find((b) => b.cardId === id)?.points ?? null,
+    }))
+    const undoBuildingCards = buildings
+      .filter((b) => allMergeIds.includes(b.cardId))
+      .map((b) => ({ buildingId: b.id, cardId: b.cardId }))
+
+    await Promise.resolve(onMergeCardBoundaries({
+      targetCardId: cardMergeTargetId,
+      sourceCardIds: selectedIds.filter((id) => id !== cardMergeTargetId),
+      mergedPoints: mergeResult.points,
+    }))
+
+    setCardMergeUndo({ boundaries: undoBoundaries, buildingCards: undoBuildingCards, targetCardName: targetCard.name })
+    setCardMergeModalOpen(false)
+    setCheckedCardIds(new Set([cardMergeTargetId]))
+    setSelectedCardId(cardMergeTargetId)
+  }
+
+  const handleUndoCardMerge = async () => {
+    if (!cardMergeUndo || !onUndoMergeCardBoundaries) return
+    await onUndoMergeCardBoundaries(cardMergeUndo)
+    setCardMergeUndo(null)
+  }
+
   const handleDeleteCheckedBuildings = () => {
     const ids = Array.from(checkedBuildingIds)
     if (ids.length === 0) return
@@ -1078,6 +1321,79 @@ export function DesktopTerritory({
               >
                 구역선 그리기
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cardMergeUndo && (
+        <div style={{
+          position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 900, display: 'flex', alignItems: 'center', gap: 12,
+          background: 'var(--gray-900)', color: '#fff', borderRadius: 12,
+          padding: '12px 20px', boxShadow: '0 4px 20px rgba(0,0,0,.3)',
+          fontSize: 14, whiteSpace: 'nowrap',
+        }}>
+          <span>"{cardMergeUndo.targetCardName}" 카드로 병합 완료</span>
+          <button
+            onClick={handleUndoCardMerge}
+            style={{ background: 'var(--primary-500)', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}
+            type="button"
+          >
+            병합 취소
+          </button>
+          <button
+            onClick={() => setCardMergeUndo(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--gray-400)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
+            type="button"
+            aria-label="닫기"
+          >×</button>
+        </div>
+      )}
+
+      {cardMergeModalOpen && (
+        <div className="cal-modal-backdrop" onClick={() => setCardMergeModalOpen(false)}>
+          <div className="cal-modal merge-name-modal" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="cal-modal-head">
+              <div className="cal-modal-title">
+                <h2>카드 구역선 병합</h2>
+                <p className="merge-name-modal-sub">선택한 카드의 건물은 기준 카드로 이동하고, 구역선은 하나로 합쳐집니다.</p>
+              </div>
+            </div>
+            <div className="cal-modal-body">
+              <label className="merge-name-field">
+                <span>기준 카드</span>
+                <select
+                  value={cardMergeTargetId ?? ''}
+                  onChange={(event) => setCardMergeTargetId(Number(event.target.value))}
+                >
+                  {selectedMergeCards.map((card) => (
+                    <option key={card.id} value={card.id}>{card.name}</option>
+                  ))}
+                </select>
+              </label>
+              <div className="merge-name-list">
+                {selectedMergeCards.map((card) => {
+                  const buildingCount = buildingsByCardId.get(card.id)?.length ?? 0
+                  const hasBoundary = cardBoundaries.some((boundary) => boundary.cardId === card.id)
+                  return (
+                    <div className="merge-name-row" key={card.id}>
+                      <div>
+                        <strong>{card.name}</strong>
+                        <span>{card.region} · {card.area} · 건물 {buildingCount}개</span>
+                      </div>
+                      <em>{card.id === cardMergeTargetId ? '기준' : hasBoundary ? '병합' : '구역선 없음'}</em>
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="merge-name-modal-sub" style={{ marginTop: 12 }}>
+                병합 후 원본 카드는 삭제하지 않고 남깁니다. 원본 카드의 구역선만 비우며, 토스트의 실행 취소로 되돌릴 수 있습니다.
+              </p>
+            </div>
+            <div className="cal-modal-foot">
+              <button className="cal-cancel-btn" onClick={() => setCardMergeModalOpen(false)} type="button">취소</button>
+              <button className="cal-save-btn" onClick={handleApplyCardMerge} type="button">병합 실행</button>
             </div>
           </div>
         </div>
@@ -1399,8 +1715,11 @@ export function DesktopTerritory({
                     📥 예시 파일 다운로드
                   </button>
                 </div>
-                <p>카드명, 지역, 동, 카드번호, 주소, 건물명, 유형, 호수, 상태, 중국인, 정기방문자, 메모</p>
-                <small>카드 정보가 비어 있으면 주소 좌표가 들어간 구역선 기준으로 자동 배정합니다. 상태/중국인/정기방문자/메모는 호수 포인트에 함께 저장됩니다.</small>
+                <p style={{ fontWeight: 600, marginBottom: 2 }}>건물 정보</p>
+                <p style={{ marginTop: 0 }}>카드명, 지역, 동, 주소, 건물명, 유형, 호수, 상태, <b>구분</b>(중국인/한국인), <b>방문금지</b>, 정기방문자, <b>정기방문시작일</b>, 메모</p>
+                <p style={{ fontWeight: 600, marginBottom: 2 }}>방문기록 (선택 — 있으면 과거 기록도 함께 삽입)</p>
+                <p style={{ marginTop: 0 }}>방문일자(YYYY-MM-DD), 방문결과, 방문자, 시간대(오전/오후/저녁), 방문메모</p>
+                <small>한 세대에 방문기록이 여러 건이면 같은 주소+호수로 여러 행을 작성하세요. 카드 정보가 비어 있으면 구역선 기준으로 자동 배정합니다.</small>
               </div>
 
               <label className="csv-file-drop">
@@ -1428,18 +1747,23 @@ export function DesktopTerritory({
                     <span>카드</span>
                     <span>건물</span>
                     <span>주소</span>
-                    <span>호수</span>
+                    <span>세대</span>
+                    <span>방문기록</span>
                   </div>
-                  {csvPreviewRows.slice(0, 8).map((row) => (
-                    <div key={`${row.rowNumber}-${row.address}`}>
-                      <span>{row.rowNumber}</span>
-                      <span>{row.cardName}</span>
-                      <span>{row.name}</span>
-                      <span>{row.address}</span>
-                      <span>{row.units.length || 1}</span>
-                    </div>
-                  ))}
-                  {csvPreviewRows.length > 8 && <p>외 {csvPreviewRows.length - 8}개 행이 더 있습니다.</p>}
+                  {csvPreviewRows.slice(0, 8).map((row) => {
+                    const visitCount = row.units.reduce((sum, u) => sum + u.visitHistories.length, 0)
+                    return (
+                      <div key={`${row.rowNumber}-${row.address}`}>
+                        <span>{row.rowNumber}</span>
+                        <span>{row.cardName}</span>
+                        <span>{row.name}</span>
+                        <span>{row.address}</span>
+                        <span>{row.units.length || 1}</span>
+                        <span>{visitCount > 0 ? `${visitCount}건` : '-'}</span>
+                      </div>
+                    )
+                  })}
+                  {csvPreviewRows.length > 8 && <p>외 {csvPreviewRows.length - 8}개 건물이 더 있습니다.</p>}
                 </div>
               )}
 
@@ -1567,6 +1891,28 @@ export function DesktopTerritory({
                 </button>
                 {isAdmin && (
                   <>
+                    <button className="tbl-ghost-btn" onClick={handleExportCardBoundaries} type="button">
+                      구역선 백업
+                    </button>
+                    {onRestoreCardBoundaries && (
+                      <>
+                        <input
+                          ref={boundaryImportInputRef}
+                          accept="application/json"
+                          onChange={handleImportCardBoundaries}
+                          style={{ display: 'none' }}
+                          type="file"
+                        />
+                        <button className="tbl-ghost-btn" onClick={() => boundaryImportInputRef.current?.click()} type="button">
+                          구역선 가져오기
+                        </button>
+                      </>
+                    )}
+                    {onMergeCardBoundaries && (
+                      <button className="tbl-ghost-btn" disabled={checkedCardIds.size < 2} onClick={handleOpenCardMergeModal} type="button">
+                        카드 병합{checkedCardIds.size > 1 ? ` ${checkedCardIds.size}` : ''}
+                      </button>
+                    )}
                     <button className="tbl-ghost-btn" disabled={checkedCardIds.size === 0} onClick={handleDeleteCheckedCards} type="button">
                       선택 삭제{checkedCardIds.size > 0 ? ` ${checkedCardIds.size}` : ''}
                     </button>
@@ -2312,7 +2658,7 @@ export function DesktopTerritory({
           </div>
           </>
         ) : (
-          <div className="point-management-table" role="table" aria-label="중국인 포인트 목록">
+          <div className="point-management-table" ref={pointTableRef} role="table" aria-label="중국인 포인트 목록">
             <div className="point-management-head" role="row">
               <span>카드</span>
               <span>건물/주소</span>
@@ -2326,11 +2672,16 @@ export function DesktopTerritory({
               const card = cardMap.get(building.cardId)
               return (
                 <div
-                  className={`point-management-row${selectedPointDetail?.buildingId === building.id && selectedPointDetail?.unitId === unit.id ? ' selected' : ''}`}
-                  key={`${building.id}-${unit.id}`}
-                  onClick={() => setSelectedPointDetail({ buildingId: building.id, unitId: unit.id })}
-                  role="row"
-                >
+	                  className={`point-management-row${selectedPointDetail?.buildingId === building.id && selectedPointDetail?.unitId === unit.id ? ' selected' : ''}`}
+	                  key={`${building.id}-${unit.id}`}
+	                  onClick={() => setSelectedPointDetail({ buildingId: building.id, unitId: unit.id })}
+	                  ref={(node) => {
+	                    const key = `${building.id}-${unit.id}`
+	                    if (node) pointRowRefs.current.set(key, node)
+	                    else pointRowRefs.current.delete(key)
+	                  }}
+	                  role="row"
+	                >
                   <span>{card?.name ?? '카드 없음'}</span>
                   <span title={building.address}>{building.name || formatDisplayAddress(building.address)}</span>
                   <strong title={unit.number}>{unit.number}</strong>
@@ -2408,10 +2759,11 @@ export function DesktopTerritory({
       </div>{/* /territory-main */}
 
       {showPointDetailPane && selectedPointDetailData && (
-        <aside
-          className="territory-side point-detail-pane"
-          style={{ '--point-detail-offset': `${selectedPointDetailOffset}px` } as React.CSSProperties}
-        >
+	        <aside
+	          className="territory-side point-detail-pane"
+	          ref={pointDetailPaneRef}
+	          style={{ '--point-detail-offset': `${selectedPointDetailOffset}px` } as React.CSSProperties}
+	        >
           <div className="point-detail-scroll">
             <div className="point-detail-head">
               <div>

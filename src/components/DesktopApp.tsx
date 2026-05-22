@@ -15,6 +15,8 @@ import { DesktopUsers } from './DesktopUsers'
 import { ServiceLogPage } from './ServiceLogPage'
 import { AppHeaderActionButtons } from './AppHeader'
 import type { Building, CalendarEvent, CardBoundary, DesktopPage, EventInformalAssignment, EventRestaurantAssignment, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { CsvBuildingImport } from '../utils/csvBuildingImport'
+import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 import { roleLabels } from '../types'
 
 const pageToPath: Record<DesktopPage, string> = {
@@ -107,6 +109,9 @@ export function DesktopApp({
   onUpdateUnitFlags,
   onUpdateBuilding,
   onSaveCardBoundary,
+  onRestoreCardBoundaries,
+  onMergeCardBoundaries,
+  onUndoMergeCardBoundaries,
   visitHistories,
   onChangeViewMode,
   onLogout,
@@ -188,22 +193,7 @@ export function DesktopApp({
     lat: number
     lng: number
   }) => void
-  onImportBuildings: (inputs: Array<{
-    cardId: number
-    name: string
-    address: string
-    type: Building['type']
-    lat: number
-    lng: number
-    units: Array<{
-      number: string
-      status: UnitStatus
-      isChinese: boolean
-      isRegularVisit: boolean
-      regularVisitor?: string
-      memo?: string
-    }>
-  }>) => Promise<{ inserted: number; skipped: number }>
+  onImportBuildings: (inputs: CsvBuildingImport[]) => Promise<{ inserted: number; skipped: number }>
   onCreateNotice: (input: { title: string; content: string; priority: Notice['priority']; author: string }) => void
   onCreateSpecialPeriod: (input: { label: string; startDate: string; endDate: string; color: string }) => void
   onUpdateSpecialPeriod: (id: number, input: { label: string; startDate: string; endDate: string; color: string }) => void
@@ -246,6 +236,13 @@ export function DesktopApp({
   onToggleInvitationLeft: (buildingId: number, unitId: number) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
   onSaveCardBoundary: (cardId: number, points: GeoPoint[]) => Promise<void> | void
+  onRestoreCardBoundaries?: (boundaries: CardBoundary[]) => Promise<void> | void
+  onMergeCardBoundaries?: (input: {
+    targetCardId: number
+    sourceCardIds: number[]
+    mergedPoints: GeoPoint[]
+  }) => Promise<void> | void
+  onUndoMergeCardBoundaries?: (snapshot: CardMergeUndoSnapshot) => Promise<void>
   visitHistories: VisitHistory[]
   onChangeViewMode: (role: Role) => void
   onLogout: () => void
@@ -532,6 +529,9 @@ export function DesktopApp({
               onAddVisitHistory={onAddVisitHistory}
               onUpdateVisitHistory={onUpdateVisitHistory}
               onDeleteVisitHistory={onDeleteVisitHistory}
+              onRestoreCardBoundaries={onRestoreCardBoundaries}
+              onMergeCardBoundaries={onMergeCardBoundaries}
+              onUndoMergeCardBoundaries={onUndoMergeCardBoundaries}
               onOpenCardMap={openCardOnMap}
               onOpenBuildingMap={openBuildingOnMap}
               visitHistories={visitHistories}
@@ -585,6 +585,8 @@ export function DesktopApp({
                 onDeleteCardBoundary={onDeleteCardBoundary}
                 onDeleteUnit={onDeleteUnit}
                 onSaveCardBoundary={onSaveCardBoundary}
+                onMergeCardBoundaries={onMergeCardBoundaries}
+                onUndoMergeCardBoundaries={onUndoMergeCardBoundaries}
                 onToggleRegularVisit={onToggleRegularVisit}
                 onToggleChinese={onToggleChinese}
                 onUndoLatestVisit={onUndoLatestVisit}
@@ -624,6 +626,8 @@ export function DesktopApp({
                 onAddVisitHistory={onAddVisitHistory}
                 onUpdateVisitHistory={onUpdateVisitHistory}
                 onDeleteVisitHistory={onDeleteVisitHistory}
+                onRestoreCardBoundaries={onRestoreCardBoundaries}
+                onMergeCardBoundaries={onMergeCardBoundaries}
                 onOpenCardMap={openCardOnMap}
                 onOpenBuildingMap={openBuildingOnMap}
                 visitHistories={visitHistories}
@@ -661,6 +665,8 @@ export function DesktopApp({
             onDeleteCardBoundary={onDeleteCardBoundary}
             onDeleteUnit={onDeleteUnit}
             onSaveCardBoundary={onSaveCardBoundary}
+            onMergeCardBoundaries={onMergeCardBoundaries}
+            onUndoMergeCardBoundaries={onUndoMergeCardBoundaries}
             onToggleRegularVisit={onToggleRegularVisit}
             onToggleChinese={onToggleChinese}
             onUndoLatestVisit={onUndoLatestVisit}

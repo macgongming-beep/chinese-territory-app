@@ -1,4 +1,5 @@
 import type { Building, UnitStatus } from '../../types'
+import type { CsvBuildingImport } from '../../utils/csvBuildingImport'
 import { isValidMapCoordinate } from '../../utils/mapUtils'
 import { supabase, showToast, reportMutationError } from './shared'
 
@@ -44,22 +45,7 @@ export function makeBuildingMutations(deps: {
     showToast(`"${autoName}" 건물이 추가됐습니다`)
   }
 
-  const importBuildings = async (inputs: Array<{
-    cardId: number
-    name: string
-    address: string
-    type: Building['type']
-    lat: number
-    lng: number
-    units: Array<{
-      number: string
-      status: UnitStatus
-      isChinese: boolean
-      isRegularVisit: boolean
-      regularVisitor?: string
-      memo?: string
-    }>
-  }>) => {
+  const importBuildings = async (inputs: CsvBuildingImport[]) => {
     const cleanedInputs = inputs
       .map((input) => ({
         ...input,
@@ -83,6 +69,7 @@ export function makeBuildingMutations(deps: {
 
     let inserted = 0
     let skipped = inputs.length - cleanedInputs.length
+    let visitHistoriesInserted = 0
     const existingKeys = new Set(buildings.map((building) => `${building.cardId}|${building.address}|${building.name}`))
 
     for (const input of cleanedInputs) {
@@ -101,6 +88,7 @@ export function makeBuildingMutations(deps: {
           type: input.type,
           lat: input.lat,
           lng: input.lng,
+          ...(input.warning ? { warning: input.warning } : {}),
         })
         .select('id')
         .single()
@@ -112,7 +100,7 @@ export function makeBuildingMutations(deps: {
 
       const units = input.units.length > 0
         ? input.units
-        : [{ number: '101호', status: '미방문' as UnitStatus, isChinese: false, isRegularVisit: false, regularVisitor: undefined, memo: undefined }]
+        : [{ number: '101호', status: '미방문' as UnitStatus, isChinese: false, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }]
       const unitsResult = await supabase.from('units').insert(
         units.map((unit) => ({
           building_id: buildingResult.data.id,
@@ -132,7 +120,12 @@ export function makeBuildingMutations(deps: {
         .filter((unit) => unit.isRegularVisit && unit.regularVisitor)
         .map((unit) => {
           const insertedUnit = unitsResult.data?.find((item: { id: number; number: string }) => item.number === unit.number)
-          return insertedUnit ? { unit_id: insertedUnit.id, visitor_name: unit.regularVisitor } : null
+          if (!insertedUnit) return null
+          return {
+            unit_id: insertedUnit.id,
+            visitor_name: unit.regularVisitor,
+            ...(unit.regularVisitorStartDate ? { registered_at: unit.regularVisitorStartDate } : {}),
+          }
         })
         .filter(Boolean)
 
@@ -144,12 +137,36 @@ export function makeBuildingMutations(deps: {
         }
       }
 
+      // 방문기록 삽입
+      const visitRows: Array<{ unit_id: number; result: string; visitor: string; visited_at: string; time_slot?: string; memo?: string }> = []
+      for (const unit of units) {
+        if (!unit.visitHistories || unit.visitHistories.length === 0) continue
+        const insertedUnit = unitsResult.data?.find((item: { id: number; number: string }) => item.number === unit.number)
+        if (!insertedUnit) continue
+        for (const vh of unit.visitHistories) {
+          visitRows.push({
+            unit_id: insertedUnit.id,
+            result: vh.result,
+            visitor: vh.visitor,
+            visited_at: vh.visitedAt,
+            ...(vh.timeSlot ? { time_slot: vh.timeSlot } : {}),
+            ...(vh.memo ? { memo: vh.memo } : {}),
+          })
+        }
+      }
+
+      if (visitRows.length > 0) {
+        const visitResult = await supabase.from('visit_histories').insert(visitRows)
+        if (!visitResult.error) visitHistoriesInserted += visitRows.length
+      }
+
       existingKeys.add(key)
       inserted += 1
     }
 
     await fetchAll()
-    showToast(`CSV 업로드 완료: 건물 ${inserted}개 추가, ${skipped}개 제외`, inserted > 0 ? 'success' : 'info')
+    const visitMsg = visitHistoriesInserted > 0 ? `, 방문기록 ${visitHistoriesInserted}건` : ''
+    showToast(`CSV 업로드 완료: 건물 ${inserted}개 추가${visitMsg}, ${skipped}개 제외`, inserted > 0 ? 'success' : 'info')
     return { inserted, skipped }
   }
 

@@ -88,6 +88,9 @@ function App() {
     reassignBuildingsToCards,
     saveCardBoundary,
     deleteCardBoundary,
+    restoreCardBoundaries,
+    mergeCardBoundaries,
+    undoMergeCardBoundaries,
     returnVisits,
     returnVisitLogs,
     createManualReturnVisit,
@@ -312,6 +315,9 @@ function App() {
             onToggleInvitationLeft={toggleInvitationLeft}
             onUpdateUnitFlags={updateUnitFlags}
             onSaveCardBoundary={saveCardBoundary}
+            onRestoreCardBoundaries={restoreCardBoundaries}
+            onMergeCardBoundaries={mergeCardBoundaries}
+            onUndoMergeCardBoundaries={undoMergeCardBoundaries}
             visitHistories={visitHistories}
             onChangeViewMode={handleChangeViewMode}
             onLogout={logout}
