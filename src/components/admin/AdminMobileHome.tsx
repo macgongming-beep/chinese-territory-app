@@ -6,6 +6,8 @@
 import type { CalendarEvent, Notice, TerritoryCard } from '../../types'
 import { Card } from '../ui'
 
+type WeekDay = { date: Date; iso: string; hasEvent: boolean }
+
 type ChevRIconProps = { size?: number; color?: string }
 function ChevR({ size = 14, color = 'var(--muted-2)' }: ChevRIconProps) {
   return (
@@ -45,6 +47,13 @@ type Props = {
   onOpenNotices: () => void
   onOpenCalendar: () => void
   onOpenZone: () => void
+  // A안
+  weekDays: WeekDay[]
+  today: string
+  selectedWeekDate: string | null
+  selectedDateEvents: CalendarEvent[]
+  onSelectWeekDate: (date: string) => void
+  onOpenEventDetail: (eventId: number) => void
 }
 
 function timeBlock(time: string) {
@@ -68,6 +77,12 @@ export function AdminMobileHome({
   onOpenNotices,
   onOpenCalendar,
   onOpenZone,
+  weekDays,
+  today,
+  selectedWeekDate,
+  selectedDateEvents,
+  onSelectWeekDate,
+  onOpenEventDetail,
 }: Props) {
   const latestNotice = notices.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null
   const completedPct = totalUnits > 0 ? (completedUnits / totalUnits) * 100 : 0
@@ -227,6 +242,74 @@ export function AdminMobileHome({
           </div>
         )}
       </section>
+
+      {/* ── 이번 주 일정 (A안) ────────────── */}
+      {(() => {
+        const activeDate = selectedWeekDate ?? today
+        const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+        return (
+          <section>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0 4px' }}>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>이번 주 일정</h2>
+              <button type="button" onClick={onOpenCalendar} style={{ border: 'none', background: 'transparent', font: 'inherit', fontSize: 13, fontWeight: 500, color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 2, cursor: 'pointer', padding: 0 }}>
+                전체보기 <ChevR size={12} color="var(--muted)" />
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginTop: 10, padding: 10, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
+              {weekDays.map((d, i) => {
+                const isToday = i === 0
+                const isSelected = d.iso === activeDate
+                return (
+                  <button
+                    key={d.iso}
+                    type="button"
+                    onClick={() => onSelectWeekDate(d.iso)}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                      padding: '6px 2px', border: isSelected ? '2px solid var(--brand-700)' : '2px solid transparent',
+                      background: isToday || isSelected ? 'var(--tint)' : 'transparent',
+                      cursor: 'pointer', borderRadius: 8,
+                    }}
+                  >
+                    <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>{weekdays[d.date.getDay()]}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: isToday || isSelected ? 'var(--brand-700)' : 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{d.date.getDate()}</span>
+                    <span style={{ width: 5, height: 5, borderRadius: 99, background: d.hasEvent ? '#B8862A' : 'transparent', marginTop: 1 }} />
+                  </button>
+                )
+              })}
+            </div>
+            {selectedDateEvents.length === 0 ? (
+              <Card padding={14} style={{ marginTop: 10, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                {activeDate === today ? '오늘 일정이 없습니다' : '이 날 일정이 없습니다'}
+              </Card>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                {selectedDateEvents.map((event) => {
+                  const date = new Date(event.date + 'T00:00:00')
+                  const todayDate = new Date(today + 'T00:00:00')
+                  const diff = Math.round((date.getTime() - todayDate.getTime()) / 86400000)
+                  const dateLabel = diff === 0 ? '오늘' : diff === 1 ? '내일' : diff === 2 ? '모레' : `${date.getMonth() + 1}/${date.getDate()}(${weekdays[date.getDay()]})`
+                  const participantCount = new Set([...(event.assigned ?? []), ...(event.applicants ?? [])]).size
+                  return (
+                    <button key={event.id} type="button" onClick={() => onOpenEventDetail(event.id)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+                      <Card padding={14}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#B8862A' }}>{dateLabel} {event.time}</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{event.title}</span>
+                          <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+                            {event.leader ? `${event.leader} 인도자` : ''}
+                            {participantCount > 0 ? ` · 참여 ${participantCount}명` : ''}
+                          </span>
+                        </div>
+                      </Card>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        )
+      })()}
 
       {/* ── 운영 현황 ────────────────────── */}
       <section>

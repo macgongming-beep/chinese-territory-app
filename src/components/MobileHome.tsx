@@ -403,13 +403,6 @@ export function MobileHome({
   const todayEvents = useMemo(() =>
     calendarEvents.filter((e) => e.date === today).sort((a, b) => a.time.localeCompare(b.time)),
     [calendarEvents, today])
-  // 다가올 일정 (오늘 제외, 미래 3개) — F안
-  const upcomingEvents = useMemo(() =>
-    calendarEvents
-      .filter((e) => e.date > today)
-      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
-      .slice(0, 3),
-    [calendarEvents, today])
   // 7일치 dot row 데이터 (오늘부터 7일) — A안
   const weekDays = useMemo(() => {
     const todayDate = new Date(today + 'T00:00:00')
@@ -419,17 +412,6 @@ export function MobileHome({
       const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       return { date: d, iso, hasEvent: calendarEvents.some((e) => e.date === iso) }
     })
-  }, [calendarEvents, today])
-  // 이번 주 일정 (오늘 포함, 7일 이내) — B안
-  const thisWeekEvents = useMemo(() => {
-    const todayDate = new Date(today + 'T00:00:00')
-    const weekEnd = new Date(todayDate)
-    weekEnd.setDate(todayDate.getDate() + 7)
-    const weekEndIso = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`
-    return calendarEvents
-      .filter((e) => e.date >= today && e.date < weekEndIso)
-      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
-      .slice(0, 5)
   }, [calendarEvents, today])
   // A안: 선택된 날짜의 일정 목록
   const selectedDateEvents = useMemo(() => {
@@ -652,6 +634,12 @@ export function MobileHome({
                     onOpenNotices={() => navigate('/notices')}
                     onOpenCalendar={() => navigate('/calendar')}
                     onOpenZone={() => navigate('/zone')}
+                    weekDays={weekDays}
+                    today={today}
+                    selectedWeekDate={selectedWeekDate}
+                    selectedDateEvents={selectedDateEvents}
+                    onSelectWeekDate={setSelectedWeekDate}
+                    onOpenEventDetail={(id) => navigate(`/calendar?openEvent=${id}`)}
                   />
                 ) : (<div className="mh-page">
 
@@ -747,67 +735,7 @@ export function MobileHome({
                   )}
                 </section>
 
-                {/* ─── 인도자 전용 — 담당 카드 진행 (미니 카드 그리드) ─── */}
-                {role === 'leader' && leaderCards.length > 0 && (
-                  <section className="mobile-home-section">
-                    <div className="mh-sec-head">
-                      <h2>
-                        담당 카드
-                        <span className="mh-cnt">{leaderCards.length}</span>
-                      </h2>
-                      {leaderCards.length > 4 && (
-                        <button className="mh-all" onClick={() => navigate('/zone?reset=true')} type="button">
-                          전체보기
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
-                        </button>
-                      )}
-                    </div>
-                    <div className="mh-card-grid">
-                      {leaderCards.slice(0, 4).map((card) => {
-                        const pct = Math.min(100, Math.max(0, card.progress ?? 0))
-                        const colorClass = pct >= 70 ? 'high' : pct >= 30 ? 'mid' : 'low'
-                        return (
-                          <button
-                            key={card.id}
-                            type="button"
-                            className="mh-card-tile"
-                            onClick={() => navigate(`/zone?region=${encodeURIComponent(card.region)}&dong=${encodeURIComponent(card.area)}`)}
-                          >
-                            <span className="mh-card-tile-name">{card.name}</span>
-                            <span className={`mh-card-tile-pct ${colorClass}`}>{pct}%</span>
-                            <span className="mh-card-tile-meta">{card.completed}/{card.units}세대</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </section>
-                )}
-
-                {/* ─── 인도자 전용 — 진행률 바 리스트 (그리드 아래) ─── */}
-                {role === 'leader' && leaderCards.length > 0 && (
-                  <section className="mobile-home-section">
-                    <div className="mh-sec-head">
-                      <h2>진행률</h2>
-                    </div>
-                    <div className="mh-progress-list">
-                      {leaderCards.slice(0, 5).map((card) => {
-                        const pct = Math.min(100, Math.max(0, card.progress ?? 0))
-                        const colorClass = pct >= 70 ? 'high' : pct >= 30 ? 'mid' : 'low'
-                        return (
-                          <div key={card.id} className="mh-progress-row">
-                            <span className="mh-progress-name">{card.name}</span>
-                            <div className="mh-progress-bar-track">
-                              <div className={`mh-progress-bar-fill ${colorClass}`} style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="mh-progress-pct">{pct}%</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </section>
-                )}
-
-                {/* ─── A안: 이번 주 dot row + 선택 날짜 일정 ─── */}
+                {/* ─── 이번 주 일정 (A안) ─── */}
                 {(() => {
                   const activeDate = selectedWeekDate ?? today
                   const weekdays = ['일', '월', '화', '수', '목', '금', '토']
@@ -870,85 +798,65 @@ export function MobileHome({
                   )
                 })()}
 
-                {/* ─── B안: 이번 주 일정 (오늘 포함, 자세한 카드 리스트) ─── */}
-                <section className="mobile-home-section">
-                  <div className="mh-sec-head">
-                    <h2>이번 주 일정 <span className="mh-cnt mh-cnt-dim">[B안]</span></h2>
-                    <button className="mh-all" onClick={() => navigate('/calendar')} type="button">
-                      전체보기
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
-                    </button>
-                  </div>
-                  {thisWeekEvents.length === 0 ? (
-                    <div className="mh-empty-line"><span>이번 주 일정이 없습니다.</span></div>
-                  ) : (
-                    <div className="mh-week-list">
-                      {thisWeekEvents.map((event) => {
-                        const date = new Date(event.date + 'T00:00:00')
-                        const todayDate = new Date(today + 'T00:00:00')
-                        const diff = Math.round((date.getTime() - todayDate.getTime()) / 86400000)
-                        const weekdays = ['일', '월', '화', '수', '목', '금', '토']
-                        const dateLabel = diff === 0 ? '오늘' : diff === 1 ? '내일' : diff === 2 ? '모레' : `${date.getMonth() + 1}/${date.getDate()}(${weekdays[date.getDay()]})`
-                        const participantCount = new Set([...(event.assigned ?? []), ...(event.applicants ?? [])]).size
+                {/* ─── 인도자 전용 — 담당 카드 진행 (미니 카드 그리드) ─── */}
+                {role === 'leader' && leaderCards.length > 0 && (
+                  <section className="mobile-home-section">
+                    <div className="mh-sec-head">
+                      <h2>
+                        담당 카드
+                        <span className="mh-cnt">{leaderCards.length}</span>
+                      </h2>
+                      {leaderCards.length > 4 && (
+                        <button className="mh-all" onClick={() => navigate('/zone?reset=true')} type="button">
+                          전체보기
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
+                        </button>
+                      )}
+                    </div>
+                    <div className="mh-card-grid">
+                      {leaderCards.slice(0, 4).map((card) => {
+                        const pct = Math.min(100, Math.max(0, card.progress ?? 0))
+                        const colorClass = pct >= 70 ? 'high' : pct >= 30 ? 'mid' : 'low'
                         return (
                           <button
-                            key={event.id}
+                            key={card.id}
                             type="button"
-                            className="mh-week-row"
-                            onClick={() => navigate('/calendar')}
+                            className="mh-card-tile"
+                            onClick={() => navigate(`/zone?region=${encodeURIComponent(card.region)}&dong=${encodeURIComponent(card.area)}`)}
                           >
-                            <span className="mh-week-row-head">
-                              <span className="mh-week-row-date">{dateLabel} {event.time}</span>
-                              <span className="mh-week-row-title">{event.title}</span>
-                            </span>
-                            <span className="mh-week-row-meta">
-                              {event.leader ? `${event.leader} 인도자` : ''}
-                              {participantCount > 0 ? ` · 참여 ${participantCount}명` : ''}
-                              {!event.leader && event.place ? event.place : ''}
-                            </span>
+                            <span className="mh-card-tile-name">{card.name}</span>
+                            <span className={`mh-card-tile-pct ${colorClass}`}>{pct}%</span>
+                            <span className="mh-card-tile-meta">{card.completed}/{card.units}세대</span>
                           </button>
                         )
                       })}
                     </div>
-                  )}
-                </section>
+                  </section>
+                )}
 
-                {/* ─── F안: 다가올 일정 (오늘 제외, 컴팩트) ─── */}
-                <section className="mobile-home-section">
-                  <div className="mh-sec-head">
-                    <h2>다가올 일정 <span className="mh-cnt mh-cnt-dim">[F안]</span>{upcomingEvents.length > 0 && <span className="mh-cnt">{upcomingEvents.length}</span>}</h2>
-                    <button className="mh-all" onClick={() => navigate('/calendar')} type="button">
-                      전체보기
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
-                    </button>
-                  </div>
-                  {upcomingEvents.length === 0 ? (
-                    <div className="mh-empty-line"><span>다가올 일정이 없습니다.</span></div>
-                  ) : (
-                    <div className="mh-compact-list">
-                      {upcomingEvents.map((event) => {
-                        const date = new Date(event.date + 'T00:00:00')
-                        const todayDate = new Date(today + 'T00:00:00')
-                        const diff = Math.round((date.getTime() - todayDate.getTime()) / 86400000)
-                        const weekdays = ['일', '월', '화', '수', '목', '금', '토']
-                        const dateLabel = diff === 1 ? '내일' : diff === 2 ? '모레' : `${date.getMonth() + 1}/${date.getDate()}(${weekdays[date.getDay()]})`
-                        const participantCount = new Set([...(event.assigned ?? []), ...(event.applicants ?? [])]).size
+                {/* ─── 인도자 전용 — 진행률 바 리스트 ─── */}
+                {role === 'leader' && leaderCards.length > 0 && (
+                  <section className="mobile-home-section">
+                    <div className="mh-sec-head">
+                      <h2>진행률</h2>
+                    </div>
+                    <div className="mh-progress-list">
+                      {leaderCards.slice(0, 5).map((card) => {
+                        const pct = Math.min(100, Math.max(0, card.progress ?? 0))
+                        const colorClass = pct >= 70 ? 'high' : pct >= 30 ? 'mid' : 'low'
                         return (
-                          <button
-                            key={event.id}
-                            type="button"
-                            className="mh-compact-row"
-                            onClick={() => navigate('/calendar')}
-                          >
-                            <span className="mh-compact-date">{dateLabel} {event.time}</span>
-                            <span className="mh-compact-title">{event.title}</span>
-                            {participantCount > 0 && <span className="mh-compact-meta">· {participantCount}명</span>}
-                          </button>
+                          <div key={card.id} className="mh-progress-row">
+                            <span className="mh-progress-name">{card.name}</span>
+                            <div className="mh-progress-bar-track">
+                              <div className={`mh-progress-bar-fill ${colorClass}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="mh-progress-pct">{pct}%</span>
+                          </div>
                         )
                       })}
                     </div>
-                  )}
-                </section>
+                  </section>
+                )}
 
                 </div>)}
               </>
