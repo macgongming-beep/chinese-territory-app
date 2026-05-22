@@ -30,7 +30,6 @@ function getWeeklyDates(startDate: string, endDate: string): string[] {
   return dates
 }
 
-const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
 function eventTimeClass(time: string) {
   const h = parseInt(time.split(':')[0], 10)
@@ -297,9 +296,6 @@ export function DesktopCalendar({
           <div className="cal-modal" onClick={(e) => e.stopPropagation()}>
             <div className="cal-modal-head">
               <div className="cal-modal-title">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
                 <h2>새 일정 추가</h2>
               </div>
               <button className="cal-modal-close" onClick={closeCreate} type="button">
@@ -310,69 +306,124 @@ export function DesktopCalendar({
             </div>
 
             <div className="cal-modal-body">
-              <div className="cal-field-row">
-                <div className="cal-field">
-                  <label>날짜 *</label>
-                  <input className="cal-input" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
-                </div>
-                <div className="cal-field">
-                  <label>시간 *</label>
-                  <input className="cal-input" type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
-                </div>
-              </div>
+              {/* 제목 */}
               <div className="cal-field">
                 <label>제목 *</label>
                 <input className="cal-input" placeholder="오전 방문" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
               </div>
-              <div className="cal-field-row">
-                <div className="cal-field">
-                  <label>장소</label>
-                  <input className="cal-input" placeholder="모임 장소를 입력하세요" value={newPlace} onChange={(e) => setNewPlace(e.target.value)} />
-                </div>
-                <div className="cal-field">
-                  <label>지도 링크</label>
-                  <input className="cal-input" inputMode="url" placeholder="네이버 지도 링크" value={newMapLink} onChange={(e) => setNewMapLink(e.target.value)} />
+
+              {/* 날짜 + 매주 반복 토글 */}
+              <div className="cal-field">
+                <label>날짜와 시간</label>
+                <div className="cal-box-section">
+                  <input className="cal-input" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} style={{ marginBottom: 10 }} />
+                  <label className="cal-toggle-row">
+                    <div>
+                      <span className="cal-toggle-label">매주 반복</span>
+                      <span className="cal-toggle-desc">같은 요일로 반복 일정을 생성합니다.</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={`cal-toggle-switch${isRepeat ? ' on' : ''}`}
+                      onClick={() => setIsRepeat(v => !v)}
+                      aria-pressed={isRepeat}
+                    />
+                  </label>
+                  {isRepeat && (
+                    <div style={{ marginTop: 10 }}>
+                      <div className="cal-field">
+                        <label>반복 종료일</label>
+                        <input className="cal-input" type="date" value={repeatEnd} min={newDate} onChange={(e) => setRepeatEnd(e.target.value)} />
+                      </div>
+                      {repeatEnd && <p className="cal-repeat-hint" style={{ marginTop: 6 }}>{repeatCount}개 일정 생성 예정</p>}
+                    </div>
+                  )}
+                  {/* 시간 프리셋 */}
+                  <div style={{ marginTop: 12 }}>
+                    <div className="cal-preset-label">자주 쓰는 시간</div>
+                    <div className="cal-time-presets">
+                      {([
+                        { label: '오전', time: '10:00' },
+                        { label: '오후', time: '13:00' },
+                        { label: '늦은 오후', time: '15:00' },
+                        { label: '저녁', time: '19:00' },
+                      ] as const).map((p) => (
+                        <button
+                          key={p.label}
+                          type="button"
+                          className={`cal-time-preset-btn${newTime === p.time ? ' active' : ''}`}
+                          onClick={() => setNewTime(p.time)}
+                        >
+                          <span className="cal-preset-name">{p.label}</span>
+                          <span className="cal-preset-time">{p.time}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <input className="cal-input" type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* 장소 + 지도 링크 */}
+              <div className="cal-field">
+                <label>모임 장소</label>
+                <input className="cal-input" placeholder="장소 입력" value={newPlace} onChange={(e) => setNewPlace(e.target.value)} style={{ marginBottom: 8 }} />
+                <input className="cal-input" inputMode="url" placeholder="네이버 지도 링크 (선택)" value={newMapLink} onChange={(e) => setNewMapLink(e.target.value)} />
+              </div>
+
+              {/* 인도자 */}
               <div className="cal-field">
                 <label>인도자</label>
-                <input className="cal-input" placeholder="이름" list="cal-leader-list" value={newLeader} onChange={(e) => setNewLeader(e.target.value)} />
-                {leaderNames.length > 0 && (
-                  <datalist id="cal-leader-list">
-                    {leaderNames.map((name) => <option key={name} value={name} />)}
-                  </datalist>
-                )}
+                <select className="cal-input" value={newLeader} onChange={(e) => setNewLeader(e.target.value)}>
+                  <option value="">선택 안함</option>
+                  {leaderNames.map((name) => <option key={name} value={name}>{name}</option>)}
+                </select>
               </div>
+
+              {/* 상세설명 */}
               <div className="cal-field">
-                <label>상세설명 (선택사항)</label>
-                <textarea className="cal-textarea" placeholder="봉사 전에 알아야 할 내용, 지도 링크, 주의사항 등을 적어주세요" value={newMemo} onChange={(e) => setNewMemo(e.target.value)} />
+                <label>상세설명 <span style={{ fontWeight: 400, color: 'var(--gray-400)' }}>(선택)</span></label>
+                <textarea className="cal-textarea" placeholder="봉사 전에 알아야 할 내용, 주의사항 등" value={newMemo} onChange={(e) => setNewMemo(e.target.value)} />
               </div>
-              <label className="cal-check-label">
-                <input type="checkbox" checked={newHasMeeting} onChange={(e) => setNewHasMeeting(e.target.checked)} />
-                봉사 모임 있음
-              </label>
-              <label className="cal-check-label">
-                <input type="checkbox" checked={newAllowApplications} onChange={(e) => setNewAllowApplications(e.target.checked)} />
-                이 일정에 봉사 신청을 받습니다
-              </label>
-              <label className="cal-check-label">
-                <input type="checkbox" checked={isRepeat} onChange={(e) => setIsRepeat(e.target.checked)} />
-                매주 반복 ({WEEKDAY_LABELS[new Date(newDate).getDay()]}요일)
-              </label>
-              {isRepeat && (
-                <div className="cal-repeat-range">
-                  <div className="cal-field">
-                    <label>반복 종료일</label>
-                    <input className="cal-input" type="date" value={repeatEnd} min={newDate} onChange={(e) => setRepeatEnd(e.target.value)} />
-                  </div>
-                  {repeatEnd && <small className="cal-repeat-hint">{repeatCount}개 일정 생성 예정</small>}
+
+              {/* 설정 토글 */}
+              <div className="cal-field">
+                <label>설정</label>
+                <div className="cal-box-section">
+                  <label className="cal-toggle-row">
+                    <div>
+                      <span className="cal-toggle-label">봉사모임</span>
+                      <span className="cal-toggle-desc">모임 일정이면 카드에 표시됩니다.</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={`cal-toggle-switch${newHasMeeting ? ' on' : ''}`}
+                      onClick={() => setNewHasMeeting(v => !v)}
+                      aria-pressed={newHasMeeting}
+                    />
+                  </label>
+                  <div className="cal-toggle-divider" />
+                  <label className="cal-toggle-row">
+                    <div>
+                      <span className="cal-toggle-label">봉사 신청 받기</span>
+                      <span className="cal-toggle-desc">봉사자들이 이 일정에 신청할 수 있습니다.</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={`cal-toggle-switch${newAllowApplications ? ' on' : ''}`}
+                      onClick={() => setNewAllowApplications(v => !v)}
+                      aria-pressed={newAllowApplications}
+                    />
+                  </label>
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="cal-modal-foot">
               <button className="cal-cancel-btn" onClick={closeCreate} type="button">취소</button>
-              <button className="cal-save-btn" onClick={handleCreate} type="button">
+              <button className="cal-save-btn" disabled={!newTitle.trim()} onClick={handleCreate} type="button">
                 {isRepeat && repeatEnd ? `${repeatCount}개 일정 저장` : '저장'}
               </button>
             </div>
@@ -541,27 +592,34 @@ export function DesktopCalendar({
                   )
                 }
 
+                const canEdit = role === 'admin' || role === 'developer' || role === 'leader'
+                const canManage = role === 'admin' || role === 'developer'
+
                 return (
                   <article className="detail-card" key={event.id} id={`event-card-${event.id}`}>
+                    {/* 헤더: 제목 + 배지 + (편집버튼) */}
                     <div className="detail-title-row">
                       <div className="detail-title-main">
                         <h2>{event.title}</h2>
                         {event.card && <span className="event-card-badge">{event.card}</span>}
                         {event.hasMeeting && <span className="event-meeting-tag">봉사모임</span>}
-                        {!event.allowApplications && <span className="event-closed-tag">신청 받지 않음</span>}
+                        {!event.allowApplications && <span className="event-closed-tag">신청 마감</span>}
                       </div>
-                      <button
-                        className="edit-btn"
-                        onClick={() => {
-                          setEditingEventId(event.id)
-                          setEditDraft({ time: event.time, title: event.title, place: event.place, mapLink: event.mapLink ?? '', leader: event.leader, memo: event.memo, hasMeeting: event.hasMeeting, allowApplications: event.allowApplications })
-                        }}
-                        type="button"
-                      >
-                        편집
-                      </button>
+                      {canEdit && (
+                        <button
+                          className="edit-btn"
+                          onClick={() => {
+                            setEditingEventId(event.id)
+                            setEditDraft({ time: event.time, title: event.title, place: event.place, mapLink: event.mapLink ?? '', leader: event.leader, memo: event.memo, hasMeeting: event.hasMeeting, allowApplications: event.allowApplications })
+                          }}
+                          type="button"
+                        >
+                          편집
+                        </button>
+                      )}
                     </div>
 
+                    {/* 메타: 시간 / 장소 / 인도자 */}
                     <div className="event-meta-row">
                       <span><CalendarIcon name="clock" /> {event.time || '시간 미정'}</span>
                       {event.place && (
@@ -575,74 +633,87 @@ export function DesktopCalendar({
                       {event.leader && <span><CalendarIcon name="user" /> {event.leader}</span>}
                     </div>
 
+                    {/* 상세설명 */}
+                    {event.memo && <p className="event-memo">{event.memo}</p>}
+
+                    {/* 신청 섹션 */}
                     {event.allowApplications && (
                       <div className="assignment-box">
-                        <div className="box-heading">
-                          <strong>신청자 {event.applicants.length > 0 && <em>{event.applicants.length}명</em>}</strong>
-                          <button className={`apply-btn${isApplied ? ' applied' : ''}`} onClick={() => onApplyToEvent(event.id)} type="button">
-                            {isApplied ? '신청취소' : '신청'}
-                          </button>
-                        </div>
-                        <div className="person-chips">
-                          {event.applicants.map((person) => (
-                            <span className={event.assigned.includes(person) ? 'assigned event-person-chip' : 'event-person-chip'} key={person}>
-                              <strong className="event-person-name">{person}</strong>
-                              <button className="chip-remove" onClick={() => onRemoveParticipant(event.id, person)} type="button">×</button>
-                            </span>
-                          ))}
-                          {(role === 'leader' || role === 'admin') && onAddParticipant && (
-                            <div className="cal-add-participant-wrap" ref={addParticipantEventId === event.id ? addParticipantRef : undefined}>
-                              <button
-                                className="cal-add-participant-chip-btn"
-                                onClick={() => {
-                                  setAddParticipantEventId(addParticipantEventId === event.id ? null : event.id)
-                                  setAddParticipantQuery('')
-                                }}
-                                type="button"
-                              >
-                                + 추가
-                              </button>
-                              {addParticipantEventId === event.id && (
-                                <div className="cal-add-participant-dropdown">
-                                  <input
-                                    autoFocus
-                                    className="cal-add-participant-input"
-                                    onBlur={() => window.setTimeout(() => setAddParticipantEventId(null), 150)}
-                                    onChange={(e) => setAddParticipantQuery(e.target.value)}
-                                    placeholder="이름 검색..."
-                                    type="text"
-                                    value={addParticipantQuery}
-                                  />
-                                  <div className="cal-add-participant-list">
-                                    {allUserNames
-                                      .filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery))
-                                      .map((name) => (
-                                        <button
-                                          className="cal-add-participant-item"
-                                          key={name}
-                                          onMouseDown={() => {
-                                            onAddParticipant(event.id, name)
-                                            setAddParticipantEventId(null)
-                                            setAddParticipantQuery('')
-                                          }}
-                                          type="button"
-                                        >
-                                          {name}
-                                        </button>
-                                      ))}
-                                    {allUserNames.filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery)).length === 0 && (
-                                      <span className="cal-add-participant-empty">추가할 회원이 없습니다</span>
-                                    )}
-                                  </div>
+                        {/* 신청하기 버튼 — 봉사자에게 크게 표시 */}
+                        <button
+                          className={`cal-apply-big-btn${isApplied ? ' applied' : ''}`}
+                          onClick={() => onApplyToEvent(event.id)}
+                          type="button"
+                        >
+                          {isApplied ? '신청 취소' : '신청하기'}
+                        </button>
+
+                        {/* 신청자 목록 */}
+                        {(event.applicants.length > 0 || canManage) && (
+                          <div style={{ marginTop: 12 }}>
+                            <div className="box-heading">
+                              <strong>신청자 {event.applicants.length > 0 && <em>{event.applicants.length}명</em>}</strong>
+                              {(role === 'leader' || role === 'admin' || role === 'developer') && onAddParticipant && (
+                                <div className="cal-add-participant-wrap" ref={addParticipantEventId === event.id ? addParticipantRef : undefined}>
+                                  <button
+                                    className="cal-add-participant-chip-btn"
+                                    onClick={() => {
+                                      setAddParticipantEventId(addParticipantEventId === event.id ? null : event.id)
+                                      setAddParticipantQuery('')
+                                    }}
+                                    type="button"
+                                  >
+                                    + 추가
+                                  </button>
+                                  {addParticipantEventId === event.id && (
+                                    <div className="cal-add-participant-dropdown">
+                                      <input
+                                        autoFocus
+                                        className="cal-add-participant-input"
+                                        onBlur={() => window.setTimeout(() => setAddParticipantEventId(null), 150)}
+                                        onChange={(e) => setAddParticipantQuery(e.target.value)}
+                                        placeholder="이름 검색..."
+                                        type="text"
+                                        value={addParticipantQuery}
+                                      />
+                                      <div className="cal-add-participant-list">
+                                        {allUserNames
+                                          .filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery))
+                                          .map((name) => (
+                                            <button
+                                              className="cal-add-participant-item"
+                                              key={name}
+                                              onMouseDown={() => {
+                                                onAddParticipant(event.id, name)
+                                                setAddParticipantEventId(null)
+                                                setAddParticipantQuery('')
+                                              }}
+                                              type="button"
+                                            >
+                                              {name}
+                                            </button>
+                                          ))}
+                                        {allUserNames.filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery)).length === 0 && (
+                                          <span className="cal-add-participant-empty">추가할 회원이 없습니다</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
-                          )}
-                        </div>
+                            <div className="person-chips">
+                              {event.applicants.map((person) => (
+                                <span className={event.assigned.includes(person) ? 'assigned event-person-chip' : 'event-person-chip'} key={person}>
+                                  <strong className="event-person-name">{person}</strong>
+                                  {canManage && <button className="chip-remove" onClick={() => onRemoveParticipant(event.id, person)} type="button">×</button>}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
-
-                    {event.memo && <p className="event-memo">{event.memo}</p>}
 
                     <div className="event-collab-grid">
                       <CommentSection
@@ -767,49 +838,87 @@ function EditCard({
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <div className="cal-field">
           <label>제목</label>
           <input className="cal-input" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
         </div>
-        <div className="cal-field-row">
-          <div className="cal-field">
-            <label>시간</label>
-            <input className="cal-input" type="time" value={draft.time} onChange={(e) => setDraft({ ...draft, time: e.target.value })} />
-          </div>
-          <div className="cal-field">
-            <label>장소</label>
-            <input className="cal-input" value={draft.place} onChange={(e) => setDraft({ ...draft, place: e.target.value })} />
-          </div>
-        </div>
+        {/* 시간 — 프리셋 */}
         <div className="cal-field">
-          <label>지도 링크</label>
+          <label>시간</label>
+          <div className="cal-time-presets" style={{ marginBottom: 8 }}>
+            {([
+              { label: '오전', time: '10:00' },
+              { label: '오후', time: '13:00' },
+              { label: '늦은 오후', time: '15:00' },
+              { label: '저녁', time: '19:00' },
+            ] as const).map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                className={`cal-time-preset-btn${draft.time === p.time ? ' active' : ''}`}
+                onClick={() => setDraft({ ...draft, time: p.time })}
+              >
+                <span className="cal-preset-name">{p.label}</span>
+                <span className="cal-preset-time">{p.time}</span>
+              </button>
+            ))}
+          </div>
+          <input className="cal-input" type="time" value={draft.time} onChange={(e) => setDraft({ ...draft, time: e.target.value })} />
+        </div>
+        {/* 장소 + 지도 링크 */}
+        <div className="cal-field">
+          <label>모임 장소</label>
+          <input className="cal-input" placeholder="장소 입력" value={draft.place} onChange={(e) => setDraft({ ...draft, place: e.target.value })} style={{ marginBottom: 8 }} />
           <input className="cal-input" inputMode="url" placeholder="네이버 지도 링크 (선택)" value={draft.mapLink ?? ''} onChange={(e) => setDraft({ ...draft, mapLink: e.target.value })} />
         </div>
+        {/* 인도자 */}
         <div className="cal-field">
           <label>인도자</label>
-          <input className="cal-input" list="cal-leader-list-edit" value={draft.leader} onChange={(e) => setDraft({ ...draft, leader: e.target.value })} />
-          {leaderNames.length > 0 && (
-            <datalist id="cal-leader-list-edit">
-              {leaderNames.map((name) => <option key={name} value={name} />)}
-            </datalist>
-          )}
+          <select className="cal-input" value={draft.leader} onChange={(e) => setDraft({ ...draft, leader: e.target.value })}>
+            <option value="">선택 안함</option>
+            {leaderNames.map((name) => <option key={name} value={name}>{name}</option>)}
+          </select>
         </div>
+        {/* 상세설명 */}
         <div className="cal-field">
-          <label>상세설명 (선택사항)</label>
-          <textarea className="cal-textarea" placeholder="봉사 전에 알아야 할 내용, 지도 링크, 주의사항 등을 적어주세요" value={draft.memo} onChange={(e) => setDraft({ ...draft, memo: e.target.value })} />
+          <label>상세설명 <span style={{ fontWeight: 400, color: 'var(--gray-400)' }}>(선택)</span></label>
+          <textarea className="cal-textarea" placeholder="봉사 전에 알아야 할 내용, 주의사항 등" value={draft.memo} onChange={(e) => setDraft({ ...draft, memo: e.target.value })} />
         </div>
-        <label className="cal-check-label">
-          <input type="checkbox" checked={draft.hasMeeting} onChange={(e) => setDraft({ ...draft, hasMeeting: e.target.checked })} />
-          봉사 모임 있음
-        </label>
-        <label className="cal-check-label">
-          <input type="checkbox" checked={draft.allowApplications} onChange={(e) => setDraft({ ...draft, allowApplications: e.target.checked })} />
-          이 일정에 봉사 신청을 받습니다
-        </label>
+        {/* 설정 토글 */}
+        <div className="cal-field">
+          <label>설정</label>
+          <div className="cal-box-section">
+            <label className="cal-toggle-row">
+              <div>
+                <span className="cal-toggle-label">봉사모임</span>
+                <span className="cal-toggle-desc">모임 일정이면 카드에 표시됩니다.</span>
+              </div>
+              <button
+                type="button"
+                className={`cal-toggle-switch${draft.hasMeeting ? ' on' : ''}`}
+                onClick={() => setDraft({ ...draft, hasMeeting: !draft.hasMeeting })}
+                aria-pressed={draft.hasMeeting}
+              />
+            </label>
+            <div className="cal-toggle-divider" />
+            <label className="cal-toggle-row">
+              <div>
+                <span className="cal-toggle-label">봉사 신청 받기</span>
+                <span className="cal-toggle-desc">봉사자들이 이 일정에 신청할 수 있습니다.</span>
+              </div>
+              <button
+                type="button"
+                className={`cal-toggle-switch${draft.allowApplications ? ' on' : ''}`}
+                onClick={() => setDraft({ ...draft, allowApplications: !draft.allowApplications })}
+                aria-pressed={draft.allowApplications}
+              />
+            </label>
+          </div>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginTop: '18px' }}>
         <button className="cal-save-btn" onClick={() => onSave(event.id, draft)} type="button">저장</button>
         <button className="danger-action" onClick={() => onDelete(event.id)} style={{ borderRadius: '999px', minHeight: '48px', padding: '0 20px' }} type="button">삭제</button>
       </div>
