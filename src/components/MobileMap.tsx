@@ -80,7 +80,7 @@ export function MobileMap({
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
   onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
-  onToggleInvitationLeft?: (buildingId: number, unitId: number) => void
+  onToggleInvitationLeft?: (buildingId: number, unitId: number, mode?: 'direct' | 'door') => void
   visitHistories: VisitHistory[]
   specialPeriods?: SpecialPeriod[]
   allUsers?: { id: number; name: string }[]
@@ -188,8 +188,10 @@ export function MobileMap({
   const [showMapActionMenu, setShowMapActionMenu] = useState(false)
   const [editingPinMode, setEditingPinMode] = useState(false)
   const [drawingBoundaryMode, setDrawingBoundaryMode] = useState(false)
+  const [invitationPopupUnitId, setInvitationPopupUnitId] = useState<number | null>(null)
   const today = getLocalDateString()
   const activePeriod = getActivePeriodForDate(today)
+  const activeInvitation = activePeriod?.hasInvitation === true
   const activeServiceSession = serviceSessions.find((session) =>
     session.userName === currentVisitor &&
     session.serviceDate === today &&
@@ -1290,9 +1292,9 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
 
                     {isExpanded && !isEditing && (
                       <div className="bld-body">
-                        <div className={`unit-col-header${activePeriod ? ' with-invitation' : ''}`}>
+                        <div className={`unit-col-header${activeInvitation ? ' with-invitation' : ''}`}>
                           <span>{t(language, 'map.unitInfo')}</span>
-                          {activePeriod && <span>{t(language, 'map.invitation')}</span>}
+                          {activeInvitation && <span>{t(language, 'map.invitation')}</span>}
                           <span>{t(language, 'map.met')}</span>
                           <span>{t(language, 'map.absent')}</span>
                           <span>{t(language, 'map.korean')}</span>
@@ -1307,7 +1309,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
 
                           return (
                             <div className={`unit-grid-row${unit.isRegularVisit ? ' ugr-regular' : ''}`} key={unit.id}>
-                              <div className={`unit-grid-main${activePeriod ? ' with-invitation' : ''}`}>
+                              <div className={`unit-grid-main${activeInvitation ? ' with-invitation' : ''}`}>
                                 <button className="unit-name-btn" onClick={() => { const opening = !(fullScreenUnit?.unit.id === unit.id); setFullScreenUnit(prev => prev?.unit.id === unit.id ? null : { unit, building, unitHistories }); if (opening) moveMobileMapToBuilding(building) }} type="button">
                                   <span className="unit-chevron">›</span>
                                   <span className="unit-number-text">{unit.number}</span>
@@ -1319,17 +1321,47 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                     </span>
                                   )}
                                 </button>
-                                {activePeriod && (
-                                  <button
-                                    className={`unit-check-btn unit-check-btn-invitation${latestHistory?.invitationLeft ? ' ucb-invitation' : ''}${!canRecordVisits ? ' locked' : ''}`}
-                                    onClick={() => {
-                                      if (!requireRecordAccess()) return
-                                      onToggleInvitationLeft?.(building.id, unit.id)
-                                    }}
-                                    title={t(language, 'map.invitationLeft')}
-                                    type="button"
-                                  >{latestHistory?.invitationLeft ? '✓' : ''}</button>
-                                )}
+                                {activeInvitation && (() => {
+                                  const hasInv = latestHistory?.invitationLeft
+                                  const isPopupOpen = invitationPopupUnitId === unit.id
+                                  return (
+                                    <div style={{ position: 'relative' }}>
+                                      <button
+                                        className={`unit-check-btn unit-check-btn-invitation${hasInv ? ' ucb-invitation' : ''}${!canRecordVisits ? ' locked' : ''}`}
+                                        onClick={() => {
+                                          if (!requireRecordAccess()) return
+                                          if (hasInv) {
+                                            onToggleInvitationLeft?.(building.id, unit.id)
+                                          } else {
+                                            setInvitationPopupUnitId(isPopupOpen ? null : unit.id)
+                                          }
+                                        }}
+                                        title={t(language, 'map.invitationLeft')}
+                                        type="button"
+                                      >{hasInv ? '✓' : '✉'}</button>
+                                      {isPopupOpen && (
+                                        <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 200, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.18)', padding: '10px 8px', width: 148, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                          <p style={{ margin: '0 0 5px', fontSize: 11, color: 'var(--muted)', textAlign: 'center', fontWeight: 600 }}>{t(language, 'map.invitationHow')}</p>
+                                          <button type="button"
+                                            onClick={() => { onToggleInvitationLeft?.(building.id, unit.id, 'direct'); setInvitationPopupUnitId(null) }}
+                                            style={{ padding: '7px 10px', border: 0, borderRadius: 7, background: '#4F7A4B', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                            {t(language, 'map.invitationDirect')}
+                                          </button>
+                                          <button type="button"
+                                            onClick={() => { onToggleInvitationLeft?.(building.id, unit.id, 'door'); setInvitationPopupUnitId(null) }}
+                                            style={{ padding: '7px 10px', border: 0, borderRadius: 7, background: '#C44536', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                            {t(language, 'map.invitationDoor')}
+                                          </button>
+                                          <button type="button"
+                                            onClick={() => setInvitationPopupUnitId(null)}
+                                            style={{ padding: '5px', border: 0, borderRadius: 6, background: 'none', color: 'var(--muted)', fontSize: 11, cursor: 'pointer' }}>
+                                            {t(language, 'common.cancel')}
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })()}
                                 <button className={`unit-check-btn${unit.status === '만남' ? ' ucb-meet' : ''}${!canRecordVisits ? ' locked' : ''}`}
                                   onClick={() => {
                                     if (!requireRecordAccess()) return

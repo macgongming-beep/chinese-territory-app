@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { SpecialPeriod } from '../types'
 import { PERIOD_COLORS } from '../types'
 
-type PeriodInput = { label: string; startDate: string; endDate: string; color: string }
+type PeriodInput = { label: string; startDate: string; endDate: string; color: string; hasInvitation: boolean }
 
 function ColorPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
@@ -45,7 +45,7 @@ function PeriodForm({
   submitting,
 }: {
   title: string
-  initial: { label: string; startDate: string; durationDays: number; color: string }
+  initial: { label: string; startDate: string; durationDays: number; color: string; hasInvitation: boolean }
   todayStr: string
   onSubmit: (input: PeriodInput) => void
   onCancel: () => void
@@ -56,6 +56,7 @@ function PeriodForm({
   const [startDate, setStartDate] = useState(initial.startDate)
   const [durationDays, setDurationDays] = useState(initial.durationDays)
   const [color, setColor] = useState(initial.color)
+  const [hasInvitation, setHasInvitation] = useState(initial.hasInvitation)
 
   const calcEnd = (start: string, days: number) => {
     if (!start) return ''
@@ -102,6 +103,21 @@ function PeriodForm({
             <span style={labelStyle}>색상</span>
             <ColorPicker value={color} onChange={setColor} />
           </div>
+          {/* 초대장 봉사 여부 */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '10px 12px', background: hasInvitation ? 'rgba(245,158,11,0.08)' : 'var(--surface)', border: `1px solid ${hasInvitation ? '#f59e0b' : 'var(--line)'}`, borderRadius: '8px' }}>
+            <input
+              type="checkbox"
+              checked={hasInvitation}
+              onChange={(e) => setHasInvitation(e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: '#f59e0b', flexShrink: 0 }}
+            />
+            <div>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: hasInvitation ? '#b45309' : 'var(--ink)' }}>초대장 봉사</p>
+              <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--muted)' }}>
+                체크 시 봉사 중 세대별 초대장 버튼이 표시됩니다
+              </p>
+            </div>
+          </label>
           <div style={{ padding: '9px 12px', background: 'var(--surface)', border: `1px solid var(--line)`, borderLeft: `3px solid ${color}`, borderRadius: '8px', fontSize: '12px', color: 'var(--ink)' }}>
             <strong>종료일:</strong> {endDate || '-'}
             {startDate && startDate <= todayStr && endDate >= todayStr && (
@@ -111,7 +127,7 @@ function PeriodForm({
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '12px 24px 20px', borderTop: '1px solid var(--line)' }}>
           <button onClick={onCancel} type="button" style={{ padding: '8px 16px', border: '1px solid var(--line)', borderRadius: '7px', background: 'var(--surface)', color: 'var(--muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>취소</button>
-          <button onClick={() => canSubmit && onSubmit({ label: label.trim(), startDate, endDate, color })} type="button" disabled={!canSubmit}
+          <button onClick={() => canSubmit && onSubmit({ label: label.trim(), startDate, endDate, color, hasInvitation })} type="button" disabled={!canSubmit}
             style={{ padding: '8px 18px', border: 0, borderRadius: '7px', background: canSubmit ? 'var(--ink)' : 'var(--line)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
             {submitting ? '저장 중...' : submitLabel}
           </button>
@@ -270,7 +286,7 @@ export function SpecialPeriodSettings({
       {showCreateModal && (
         <PeriodForm
           title="새 특별봉사 시즌"
-          initial={{ label: '', startDate: todayStr, durationDays: 7, color: PERIOD_COLORS[0].value }}
+          initial={{ label: '', startDate: todayStr, durationDays: 7, color: PERIOD_COLORS[0].value, hasInvitation: false }}
           todayStr={todayStr}
           onSubmit={(input) => void handleCreate(input)}
           onCancel={() => setShowCreateModal(false)}
@@ -282,7 +298,7 @@ export function SpecialPeriodSettings({
       {editingPeriod && (
         <PeriodForm
           title="시즌 수정"
-          initial={{ label: editingPeriod.label, startDate: editingPeriod.startDate, durationDays: calcDuration(editingPeriod.startDate, editingPeriod.endDate), color: editingPeriod.color || PERIOD_COLORS[0].value }}
+          initial={{ label: editingPeriod.label, startDate: editingPeriod.startDate, durationDays: calcDuration(editingPeriod.startDate, editingPeriod.endDate), color: editingPeriod.color || PERIOD_COLORS[0].value, hasInvitation: editingPeriod.hasInvitation ?? false }}
           todayStr={todayStr}
           onSubmit={(input) => void handleUpdate(input)}
           onCancel={() => setEditingPeriod(null)}

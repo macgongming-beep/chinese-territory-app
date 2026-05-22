@@ -75,7 +75,9 @@ export function makeVisitMutations(deps: {
     await fetchAll()
   }
 
-  const toggleInvitationLeft = async (buildingId: number, unitId: number) => {
+  // mode: 'direct' = 직접 전달(만남), 'door' = 문 앞에 남김(부재)
+  // mode 없이 호출하면 기존 레코드 토글(끄기)만 동작
+  const toggleInvitationLeft = async (buildingId: number, unitId: number, mode?: 'direct' | 'door') => {
     const todayStr = getLocalDateString()
     const recordSession = getRecordServiceSession(buildingId)
     const slot = recordSession?.timeSlot ?? getCurrentTimeSlot()
@@ -83,7 +85,7 @@ export function makeVisitMutations(deps: {
 
     const existingResult = await supabase
       .from('visit_histories')
-      .select('id, invitation_left')
+      .select('id, invitation_left, result')
       .eq('unit_id', unitId)
       .eq('visitor_name', visitor)
       .eq('visited_at', todayStr)
@@ -99,21 +101,36 @@ export function makeVisitMutations(deps: {
     const existing = existingResult.data?.[0]
 
     if (existing) {
-      const next = !existing.invitation_left
-      const updateResult = await supabase
-        .from('visit_histories')
-        .update({ invitation_left: next })
-        .eq('id', existing.id)
-      if (updateResult.error) {
-        reportMutationError('초대장 표시를 업데이트하지 못했습니다.', updateResult.error)
-        return
+      // 이미 초대장 켜져 있으면 끄기 (mode 무관)
+      if (existing.invitation_left) {
+        const updateResult = await supabase
+          .from('visit_histories')
+          .update({ invitation_left: false })
+          .eq('id', existing.id)
+        if (updateResult.error) {
+          reportMutationError('초대장 표시를 업데이트하지 못했습니다.', updateResult.error)
+          return
+        }
+      } else if (mode) {
+        // 초대장 켜기 + 결과 업데이트
+        const newResult = mode === 'direct' ? '만남' : '부재'
+        const updateResult = await supabase
+          .from('visit_histories')
+          .update({ invitation_left: true, result: newResult })
+          .eq('id', existing.id)
+        if (updateResult.error) {
+          reportMutationError('초대장 표시를 업데이트하지 못했습니다.', updateResult.error)
+          return
+        }
       }
-    } else {
+    } else if (mode) {
+      // 오늘 기록 없음 → 새 기록 생성
       const activePeriodId = getActiveSpecialPeriodIdForDate(todayStr)
+      const newResult = mode === 'direct' ? '만남' : '부재'
       const insertResult = await supabase.from('visit_histories').insert({
         unit_id: unitId,
         visitor_name: visitor,
-        result: '미방문',
+        result: newResult,
         visited_at: todayStr,
         time_slot: slot,
         ...(recordSession ? { service_session_id: recordSession.id } : {}),

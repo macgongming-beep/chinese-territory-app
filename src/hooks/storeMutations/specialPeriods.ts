@@ -8,12 +8,14 @@ export function makeSpecialPeriodMutations(deps: { fetchAll: () => Promise<void>
     startDate: string
     endDate: string
     color: string
+    hasInvitation?: boolean
   }) => {
     const result = await supabase.from('special_periods').insert({
       label: input.label.trim(),
       start_date: input.startDate,
       end_date: input.endDate,
       color: input.color,
+      has_invitation: input.hasInvitation ?? false,
     })
     if (result.error) {
       reportMutationError('특별기간을 등록하지 못했습니다. special_periods 테이블이 있는지 확인해 주세요.', result.error)
@@ -28,12 +30,14 @@ export function makeSpecialPeriodMutations(deps: { fetchAll: () => Promise<void>
     startDate: string
     endDate: string
     color: string
+    hasInvitation?: boolean
   }) => {
     const result = await supabase.from('special_periods').update({
       label: input.label.trim(),
       start_date: input.startDate,
       end_date: input.endDate,
       color: input.color,
+      has_invitation: input.hasInvitation ?? false,
     }).eq('id', id)
     if (result.error) {
       reportMutationError('특별기간을 수정하지 못했습니다.', result.error)

@@ -187,6 +187,7 @@ export type SpecialPeriod = {
   startDate: string  // YYYY-MM-DD
   endDate: string    // YYYY-MM-DD
   color: string
+  hasInvitation: boolean  // 초대장 봉사 여부 (true → 초대장 버튼 표시)
 }
 
 export const PERIOD_COLORS = [

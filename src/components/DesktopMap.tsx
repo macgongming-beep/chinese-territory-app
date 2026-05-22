@@ -129,7 +129,7 @@ export function DesktopMap({
     timeSlot?: TimeSlot,
   ) => void
   onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus, invitationLeft?: boolean) => void
-  onToggleInvitationLeft?: (buildingId: number, unitId: number) => void
+  onToggleInvitationLeft?: (buildingId: number, unitId: number, mode?: 'direct' | 'door') => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
   visitHistories: VisitHistory[]
   specialPeriods?: SpecialPeriod[]
@@ -180,6 +180,8 @@ export function DesktopMap({
   const [unitMemos, setUnitMemos] = useState<Record<number, string>>({})
   const [unitMemoEdits, setUnitMemoEdits] = useState<Record<number, string | undefined>>({})
   const [_absentTimestamps, _setAbsentTimestamps] = useState<Record<number, number>>({})
+  // 초대장 팝업: 어떤 unitId에 팝업이 열려있는지
+  const [invitationPopupUnitId, setInvitationPopupUnitId] = useState<number | null>(null)
   const [coordinateRepairTick, setCoordinateRepairTick] = useState(0)
   const coordinateRepairingIdsRef = useRef<Set<number>>(new Set())
   const today = getLocalDateString()
@@ -1593,6 +1595,11 @@ export function DesktopMap({
                     setDetailOpen(true)
                     setExpandedBuildingIds(new Set([id]))
                     setExpandedUnitId(null)
+                    const b = buildings.find(item => item.id === id)
+                    if (b) {
+                      const grp = getBuildingStatus(b)
+                      setCollapsedStatusGroups((prev) => { const n = new Set(prev); n.delete(grp); return n })
+                    }
                     setTimeout(() => {
                       document.getElementById(`bld-row-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
                     }, 80)
@@ -1607,13 +1614,18 @@ export function DesktopMap({
                   setDetailOpen(true)
                   setSelectedBuildingId(id)
                   setExpandedBuildingIds(new Set([id]))
-                  setExpandedUnitId(null) // 다른 건물로 넘어갈 때도 호수 상세 내역 초기화
-                  
+                  setExpandedUnitId(null)
+
                   const b = buildings.find(item => item.id === id)
-                  if (b && cardFilter !== '전체' && b.cardId !== cardFilter) {
-                    setCardFilter(b.cardId)
+                  if (b) {
+                    // 해당 건물 그룹이 접혀 있으면 자동으로 펼치기
+                    const grp = getBuildingStatus(b)
+                    setCollapsedStatusGroups((prev) => { const n = new Set(prev); n.delete(grp); return n })
+                    if (cardFilter !== '전체' && b.cardId !== cardFilter) {
+                      setCardFilter(b.cardId)
+                    }
                   }
-                  
+
                   setTimeout(() => {
                     document.getElementById(`bld-row-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
                   }, 80)
@@ -1788,9 +1800,9 @@ export function DesktopMap({
                       <span>{getCardName(cards, building.cardId)}</span>
                     </div>
 
-                    <div className={`unit-col-header${getActivePeriodForDate(getLocalDateString()) ? ' with-invitation' : ''}`}>
+                    <div className={`unit-col-header${getActivePeriodForDate(getLocalDateString())?.hasInvitation ? ' with-invitation' : ''}`}>
                       <span>세대 정보</span>
-                      {getActivePeriodForDate(getLocalDateString()) && <span style={{ color: '#f59e0b' }}>초대장</span>}
+                      {getActivePeriodForDate(getLocalDateString())?.hasInvitation && <span style={{ color: '#f59e0b' }}>초대장</span>}
                       <span>만남</span>
                       <span>부재</span>
                       <span>한국</span>
@@ -1806,7 +1818,7 @@ export function DesktopMap({
 
                       return (
                         <div className={`unit-grid-row${isUnitExpanded ? ' ugr-expanded' : ''}${unit.isRegularVisit ? ' ugr-regular' : ''}`} key={unit.id}>
-                          <div className={`unit-grid-main${getActivePeriodForDate(getLocalDateString()) ? ' with-invitation' : ''}`}>
+                          <div className={`unit-grid-main${getActivePeriodForDate(getLocalDateString())?.hasInvitation ? ' with-invitation' : ''}`}>
                             <button className="unit-name-btn" onClick={() => { setExpandedUnitId(isUnitExpanded ? null : unit.id); if (!isUnitExpanded) moveMapToBuilding(building) }} type="button">
                               <span className="unit-chevron">{isUnitExpanded ? '▾' : '▸'}</span>
                               <span className="unit-number-text">{unit.number}</span>
@@ -1819,20 +1831,49 @@ export function DesktopMap({
                                 </span>
                               )}
                             </button>
-                            {getActivePeriodForDate(getLocalDateString()) && (() => {
+                            {getActivePeriodForDate(getLocalDateString())?.hasInvitation && (() => {
                               const todayInvitation = unitHistories.find(
                                 (h) => h.visitedAt === getLocalDateString() && h.invitationLeft,
                               )
+                              const isPopupOpen = invitationPopupUnitId === unit.id
                               return (
-                                <button
-                                  className={`unit-check-btn unit-check-btn-invitation${todayInvitation ? ' ucb-invitation' : ''}${!canRecordVisits ? ' locked' : ''}`}
-                                  onClick={() => {
-                                    if (!requireRecordAccess()) return
-                                    onToggleInvitationLeft?.(building.id, unit.id)
-                                  }}
-                                  type="button"
-                                  title="초대장 남김 (단독 토글)"
-                                >{todayInvitation ? '✓' : ''}</button>
+                                <div style={{ position: 'relative' }}>
+                                  <button
+                                    className={`unit-check-btn unit-check-btn-invitation${todayInvitation ? ' ucb-invitation' : ''}${!canRecordVisits ? ' locked' : ''}`}
+                                    onClick={() => {
+                                      if (!requireRecordAccess()) return
+                                      if (todayInvitation) {
+                                        // 이미 켜져 있으면 바로 끄기
+                                        onToggleInvitationLeft?.(building.id, unit.id)
+                                      } else {
+                                        // 꺼져 있으면 팝업 열기
+                                        setInvitationPopupUnitId(isPopupOpen ? null : unit.id)
+                                      }
+                                    }}
+                                    type="button"
+                                    title="초대장"
+                                  >{todayInvitation ? '✓' : '✉'}</button>
+                                  {isPopupOpen && (
+                                    <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 200, marginTop: 4, background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', padding: '10px 8px', width: 160, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                      <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--gray-500)', textAlign: 'center', fontWeight: 600 }}>초대장 전달 방식</p>
+                                      <button type="button"
+                                        onClick={() => { onToggleInvitationLeft?.(building.id, unit.id, 'direct'); setInvitationPopupUnitId(null) }}
+                                        style={{ padding: '7px 10px', border: 0, borderRadius: 7, background: '#4F7A4B', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                        직접 만나서 전달
+                                      </button>
+                                      <button type="button"
+                                        onClick={() => { onToggleInvitationLeft?.(building.id, unit.id, 'door'); setInvitationPopupUnitId(null) }}
+                                        style={{ padding: '7px 10px', border: 0, borderRadius: 7, background: '#C44536', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                        문 앞에 남김
+                                      </button>
+                                      <button type="button"
+                                        onClick={() => setInvitationPopupUnitId(null)}
+                                        style={{ padding: '5px', border: 0, borderRadius: 6, background: 'none', color: 'var(--gray-400)', fontSize: 11, cursor: 'pointer' }}>
+                                        취소
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               )
                             })()}
                             <button

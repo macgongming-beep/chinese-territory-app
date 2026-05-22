@@ -207,8 +207,8 @@ export function useStore() {
     setCalendarEvents(transformedEvents)
     setCardBoundaries(transformedBoundaries)
     setNotices(noticesRes.error ? [] : (noticesRes.data as RawNotice[]).map(toNotice))
-    setSpecialPeriods(periodsRes.error ? [] : (periodsRes.data as { id: number; label: string; start_date: string; end_date: string; color: string }[]).map((r) => ({
-      id: r.id, label: r.label, startDate: r.start_date, endDate: r.end_date, color: r.color,
+    setSpecialPeriods(periodsRes.error ? [] : (periodsRes.data as { id: number; label: string; start_date: string; end_date: string; color: string; has_invitation?: boolean }[]).map((r) => ({
+      id: r.id, label: r.label, startDate: r.start_date, endDate: r.end_date, color: r.color, hasInvitation: r.has_invitation ?? false,
     })))
     setReturnVisits(returnVisitsRes.error ? [] : (returnVisitsRes.data as {
       id: number; unit_id: number; building_id: number; display_name: string;

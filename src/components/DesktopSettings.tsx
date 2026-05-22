@@ -61,8 +61,8 @@ export function DesktopSettings({
   actualRole: Role
   onLogout: () => void
   specialPeriods?: SpecialPeriod[]
-  onCreateSpecialPeriod?: (input: { label: string; startDate: string; endDate: string; color: string }) => Promise<void> | void
-  onUpdateSpecialPeriod?: (id: number, input: { label: string; startDate: string; endDate: string; color: string }) => Promise<void> | void
+  onCreateSpecialPeriod?: (input: { label: string; startDate: string; endDate: string; color: string; hasInvitation?: boolean }) => Promise<void> | void
+  onUpdateSpecialPeriod?: (id: number, input: { label: string; startDate: string; endDate: string; color: string; hasInvitation?: boolean }) => Promise<void> | void
   onDeleteSpecialPeriod?: (id: number) => Promise<void> | void
 }) {
   const navigate = useNavigate()
@@ -79,6 +79,74 @@ export function DesktopSettings({
   }
   const [myLogs, setMyLogs]           = useState<{ id: number; logged_in_at: string }[]>([])
   const [showOldLogs, setShowOldLogs] = useState(false)
+
+  // 관리 도구 — 자동 초기화 설정
+  const [resetEnabled, setResetEnabled]     = useState(true)
+  const [resetDays, setResetDays]           = useState(90)
+  const [resetSettingsLoaded, setResetSettingsLoaded] = useState(false)
+  const [resetSaving, setResetSaving]       = useState(false)
+  const [manualResetting, setManualResetting] = useState(false)
+  const [manualResetResult, setManualResetResult] = useState<number | null>(null)
+
+  // 관리 도구 — 방문기록 삭제
+  const [purgeCutoffYear, setPurgeCutoffYear]   = useState(new Date().getFullYear() - 2)
+  const [purgeCutoffMonth, setPurgeCutoffMonth] = useState(1)
+  const [purgePreview, setPurgePreview]         = useState<number | null>(null)
+  const [purgePreviewLoading, setPurgePreviewLoading] = useState(false)
+  const [purging, setPurging]                   = useState(false)
+  const [purgeResult, setPurgeResult]           = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!isAdminLike(actualRole)) return
+    supabase.from('app_settings').select('key, value').in('key', ['visit_reset_enabled', 'visit_reset_days_met'])
+      .then(({ data }) => {
+        if (!data) return
+        data.forEach((row) => {
+          if (row.key === 'visit_reset_enabled') setResetEnabled(row.value === 'true')
+          if (row.key === 'visit_reset_days_met') setResetDays(Number(row.value) || 90)
+        })
+        setResetSettingsLoaded(true)
+      })
+  }, [actualRole])
+
+  const saveResetSettings = async () => {
+    setResetSaving(true)
+    await supabase.from('app_settings').upsert([
+      { key: 'visit_reset_enabled',  value: String(resetEnabled) },
+      { key: 'visit_reset_days_met', value: String(resetDays) },
+    ])
+    setResetSaving(false)
+  }
+
+  const runManualReset = async () => {
+    if (!window.confirm('만남 상태인 모든 세대를 지금 즉시 미방문으로 초기화할까요?\n방문 기록은 유지됩니다.')) return
+    setManualResetting(true)
+    setManualResetResult(null)
+    const { data } = await supabase.rpc('manual_reset_met_units')
+    setManualResetResult(typeof data === 'number' ? data : null)
+    setManualResetting(false)
+  }
+
+  const purgeCutoffStr = `${purgeCutoffYear}-${String(purgeCutoffMonth).padStart(2, '0')}-01`
+
+  const loadPurgePreview = async () => {
+    setPurgePreviewLoading(true)
+    setPurgePreview(null)
+    const { data } = await supabase.rpc('count_old_visit_histories', { cutoff_date: purgeCutoffStr })
+    setPurgePreview(typeof data === 'number' ? data : null)
+    setPurgePreviewLoading(false)
+  }
+
+  const runPurge = async () => {
+    if (purgePreview === null) return
+    if (!window.confirm(`${purgeCutoffStr} 이전 방문기록 ${purgePreview}건을 영구 삭제할까요?\n되돌릴 수 없습니다.`)) return
+    setPurging(true)
+    setPurgeResult(null)
+    const { data } = await supabase.rpc('delete_old_visit_histories', { cutoff_date: purgeCutoffStr })
+    setPurgeResult(typeof data === 'number' ? data : null)
+    setPurgePreview(null)
+    setPurging(false)
+  }
 
   useEffect(() => {
     // 최근 7일 로그인 기록만 조회 (RPC 사용)
@@ -272,6 +340,99 @@ export function DesktopSettings({
                     onUpdateSpecialPeriod={onUpdateSpecialPeriod}
                     onDeleteSpecialPeriod={onDeleteSpecialPeriod}
                   />
+                )}
+
+                {/* 관리 도구 — admin/developer 만 */}
+                {isAdminLike(actualRole) && resetSettingsLoaded && (
+                  <div className="detail-card" style={{ marginBottom: 16 }}>
+                    <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 16px' }}>관리 도구</h2>
+
+                    {/* 만남 자동 초기화 */}
+                    <div style={{ marginBottom: 20 }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 10px', color: 'var(--gray-800)' }}>만남 자동 초기화</p>
+                      <p style={{ fontSize: 12, color: 'var(--gray-500)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                        만남 기록 후 설정한 일수가 지나면 자동으로 미방문으로 초기화됩니다. 방문 기록은 보존됩니다.
+                      </p>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={resetEnabled} onChange={(e) => setResetEnabled(e.target.checked)}
+                          style={{ width: 16, height: 16, accentColor: 'var(--primary-600)' }} />
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>자동 초기화 활성화</span>
+                      </label>
+                      {resetEnabled && (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                          <span style={{ fontSize: 13, color: 'var(--gray-600)', whiteSpace: 'nowrap' }}>만남 후</span>
+                          <input type="number" min={7} max={730} value={resetDays}
+                            onChange={(e) => setResetDays(Math.max(7, Math.min(730, Number(e.target.value))))}
+                            style={{ width: 72, padding: '6px 10px', border: '1px solid var(--border-default)', borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
+                          <span style={{ fontSize: 13, color: 'var(--gray-600)' }}>일 후 자동 초기화</span>
+                        </label>
+                      )}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={saveResetSettings} disabled={resetSaving} type="button"
+                          style={{ padding: '7px 16px', border: 0, borderRadius: 7, background: 'var(--primary-600)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: resetSaving ? 0.6 : 1 }}>
+                          {resetSaving ? '저장 중...' : '설정 저장'}
+                        </button>
+                        <button onClick={runManualReset} disabled={manualResetting} type="button"
+                          style={{ padding: '7px 16px', border: '1px solid var(--border-default)', borderRadius: 7, background: 'var(--bg-card)', color: 'var(--gray-700)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: manualResetting ? 0.6 : 1 }}>
+                          {manualResetting ? '초기화 중...' : '지금 즉시 초기화'}
+                        </button>
+                      </div>
+                      {manualResetResult !== null && (
+                        <p style={{ marginTop: 8, fontSize: 12, color: 'var(--primary-600)', fontWeight: 600 }}>
+                          ✓ {manualResetResult}개 세대가 미방문으로 초기화됐습니다
+                        </p>
+                      )}
+                    </div>
+
+                    <div style={{ height: 1, background: 'var(--border-default)', margin: '0 0 20px' }} />
+
+                    {/* 방문기록 삭제 */}
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 10px', color: 'var(--gray-800)' }}>오래된 방문기록 삭제</p>
+                      <p style={{ fontSize: 12, color: 'var(--gray-500)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                        선택한 날짜 이전의 방문기록을 영구 삭제합니다. 세대 상태에는 영향을 주지 않습니다.
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                        <select value={purgeCutoffYear} onChange={(e) => { setPurgeCutoffYear(Number(e.target.value)); setPurgePreview(null) }}
+                          style={{ padding: '6px 10px', border: '1px solid var(--border-default)', borderRadius: 7, fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-card)' }}>
+                          {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 1 - i).map((y) => (
+                            <option key={y} value={y}>{y}년</option>
+                          ))}
+                        </select>
+                        <select value={purgeCutoffMonth} onChange={(e) => { setPurgeCutoffMonth(Number(e.target.value)); setPurgePreview(null) }}
+                          style={{ padding: '6px 10px', border: '1px solid var(--border-default)', borderRadius: 7, fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-card)' }}>
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                            <option key={m} value={m}>{m}월</option>
+                          ))}
+                        </select>
+                        <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>이전 기록 삭제</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button onClick={loadPurgePreview} disabled={purgePreviewLoading} type="button"
+                          style={{ padding: '7px 14px', border: '1px solid var(--border-default)', borderRadius: 7, background: 'var(--bg-card)', color: 'var(--gray-700)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                          {purgePreviewLoading ? '조회 중...' : '삭제 건수 확인'}
+                        </button>
+                        {purgePreview !== null && (
+                          <>
+                            <span style={{ fontSize: 13, color: purgePreview > 0 ? 'var(--status-danger)' : 'var(--gray-500)', fontWeight: 600 }}>
+                              {purgePreview > 0 ? `${purgePreview}건 삭제 예정` : '삭제할 기록 없음'}
+                            </span>
+                            {purgePreview > 0 && (
+                              <button onClick={runPurge} disabled={purging} type="button"
+                                style={{ padding: '7px 14px', border: 0, borderRadius: 7, background: 'var(--status-danger)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: purging ? 0.6 : 1 }}>
+                                {purging ? '삭제 중...' : '삭제 실행'}
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      {purgeResult !== null && (
+                        <p style={{ marginTop: 8, fontSize: 12, color: 'var(--status-danger)', fontWeight: 600 }}>
+                          ✓ {purgeResult}건이 삭제됐습니다
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
