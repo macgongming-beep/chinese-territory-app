@@ -983,16 +983,25 @@ export function DesktopTerritory({
 
     // buildingAccumulator → previewRows
     for (const accum of buildingAccumulator.values()) {
-      const builtUnits = Array.from(accum.units.entries()).map(([number, u]) => ({
-        number,
-        status: u.status,
-        isChinese: u.isChinese,
-        isRegularVisit: Boolean(u.regularVisitor),
-        regularVisitor: u.regularVisitor || undefined,
-        regularVisitorStartDate: u.regularVisitorStartDate || undefined,
-        memo: u.memo || undefined,
-        visitHistories: u.visitHistories,
-      }))
+      const builtUnits = Array.from(accum.units.entries()).map(([number, u]) => {
+        // 방문기록이 있으면 가장 최신 날짜 기준으로 상태 결정
+        let finalStatus = u.status
+        if (u.visitHistories.length > 0) {
+          const sorted = [...u.visitHistories].sort((a, b) => b.visitedAt.localeCompare(a.visitedAt))
+          const latestResult = sorted[0]!.result
+          if (latestResult && latestResult !== '미방문') finalStatus = latestResult as typeof finalStatus
+        }
+        return {
+          number,
+          status: finalStatus,
+          isChinese: u.isChinese,
+          isRegularVisit: Boolean(u.regularVisitor),
+          regularVisitor: u.regularVisitor || undefined,
+          regularVisitorStartDate: u.regularVisitorStartDate || undefined,
+          memo: u.memo || undefined,
+          visitHistories: u.visitHistories,
+        }
+      })
 
       previewRows.push({
         rowNumber: accum.rowNumber,
