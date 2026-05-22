@@ -396,7 +396,7 @@ export function DesktopSettings({
                         <h2 className="desk-card__title"><span className="desk-card__title-dot ds-dot-warning" />방문기록 삭제</h2>
                       </div>
                       <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--gray-500)', lineHeight: 1.6 }}>
-                        선택한 날짜 이전 방문기록을 영구 삭제합니다. 세대 상태(만남·부재 등)에는 영향을 주지 않습니다.
+                        선택한 날짜 이전 방문기록을 영구 삭제합니다. 기록이 모두 삭제된 세대는 <strong>미방문</strong>으로 자동 초기화되고, 잔여 기록이 있는 세대는 최신 기록 기준으로 상태가 보정됩니다.
                       </p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
                         <select value={purgeCutoffYear} onChange={(e) => { setPurgeCutoffYear(Number(e.target.value)); setPurgePreview(null); setPurgeError(false) }}
