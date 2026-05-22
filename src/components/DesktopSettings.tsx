@@ -94,6 +94,7 @@ export function DesktopSettings({
   const [purgePreview, setPurgePreview]         = useState<number | null>(null)
   const [purgePreviewLoading, setPurgePreviewLoading] = useState(false)
   const [showPurgeModal, setShowPurgeModal]     = useState(false)
+  const [purgeError, setPurgeError]             = useState(false)
   const [purging, setPurging]                   = useState(false)
   const [purgeResult, setPurgeResult]           = useState<number | null>(null)
 
@@ -133,8 +134,13 @@ export function DesktopSettings({
   const loadPurgePreview = async () => {
     setPurgePreviewLoading(true)
     setPurgePreview(null)
-    const { data } = await supabase.rpc('count_old_visit_histories', { cutoff_date: purgeCutoffStr })
-    setPurgePreview(typeof data === 'number' ? data : null)
+    setPurgeError(false)
+    const { data, error } = await supabase.rpc('count_old_visit_histories', { cutoff_date: purgeCutoffStr })
+    if (error || typeof data !== 'number') {
+      setPurgeError(true)
+    } else {
+      setPurgePreview(data)
+    }
     setPurgePreviewLoading(false)
     setShowPurgeModal(true)
   }
@@ -346,71 +352,68 @@ export function DesktopSettings({
 
                 {/* 관리 도구 — admin/developer 만 */}
                 {isAdminLike(actualRole) && resetSettingsLoaded && (
-                  <div className="detail-card" style={{ marginBottom: 16 }}>
-                    <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 16px' }}>관리 도구</h2>
-
-                    {/* 만남 자동 초기화 */}
-                    <div style={{ marginBottom: 20 }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 10px', color: 'var(--gray-800)' }}>만남 자동 초기화</p>
-                      <p style={{ fontSize: 12, color: 'var(--gray-500)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                  <>
+                    {/* 만남 자동 초기화 카드 */}
+                    <article className="desk-card ds-card">
+                      <div className="desk-card__head">
+                        <h2 className="desk-card__title"><span className="desk-card__title-dot" />만남 자동 초기화</h2>
+                      </div>
+                      <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--gray-500)', lineHeight: 1.6 }}>
                         만남 기록 후 설정한 일수가 지나면 자동으로 미방문으로 초기화됩니다. 방문 기록은 보존됩니다.
                       </p>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, cursor: 'pointer' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, cursor: 'pointer' }}>
                         <input type="checkbox" checked={resetEnabled} onChange={(e) => setResetEnabled(e.target.checked)}
-                          style={{ width: 16, height: 16, accentColor: 'var(--primary-600)' }} />
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>자동 초기화 활성화</span>
+                          style={{ width: 15, height: 15, accentColor: 'var(--primary-500)' }} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-800)' }}>자동 초기화 활성화</span>
                       </label>
                       {resetEnabled && (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                           <span style={{ fontSize: 13, color: 'var(--gray-600)', whiteSpace: 'nowrap' }}>만남 후</span>
                           <input type="number" min={7} max={730} value={resetDays}
                             onChange={(e) => setResetDays(Math.max(7, Math.min(730, Number(e.target.value))))}
-                            style={{ width: 72, padding: '6px 10px', border: '1px solid var(--border-default)', borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
+                            style={{ width: 68, padding: '6px 10px', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-card)', color: 'var(--gray-900)' }} />
                           <span style={{ fontSize: 13, color: 'var(--gray-600)' }}>일 후 자동 초기화</span>
                         </label>
                       )}
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={saveResetSettings} disabled={resetSaving} type="button"
-                          style={{ padding: '7px 16px', border: 0, borderRadius: 7, background: 'var(--primary-600)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: resetSaving ? 0.6 : 1 }}>
-                          {resetSaving ? '저장 중...' : '설정 저장'}
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button className="ds-btn ds-btn-primary" onClick={saveResetSettings} disabled={resetSaving} type="button" style={{ opacity: resetSaving ? 0.6 : 1 }}>
+                          {resetSaving ? '저장 중…' : '설정 저장'}
                         </button>
-                        <button onClick={runManualReset} disabled={manualResetting} type="button"
-                          style={{ padding: '7px 16px', border: '1px solid var(--border-default)', borderRadius: 7, background: 'var(--bg-card)', color: 'var(--gray-700)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: manualResetting ? 0.6 : 1 }}>
-                          {manualResetting ? '초기화 중...' : '지금 즉시 초기화'}
+                        <button className="ds-btn" onClick={runManualReset} disabled={manualResetting} type="button" style={{ opacity: manualResetting ? 0.6 : 1 }}>
+                          {manualResetting ? '초기화 중…' : '지금 즉시 초기화'}
                         </button>
                       </div>
                       {manualResetResult !== null && (
-                        <p style={{ marginTop: 8, fontSize: 12, color: 'var(--primary-600)', fontWeight: 600 }}>
+                        <p style={{ marginTop: 10, fontSize: 12, color: 'var(--primary-600)', fontWeight: 600 }}>
                           ✓ {manualResetResult}개 세대가 미방문으로 초기화됐습니다
                         </p>
                       )}
-                    </div>
+                    </article>
 
-                    <div style={{ height: 1, background: 'var(--border-default)', margin: '0 0 20px' }} />
-
-                    {/* 방문기록 삭제 */}
-                    <div>
-                      <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 6px', color: 'var(--gray-800)' }}>방문기록 삭제</p>
-                      <p style={{ fontSize: 12, color: 'var(--gray-500)', margin: '0 0 14px', lineHeight: 1.6 }}>
-                        선택한 날짜 이전 방문기록을 영구 삭제합니다.<br />세대 상태(만남·부재 등)에는 영향을 주지 않습니다.
+                    {/* 방문기록 삭제 카드 */}
+                    <article className="desk-card ds-card">
+                      <div className="desk-card__head">
+                        <h2 className="desk-card__title"><span className="desk-card__title-dot ds-dot-warning" />방문기록 삭제</h2>
+                      </div>
+                      <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--gray-500)', lineHeight: 1.6 }}>
+                        선택한 날짜 이전 방문기록을 영구 삭제합니다. 세대 상태(만남·부재 등)에는 영향을 주지 않습니다.
                       </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
-                        <select value={purgeCutoffYear} onChange={(e) => { setPurgeCutoffYear(Number(e.target.value)); setPurgePreview(null) }}
-                          style={{ padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-card)', color: 'var(--gray-800)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+                        <select value={purgeCutoffYear} onChange={(e) => { setPurgeCutoffYear(Number(e.target.value)); setPurgePreview(null); setPurgeError(false) }}
+                          style={{ padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-card)', color: 'var(--gray-900)' }}>
                           {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - i).map((y) => (
                             <option key={y} value={y}>{y}년</option>
                           ))}
                         </select>
-                        <select value={purgeCutoffMonth} onChange={(e) => { setPurgeCutoffMonth(Number(e.target.value)); setPurgePreview(null) }}
-                          style={{ padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-card)', color: 'var(--gray-800)' }}>
+                        <select value={purgeCutoffMonth} onChange={(e) => { setPurgeCutoffMonth(Number(e.target.value)); setPurgePreview(null); setPurgeError(false) }}
+                          style={{ padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-card)', color: 'var(--gray-900)' }}>
                           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                             <option key={m} value={m}>{m}월</option>
                           ))}
                         </select>
-                        <span style={{ fontSize: 12, color: 'var(--gray-500)', fontWeight: 500 }}>이전 기록 삭제</span>
+                        <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>이전 기록 삭제</span>
                       </div>
-                      <button onClick={loadPurgePreview} disabled={purgePreviewLoading} type="button"
-                        style={{ padding: '8px 18px', border: '1.5px solid var(--border-default)', borderRadius: 8, background: 'var(--bg-card)', color: 'var(--gray-700)', fontSize: 13, fontWeight: 600, cursor: purgePreviewLoading ? 'not-allowed' : 'pointer', opacity: purgePreviewLoading ? 0.6 : 1 }}>
+                      <button className="ds-btn" onClick={loadPurgePreview} disabled={purgePreviewLoading} type="button" style={{ opacity: purgePreviewLoading ? 0.6 : 1 }}>
                         {purgePreviewLoading ? '조회 중…' : '삭제 건수 확인'}
                       </button>
                       {purgeResult !== null && (
@@ -418,53 +421,54 @@ export function DesktopSettings({
                           ✓ {purgeResult}건이 삭제됐습니다
                         </p>
                       )}
-                    </div>
-                  </div>
+                    </article>
+                  </>
                 )}
 
                 {/* 방문기록 삭제 확인 모달 */}
-                {showPurgeModal && purgePreview !== null && (
+                {showPurgeModal && (
                   <div className="cal-modal-backdrop" onClick={() => !purging && setShowPurgeModal(false)}>
                     <div className="cal-modal" style={{ maxWidth: 400, width: '100%' }} onClick={(e) => e.stopPropagation()}>
                       <div className="cal-modal-head">
-                        <div className="cal-modal-title">
-                          <h2>방문기록 삭제 확인</h2>
-                        </div>
+                        <div className="cal-modal-title"><h2>방문기록 삭제 확인</h2></div>
                       </div>
                       <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        {purgePreview === 0 ? (
+                        {purgeError ? (
+                          <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                            <p style={{ fontSize: 28, margin: '0 0 8px' }}>⚠️</p>
+                            <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: 'var(--gray-900)' }}>조회에 실패했습니다</p>
+                            <p style={{ fontSize: 13, color: 'var(--gray-500)', margin: 0 }}>RPC 함수가 등록됐는지 확인해 주세요</p>
+                          </div>
+                        ) : purgePreview === 0 ? (
                           <div style={{ textAlign: 'center', padding: '16px 0' }}>
                             <p style={{ fontSize: 32, margin: '0 0 8px' }}>🔍</p>
-                            <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>삭제할 기록이 없습니다</p>
+                            <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: 'var(--gray-900)' }}>삭제할 기록이 없습니다</p>
                             <p style={{ fontSize: 13, color: 'var(--gray-500)', margin: 0 }}>{purgeCutoffStr} 이전 방문기록이 없어요</p>
                           </div>
                         ) : (
                           <>
-                            <div style={{ padding: '14px 16px', background: '#fff5f5', border: '1.5px solid #fca5a5', borderRadius: 10 }}>
-                              <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>⚠️ 삭제 후 복구 불가</p>
-                              <p style={{ margin: 0, fontSize: 12.5, color: '#7f1d1d', lineHeight: 1.6 }}>
-                                <strong>{purgeCutoffStr}</strong> 이전 방문기록 <strong>{purgePreview.toLocaleString()}건</strong>이 영구 삭제됩니다.<br />
-                                세대 상태(만남·부재 등)는 그대로 유지됩니다.
+                            <div style={{ padding: '14px 16px', background: 'var(--danger-50, #fff5f5)', border: '1.5px solid #fca5a5', borderRadius: 'var(--radius-lg)' }}>
+                              <p style={{ margin: '0 0 5px', fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>삭제 후 복구 불가</p>
+                              <p style={{ margin: 0, fontSize: 13, color: '#7f1d1d', lineHeight: 1.6 }}>
+                                <strong>{purgeCutoffStr}</strong> 이전 방문기록 <strong>{purgePreview?.toLocaleString()}건</strong>이 영구 삭제됩니다.
+                                세대 상태는 그대로 유지됩니다.
                               </p>
                             </div>
-                            <div style={{ padding: '12px 14px', background: 'var(--gray-50)', borderRadius: 9, border: '1px solid var(--border-default)' }}>
-                              <p style={{ margin: 0, fontSize: 12, color: 'var(--gray-600)', lineHeight: 1.6 }}>
+                            <div style={{ padding: '12px 14px', background: 'var(--gray-50)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                              <p style={{ margin: 0, fontSize: 12, color: 'var(--gray-600)', lineHeight: 1.7 }}>
                                 • 방문 날짜·결과·방문자 기록이 삭제됩니다<br />
-                                • 세대 상세의 히스토리 목록에서 사라집니다<br />
+                                • 세대 상세 히스토리 목록에서 사라집니다<br />
                                 • 이 작업은 되돌릴 수 없습니다
                               </p>
                             </div>
                           </>
                         )}
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 24px 20px', borderTop: '1px solid var(--border-default)' }}>
-                        <button onClick={() => setShowPurgeModal(false)} disabled={purging} type="button"
-                          style={{ padding: '8px 18px', border: '1px solid var(--border-default)', borderRadius: 8, background: 'var(--bg-card)', color: 'var(--gray-600)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                          취소
-                        </button>
-                        {purgePreview > 0 && (
-                          <button onClick={runPurge} disabled={purging} type="button"
-                            style={{ padding: '8px 20px', border: 0, borderRadius: 8, background: purging ? '#fca5a5' : '#dc2626', color: '#fff', fontSize: 13, fontWeight: 700, cursor: purging ? 'not-allowed' : 'pointer' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 24px 20px', borderTop: '1px solid var(--border-subtle)' }}>
+                        <button className="ds-btn" onClick={() => setShowPurgeModal(false)} disabled={purging} type="button">취소</button>
+                        {!purgeError && purgePreview !== null && purgePreview > 0 && (
+                          <button className="ds-btn ds-btn-danger" onClick={runPurge} disabled={purging} type="button"
+                            style={{ opacity: purging ? 0.6 : 1, fontWeight: 700 }}>
                             {purging ? '삭제 중…' : `${purgePreview.toLocaleString()}건 삭제`}
                           </button>
                         )}
