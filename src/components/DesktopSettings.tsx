@@ -137,6 +137,7 @@ export function DesktopSettings({
     setPurgeError(false)
     const { data, error } = await supabase.rpc('count_old_visit_histories', { cutoff_date: purgeCutoffStr })
     if (error || typeof data !== 'number') {
+      console.error('[purge] count_old_visit_histories RPC error:', error)
       setPurgeError(true)
     } else {
       setPurgePreview(data)
@@ -437,7 +438,8 @@ export function DesktopSettings({
                           <div style={{ textAlign: 'center', padding: '16px 0' }}>
                             <p style={{ fontSize: 28, margin: '0 0 8px' }}>⚠️</p>
                             <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: 'var(--gray-900)' }}>조회에 실패했습니다</p>
-                            <p style={{ fontSize: 13, color: 'var(--gray-500)', margin: 0 }}>RPC 함수가 등록됐는지 확인해 주세요</p>
+                            <p style={{ fontSize: 13, color: 'var(--gray-500)', margin: '0 0 6px' }}>Supabase에 RPC 함수가 등록되지 않은 것 같아요.</p>
+                            <p style={{ fontSize: 12, color: 'var(--gray-400)', margin: 0 }}>supabase/v3_management_tools.sql 을 SQL Editor에서 실행해 주세요</p>
                           </div>
                         ) : purgePreview === 0 ? (
                           <div style={{ textAlign: 'center', padding: '16px 0' }}>
@@ -451,7 +453,7 @@ export function DesktopSettings({
                               <p style={{ margin: '0 0 5px', fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>삭제 후 복구 불가</p>
                               <p style={{ margin: 0, fontSize: 13, color: '#7f1d1d', lineHeight: 1.6 }}>
                                 <strong>{purgeCutoffStr}</strong> 이전 방문기록 <strong>{purgePreview?.toLocaleString()}건</strong>이 영구 삭제됩니다.
-                                세대 상태는 그대로 유지됩니다.
+                                기록이 모두 삭제되는 세대는 미방문으로 자동 초기화됩니다.
                               </p>
                             </div>
                             <div style={{ padding: '12px 14px', background: 'var(--gray-50)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
