@@ -1716,6 +1716,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               onToggleRegularVisit={onToggleRegularVisit}
               onToggleChinese={onToggleChinese}
               onDeleteVisitHistory={onDeleteVisitHistory}
+              onUpdateVisitHistory={onUpdateVisitHistory}
               currentVisitor={currentVisitor}
               allUsers={allUsers}
               onSetRegularVisitor={onSetRegularVisitor}
@@ -1743,6 +1744,7 @@ function UnitDetailScreen({
   onToggleRegularVisit,
   onToggleChinese,
   onDeleteVisitHistory,
+  onUpdateVisitHistory,
   currentVisitor,
   allUsers = [],
   onSetRegularVisitor,
@@ -1761,12 +1763,15 @@ function UnitDetailScreen({
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
+  onUpdateVisitHistory?: (historyId: number, unitId: number, input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean }) => void
   currentVisitor?: string
   allUsers?: { id: number; name: string }[]
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
 }) {
   const [memoEditing, setMemoEditing] = useState(false)
   const [memoDraft, setMemoDraft] = useState<string | null>(null)
+  const [inlineMemoHistoryId, setInlineMemoHistoryId] = useState<number | null>(null)
+  const [inlineMemoDraft, setInlineMemoDraft] = useState('')
   const [showRegularPopup, setShowRegularPopup] = useState(false)
   const [regularNameDraft, setRegularNameDraft] = useState('')
   const [regularDateDraft, setRegularDateDraft] = useState('')
@@ -1848,63 +1853,102 @@ function UnitDetailScreen({
         {/* 기록 */}
         {unitHistories.length > 0 && (
           <div style={sectionStyle}>
-            <h3 style={{ ...sectionTitleStyle, marginBottom: 10 }}>기록 {unitHistories.length}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <h3 style={{ ...sectionTitleStyle, marginBottom: 8 }}>기록 {unitHistories.length}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {unitHistories.map(h => {
                 const c = resultColor(h.result)
                 const isMenuOpen = editingHistoryId === h.id
+                const isMemoOpen = inlineMemoHistoryId === h.id
                 const dayNames = ['일', '월', '화', '수', '목', '금', '토']
-                const dayName = dayNames[new Date(h.visitedAt).getDay()]
+                const dow = dayNames[new Date(h.visitedAt).getDay()]
+                const dateStr = `${h.visitedAt.slice(5).replace('-', '/')}(${dow})`
                 return (
                   <div key={h.id} style={{
-                    background: 'var(--bg)', borderRadius: 7,
+                    background: 'var(--bg)', borderRadius: 8,
                     border: '1px solid var(--line)', borderLeft: `3px solid ${c}`,
-                    padding: '5px 8px',
+                    padding: '6px 8px 6px 10px',
+                    overflow: 'hidden',
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <span style={{ fontWeight: 700, color: c, fontSize: 13 }}>{h.result}</span>
-                        <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 7 }}>
-                          {dayName}요일 {h.timeSlot}{h.visitor ? ` · ${h.visitor}` : ''}
+                    {/* 메인 행 */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+                        <span style={{ fontWeight: 700, color: c, fontSize: 12, flexShrink: 0 }}>{h.result}</span>
+                        <span style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {dateStr} {h.timeSlot}{h.visitor ? ` · ${h.visitor}` : ''}
                         </span>
                       </div>
                       {isMenuOpen ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-                          <button
-                            onClick={() => { setHistoryToEdit(h); setEditingHistoryId(null) }}
-                            style={{ padding: '3px 9px', border: '1px solid var(--line)', borderRadius: 5, background: 'var(--surface)', color: 'var(--ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                            type="button"
-                          >수정</button>
-                          <button
-                            onClick={() => {
-                              if (confirm('이 기록을 삭제할까요?')) onDeleteVisitHistory(h.id, unit.id)
-                              setEditingHistoryId(null)
-                            }}
-                            style={{ padding: '3px 9px', border: '1px solid #fecaca', borderRadius: 5, background: '#fef2f2', color: '#dc2626', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                            type="button"
-                          >삭제</button>
-                          <button
-                            onClick={() => setEditingHistoryId(null)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 14, padding: '0 2px', lineHeight: 1 }}
-                            type="button"
-                          >✕</button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                          <button onClick={() => { setHistoryToEdit(h); setEditingHistoryId(null) }}
+                            style={{ padding: '2px 8px', border: '1px solid var(--line)', borderRadius: 5, background: 'var(--surface)', color: 'var(--ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                            type="button">수정</button>
+                          <button onClick={() => { if (confirm('이 기록을 삭제할까요?')) onDeleteVisitHistory(h.id, unit.id); setEditingHistoryId(null) }}
+                            style={{ padding: '2px 8px', border: '1px solid #fecaca', borderRadius: 5, background: '#fef2f2', color: '#dc2626', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                            type="button">삭제</button>
+                          <button onClick={() => setEditingHistoryId(null)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 13, padding: '0 2px', lineHeight: 1 }}
+                            type="button">✕</button>
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                          <span style={{ fontSize: 11, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
-                            {h.visitedAt.slice(5).replace('-', '/')}
-                          </span>
-                          {canRecordVisits && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                          {canRecordVisits && onUpdateVisitHistory && (
                             <button
-                              onClick={() => setEditingHistoryId(h.id)}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
-                              type="button"
-                            >⋮</button>
+                              onClick={() => {
+                                if (isMemoOpen) {
+                                  setInlineMemoHistoryId(null)
+                                } else {
+                                  setInlineMemoHistoryId(h.id)
+                                  setInlineMemoDraft(h.memo ?? '')
+                                }
+                              }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', lineHeight: 1, color: h.memo ? c : 'var(--muted)', opacity: isMemoOpen ? 1 : 0.7 }}
+                              title="메모" type="button"
+                            >
+                              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M2 12.5V14h1.5l7-7L9 5.5l-7 7z"/>
+                                <path d="M11.5 3l1.5 1.5-1 1L10.5 4l1-1z"/>
+                              </svg>
+                            </button>
+                          )}
+                          {canRecordVisits && (
+                            <button onClick={() => setEditingHistoryId(h.id)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 15, padding: '0 2px', lineHeight: 1 }}
+                              type="button">⋮</button>
                           )}
                         </div>
                       )}
                     </div>
-                    {h.memo && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--muted)', lineHeight: 1.4 }}>{h.memo}</p>}
+                    {/* 기존 메모 표시 (인라인 편집 중 아닐 때) */}
+                    {h.memo && !isMemoOpen && (
+                      <p style={{ margin: '3px 0 0', fontSize: 11, color: 'var(--muted)', lineHeight: 1.4, paddingRight: 4 }}>{h.memo}</p>
+                    )}
+                    {/* 인라인 메모 입력 */}
+                    {isMemoOpen && (
+                      <div style={{ marginTop: 6, display: 'flex', gap: 5 }}>
+                        <input
+                          autoFocus
+                          value={inlineMemoDraft}
+                          onChange={e => setInlineMemoDraft(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault()
+                              onUpdateVisitHistory!(h.id, unit.id, { result: h.result as UnitStatus, timeSlot: h.timeSlot as TimeSlot, memo: inlineMemoDraft, visitedAt: h.visitedAt, invitationLeft: h.invitationLeft })
+                              setInlineMemoHistoryId(null)
+                            }
+                            if (e.key === 'Escape') setInlineMemoHistoryId(null)
+                          }}
+                          placeholder="메모 입력…"
+                          style={{ flex: 1, padding: '5px 8px', border: `1px solid ${c}40`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', background: 'var(--bg)', color: 'var(--ink)', outline: 'none' }}
+                        />
+                        <button
+                          onClick={() => {
+                            onUpdateVisitHistory!(h.id, unit.id, { result: h.result as UnitStatus, timeSlot: h.timeSlot as TimeSlot, memo: inlineMemoDraft, visitedAt: h.visitedAt, invitationLeft: h.invitationLeft })
+                            setInlineMemoHistoryId(null)
+                          }}
+                          style={{ padding: '5px 10px', border: 0, borderRadius: 6, background: c, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                          type="button">저장</button>
+                      </div>
+                    )}
                   </div>
                 )
               })}
