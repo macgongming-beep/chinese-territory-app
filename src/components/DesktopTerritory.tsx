@@ -1001,7 +1001,7 @@ export function DesktopTerritory({
           memo: u.memo || undefined,
           visitHistories: u.visitHistories,
         }
-      })
+      }).sort((a, b) => a.number.localeCompare(b.number, 'ko', { numeric: true }))
 
       previewRows.push({
         rowNumber: accum.rowNumber,
