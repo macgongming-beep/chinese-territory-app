@@ -10059,7 +10059,7 @@ button:focus-visible {
     overflow: hidden;
     border: 1px solid var(--border-default);
     border-radius: var(--radius-xl);
-    background: var(--bg-card);
+    background: var(--gray-50);
     box-shadow: var(--shadow-xs);
   }
 
@@ -10067,19 +10067,23 @@ button:focus-visible {
     flex: 1;
     overflow-y: auto;
     min-height: 0;
+    padding: 10px 10px 0;
   }
 
   .detail-header {
-    padding: 14px 18px;
+    padding: 13px 16px 12px;
     border-bottom: 1px solid var(--border-subtle);
     background: var(--bg-card);
-    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
   }
 
   .detail-header p {
-    margin: 0 0 2px;
+    margin: 0;
     color: var(--gray-900);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     letter-spacing: -0.01em;
   }
@@ -10088,16 +10092,22 @@ button:focus-visible {
     color: var(--gray-500);
     font-size: 12px;
     font-weight: 500;
+    white-space: nowrap;
   }
 
   .detail-stack {
-    display: grid;
-    gap: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 10px;
   }
 
   .detail-card {
-    padding: 18px 20px;
-    border-bottom: 1px solid var(--border-subtle);
+    padding: 14px 16px;
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   }
 
   .detail-card:last-child {
@@ -10108,100 +10118,103 @@ button:focus-visible {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
+    gap: 10px;
+    margin-bottom: 8px;
   }
 
   .detail-title-main {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
   }
 
   .detail-title-row h2 {
     margin: 0;
-    color: var(--ink-900);
-    font-size: 20px;
-    letter-spacing: 0;
+    color: var(--gray-900);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
   }
 
   .event-card-badge {
     display: inline-flex;
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
     background: var(--primary-50);
     color: var(--primary-700);
-    font-size: var(--text-sm);
+    font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
   }
 
   .event-meeting-tag {
     display: inline-flex;
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
     background: var(--warning-100);
     color: var(--warning-700);
-    font-size: var(--text-sm);
+    font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
   }
 
   .event-closed-tag {
     display: inline-flex;
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
     background: var(--gray-100);
-    color: var(--gray-700);
-    font-size: var(--text-sm);
+    color: var(--gray-500);
+    font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
   }
 
   .edit-btn {
-    min-height: 32px !important;
     flex-shrink: 0;
-    padding: 0 12px !important;
-    background: transparent !important;
-    color: var(--ink-500) !important;
-    font-size: 13px !important;
+    min-height: 28px !important;
+    padding: 0 10px !important;
+    border-radius: var(--radius-full) !important;
+    border: 1px solid var(--border-default) !important;
+    background: var(--bg-card) !important;
+    color: var(--gray-500) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
   }
 
   .edit-btn:hover {
-    background: #f3f4f6 !important;
-    color: #374151 !important;
+    background: var(--gray-50) !important;
+    color: var(--gray-700) !important;
   }
 
   .event-meta-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
-    color: #4b5563;
-    font-size: 13px;
-    font-weight: 600;
+    gap: 6px;
+    margin-bottom: 10px;
   }
 
   .event-meta-row span {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    min-height: 24px;
+    gap: 4px;
+    min-height: 22px;
     padding: 0 8px;
     border-radius: var(--radius-full);
-    background: var(--gray-50);
+    background: var(--gray-100);
     color: var(--gray-600);
+    font-size: 12px;
+    font-weight: 500;
   }
 
   .event-meta-row svg {
-    width: 14px;
-    height: 14px;
-    flex: 0 0 14px;
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
     fill: none;
     stroke: currentColor;
-    stroke-width: 1.8;
+    stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
     color: var(--gray-400);
@@ -10209,41 +10222,44 @@ button:focus-visible {
 
   .detail-card.empty button,
   .detail-title-row button {
-    min-height: 34px;
+    min-height: 30px;
     padding: 0 12px;
-    background: var(--brand-700);
+    background: var(--primary-500);
     color: #ffffff;
     font-size: 13px;
   }
 
   .assignment-box {
-    padding: 16px;
-    border: 1px solid var(--border-default);
+    margin-top: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    background: var(--bg-subtle);
+    background: var(--gray-50);
   }
 
   .box-heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: 10px;
+    margin-bottom: 10px;
   }
 
   .box-heading strong {
     display: flex;
     align-items: center;
-    gap: 6px;
-    color: #263241;
+    gap: 5px;
+    color: var(--gray-700);
+    font-size: 13px;
+    font-weight: 700;
   }
 
   .box-heading strong em {
-    padding: 2px 8px;
+    padding: 1px 7px;
     border-radius: var(--radius-full);
     background: var(--primary-50);
     color: var(--primary-700);
-    font-size: var(--text-sm);
+    font-size: 11px;
     font-style: normal;
     font-weight: 600;
   }
@@ -10254,13 +10270,13 @@ button:focus-visible {
   }
 
   .apply-btn {
-    min-height: 40px;
-    padding: 0 16px;
+    min-height: 32px;
+    padding: 0 14px;
     background: var(--gray-900);
     color: #ffffff;
-    font-size: var(--text-sm);
+    font-size: 12px;
     font-weight: 600;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-full);
   }
 
   .apply-btn.applied {
@@ -10293,29 +10309,30 @@ button:focus-visible {
   .person-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
   }
 
   .person-chips span {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 8px 4px 12px;
+    padding: 3px 8px 3px 10px;
     border-radius: var(--radius-full);
     background: var(--primary-50);
     color: var(--primary-700);
-    font-size: var(--text-sm);
+    font-size: 12px;
     font-weight: 600;
   }
 
   .person-chips .event-person-chip {
     align-items: center;
-    padding: 6px 8px 6px 12px;
-    border-radius: var(--radius-lg);
+    padding: 4px 8px 4px 10px;
+    border-radius: var(--radius-full);
   }
 
   .event-person-name {
-    min-width: 52px;
+    min-width: 40px;
+    font-size: 12px;
   }
 
   .event-card-assign-search {
@@ -10416,8 +10433,14 @@ button:focus-visible {
   }
 
   .person-chips .assigned {
-    background: var(--accent-100);
-    color: var(--accent-700);
+    background: var(--success-50, #f0fdf4);
+    color: var(--success-700, #15803d);
+  }
+
+  .event-collab-grid {
+    margin-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 12px;
   }
 
   .chip-remove {
@@ -10540,13 +10563,14 @@ button:focus-visible {
   }
 
   .event-memo {
-    margin: 20px 0 0;
-    padding-top: 16px;
-    border-top: 1px solid #e6e9ee;
-    color: #4b5563;
-    font-size: 15px;
-    font-weight: 700;
-    line-height: 1.45;
+    margin: 10px 0 0;
+    padding: 9px 12px;
+    border-radius: var(--radius-md);
+    background: var(--gray-50);
+    color: var(--gray-600);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.6;
   }
 
   .detail-card.empty h2 {
@@ -10841,23 +10865,23 @@ button:focus-visible {
   /* ── Detail pane footer & add button ── */
 
   .cal-pane-footer {
-    padding: 16px 20px 20px;
+    padding: 12px 10px 14px;
     border-top: 1px solid var(--border-subtle);
-    background: var(--bg-card);
+    background: var(--gray-50);
   }
 
   .cal-add-btn {
     width: 100%;
-    min-height: 40px;
-    border-radius: var(--radius-md);
-    background: var(--primary-50);
-    color: var(--primary-700);
-    font-size: var(--text-base);
-    font-weight: 600;
+    min-height: 38px;
+    border-radius: var(--radius-full);
+    background: var(--primary-500);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
   }
 
   .cal-add-btn:hover {
-    background: var(--primary-100);
+    background: var(--primary-600);
   }
 
   /* ── Empty state ── */
@@ -10867,14 +10891,14 @@ button:focus-visible {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 48px 32px 36px;
-    gap: 12px;
+    padding: 40px 24px 32px;
+    gap: 10px;
     text-align: center;
   }
 
   .cal-empty-icon {
-    width: 64px;
-    height: 64px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
     background: var(--gray-100);
     display: grid;
@@ -10885,27 +10909,27 @@ button:focus-visible {
 
   .cal-empty-state h3 {
     margin: 0;
-    color: var(--gray-800);
-    font-size: var(--text-md);
+    color: var(--gray-700);
+    font-size: 14px;
     font-weight: 600;
   }
 
   .cal-empty-state p {
     margin: 0;
     color: var(--gray-400);
-    font-size: var(--text-sm);
+    font-size: 12px;
     font-weight: 400;
   }
 
   .cal-empty-add-btn {
     margin-top: 4px;
-    height: 36px;
+    height: 34px;
     padding: 0 16px;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-full);
     border: none;
     background: var(--primary-50);
-    color: var(--primary-700);
-    font-size: var(--text-sm);
+    color: var(--primary-600);
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.15s;
