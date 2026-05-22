@@ -172,10 +172,10 @@ export function DesktopApp({
     assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
     options?: { silentSuccess?: boolean },
   ) => Promise<void> | void
-  onCreateCalendarEvent: (input: { date: string; time: string; title: string; place: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
-  onCreateRepeatCalendarEvents: (dates: string[], input: { time: string; title: string; place: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
-  onUpdateCalendarEvent: (eventId: number, input: { time: string; title: string; place: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
-  onUpdateCalendarEventSeries: (seriesId: string, fromDate: string, input: { time: string; title: string; place: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
+  onCreateCalendarEvent: (input: { date: string; time: string; endTime?: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
+  onCreateRepeatCalendarEvents: (dates: string[], input: { time: string; endTime?: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
+  onUpdateCalendarEvent: (eventId: number, input: { time: string; endTime?: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
+  onUpdateCalendarEventSeries: (seriesId: string, fromDate: string, input: { time: string; endTime?: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
   onDeleteCalendarEvent: (eventId: number) => void
   onDeleteCalendarEventSeries: (seriesId: string, fromDate: string) => void
   onLinkEventsToSeries: (eventIds: number[]) => void

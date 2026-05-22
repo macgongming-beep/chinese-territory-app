@@ -10036,17 +10036,17 @@ button:focus-visible {
     color: var(--gray-600);
   }
 
-  /* 시간대별 색상 */
-  .event-pill--am  { background: var(--info-50);     color: var(--info-600); }
-  .event-pill--pm  { background: var(--warning-100); color: var(--warning-700); }
-  .event-pill--eve { background: var(--success-50);  color: var(--success-700); }
+  /* 시간대별 색상 — 앱 모노크롬 분위기 */
+  .event-pill--am  { background: var(--gray-100, #f1f0ee); color: var(--gray-700, #374151); }
+  .event-pill--pm  { background: var(--tint, #EFEFED);     color: var(--ink, #1A1A18); }
+  .event-pill--eve { background: var(--ink, #1A1A18);      color: #fff; }
 
   .event-pill.has-meeting {
     font-weight: 700;
   }
 
   .day-cell em {
-    color: var(--primary-600);
+    color: var(--gray-500, #6b7280);
     font-size: 11px;
     font-style: normal;
     font-weight: 600;
@@ -10438,9 +10438,12 @@ button:focus-visible {
   }
 
   .event-collab-grid {
-    margin-top: 12px;
+    margin-top: 14px;
     border-top: 1px solid var(--border-subtle);
-    padding-top: 12px;
+    padding-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
   }
 
   .chip-remove {
@@ -10471,10 +10474,10 @@ button:focus-visible {
 
   .cal-add-participant-btn {
     padding: 4px 10px;
-    border: 1px solid var(--brand-500, #3b82f6);
+    border: 1px solid var(--border-default);
     border-radius: 6px;
-    background: var(--brand-50, #eff6ff);
-    color: var(--brand-700, #1d4ed8);
+    background: var(--bg-card);
+    color: var(--gray-700);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -10484,7 +10487,7 @@ button:focus-visible {
   }
 
   .cal-add-participant-btn:hover {
-    background: var(--brand-100, #dbeafe);
+    background: var(--gray-50);
   }
 
   /* 칩 목록 안에 인라인으로 들어가는 + 추가 버튼 */
@@ -10493,10 +10496,10 @@ button:focus-visible {
     align-items: center;
     height: 32px;
     padding: 0 12px;
-    border: 1.5px dashed var(--brand-400, #60a5fa);
+    border: 1.5px dashed var(--border-default);
     border-radius: 20px;
     background: transparent;
-    color: var(--brand-600, #2563eb);
+    color: var(--gray-500);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -10505,8 +10508,9 @@ button:focus-visible {
   }
 
   .cal-add-participant-chip-btn:hover {
-    background: var(--brand-50, #eff6ff);
-    border-color: var(--brand-500, #3b82f6);
+    background: var(--gray-50);
+    border-color: var(--gray-400);
+    color: var(--gray-700);
   }
 
   .cal-add-participant-dropdown {
@@ -11061,6 +11065,270 @@ button:focus-visible {
     font-weight: 400;
     margin-top: 2px;
   }
+
+  /* ── 일정 상세: 히어로 섹션 ── */
+  .event-hero {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .event-hero-time {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink, #1A1A18);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .event-hero-meeting-pill {
+    font-size: 11px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--tint, #EFEFED);
+    color: var(--gray-700, #374151);
+    font-weight: 500;
+  }
+  .event-hero-title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink, #1A1A18);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .event-hero-leader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .event-hero-leader-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--ink, #1A1A18);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .event-hero-leader-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-800, #1f2937);
+  }
+  .event-hero-leader-label {
+    font-size: 12px;
+    color: var(--gray-400, #9ca3af);
+  }
+
+  /* ── 섹션 헤드 ── */
+  .cal-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 2px;
+    margin-bottom: 8px;
+  }
+  .cal-section-head h3 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-700, #374151);
+    letter-spacing: -0.01em;
+  }
+
+  /* ── 위치 카드 ── */
+  .event-location-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--gray-50, #f9fafb);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    color: inherit;
+    text-decoration: none;
+  }
+  .event-location-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: var(--tint, #EFEFED);
+    color: var(--gray-600);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+  .event-location-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-900);
+    flex: 1;
+    min-width: 0;
+  }
+  .event-location-sub {
+    font-size: 11px;
+    color: var(--gray-400);
+    margin-top: 1px;
+  }
+  .event-location-arrow {
+    color: var(--gray-300);
+    flex-shrink: 0;
+  }
+
+  /* ── 신청자 가로 스크롤 strip ── */
+  .event-applicants-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .event-applicants-strip {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .event-applicants-strip::-webkit-scrollbar { display: none; }
+  .event-applicant-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px 4px 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 99px;
+    flex-shrink: 0;
+    min-height: 0;
+    cursor: default;
+  }
+  .event-applicant-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--ink, #1A1A18);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .event-applicant-avatar.assigned {
+    background: var(--success-600, #16a34a);
+  }
+  .event-applicant-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-800);
+  }
+  .event-applicants-overflow {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 99px;
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-500);
+    min-height: 0;
+  }
+  .event-applicants-add-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 12px;
+    background: transparent;
+    border: 1.5px dashed var(--border-default);
+    border-radius: 99px;
+    color: var(--gray-400);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color .12s, color .12s;
+  }
+  .event-applicants-add-chip:hover {
+    border-color: var(--gray-400);
+    color: var(--gray-600);
+  }
+  .event-applicants-remove-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    min-height: 16px;
+    padding: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0.5;
+    cursor: pointer;
+  }
+  .event-applicants-remove-btn:hover { opacity: 1; background: rgba(0,0,0,0.08); }
+
+  /* ── 일정 상세 ⋮ 메뉴 ── */
+  .event-dots-menu-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+  .event-dots-btn {
+    width: 30px;
+    height: 30px;
+    min-height: 30px !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--gray-400) !important;
+    border-radius: 8px !important;
+    display: grid;
+    place-items: center;
+    cursor: pointer !important;
+    padding: 0 !important;
+  }
+  .event-dots-btn:hover { background: var(--gray-100) !important; color: var(--gray-600) !important; }
+  .event-dots-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 80;
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+    min-width: 130px;
+    padding: 4px;
+  }
+  .event-dots-item {
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    min-height: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    font-size: 13px;
+    color: var(--gray-700);
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  .event-dots-item:hover { background: var(--gray-50) !important; }
+  .event-dots-item.danger { color: var(--status-danger, #dc2626); }
+  .event-dots-item.danger:hover { background: #fef2f2 !important; }
 
   /* ── 큰 신청하기 버튼 ── */
   .cal-apply-big-btn {
