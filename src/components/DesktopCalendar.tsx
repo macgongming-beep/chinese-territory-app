@@ -69,7 +69,7 @@ function CalendarIcon({ name }: { name: CalendarIconName }) {
 }
 
 
-type EventInput = { time: string; title: string; place: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }
+type EventInput = { time: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }
 type EditDraft = EventInput
 
 type ScopeModal =
@@ -161,6 +161,7 @@ export function DesktopCalendar({
   const [newTitle, setNewTitle] = useState('오전 방문')
   const [newTime, setNewTime] = useState('10:00')
   const [newPlace, setNewPlace] = useState('')
+  const [newMapLink, setNewMapLink] = useState('')
   const [newLeader, setNewLeader] = useState('')
   const [newMemo, setNewMemo] = useState('')
   const [newHasMeeting, setNewHasMeeting] = useState(false)
@@ -202,13 +203,13 @@ export function DesktopCalendar({
 
   const resetCreateForm = () => {
     setNewDate(selectedDateStr); setNewTitle('오전 방문'); setNewTime('10:00'); setNewPlace('')
-    setNewLeader(''); setNewMemo(''); setNewHasMeeting(false); setNewAllowApplications(true)
+    setNewMapLink(''); setNewLeader(''); setNewMemo(''); setNewHasMeeting(false); setNewAllowApplications(true)
     setIsRepeat(false); setRepeatEnd('')
   }
 
   const handleCreate = () => {
     if (!newTitle.trim()) return
-    const input: EventInput = { time: newTime, title: newTitle, place: newPlace, leader: newLeader, memo: newMemo, hasMeeting: newHasMeeting, allowApplications: newAllowApplications }
+    const input: EventInput = { time: newTime, title: newTitle, place: newPlace, mapLink: newMapLink || undefined, leader: newLeader, memo: newMemo, hasMeeting: newHasMeeting, allowApplications: newAllowApplications }
     if (isRepeat && repeatEnd) {
       onCreateRepeatEvents(getWeeklyDates(newDate, repeatEnd), input)
     } else {
@@ -323,9 +324,15 @@ export function DesktopCalendar({
                 <label>제목 *</label>
                 <input className="cal-input" placeholder="오전 방문" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
               </div>
-              <div className="cal-field">
-                <label>장소</label>
-                <input className="cal-input" placeholder="모임 장소를 입력하세요" value={newPlace} onChange={(e) => setNewPlace(e.target.value)} />
+              <div className="cal-field-row">
+                <div className="cal-field">
+                  <label>장소</label>
+                  <input className="cal-input" placeholder="모임 장소를 입력하세요" value={newPlace} onChange={(e) => setNewPlace(e.target.value)} />
+                </div>
+                <div className="cal-field">
+                  <label>지도 링크</label>
+                  <input className="cal-input" inputMode="url" placeholder="네이버 지도 링크" value={newMapLink} onChange={(e) => setNewMapLink(e.target.value)} />
+                </div>
               </div>
               <div className="cal-field">
                 <label>인도자</label>
@@ -547,7 +554,7 @@ export function DesktopCalendar({
                         className="edit-btn"
                         onClick={() => {
                           setEditingEventId(event.id)
-                          setEditDraft({ time: event.time, title: event.title, place: event.place, leader: event.leader, memo: event.memo, hasMeeting: event.hasMeeting, allowApplications: event.allowApplications })
+                          setEditDraft({ time: event.time, title: event.title, place: event.place, mapLink: event.mapLink ?? '', leader: event.leader, memo: event.memo, hasMeeting: event.hasMeeting, allowApplications: event.allowApplications })
                         }}
                         type="button"
                       >
@@ -556,8 +563,15 @@ export function DesktopCalendar({
                     </div>
 
                     <div className="event-meta-row">
-                      <span><CalendarIcon name="clock" /> {event.time}</span>
-                      {event.place && <span><CalendarIcon name="pin" /> {event.place}</span>}
+                      <span><CalendarIcon name="clock" /> {event.time || '시간 미정'}</span>
+                      {event.place && (
+                        <span>
+                          <CalendarIcon name="pin" />
+                          {event.mapLink
+                            ? <a href={event.mapLink} rel="noreferrer" target="_blank" style={{ color: 'inherit', textDecoration: 'underline' }}>{event.place}</a>
+                            : event.place}
+                        </span>
+                      )}
                       {event.leader && <span><CalendarIcon name="user" /> {event.leader}</span>}
                     </div>
 
@@ -767,6 +781,10 @@ function EditCard({
             <label>장소</label>
             <input className="cal-input" value={draft.place} onChange={(e) => setDraft({ ...draft, place: e.target.value })} />
           </div>
+        </div>
+        <div className="cal-field">
+          <label>지도 링크</label>
+          <input className="cal-input" inputMode="url" placeholder="네이버 지도 링크 (선택)" value={draft.mapLink ?? ''} onChange={(e) => setDraft({ ...draft, mapLink: e.target.value })} />
         </div>
         <div className="cal-field">
           <label>인도자</label>

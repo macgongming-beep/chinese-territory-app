@@ -9860,9 +9860,9 @@ button:focus-visible {
   .cal-add-event-btn {
     height: 36px;
     padding: 0 14px;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-full);
     border: none;
-    background: var(--primary-500);
+    background: var(--ink, #1A1A18);
     color: #fff;
     font-size: 13px;
     font-weight: 600;
@@ -9871,7 +9871,7 @@ button:focus-visible {
     transition: background 0.15s;
   }
 
-  .cal-add-event-btn:hover { background: var(--primary-600); }
+  .cal-add-event-btn:hover { background: #333330; }
 
   /* ── 캘린더 그리드 ── */
   .calendar-grid {
@@ -9978,7 +9978,7 @@ button:focus-visible {
     height: 22px;
     place-items: center;
     border-radius: 50%;
-    background: var(--primary-500);
+    background: var(--ink, #1A1A18);
     color: #ffffff;
     font-size: 13px;
     font-weight: 600;
