@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "vite --host",
     "build": "tsc -b && vite build",
@@ -14,6 +17,7 @@
     "@sentry/react": "^10.53.1",
     "@supabase/supabase-js": "^2.103.3",
     "@vercel/analytics": "^2.0.1",
+    "polygon-clipping": "^0.15.7",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.1"
