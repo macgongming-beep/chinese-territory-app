@@ -26,11 +26,14 @@ import type {
   VisitHistory,
 } from '../types'
 
-// ─── Korean-aware collator (단지 번호 정렬) ───────────────────────
-const unitNumberCollator = new Intl.Collator('ko-KR', {
-  numeric: true,
-  sensitivity: 'base',
-})
+// ─── 호수 정렬: 지하(B/b) → 지상 숫자 → 한글/기타 ───────────────────
+const _collator = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' })
+const _unitPriority = (s: string) => /^[Bb]/.test(s) ? 0 : /^[0-9]/.test(s) ? 1 : 2
+export function compareUnitNumbers(a: string, b: string): number {
+  const diff = _unitPriority(a) - _unitPriority(b)
+  return diff !== 0 ? diff : _collator.compare(a, b)
+}
+const unitNumberCollator = { compare: compareUnitNumbers }
 
 // ===============================================================
 // DB row 타입

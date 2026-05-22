@@ -5,6 +5,7 @@ import { showToast } from '../lib/toast'
 import { findCardForCoordinates, formatDisplayAddress, isValidMapCoordinate, normalizeMapCoordinates, parseCoordinate } from '../utils/mapUtils'
 import { downloadCardBoundaryBackup, mergeCardBoundaryPoints, parseCardBoundaryBackup } from '../utils/boundaryMerge'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
+import { compareUnitNumbers } from '../hooks/storeTransforms'
 import type { Building, CardBoundary, GeoPoint, InformalAsset, InformalGroup, Role, TerritoryCard, TerritoryRegion, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import { InformalCardsTab } from './InformalCardsTab'
 import { RestaurantsTab } from './RestaurantsTab'
@@ -1001,7 +1002,7 @@ export function DesktopTerritory({
           memo: u.memo || undefined,
           visitHistories: u.visitHistories,
         }
-      }).sort((a, b) => a.number.localeCompare(b.number, 'ko', { numeric: true }))
+      }).sort((a, b) => compareUnitNumbers(a.number, b.number))
 
       previewRows.push({
         rowNumber: accum.rowNumber,
@@ -2537,7 +2538,7 @@ export function DesktopTerritory({
                         <span className="building-units-count">{building.units.length}개</span>
                       </div>
                       <div className="building-units-list">
-                        {[...building.units].sort((a, b) => a.number.localeCompare(b.number, 'ko', { numeric: true })).map((unit) => {
+                        {[...building.units].sort((a, b) => compareUnitNumbers(a.number, b.number)).map((unit) => {
                           const isEditingThisUnit = editingUnitId === unit.id
                           return (
                             <div className="building-unit-row" key={unit.id}>
