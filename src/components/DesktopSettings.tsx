@@ -89,10 +89,11 @@ export function DesktopSettings({
   const [manualResetResult, setManualResetResult] = useState<number | null>(null)
 
   // 관리 도구 — 방문기록 삭제
-  const [purgeCutoffYear, setPurgeCutoffYear]   = useState(new Date().getFullYear() - 2)
-  const [purgeCutoffMonth, setPurgeCutoffMonth] = useState(1)
+  const [purgeCutoffYear, setPurgeCutoffYear]   = useState(new Date().getFullYear() - 1)
+  const [purgeCutoffMonth, setPurgeCutoffMonth] = useState(new Date().getMonth() + 1)
   const [purgePreview, setPurgePreview]         = useState<number | null>(null)
   const [purgePreviewLoading, setPurgePreviewLoading] = useState(false)
+  const [showPurgeModal, setShowPurgeModal]     = useState(false)
   const [purging, setPurging]                   = useState(false)
   const [purgeResult, setPurgeResult]           = useState<number | null>(null)
 
@@ -135,17 +136,18 @@ export function DesktopSettings({
     const { data } = await supabase.rpc('count_old_visit_histories', { cutoff_date: purgeCutoffStr })
     setPurgePreview(typeof data === 'number' ? data : null)
     setPurgePreviewLoading(false)
+    setShowPurgeModal(true)
   }
 
   const runPurge = async () => {
-    if (purgePreview === null) return
-    if (!window.confirm(`${purgeCutoffStr} 이전 방문기록 ${purgePreview}건을 영구 삭제할까요?\n되돌릴 수 없습니다.`)) return
+    if (purgePreview === null || purgePreview === 0) return
     setPurging(true)
     setPurgeResult(null)
     const { data } = await supabase.rpc('delete_old_visit_histories', { cutoff_date: purgeCutoffStr })
     setPurgeResult(typeof data === 'number' ? data : null)
     setPurgePreview(null)
     setPurging(false)
+    setShowPurgeModal(false)
   }
 
   useEffect(() => {
@@ -388,49 +390,85 @@ export function DesktopSettings({
 
                     {/* 방문기록 삭제 */}
                     <div>
-                      <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 10px', color: 'var(--gray-800)' }}>오래된 방문기록 삭제</p>
-                      <p style={{ fontSize: 12, color: 'var(--gray-500)', margin: '0 0 12px', lineHeight: 1.5 }}>
-                        선택한 날짜 이전의 방문기록을 영구 삭제합니다. 세대 상태에는 영향을 주지 않습니다.
+                      <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 6px', color: 'var(--gray-800)' }}>방문기록 삭제</p>
+                      <p style={{ fontSize: 12, color: 'var(--gray-500)', margin: '0 0 14px', lineHeight: 1.6 }}>
+                        선택한 날짜 이전 방문기록을 영구 삭제합니다.<br />세대 상태(만남·부재 등)에는 영향을 주지 않습니다.
                       </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
                         <select value={purgeCutoffYear} onChange={(e) => { setPurgeCutoffYear(Number(e.target.value)); setPurgePreview(null) }}
-                          style={{ padding: '6px 10px', border: '1px solid var(--border-default)', borderRadius: 7, fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-card)' }}>
-                          {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 1 - i).map((y) => (
+                          style={{ padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-card)', color: 'var(--gray-800)' }}>
+                          {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - i).map((y) => (
                             <option key={y} value={y}>{y}년</option>
                           ))}
                         </select>
                         <select value={purgeCutoffMonth} onChange={(e) => { setPurgeCutoffMonth(Number(e.target.value)); setPurgePreview(null) }}
-                          style={{ padding: '6px 10px', border: '1px solid var(--border-default)', borderRadius: 7, fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-card)' }}>
+                          style={{ padding: '7px 10px', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-card)', color: 'var(--gray-800)' }}>
                           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                             <option key={m} value={m}>{m}월</option>
                           ))}
                         </select>
-                        <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>이전 기록 삭제</span>
+                        <span style={{ fontSize: 12, color: 'var(--gray-500)', fontWeight: 500 }}>이전 기록 삭제</span>
                       </div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button onClick={loadPurgePreview} disabled={purgePreviewLoading} type="button"
-                          style={{ padding: '7px 14px', border: '1px solid var(--border-default)', borderRadius: 7, background: 'var(--bg-card)', color: 'var(--gray-700)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                          {purgePreviewLoading ? '조회 중...' : '삭제 건수 확인'}
-                        </button>
-                        {purgePreview !== null && (
-                          <>
-                            <span style={{ fontSize: 13, color: purgePreview > 0 ? 'var(--status-danger)' : 'var(--gray-500)', fontWeight: 600 }}>
-                              {purgePreview > 0 ? `${purgePreview}건 삭제 예정` : '삭제할 기록 없음'}
-                            </span>
-                            {purgePreview > 0 && (
-                              <button onClick={runPurge} disabled={purging} type="button"
-                                style={{ padding: '7px 14px', border: 0, borderRadius: 7, background: 'var(--status-danger)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: purging ? 0.6 : 1 }}>
-                                {purging ? '삭제 중...' : '삭제 실행'}
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
+                      <button onClick={loadPurgePreview} disabled={purgePreviewLoading} type="button"
+                        style={{ padding: '8px 18px', border: '1.5px solid var(--border-default)', borderRadius: 8, background: 'var(--bg-card)', color: 'var(--gray-700)', fontSize: 13, fontWeight: 600, cursor: purgePreviewLoading ? 'not-allowed' : 'pointer', opacity: purgePreviewLoading ? 0.6 : 1 }}>
+                        {purgePreviewLoading ? '조회 중…' : '삭제 건수 확인'}
+                      </button>
                       {purgeResult !== null && (
-                        <p style={{ marginTop: 8, fontSize: 12, color: 'var(--status-danger)', fontWeight: 600 }}>
+                        <p style={{ marginTop: 10, fontSize: 12, color: 'var(--gray-500)', fontWeight: 600 }}>
                           ✓ {purgeResult}건이 삭제됐습니다
                         </p>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 방문기록 삭제 확인 모달 */}
+                {showPurgeModal && purgePreview !== null && (
+                  <div className="cal-modal-backdrop" onClick={() => !purging && setShowPurgeModal(false)}>
+                    <div className="cal-modal" style={{ maxWidth: 400, width: '100%' }} onClick={(e) => e.stopPropagation()}>
+                      <div className="cal-modal-head">
+                        <div className="cal-modal-title">
+                          <h2>방문기록 삭제 확인</h2>
+                        </div>
+                      </div>
+                      <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        {purgePreview === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                            <p style={{ fontSize: 32, margin: '0 0 8px' }}>🔍</p>
+                            <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>삭제할 기록이 없습니다</p>
+                            <p style={{ fontSize: 13, color: 'var(--gray-500)', margin: 0 }}>{purgeCutoffStr} 이전 방문기록이 없어요</p>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ padding: '14px 16px', background: '#fff5f5', border: '1.5px solid #fca5a5', borderRadius: 10 }}>
+                              <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>⚠️ 삭제 후 복구 불가</p>
+                              <p style={{ margin: 0, fontSize: 12.5, color: '#7f1d1d', lineHeight: 1.6 }}>
+                                <strong>{purgeCutoffStr}</strong> 이전 방문기록 <strong>{purgePreview.toLocaleString()}건</strong>이 영구 삭제됩니다.<br />
+                                세대 상태(만남·부재 등)는 그대로 유지됩니다.
+                              </p>
+                            </div>
+                            <div style={{ padding: '12px 14px', background: 'var(--gray-50)', borderRadius: 9, border: '1px solid var(--border-default)' }}>
+                              <p style={{ margin: 0, fontSize: 12, color: 'var(--gray-600)', lineHeight: 1.6 }}>
+                                • 방문 날짜·결과·방문자 기록이 삭제됩니다<br />
+                                • 세대 상세의 히스토리 목록에서 사라집니다<br />
+                                • 이 작업은 되돌릴 수 없습니다
+                              </p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 24px 20px', borderTop: '1px solid var(--border-default)' }}>
+                        <button onClick={() => setShowPurgeModal(false)} disabled={purging} type="button"
+                          style={{ padding: '8px 18px', border: '1px solid var(--border-default)', borderRadius: 8, background: 'var(--bg-card)', color: 'var(--gray-600)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                          취소
+                        </button>
+                        {purgePreview > 0 && (
+                          <button onClick={runPurge} disabled={purging} type="button"
+                            style={{ padding: '8px 20px', border: 0, borderRadius: 8, background: purging ? '#fca5a5' : '#dc2626', color: '#fff', fontSize: 13, fontWeight: 700, cursor: purging ? 'not-allowed' : 'pointer' }}>
+                            {purging ? '삭제 중…' : `${purgePreview.toLocaleString()}건 삭제`}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
