@@ -136,17 +136,36 @@ export function RestaurantsTab({
       setEditReqName(name)
       setEditReqAddress(address)
 
-      // 주소 기반 기존 건물 찾기
-      const addrNorm = address.trim()
-      const found = buildings.filter((b) =>
-        b.address.trim() === addrNorm || b.address.includes(addrNorm) || addrNorm.includes(b.address.trim())
-      )
-      setMatchedBuildings(found)
-      setSelectedMatchId(found.length > 0 ? found[0].id : 'new')
-
-      // 지오코딩
+      // 주소 기반 기존 건물 찾기 (공백 제거 후 비교)
+      const norm = (s: string) => s.replace(/\s+/g, '').toLowerCase()
+      const addrNorm = norm(address)
+      const found = buildings.filter((b) => {
+        const bNorm = norm(b.address)
+        return bNorm === addrNorm || bNorm.includes(addrNorm) || addrNorm.includes(bNorm)
+      })
+      // 지오코딩 먼저 (좌표 기반 근접 매칭에 사용)
       const coords = await geocodeAddress(address)
       setGeocodedCoords(coords)
+
+      // 좌표 기반 근접 매칭 추가 (100m 이내)
+      let finalFound = found
+      if (coords) {
+        const toRad = (d: number) => (d * Math.PI) / 180
+        const nearbyByCoords = buildings.filter((b) => {
+          if (!b.lat || !b.lng) return false
+          const dLat = toRad(b.lat - coords.lat)
+          const dLng = toRad(b.lng - coords.lng)
+          const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(coords.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2
+          const dist = 6371000 * 2 * Math.asin(Math.sqrt(a))
+          return dist < 150 // 150m 이내
+        })
+        // 주소 매칭 + 근접 매칭 합산 (중복 제거)
+        const ids = new Set(found.map((b) => b.id))
+        finalFound = [...found, ...nearbyByCoords.filter((b) => !ids.has(b.id))]
+      }
+
+      setMatchedBuildings(finalFound)
+      setSelectedMatchId(finalFound.length > 0 ? finalFound[0].id : 'new')
       setGeocoding(false)
       return // 매칭 UI 표시 — 다음 클릭에 실제 승인
     }

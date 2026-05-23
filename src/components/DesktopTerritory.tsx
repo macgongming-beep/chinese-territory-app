@@ -103,6 +103,9 @@ export function DesktopTerritory({
   onDeleteInformalGroup,
   onMoveAssetToGroup,
   onToggleBuildingRestaurant,
+  restaurantRequests = [],
+  onApproveRestaurantRequest,
+  onRejectRestaurantRequest,
 }: {
   buildings: Building[]
   cardBoundaries: CardBoundary[]
@@ -163,6 +166,9 @@ export function DesktopTerritory({
   onDeleteInformalGroup?: (groupId: number) => Promise<void>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
+  restaurantRequests?: import('../types').RestaurantRequest[]
+  onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
+  onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
 }) {
   const { allUsers, fetchAllUsers } = useAuth()
   const isAdmin = role === 'admin'
@@ -850,7 +856,7 @@ export function DesktopTerritory({
       const chineseValue = findValue(row, ['chinese', 'isChinese', '중국인', '중국인여부'])
       const warningValue = findValue(row, ['warning', '방문금지', '경고'])
       const regularVisitorValue = findValue(row, ['regularVisitor', 'regular', '정기방문자', '재방문자', '정기방문'])
-      const regularStartValue = findValue(row, ['정기방문시작일', 'regularStart', 'regularVisitorStartDate'])
+      const regularStartValue = findValue(row, ['정기방문시작일', '정기방문시작', 'regularStart', 'regularVisitorStartDate'])
       const memoValue = findValue(row, ['memo', 'note', '메모', '비고', '备注'])
       const latValue = findValue(row, ['lat', 'latitude', '위도'])
       const lngValue = findValue(row, ['lng', 'lon', 'longitude', '경도'])
@@ -1867,7 +1873,11 @@ export function DesktopTerritory({
               role={role}
               buildings={buildings}
               cards={cards}
+              currentVisitor={currentVisitor}
+              restaurantRequests={restaurantRequests}
               onToggleRestaurantFlag={onToggleBuildingRestaurant}
+              onApproveRestaurantRequest={onApproveRestaurantRequest}
+              onRejectRestaurantRequest={onRejectRestaurantRequest}
               onOpenMap={(cardId) => onOpenCardMap(cardId)}
             />
           </div>

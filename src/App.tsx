@@ -348,6 +348,9 @@ function App() {
             onAssignRestaurantToUser={assignRestaurantToUser}
             onRemoveRestaurantAssignment={removeRestaurantAssignment}
             onToggleBuildingRestaurant={toggleBuildingRestaurant}
+            restaurantRequests={restaurantRequests}
+            onApproveRestaurantRequest={approveRestaurantRequest}
+            onRejectRestaurantRequest={rejectRestaurantRequest}
           />
         ) : (
           <div className="mobile-shell-host">
