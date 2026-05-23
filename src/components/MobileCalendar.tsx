@@ -623,6 +623,7 @@ export function MobileCalendar({
               eventId={chatEvent.id}
               eventTitle={chatEvent.title}
               role={role}
+              language={language}
               users={mentionUsers}
             />
           </div>

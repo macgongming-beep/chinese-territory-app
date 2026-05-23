@@ -151,18 +151,18 @@ function NotificationIcon({ name }: { name: NotificationIconName }) {
   )
 }
 
-function formatRelativeTime(iso: string): string {
+function formatRelativeTime(iso: string, language: AppLanguage = 'ko'): string {
   const now = Date.now()
-  const t = new Date(iso).getTime()
-  const diff = Math.max(0, now - t)
+  const ts = new Date(iso).getTime()
+  const diff = Math.max(0, now - ts)
   const sec = Math.floor(diff / 1000)
-  if (sec < 60) return `${sec}초 전`
+  if (sec < 60) return t(language, 'common.secondsAgo', { n: sec })
   const min = Math.floor(sec / 60)
-  if (min < 60) return `${min}분 전`
+  if (min < 60) return t(language, 'common.minutesAgo', { n: min })
   const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr}시간 전`
+  if (hr < 24) return t(language, 'common.hoursAgo', { n: hr })
   const days = Math.floor(hr / 24)
-  if (days < 7) return `${days}일 전`
+  if (days < 7) return t(language, 'common.daysAgo', { n: days })
   // 1주 이상은 날짜
   const d = new Date(iso)
   return `${d.getMonth() + 1}/${d.getDate()}`
@@ -306,7 +306,7 @@ export function NotificationCenter({
           padding: '14px 16px', borderBottom: '1px solid var(--line)',
         }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em' }}>알림</span>
+            <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em' }}>{t(language, 'header.notifications')}</span>
             {totalUnread > 0 && (
               <span style={{
                 fontSize: 11.5, fontWeight: 700,
@@ -447,14 +447,14 @@ function ChatGroupItem({
             <span className="notification-row__title">{eventTitle}</span>
           </div>
           {participantCount > 0 && (
-            <span className="notification-row__side-meta">{participantCount}명</span>
+            <span className="notification-row__side-meta">{t(language, 'common.nPeople', { n: participantCount })}</span>
           )}
         </div>
         {latestBody && (
           <span className="notification-row__body">{latestBody}</span>
         )}
         <span className="notification-row__time">
-          {formatRelativeTime(group.latest.createdAt)}
+          {formatRelativeTime(group.latest.createdAt, language)}
         </span>
       </div>
       {group.unreadCount > 0 && (
@@ -502,7 +502,7 @@ function NotificationItem({
           <span className="notification-row__body">{n.body}</span>
         )}
         <span className="notification-row__time">
-          {formatRelativeTime(n.createdAt)}
+          {formatRelativeTime(n.createdAt, language)}
         </span>
       </div>
     </button>

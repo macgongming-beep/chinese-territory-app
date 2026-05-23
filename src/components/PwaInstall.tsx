@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { t, type AppLanguage } from '../i18n'
 import { isPWAInstalled, isMobile, isIOS, isAndroid } from '../lib/pwa'
 import {
   isPushSupported,
@@ -26,7 +27,8 @@ function snooze() {
 /**
  * 모바일 + PWA 미설치 + 미스누즈 상태에서 5초 후 슬라이드업 배너
  */
-export function PwaInstallBanner() {
+export function PwaInstallBanner({ language = 'ko' }: { language?: string } = {}) {
+  const lang = (language ?? 'ko') as AppLanguage
   const [visible, setVisible] = useState(false)
   const [showModal, setShowModal] = useState(false)
 
@@ -40,7 +42,7 @@ export function PwaInstallBanner() {
   }, [])
 
   if (!visible) {
-    return showModal ? <PwaInstallModal onClose={() => setShowModal(false)} /> : null
+    return showModal ? <PwaInstallModal language={language} onClose={() => setShowModal(false)} /> : null
   }
 
   return (
@@ -77,10 +79,10 @@ export function PwaInstallBanner() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.005em' }}>
-              봉사 알림 받으시려면
+              {t(lang, 'pwa.bannerTitle')}
             </p>
             <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 500, color: 'var(--muted)', letterSpacing: '-0.005em' }}>
-              홈 화면에 추가해주세요
+              {t(lang, 'pwa.bannerDesc')}
             </p>
           </div>
           <button
@@ -124,7 +126,7 @@ export function PwaInstallBanner() {
             }}
             type="button"
           >
-            나중에
+            {t(lang, 'pwa.later')}
           </button>
           <button
             onClick={() => {
@@ -145,7 +147,7 @@ export function PwaInstallBanner() {
             }}
             type="button"
           >
-            설치 안내 보기
+            {t(lang, 'pwa.guide')}
           </button>
         </div>
       </div>
@@ -162,7 +164,8 @@ export function PwaInstallBanner() {
 /**
  * 설치 안내 모달 (iOS/Android 단계별)
  */
-export function PwaInstallModal({ onClose }: { onClose: () => void }) {
+export function PwaInstallModal({ language = 'ko', onClose }: { language?: string; onClose: () => void }) {
+  const lang = (language ?? 'ko') as AppLanguage
   const ios = isIOS()
   const android = isAndroid()
   const showBoth = !ios && !android
@@ -196,7 +199,7 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
         <div style={{ width: 32, height: 4, borderRadius: 99, background: 'var(--line-2)', margin: '4px auto 14px' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.015em' }}>
-            홈 화면에 설치
+            {t(lang, 'pwa.installTitle')}
           </h2>
           <button
             onClick={onClose}
@@ -224,11 +227,11 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
               iPhone Safari
             </h3>
             <ol style={{ margin: 0, paddingLeft: 20, color: 'var(--text)', fontSize: 14, lineHeight: 1.7 }}>
-              <li>하단 가운데 <b>공유 버튼</b> 탭<br/>
-                <span style={{ color: 'var(--muted)', fontSize: 12 }}>(네모에 위로 화살표 ↑)</span>
+              <li><b>{t(lang, 'pwa.iosStep1a')}</b><br/>
+                <span style={{ color: 'var(--muted)', fontSize: 12 }}>{t(lang, 'pwa.iosStep1b')}</span>
               </li>
-              <li>스크롤 → <b>"홈 화면에 추가"</b> 선택</li>
-              <li>우상단 <b>"추가"</b> 탭</li>
+              <li>{t(lang, 'pwa.iosStep2')}</li>
+              <li>{t(lang, 'pwa.iosStep3')}</li>
             </ol>
           </section>
         )}
@@ -245,20 +248,20 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
               Android Chrome
             </h3>
             <ol style={{ margin: 0, paddingLeft: 20, color: 'var(--text)', fontSize: 14, lineHeight: 1.7 }}>
-              <li>우상단 <b>⋮</b> 메뉴 탭</li>
-              <li><b>"홈 화면에 추가"</b> 또는 <b>"앱 설치"</b> 선택</li>
-              <li><b>"설치"</b> 탭</li>
+              <li>{t(lang, 'pwa.androidStep1')}</li>
+              <li>{t(lang, 'pwa.androidStep2')}</li>
+              <li>{t(lang, 'pwa.androidStep3')}</li>
             </ol>
           </section>
         )}
 
         <div style={{ background: 'var(--paper)', borderRadius: 10, padding: '12px 14px', marginTop: 4 }}>
-          <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>설치하면</p>
+          <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{t(lang, 'pwa.benefits')}</p>
           <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12.5, color: 'var(--text)', lineHeight: 1.6 }}>
-            <li>봉사 알림 받기</li>
-            <li>빠른 접근 (앱 아이콘)</li>
-            <li>자동 로그인 유지</li>
-            <li>더 빠른 속도</li>
+            <li>{t(lang, 'pwa.benefit1')}</li>
+            <li>{t(lang, 'pwa.benefit2')}</li>
+            <li>{t(lang, 'pwa.benefit3')}</li>
+            <li>{t(lang, 'pwa.benefit4')}</li>
           </ul>
         </div>
 
@@ -280,7 +283,7 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
           }}
           type="button"
         >
-          확인
+          {t(lang, 'pwa.confirm')}
         </button>
       </div>
       <style>{`
@@ -297,6 +300,7 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
  * 설정 페이지에서 보여줄 PWA 상태 + 설치 안내 버튼
  */
 export function PwaInstallSection({ language = 'ko' }: { language?: string } = {}) {
+  const lang = (language ?? 'ko') as AppLanguage
   const { user } = useAuth()
   const [installed, setInstalled] = useState(isPWAInstalled())
   const [showModal, setShowModal] = useState(false)
@@ -350,18 +354,20 @@ export function PwaInstallSection({ language = 'ko' }: { language?: string } = {
   }
 
   const pushOn = isPushSupported() && subscribed
-  const installSub = installed ? (language === 'ko' ? '홈 화면 앱으로 사용 중' : language === 'zh' ? '已作为主屏幕应用使用' : 'Using as home screen app') : (language === 'ko' ? '알림을 받으려면 PWA 설치 필요' : language === 'zh' ? '需要安装 PWA 才能接收通知' : 'PWA installation required for notifications')
+  const installSub = installed
+    ? (lang === 'zh' ? '已作为主屏幕应用使用' : lang === 'en' ? 'Using as home screen app' : '홈 화면 앱으로 사용 중')
+    : (lang === 'zh' ? '需要安装 PWA 才能接收通知' : lang === 'en' ? 'PWA installation required for notifications' : '알림을 받으려면 PWA 설치 필요')
   const pushSub =
-    !isPushSupported() ? (language === 'ko' ? '기기에서 푸시 알림 미지원' : language === 'zh' ? '设备不支持推送通知' : 'Device push not supported')
-    : notifPermission === 'denied' ? (language === 'ko' ? '브라우저 설정에서 허용 필요' : language === 'zh' ? '需要在浏览器设置中允许' : 'Need permission in browser')
-    : pushOn ? (language === 'ko' ? '이 기기 알림 켜짐' : language === 'zh' ? '此设备通知已开启' : 'Notifications on')
-    : (language === 'ko' ? '이 기기 알림 꺼짐' : language === 'zh' ? '此设备通知已关闭' : 'Notifications off')
+    !isPushSupported() ? (lang === 'zh' ? '设备不支持推送通知' : lang === 'en' ? 'Device push not supported' : '기기에서 푸시 알림 미지원')
+    : notifPermission === 'denied' ? (lang === 'zh' ? '需要在浏览器设置中允许' : lang === 'en' ? 'Need permission in browser' : '브라우저 설정에서 허용 필요')
+    : pushOn ? (lang === 'zh' ? '此设备通知已开启' : lang === 'en' ? 'Notifications on' : '이 기기 알림 켜짐')
+    : (lang === 'zh' ? '此设备通知已关闭' : lang === 'en' ? 'Notifications off' : '이 기기 알림 꺼짐')
 
   return (
     <>
       {/* ── 이 기기 섹션 헤더 ──────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0 4px', marginBottom: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>{language === 'ko' ? '이 기기' : language === 'zh' ? '此设备' : 'This device'}</h2>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>{lang === 'zh' ? '此设备' : lang === 'en' ? 'This device' : '이 기기'}</h2>
       </div>
 
       {/* ── 홈 화면에 설치 카드 ───────────── */}
@@ -371,7 +377,7 @@ export function PwaInstallSection({ language = 'ko' }: { language?: string } = {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{language === 'ko' ? '홈 화면에 설치' : language === 'zh' ? '安装到主屏幕' : 'Install to home screen'}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{t(lang, 'pwa.installTitle')}</span>
             <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{installSub}</span>
           </div>
           {installed ? (
@@ -380,7 +386,7 @@ export function PwaInstallSection({ language = 'ko' }: { language?: string } = {
               background: 'var(--status-ok-bg)', color: 'var(--status-ok)',
               fontSize: 11.5, fontWeight: 600,
             }}>
-              설치됨
+              {t(lang, 'pwa.installed')}
             </span>
           ) : (
             <button
@@ -393,7 +399,7 @@ export function PwaInstallSection({ language = 'ko' }: { language?: string } = {
                 fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}
             >
-              안내
+              {t(lang, 'pwa.guideBtn')}
             </button>
           )}
         </div>
@@ -406,7 +412,7 @@ export function PwaInstallSection({ language = 'ko' }: { language?: string } = {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{language === 'ko' ? '푸시 알림' : language === 'zh' ? '推送通知' : 'Push notifications'}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{lang === 'zh' ? '推送通知' : lang === 'en' ? 'Push notifications' : '푸시 알림'}</span>
             <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{pushSub}</span>
           </div>
           {isPushSupported() && user && notifPermission !== 'denied' && (
@@ -424,7 +430,7 @@ export function PwaInstallSection({ language = 'ko' }: { language?: string } = {
                   opacity: busy ? 0.6 : 1,
                 }}
               >
-                {busy ? '...' : '끄기'}
+                {busy ? '...' : t(lang, 'pwa.off')}
               </button>
             ) : (
               <button
@@ -441,17 +447,17 @@ export function PwaInstallSection({ language = 'ko' }: { language?: string } = {
                   letterSpacing: '-0.005em',
                 }}
               >
-                {busy ? '...' : '켜기'}
+                {busy ? '...' : t(lang, 'pwa.on')}
               </button>
             )
           )}
           {notifPermission === 'denied' && (
-            <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--status-danger)' }}>{language === 'ko' ? '설정 필요' : language === 'zh' ? '需要设置' : 'Setup needed'}</span>
+            <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--status-danger)' }}>{lang === 'zh' ? '需要设置' : lang === 'en' ? 'Setup needed' : '설정 필요'}</span>
           )}
         </div>
       </div>
 
-      {showModal && <PwaInstallModal onClose={() => setShowModal(false)} />}
+      {showModal && <PwaInstallModal language={language} onClose={() => setShowModal(false)} />}
     </>
   )
 }

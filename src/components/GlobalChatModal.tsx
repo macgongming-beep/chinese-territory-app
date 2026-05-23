@@ -1,38 +1,40 @@
 // 글로벌 채팅 목록 모달 (헤더 💬 클릭 시 슬라이드 다운)
 // 메시지 미리보기 X (사생활 보호 결정)
 import { useState } from 'react'
-import { t } from '../i18n'
+import { t, formatPeriod, weekdayShortLabels } from '../i18n'
 import type { AppLanguage } from '../i18n'
 import { useUserChats, type UserChat } from '../hooks/useUserChats'
 import type { Role } from '../types'
 import { ChatRoom } from './ChatRoom'
 import type { MentionUser } from './CommentSection'
 
-function formatChatDate(iso: string | null, eventDate: string): string {
+function formatChatDate(iso: string | null, eventDate: string, language: AppLanguage = 'ko'): string {
   if (!iso) {
     // 메시지 없으면 일정 날짜
     const d = new Date(eventDate)
     return `${d.getMonth() + 1}/${d.getDate()}`
   }
-  const t = new Date(iso).getTime()
+  const ts = new Date(iso).getTime()
   const now = Date.now()
-  const diff = Math.max(0, now - t)
+  const diff = Math.max(0, now - ts)
   const sec = Math.floor(diff / 1000)
-  if (sec < 60) return `방금`
+  if (sec < 60) return t(language, 'common.justNow')
   const min = Math.floor(sec / 60)
-  if (min < 60) return `${min}분 전`
+  if (min < 60) return t(language, 'common.minutesAgo', { n: min })
   const hr = Math.floor(min / 60)
   if (hr < 24) {
     const d = new Date(iso)
-    return `${d.getHours() < 12 ? '오전' : '오후'} ${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`
+    const h = d.getHours()
+    const period = formatPeriod(language, h)
+    return `${period} ${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`
   }
   const d = new Date(iso)
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
-function formatEventLabel(eventDate: string, eventTime: string | null): string {
+function formatEventLabel(eventDate: string, eventTime: string | null, language: AppLanguage = 'ko'): string {
   const d = new Date(eventDate)
-  const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+  const weekdays = weekdayShortLabels[language]
   const dateLabel = `${d.getMonth() + 1}/${d.getDate()} (${weekdays[d.getDay()]})`
   return eventTime ? `${dateLabel} ${eventTime}` : dateLabel
 }
@@ -166,7 +168,7 @@ export function GlobalChatModal({
               </button>
             )}
             <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em' }}>
-              {selectedChat ? selectedChat.eventTitle || '채팅방' : '채팅'}
+              {selectedChat ? selectedChat.eventTitle || t(lang, 'chat.chatRoom') : t(lang, 'chat.title')}
             </span>
             {!selectedChat && (
               <span style={{ fontSize: 13, color: 'var(--muted)' }}>{t(lang, 'header.chatSubtitle')}</span>
@@ -176,7 +178,7 @@ export function GlobalChatModal({
                 fontSize: 12, color: 'var(--muted)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
-                {formatEventLabel(selectedChat.eventDate, selectedChat.eventTime)}
+                {formatEventLabel(selectedChat.eventDate, selectedChat.eventTime, lang)}
               </span>
             )}
           </div>
@@ -211,7 +213,8 @@ export function GlobalChatModal({
               currentUserId={userId}
               currentVisitor={userName}
               eventId={selectedChat.eventId}
-              eventTitle={selectedChat.eventTitle || formatEventLabel(selectedChat.eventDate, selectedChat.eventTime)}
+              eventTitle={selectedChat.eventTitle || formatEventLabel(selectedChat.eventDate, selectedChat.eventTime, lang)}
+              language={lang}
               role={role}
               users={mentionUsers}
             />
@@ -223,7 +226,7 @@ export function GlobalChatModal({
             </div>
           ) : loading && activeChats.length === 0 && lockedChats.length === 0 && (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
-              불러오는 중...
+              {t(lang, 'common.loading')}
             </div>
           )}
 
@@ -243,7 +246,7 @@ export function GlobalChatModal({
                 color: 'var(--muted)',
               }}>{t(lang, 'header.chatActive')}</p>
               {activeChats.map((chat) => (
-                <ChatRow key={chat.eventId} chat={chat} onClick={handleClick} />
+                <ChatRow key={chat.eventId} chat={chat} language={lang} onClick={handleClick} />
               ))}
             </div>
           )}
@@ -256,7 +259,7 @@ export function GlobalChatModal({
                 color: 'var(--muted)',
               }}>{t(lang, 'header.chatPast')}</p>
               {lockedChats.map((chat) => (
-                <ChatRow key={chat.eventId} chat={chat} onClick={handleClick} />
+                <ChatRow key={chat.eventId} chat={chat} language={lang} onClick={handleClick} />
               ))}
             </div>
           )}
@@ -267,7 +270,7 @@ export function GlobalChatModal({
   )
 }
 
-function ChatRow({ chat, onClick }: { chat: UserChat; onClick: (c: UserChat) => void }) {
+function ChatRow({ chat, language = 'ko', onClick }: { chat: UserChat; language?: AppLanguage; onClick: (c: UserChat) => void }) {
   const isUnread = chat.unreadCount > 0
   const isLocked = chat.isLocked
   const initial = (chat.eventTitle || chat.eventDate)?.slice(0, 1) ?? '?'
@@ -301,16 +304,16 @@ function ChatRow({ chat, onClick }: { chat: UserChat; onClick: (c: UserChat) => 
             fontSize: 14, fontWeight: isLocked ? 500 : 600,
             color: isLocked ? 'var(--muted)' : 'var(--ink)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
-          }}>{chat.eventTitle || formatEventLabel(chat.eventDate, chat.eventTime)}</span>
+          }}>{chat.eventTitle || formatEventLabel(chat.eventDate, chat.eventTime, language)}</span>
           <span style={{ fontSize: 12, color: 'var(--muted)', flexShrink: 0 }}>
-            {formatChatDate(chat.lastMessageAt, chat.eventDate)}
+            {formatChatDate(chat.lastMessageAt, chat.eventDate, language)}
           </span>
         </div>
         <span style={{
           fontSize: 12, color: 'var(--muted)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {formatEventLabel(chat.eventDate, chat.eventTime)} · {chat.participantCount}명
+          {formatEventLabel(chat.eventDate, chat.eventTime, language)} · {t(language, 'common.nPeople', { n: chat.participantCount })}
         </span>
       </div>
       {isUnread && (

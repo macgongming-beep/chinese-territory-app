@@ -245,7 +245,7 @@ function App() {
   return (
     <>
       <Toast />
-      <PwaInstallBanner />
+      <PwaInstallBanner language={language} />
       <PullToRefresh onRefresh={refetchAll} />
       <Suspense
         fallback={

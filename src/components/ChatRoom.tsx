@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { showToast } from '../lib/toast'
 import { getAuthToken } from '../lib/authToken'
 import { getActiveChatEventId, setActiveChatEventId } from '../lib/activeChat'
+import { t, type AppLanguage } from '../i18n'
 import type { MentionUser } from './CommentSection'
 import type { Role } from '../types'
 
@@ -30,6 +31,7 @@ type ChatRoomProps = {
   compact?: boolean
   canAccess?: boolean
   role?: Role
+  language?: AppLanguage
 }
 
 function getMentionQuery(value: string) {
@@ -63,6 +65,17 @@ function createUploadPath(eventId: number, file: File) {
   return `event-${eventId}/${id}.${ext}`
 }
 
+function translateSystemContent(content: string, language: AppLanguage): string {
+  if (language === 'ko') return content
+  const zh = language === 'zh'
+  if (content === '채팅방이 생성되었습니다.') return zh ? '聊天室已创建。' : 'Chat room created.'
+  const matchJoin = content.match(/^(.+)님이 합류했습니다\.$/)
+  if (matchJoin) return zh ? `${matchJoin[1]} 已加入。` : `${matchJoin[1]} joined.`
+  const matchLeft = content.match(/^(.+)님이 나갔습니다\.$/)
+  if (matchLeft) return zh ? `${matchLeft[1]} 已离开。` : `${matchLeft[1]} left.`
+  return content
+}
+
 export function ChatRoom({
   eventId,
   eventTitle,
@@ -72,7 +85,9 @@ export function ChatRoom({
   compact = false,
   canAccess = true,
   role = 'user',
+  language = 'ko',
 }: ChatRoomProps) {
+  const lang = language
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(false)
@@ -216,7 +231,7 @@ export function ChatRoom({
 
   const sendTextMessage = async () => {
     if (!canAccess) {
-      showToast('참여한 봉사 채팅방만 이용할 수 있습니다.', 'error')
+      showToast(t(lang, 'chat.accessError'), 'error')
       return
     }
     const content = draft.trim()
@@ -224,7 +239,7 @@ export function ChatRoom({
 
     const token = getAuthToken()
     if (!token) {
-      showToast('로그인 정보가 만료되었습니다. 다시 로그인해주세요.', 'error')
+      showToast(t(lang, 'chat.accessError'), 'error')
       return
     }
 
@@ -258,17 +273,17 @@ export function ChatRoom({
 
   const uploadPhoto = async (file: File) => {
     if (!canAccess) {
-      showToast('참여한 봉사 채팅방만 이용할 수 있습니다.', 'error')
+      showToast(t(lang, 'chat.accessError'), 'error')
       return
     }
     if (!file.type.startsWith('image/')) {
-      showToast('이미지 파일만 첨부할 수 있습니다.', 'error')
+      showToast(t(lang, 'chat.accessError'), 'error')
       return
     }
 
     const token = getAuthToken()
     if (!token) {
-      showToast('로그인 정보가 만료되었습니다. 다시 로그인해주세요.', 'error')
+      showToast(t(lang, 'chat.accessError'), 'error')
       return
     }
 
@@ -345,7 +360,7 @@ export function ChatRoom({
   const selectedMessages = messages.filter((message) => selectedMessageIds.has(message.id) && canDeleteMessage(message))
   const enterSelectMode = () => {
     if (selectableMessages.length === 0) {
-      showToast('삭제할 수 있는 메시지가 없습니다.', 'info')
+      showToast(t(lang, 'chat.noDeleteable'), 'info')
       return
     }
     setSelectedMessageIds(new Set())
@@ -366,7 +381,7 @@ export function ChatRoom({
   }
   const deleteSelectedMessages = async () => {
     if (selectedMessages.length === 0) return
-    const confirmed = window.confirm(`선택한 메시지 ${selectedMessages.length}개를 삭제할까요?`)
+    const confirmed = window.confirm(t(lang, 'chat.deleteConfirm', { n: selectedMessages.length }))
     if (!confirmed) return
     for (const message of selectedMessages) {
       await deleteMessage(message)
@@ -379,7 +394,7 @@ export function ChatRoom({
     return (
       <section className={`chat-room${compact ? ' chat-room--compact' : ''}`}>
         <div className="chat-empty">
-          채팅을 불러올 수 없습니다.<br />
+          {t(lang, 'chat.cannotLoad')}<br />
           <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted-2)' }}>
             Supabase 에 V1+ 채팅 SQL 미적용 또는 권한 문제
           </span>
@@ -391,7 +406,7 @@ export function ChatRoom({
   if (!canAccess) {
     return (
       <section className={`chat-room${compact ? ' chat-room--compact' : ''}`}>
-        <div className="chat-empty">참여한 봉사 채팅방만 볼 수 있습니다.</div>
+        <div className="chat-empty">{t(lang, 'chat.noAccess')}</div>
       </section>
     )
   }
@@ -400,18 +415,18 @@ export function ChatRoom({
     <section className={`chat-room${compact ? ' chat-room--compact' : ''}`}>
       <div className="chat-room__head">
         <div>
-          <strong>채팅</strong>
+          <strong>{t(lang, 'chat.title')}</strong>
           <span>{eventTitle}</span>
         </div>
         {selectMode ? (
           <div className="chat-select-actions">
-            <button onClick={cancelSelectMode} type="button">취소</button>
-            <em>{selectedMessages.length}개 선택</em>
-            <button disabled={selectedMessages.length === 0} onClick={deleteSelectedMessages} type="button">삭제</button>
+            <button onClick={cancelSelectMode} type="button">{t(lang, 'common.cancel')}</button>
+            <em>{t(lang, 'chat.selectCount', { n: selectedMessages.length })}</em>
+            <button disabled={selectedMessages.length === 0} onClick={deleteSelectedMessages} type="button">{t(lang, 'common.delete')}</button>
           </div>
         ) : (
           <div className="chat-room__tools">
-            <em>{messages.length}개</em>
+            <em>{t(lang, 'chat.countMsg', { n: messages.length })}</em>
             {selectableMessages.length > 0 && (
               <button aria-label="메시지 선택" onClick={enterSelectMode} type="button">⋯</button>
             )}
@@ -421,9 +436,9 @@ export function ChatRoom({
 
       <div className="chat-messages" ref={messagesContainerRef} onScroll={handleMessagesScroll}>
         {loading && messages.length === 0 ? (
-          <div className="chat-empty">채팅을 불러오는 중...</div>
+          <div className="chat-empty">{t(lang, 'chat.loading')}</div>
         ) : messages.length === 0 ? (
-          <div className="chat-empty">아직 메시지가 없습니다.</div>
+          <div className="chat-empty">{t(lang, 'chat.emptyMsg')}</div>
         ) : (
           messages.map((message) => {
             const mine = message.author_name === currentVisitor
@@ -477,9 +492,9 @@ export function ChatRoom({
                       borderRadius: 10,
                     }}>
                       <span style={{ fontSize: 24, lineHeight: 1 }} aria-hidden="true">🗂️</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>사진이 만료되었습니다</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>{t(lang, 'chat.photoExpired')}</span>
                       <span style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center', lineHeight: 1.4 }}>
-                        보관 기간이 지나 사진이 삭제되었어요.
+                        {t(lang, 'chat.photoExpiredDesc')}
                       </span>
                       {mine && (
                         <button
@@ -497,12 +512,12 @@ export function ChatRoom({
                             cursor: 'pointer',
                           }}
                         >
-                          📷 다시 올리기
+                          📷 {t(lang, 'chat.reupload')}
                         </button>
                       )}
                     </div>
                   )}
-                  {message.content && <p>{message.content}</p>}
+                  {message.content && <p>{message.message_type === 'system' ? translateSystemContent(message.content, lang) : message.content}</p>}
                 </div>
               </article>
             )
@@ -516,7 +531,7 @@ export function ChatRoom({
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.nativeEvent.isComposing) void sendTextMessage()
           }}
-          placeholder="메시지 · @로 멘션"
+          placeholder={t(lang, 'chat.placeholder')}
           value={draft}
         />
         {mentionSuggestions.length > 0 && (
@@ -550,9 +565,9 @@ export function ChatRoom({
           onClick={() => fileInputRef.current?.click()}
           type="button"
         >
-          {uploading ? '...' : '사진'}
+          {uploading ? '...' : t(lang, 'chat.photo')}
         </button>
-        <button disabled={!draft.trim()} onClick={sendTextMessage} type="button">전송</button>
+        <button disabled={!draft.trim()} onClick={sendTextMessage} type="button">{t(lang, 'chat.send')}</button>
       </div>
     </section>
   )
