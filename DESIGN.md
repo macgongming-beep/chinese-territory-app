@@ -1,275 +1,195 @@
 ---
-version: alpha
+version: current
 name: chinese-territory-app-design
-description: "80명 회중 내부용 봉사 구역 관리 PWA. Notion 의 따뜻한 회색 톤(warm grays)을 기반으로 우리 브랜드 블루를 포인트 컬러로 사용. 라이트 모드 전용. 데이터/리스트 중심 화면에서 눈 피로 적고 친근한 분위기를 목표."
-
-colors:
-  # ── 브랜드 (기존 유지) ──
-  primary: "#1E5BD0"           # --primary-600
-  primary-hover: "#2D6CDF"     # --primary-500
-  primary-pressed: "#1848A8"   # --primary-700
-  primary-tint: "#EFF4FE"      # --primary-50 (배경 강조용)
-  on-primary: "#FFFFFF"
-
-  # ── 표면 (Notion warm) ──
-  canvas: "#FFFFFF"            # 카드 흰 배경
-  surface: "#FAFAF9"           # 앱 전체 배경 (surface-soft)
-  surface-muted: "#F6F5F4"     # 비활성/채워진 영역
-
-  # ── 보더 (Notion warm hairlines) ──
-  hairline-soft: "#EDE9E4"
-  hairline: "#E5E3DF"
-  hairline-strong: "#C8C4BE"
-
-  # ── 텍스트 (Notion warm grays) ──
-  ink: "#1A1A1A"               # 가장 진한 본문
-  charcoal: "#37352F"          # 강한 본문/제목
-  slate: "#5D5B54"             # 일반 보조
-  steel: "#787671"             # 약한 보조
-  stone: "#A4A097"             # placeholder, disabled
-
-  # ── 의미 컬러 ──
-  semantic-success: "#059669"  # 진행/완료
-  semantic-warning: "#D97706"  # 경고
-  semantic-danger: "#DC2626"   # 위험/삭제
-
-  # ── 종류 태그 (배정 종류 구분) ──
-  tag-territory: "#2563EB"     # 구역 카드 (파랑)
-  tag-informal: "#A855F7"      # 비공식 자료 (보라)
-  tag-restaurant: "#EA580C"    # 식당 (주황)
-
-typography:
-  display-lg:
-    fontFamily: Pretendard Variable
-    fontSize: 24px
-    fontWeight: 800
-  display:
-    fontFamily: Pretendard Variable
-    fontSize: 20px
-    fontWeight: 800
-  heading:
-    fontFamily: Pretendard Variable
-    fontSize: 17px
-    fontWeight: 700
-  subhead:
-    fontFamily: Pretendard Variable
-    fontSize: 15px
-    fontWeight: 700
-  body:
-    fontFamily: Pretendard Variable
-    fontSize: 14px
-    fontWeight: 500
-  body-strong:
-    fontFamily: Pretendard Variable
-    fontSize: 14px
-    fontWeight: 700
-  small:
-    fontFamily: Pretendard Variable
-    fontSize: 12px
-    fontWeight: 600
-  micro:
-    fontFamily: Pretendard Variable
-    fontSize: 11px
-    fontWeight: 600
-
-rounded:
-  xs: 6px
-  sm: 8px
-  md: 10px
-  lg: 12px
-  xl: 16px
-  pill: 9999px
-
-spacing:
-  xxs: 4px
-  xs: 8px
-  sm: 12px
-  md: 16px
-  lg: 20px
-  xl: 24px
-  xxl: 32px
-
-components:
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.body-strong}"
-    rounded: "{rounded.md}"
-    padding: "10px 16px"
-  button-secondary:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.charcoal}"
-    typography: "{typography.body-strong}"
-    rounded: "{rounded.md}"
-    padding: "10px 16px"
-    border: "1px solid {colors.hairline}"
-  button-ghost:
-    backgroundColor: "transparent"
-    textColor: "{colors.slate}"
-    typography: "{typography.body}"
-    rounded: "{rounded.sm}"
-    padding: "8px 12px"
-  card:
-    backgroundColor: "{colors.canvas}"
-    rounded: "{rounded.lg}"
-    padding: "{spacing.md}"
-    border: "1px solid {colors.hairline}"
-    shadow: "0 1px 2px rgba(16, 24, 40, 0.04)"
-  card-row:
-    backgroundColor: "{colors.canvas}"
-    rounded: "{rounded.md}"
-    padding: "{spacing.sm} {spacing.md}"
-    border: "1px solid {colors.hairline-soft}"
-  input:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body}"
-    rounded: "{rounded.md}"
-    padding: "10px 12px"
-    border: "1px solid {colors.hairline}"
-  chip:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.steel}"
-    typography: "{typography.small}"
-    rounded: "{rounded.pill}"
-    padding: "5px 12px"
-    border: "1px solid {colors.hairline}"
-  chip-active:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.small}"
-    rounded: "{rounded.pill}"
-    padding: "5px 12px"
+updated: 2026-05-24
+description: "80명 회중 내부용 봉사 구역 관리 PWA. 따뜻한 회색(Notion warm gray) 위에 잉크 블랙을 1순위 액션 컬러로. 브랜드 블루 없음. 라이트 모드 전용."
 ---
 
-## Overview
+## 핵심 원칙
 
-이 앱은 80명 회중의 내부 봉사 구역 관리 PWA. 매일 보는 화면이라 **눈 피로 적고 친근한 톤**이 중요.
+- **모노톤 잉크 기반** — 브랜드 블루 없음. 검정(ink)이 버튼·액션·강조의 유일한 색
+- 따뜻한 회색(Notion warm gray) — 차분하고 친근한 데이터 화면
+- 라이트 모드 전용
+- 모바일 first, 동일 컴포넌트 PC 재사용
+- 상태색(danger/warn/ok/info)은 데이터 의미 전달용 — 액센트 장식 아님
+- 그림자 최소화 — hairline + 배경 톤 차이로 깊이 표현
 
-**핵심 원칙**
-- 라이트 모드 전용 (다크모드 미지원)
-- 한국어 1순위 (Pretendard Variable)
-- 모바일 first, PC 동일 컴포넌트 재사용
-- 따뜻한 회색 (Notion 차용) — 차분한 데이터 표시
-- 브랜드 블루 1색 — 절제해서 사용 (CTA, 활성 상태, focus ring 만)
-- 데이터/리스트 중심 — 카드 + hairline 패턴
+---
 
-## Colors
+## 색상 토큰 (`src/index.css`)
 
-### 브랜드
-- `primary` (#1E5BD0): 주요 CTA, 활성 칩, 강조 텍스트, 링크
-- `primary-tint`: 부드러운 배경 강조 (선택된 행 등)
+### 배경 / 표면
 
-### 표면
-- `canvas` (#FFFFFF): 카드 흰 배경
-- `surface` (#FAFAF9): 앱 전체 배경, 빈 공간
-- `surface-muted` (#F6F5F4): 비활성 칩, 헤더, 보조 영역
-
-### 텍스트 위계
-| 토큰 | 색 | 용도 |
+| 토큰 | 값 | 용도 |
 |---|---|---|
-| `ink` | #1A1A1A | 가장 강조되는 본문 (사실상 잘 안 씀) |
-| `charcoal` | #37352F | 제목, 본문 (기본) |
-| `slate` | #5D5B54 | 보조 텍스트, 부가 설명 |
-| `steel` | #787671 | 약한 보조, 메타 정보 |
-| `stone` | #A4A097 | placeholder, disabled |
+| `--bg` | `#F8F8F7` | 앱 전체 배경 |
+| `--surface` | `#FFFFFF` | 카드·입력·패널 |
+| `--paper` | `#F1F1EF` | 채팅방 등 보조 배경 |
+| `--tint` | `#EFEFED` | pill·비활성·hover 배경 |
 
-### 종류 태그 (배정 화면 등)
-- `tag-territory` (#2563EB): 구역 카드
-- `tag-informal` (#A855F7): 비공식 증거 카드
-- `tag-restaurant` (#EA580C): 식당 봉사
+### 경계선
 
-색 점(dot 6px) 또는 미니 라벨로만 사용. 카드 배경/큰 영역에 쓰지 말 것.
+| 토큰 | 값 | 용도 |
+|---|---|---|
+| `--line` | `#E5E5E2` | 기본 1px 구분선 |
+| `--line-2` | `#D4D4D0` | 보조 경계·토글 트랙 |
 
-### 의미
-- success (#059669): 완료, 진행 OK
-- warning (#D97706): 경고, 미배정
-- danger (#DC2626): 삭제, 위험
+### 텍스트
 
-## Typography
+| 토큰 | 값 | 용도 |
+|---|---|---|
+| `--ink` | `#1A1A18` | 최강조 텍스트·1순위 버튼·액션 |
+| `--text` | `#3A3A36` | 기본 본문 |
+| `--muted` | `#7A7A75` | 메타·보조 텍스트 |
+| `--muted-2` | `#A8A8A2` | 더 약한 보조·chevron |
+| `--muted-3` | `#C8C8C3` | 비활성·disabled |
 
-- 한국어 첫 번째: **Pretendard Variable**
-- 영문 fallback: `-apple-system, BlinkMacSystemFont, system-ui, Apple SD Gothic Neo, Noto Sans KR`
-- 영문 mono: `JetBrains Mono, SFMono-Regular, Consolas`
+### 상태색 (데이터 의미 전달용, 장식 아님)
 
-**위계**
-- 24px / 800 — 페이지 큰 제목 (드물게)
-- 20px / 800 — 섹션 제목
-- 17px / 700 — 카드 제목, 헤더
-- 15px / 700 — 서브헤더, 강조 본문
-- 14px / 500 — 기본 본문
-- 14px / 700 — 강조 본문, 버튼
-- 12px / 600 — 보조 텍스트, 카운트, 칩
-- 11px / 600 — 마이크로 (뱃지, 메타)
+| 토큰 | 값 | 용도 |
+|---|---|---|
+| `--status-danger` | `#C44536` | 위험·삭제·미사용 |
+| `--status-danger-bg` | `#FBEDEA` | danger 배경 |
+| `--status-warn` | `#B8862A` | 경고·정기방문 |
+| `--status-warn-bg` | `#FBF3DF` | warn 배경 |
+| `--status-ok` | `#4F7A4B` | 완료·사용완료 |
+| `--status-ok-bg` | `#ECF1EA` | ok 배경 |
+| `--status-info` | `#5B6B7C` | 정보·진행중 (slate) |
+| `--status-info-bg` | `#EAEEF2` | info 배경 |
+
+> 상태색은 작은 dot(6px), 배지, 보더 포인트에만 사용. 버튼·큰 영역 fill 금지.
+
+---
+
+## 타이포그래피
+
+- 기본 폰트: **Pretendard Variable**
+- 기본 body 크기: 15px / `--text` 색
+
+| 용도 | 크기 | 굵기 |
+|---|---|---|
+| 페이지 제목 (드물게) | 24px | 800 |
+| 섹션 제목 | 20px | 800 |
+| 카드 제목·헤더 | 17px | 700 |
+| 강조 본문·서브헤더 | 15px | 700 |
+| 기본 본문 | 14px | 500 |
+| 강조 본문·버튼 | 14px | 700 |
+| 보조 텍스트·칩 | 12px | 600 |
+| 뱃지·메타 | 11px | 600 |
 
 **원칙**
 - 한 화면에 폰트 사이즈 3개 이내
 - 굵기로 위계 → 색으로 한 번 더 위계
-- 마이크로(11px) 는 카운트, 시간, 뱃지에만
+- 11px은 카운트·시간·뱃지에만
 
-## Spacing
+---
 
-4pt grid: 4 / 8 / 12 / 16 / 20 / 24 / 32
+## Radius
 
-**카드 내부**: 12~16px 패딩
-**카드 간격**: 8~12px
-**섹션 간격**: 20~24px
-**페이지 좌우 패딩**: 16px (모바일), 24~32px (PC)
+| 토큰 | 값 | 용도 |
+|---|---|---|
+| `--radius-sm` | `6px` | 작은 칩·뱃지·인라인 버튼 |
+| `--radius-md` | `8px` | 버튼·입력 |
+| `--radius-lg` | `12px` | 카드·컨테이너 |
+| `--radius-xl` | `16px` | 바텀시트·모달 |
+| `--radius-2xl` | `20px` | 큰 시트 |
+| `--radius-full` | `9999px` | pill 칩·토글 |
 
-## Shapes (Radius)
+---
 
-- `xs` 6px — 작은 칩, 뱃지
-- `sm` 8px — 버튼, 입력, 작은 카드
-- `md` 10px — 일반 카드 행
-- `lg` 12px — 컨테이너 카드
-- `xl` 16px — 큰 모달/시트
-- `pill` 9999px — 칩, 토글
+## Spacing (4pt grid)
 
-## Elevation
+4 / 8 / 12 / 16 / 20 / 24 / 32px
 
-그림자는 **거의 없거나 매우 미세**.
-- `0 1px 2px rgba(16, 24, 40, 0.04)` — 카드 기본
-- `0 4px 12px rgba(16, 24, 40, 0.08)` — 떠 있는 시트/팝오버
-- 그 이상은 모달만
+- 카드 내부 패딩: 12~16px
+- 카드 간격: 8~12px
+- 섹션 간격: 20~24px
+- 페이지 좌우 패딩: 16px (모바일) / 24~32px (PC)
 
-깊이는 주로 **hairline border + surface 톤 차이**로 표현. 그림자 의존 X.
+---
 
-## Components
+## Elevation (그림자)
+
+거의 없거나 매우 미세. 깊이는 hairline + 배경 톤 차이로.
+
+```
+--shadow-xs: 0 1px 2px rgba(16,24,40,0.04)   — 카드 기본
+--shadow-sm: 0 1px 3px rgba(16,24,40,0.06)   — 약간 떠있는 카드
+--shadow-md: 0 4px 12px rgba(16,24,40,0.08)  — 팝오버·시트
+--shadow-lg: 0 12px 32px rgba(16,24,40,0.12) — 모달
+```
+
+---
+
+## 컴포넌트 스펙
 
 ### 버튼
-- **primary**: 브랜드 블루 fill — 페이지당 1~2개만
-- **secondary**: 흰 배경 + hairline + charcoal 텍스트 — 일반 액션
-- **ghost**: 투명 + slate 텍스트 — 보조 액션, 텍스트 링크 대체
+
+| 종류 | 배경 | 텍스트 | 보더 | 용도 |
+|---|---|---|---|---|
+| **solid** (primary) | `--ink` | `#FFFFFF` | 없음 | 페이지당 1~2개, 주요 CTA |
+| **secondary** | `--surface` | `--text` | `1px --line-2` | 일반 액션 |
+| **ghost** | 투명 | `--muted` | 없음 | 보조 액션·텍스트 링크 대체 |
+| **danger** | `--status-danger` | `#FFFFFF` | 없음 | 삭제 등 비가역 액션 |
+
+- 높이: `36~40px` (인라인 소형은 28~32px)
+- 패딩: `10px 16px`
+- Radius: `--radius-md` (8px)
+- 폰트: 14px / 700
+- 전환: `background 0.15s`
 
 ### 카드
-- **card**: 컨테이너용 (radius lg, padding 16, border)
-- **card-row**: 리스트 행 (radius md, padding 12 16, soft border)
 
-### 칩
-- 기본: 흰 배경 + hairline border + small typography
-- 활성: 브랜드 fill + 흰 텍스트
-- 펄스 같은 애니메이션 X
+| 종류 | 배경 | Radius | 패딩 | 보더 |
+|---|---|---|---|---|
+| container card | `--surface` | 12px | 16px | `1px --line` |
+| row (리스트 행) | `--surface` | 8~10px | 12px 16px | `1px --line` (하단만) |
+
+### 입력 (Input)
+
+- 배경: `--surface`
+- 보더: `1px --line` → focus `1px --ink`
+- Radius: `--radius-md` (8px)
+- 패딩: `10px 12px`
+- 폰트: 14px / `--text`
+- placeholder: `--muted-3`
+
+### 칩 (Chip)
+
+- 기본: 배경 `--tint`, 텍스트 `--muted`, radius pill, 패딩 `5px 12px`, 12px/600
+- 활성: 배경 `--ink`, 텍스트 `#FFFFFF`
+
+### 토글 (Toggle)
+
+- 크기: 40×24px
+- 트랙 off: `--line-2`, on: `--ink`
+- 썸: `#FFFFFF`
+
+---
 
 ## Do / Don't
 
-### Do
-- 본문은 `charcoal` (#37352F), 보조는 `slate`/`steel`
-- 카드 = `canvas` 흰 배경 + `hairline` 1px 보더
-- 액션 컬러는 **brand-primary 한 가지만**
-- 종류 구분은 작은 컬러 dot (6px) 으로
-- hairline 으로 영역 구분, 그림자 X
-- spacing 은 4pt grid 따라
+### Do ✅
+- 버튼 1순위 액션은 **ink solid** (검정 배경 흰 텍스트)
+- 본문은 `--text` (#3A3A36), 보조는 `--muted`
+- 카드 = `--surface` 흰 배경 + `--line` 1px 보더
+- 상태 표시는 status 토큰 (작은 dot·배지·보더만)
+- hairline으로 영역 구분, 그림자 최소화
+- spacing은 4pt grid
 
-### Don't
-- 검정 (`#000000`) 본문 — 너무 강함
-- 차가운 회색 (`#9CA3AF`) — 우리 톤과 안 맞음
-- 두 가지 이상의 액센트 컬러 (파랑 + 보라 등)
-- 큰 카드를 컬러 fill 로 칠하기 (Notion 마케팅처럼)
-- 큰 그림자, glow, 네온 효과
-- 1색만 쓰는 한 화면에서 다른 액센트 끼워넣기
+### Don't ❌
+- 브랜드 블루(`#1E5BD0`, `--primary-*`) 신규 UI에 사용
+- 순수 검정(`#000000`) 직접 사용 — `--ink` 사용
+- 차가운 회색 직접 하드코딩
+- 상태색을 버튼 fill·큰 배경에 사용
+- 두 가지 이상 액센트 컬러 혼용
+- 큰 그림자·glow·네온
+- `#f59e0b`, `#B8862A` 등 골드 계열을 UI 색으로 사용 (status-warn 데이터 표시 전용)
 
-## 추후 작업
+---
 
-- 글로벌 토큰은 `src/index.css` 에 반영됨 (warm gray scale)
-- 점진적으로 hard-coded 색을 토큰으로 교체
-- 새 컴포넌트는 위 components 정의 따를 것
+## 토큰 마이그레이션 현황
+
+신규 컴포넌트는 `--ink/--text/--muted/--surface/--tint/--line` 만 사용.
+기존 코드에 남아있는 `--primary-*`, `--brand-*`, `--gray-*` 는 점진적으로 교체 중.
+하드코딩된 `#B8862A`, `#f59e0b` 계열도 점진 교체 대상.
