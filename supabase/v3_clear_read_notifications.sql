@@ -1,24 +1,21 @@
 -- 읽은 알림 전체 삭제 RPC
--- 사용자가 자신의 읽음 처리된 알림을 직접 지울 수 있도록 함
+-- 다른 알림 RPC 와 동일하게 p_token uuid + verify_session() 패턴 사용
 
-create or replace function clear_read_notifications(p_token text)
+create or replace function public.clear_read_notifications(p_token uuid)
 returns void
 language plpgsql
 security definer
+set search_path = public
 as $$
 declare
-  v_user_id int;
+  v_user_id integer;
 begin
-  select user_id into v_user_id
-  from auth_sessions
-  where token = p_token and expires_at > now();
+  v_user_id := public.verify_session(p_token);
 
-  if v_user_id is null then
-    raise exception 'unauthorized';
-  end if;
-
-  delete from notifications
+  delete from public.notifications
   where user_id = v_user_id
     and is_read = true;
 end;
 $$;
+
+grant execute on function public.clear_read_notifications(uuid) to anon, authenticated;
