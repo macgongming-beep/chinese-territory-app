@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit } from '../types'
+import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t } from '../i18n'
+import { RestaurantServiceSheet } from './RestaurantServiceSheet'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
   if (!assignment) return []
@@ -61,6 +62,10 @@ export function MobileTerritory({
   informalAssets = [],
   eventInformalAssignments = [],
   eventRestaurantAssignments = [],
+  // 식당봉사
+  visitHistories = [],
+  onAddRestaurantVisit,
+  onSubmitRestaurantRequest,
 }: {
   language: AppLanguage
   buildings: Building[]
@@ -74,6 +79,9 @@ export function MobileTerritory({
   informalAssets?: InformalAsset[]
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
+  visitHistories?: VisitHistory[]
+  onAddRestaurantVisit?: (unitId: number, memo: string) => Promise<void>
+  onSubmitRestaurantRequest?: (name: string, address: string, memo: string) => Promise<void>
   onOpenMap: (cardId: number) => void
   onEndServiceSession: (sessionId: number) => void
   onCreateManualReturnVisit?: (input: { displayName: string; address: string; memo: string; unitId?: number | null; buildingId?: number | null }) => Promise<void>
@@ -90,6 +98,7 @@ export function MobileTerritory({
   const [filter, setFilter] = useState<'전체' | '미배정' | '내 카드'>('전체')
   const [showRegularDetail, setShowRegularDetail] = useState(false)
   const [rvCollapsed, setRvCollapsed] = useState(false)
+  const [showRestaurantSheet, setShowRestaurantSheet] = useState(false)
   const [colorPickId, setColorPickId] = useState<number | null>(null)
   const [rvColors, setRvColors] = useState<Record<number, string>>(() => {
     try { return JSON.parse(localStorage.getItem('rvColors') ?? '{}') } catch { return {} }
@@ -470,6 +479,7 @@ export function MobileTerritory({
   }
 
   return (
+    <>
     <div className="mobile-territory-page">
       {role !== 'admin' && (
         <>
@@ -584,6 +594,24 @@ export function MobileTerritory({
                   <button className="mas-end-btn" onClick={() => onEndServiceSession(activeSession.id)} type="button">{t(language, 'territory.end')}</button>
                 </div>
               </div>
+            </section>
+          )}
+
+          {/* 식당봉사 버튼 */}
+          {(role === 'leader' || role === 'user') && (onAddRestaurantVisit || onSubmitRestaurantRequest) && (
+            <section className="mobile-territory-section mt-restaurant-section">
+              <button
+                type="button"
+                className="mt-restaurant-btn"
+                onClick={() => setShowRestaurantSheet(true)}
+              >
+                <span className="mt-restaurant-icon" aria-hidden>🍜</span>
+                <span className="mt-restaurant-label">식당봉사</span>
+                <span className="mt-restaurant-count">
+                  {buildings.filter((b) => b.isRestaurant).length}개 등록
+                </span>
+                <span className="mt-restaurant-arrow" aria-hidden>›</span>
+              </button>
             </section>
           )}
 
@@ -1339,5 +1367,18 @@ export function MobileTerritory({
       )}
 
     </div>
+
+    {/* 식당봉사 시트 */}
+    {showRestaurantSheet && onAddRestaurantVisit && onSubmitRestaurantRequest && (
+      <RestaurantServiceSheet
+        buildings={buildings}
+        visitHistories={visitHistories}
+        currentVisitor={currentVisitor}
+        onAddVisit={onAddRestaurantVisit}
+        onSubmitRequest={onSubmitRestaurantRequest}
+        onClose={() => setShowRestaurantSheet(false)}
+      />
+    )}
+    </>
   )
 }

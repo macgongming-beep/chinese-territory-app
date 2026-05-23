@@ -48,6 +48,9 @@ type Props = {
   onDeleteInformalGroup?: (groupId: number) => Promise<void>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
+  restaurantRequests?: import('../../types').RestaurantRequest[]
+  onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string }) => Promise<void>
+  onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
 }
 
 // ── 아이콘 ─────────────────────────────
@@ -102,6 +105,7 @@ export function AdminMobileZone({
   role,
   informalAssets = [],
   informalGroups = [],
+  restaurantRequests = [],
   onOpenMap,
   onOpenAssignedMap,
   onShowMapView,
@@ -112,6 +116,8 @@ export function AdminMobileZone({
   onDeleteInformalGroup,
   onMoveAssetToGroup,
   onToggleBuildingRestaurant,
+  onApproveRestaurantRequest,
+  onRejectRestaurantRequest,
 }: Props) {
   // URL 쿼리로 드릴 상태 보존 — 지도 진입 후 뒤로 오면 같은 위치로 복귀
   const [searchParams, setSearchParams] = useSearchParams()
@@ -349,7 +355,11 @@ export function AdminMobileZone({
           role={role}
           buildings={buildings}
           cards={cards}
+          currentVisitor={currentVisitor}
+          restaurantRequests={restaurantRequests}
           onToggleRestaurantFlag={onToggleBuildingRestaurant}
+          onApproveRestaurantRequest={onApproveRestaurantRequest}
+          onRejectRestaurantRequest={onRejectRestaurantRequest}
           onOpenMap={(cardId) => onOpenMap(cardId)}
         />
       </div>

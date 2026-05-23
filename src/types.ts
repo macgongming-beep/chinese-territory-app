@@ -148,6 +148,21 @@ export type VisitHistory = {
   memo?: string
   specialPeriodId?: number | null
   invitationLeft?: boolean
+  visitType?: 'card' | 'restaurant'
+}
+
+export type RestaurantRequest = {
+  id: number
+  name: string
+  address: string
+  requestedBy: string
+  requestedAt: string
+  status: 'pending' | 'approved' | 'rejected'
+  memo: string | null
+  visitedAt: string | null
+  reviewer: string | null
+  reviewedAt: string | null
+  buildingId: number | null
 }
 
 export type ServiceSession = {

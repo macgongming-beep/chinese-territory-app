@@ -279,6 +279,11 @@ export function MobileHome({
   onRemoveRestaurantAssignment,
   onToggleBuildingRestaurant,
   onSetRegularVisitor,
+  onAddRestaurantVisit,
+  onSubmitRestaurantRequest,
+  restaurantRequests = [],
+  onApproveRestaurantRequest,
+  onRejectRestaurantRequest,
 }: {
   leaderNames?: string[]
   buildings: Building[]
@@ -362,6 +367,11 @@ export function MobileHome({
   onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
+  onAddRestaurantVisit?: (unitId: number, memo: string) => Promise<void>
+  onSubmitRestaurantRequest?: (name: string, address: string, memo: string) => Promise<void>
+  restaurantRequests?: import('../types').RestaurantRequest[]
+  onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string }) => Promise<void>
+  onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -1006,6 +1016,9 @@ export function MobileHome({
                   informalAssets={informalAssets}
                   eventInformalAssignments={eventInformalAssignments}
                   eventRestaurantAssignments={eventRestaurantAssignments}
+                  visitHistories={visitHistories}
+                  onAddRestaurantVisit={onAddRestaurantVisit}
+                  onSubmitRestaurantRequest={onSubmitRestaurantRequest}
                 />
                 </>
               )
@@ -1063,6 +1076,9 @@ export function MobileHome({
                 onMoveAssetToGroup={role === 'admin' ? onMoveAssetToGroup : undefined}
                 /* 식당 토글은 leader/admin 모두, user 는 제외 */
                 onToggleBuildingRestaurant={role === 'user' ? undefined : onToggleBuildingRestaurant}
+                restaurantRequests={restaurantRequests}
+                onApproveRestaurantRequest={onApproveRestaurantRequest}
+                onRejectRestaurantRequest={onRejectRestaurantRequest}
               />
               </>
             } />

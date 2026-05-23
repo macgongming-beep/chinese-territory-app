@@ -9,6 +9,7 @@ import type {
   InformalAsset,
   InformalGroup,
   Notice,
+  RestaurantRequest,
   ReturnVisit,
   ReturnVisitLog,
   ReviewTask,
@@ -29,6 +30,7 @@ import {
   toEventRestaurantAssignment,
   mergeEventCardAssignments,
   toVisitHistory,
+  toRestaurantRequest,
   toServiceSession,
   toCardBoundary,
   toNotice,
@@ -46,6 +48,7 @@ import {
   makeServiceSessionMutations,
   makeEventAssignmentMutations,
   makeV2AssignmentMutations,
+  makeRestaurantServiceMutations,
 } from './storeMutations'
 import type {
   RawBuilding,
@@ -58,6 +61,7 @@ import type {
   RawInformalAsset,
   RawInformalGroup,
   RawVisitHistory,
+  RawRestaurantRequest,
   RawServiceSession,
   RawCardBoundary,
   RawNotice,
@@ -90,6 +94,7 @@ export function useStore() {
   const [eventInformalAssignments, setEventInformalAssignments] = useState<EventInformalAssignment[]>([])
   const [eventRestaurantAssignments, setEventRestaurantAssignments] = useState<EventRestaurantAssignment[]>([])
   const [informalGroups, setInformalGroups] = useState<InformalGroup[]>([])
+  const [restaurantRequests, setRestaurantRequests] = useState<RestaurantRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [missingCardLeaderAssignmentsTable, setMissingCardLeaderAssignmentsTable] = useState(false)
@@ -133,7 +138,7 @@ export function useStore() {
       eventCardAssignmentsRes, eventAssignmentCardsRes, boundariesRes,
       noticesRes, periodsRes, returnVisitsRes, returnVisitLogsRes, reviewTasksRes,
       informalAssetsRes, eventInformalAssignmentsRes, eventRestaurantAssignmentsRes,
-      informalGroupsRes,
+      informalGroupsRes, restaurantRequestsRes,
     ] = await Promise.all([
       supabase.from('buildings').select('*, units(*, regular_visits(*))').order('id'),
       cardsQueryPromise,
@@ -152,6 +157,7 @@ export function useStore() {
       supabase.from('event_informal_assignments').select('*'),
       supabase.from('event_restaurant_assignments').select('*'),
       supabase.from('informal_groups').select('*').order('position').order('created_at'),
+      supabase.from('restaurant_requests').select('*').order('requested_at', { ascending: false }),
     ])
 
     if (buildingsRes.error || cardsRes.error || visitsRes.error || eventsRes.error) {
@@ -261,8 +267,12 @@ export function useStore() {
     setEventInformalAssignments(eventInformalAssignmentsRes.error ? [] : (eventInformalAssignmentsRes.data as RawEventInformalAssignment[]).map(toEventInformalAssignment))
     setEventRestaurantAssignments(eventRestaurantAssignmentsRes.error ? [] : (eventRestaurantAssignmentsRes.data as RawEventRestaurantAssignment[]).map(toEventRestaurantAssignment))
     setInformalGroups(informalGroupsRes.error ? [] : (informalGroupsRes.data as RawInformalGroup[]).map(toInformalGroup))
+    setRestaurantRequests(restaurantRequestsRes.error ? [] : (restaurantRequestsRes.data as RawRestaurantRequest[]).map(toRestaurantRequest))
     if (informalAssetsRes.error || eventInformalAssignmentsRes.error || eventRestaurantAssignmentsRes.error || informalGroupsRes.error) {
       console.warn('v2 신 배정 모델 테이블 일부 미적용 — supabase/v2_assignment_model.sql 실행 필요')
+    }
+    if (restaurantRequestsRes.error) {
+      console.warn('식당봉사 신청 테이블 미적용 — supabase/v3_restaurant_service.sql 실행 필요')
     }
 
     setError(null)
@@ -411,6 +421,13 @@ export function useStore() {
     toggleBuildingRestaurant,
   } = makeV2AssignmentMutations({ fetchAll })
 
+  const {
+    addRestaurantVisit,
+    submitRestaurantRequest,
+    approveRestaurantRequest,
+    rejectRestaurantRequest,
+  } = makeRestaurantServiceMutations({ fetchAll, buildings })
+
   return {
     refetchAll: fetchAll,
     cards,
@@ -507,5 +524,11 @@ export function useStore() {
     assignRestaurantToUser,
     removeRestaurantAssignment,
     toggleBuildingRestaurant,
+    // 식당봉사
+    restaurantRequests,
+    addRestaurantVisit,
+    submitRestaurantRequest,
+    approveRestaurantRequest,
+    rejectRestaurantRequest,
   }
 }

@@ -146,6 +146,11 @@ function App() {
     assignRestaurantToUser,
     removeRestaurantAssignment,
     toggleBuildingRestaurant,
+    restaurantRequests,
+    addRestaurantVisit,
+    submitRestaurantRequest,
+    approveRestaurantRequest,
+    rejectRestaurantRequest,
   } = useStore()
 
   // role이 leader 또는 admin인 유저만 인도자 목록으로
@@ -420,6 +425,11 @@ function App() {
               onRemoveRestaurantAssignment={removeRestaurantAssignment}
               onToggleBuildingRestaurant={toggleBuildingRestaurant}
               onSetRegularVisitor={setRegularVisitor}
+              restaurantRequests={restaurantRequests}
+              onAddRestaurantVisit={addRestaurantVisit}
+              onSubmitRestaurantRequest={submitRestaurantRequest}
+              onApproveRestaurantRequest={approveRestaurantRequest}
+              onRejectRestaurantRequest={rejectRestaurantRequest}
             />
           </div>
         )}

@@ -1,7 +1,7 @@
 // 식당 탭 — design_handoff 06 화면
-// 식당 표시된 상가 목록 (지역별 그룹) + 추가 모달
+// 식당 표시된 상가 목록 (지역별 그룹) + 추가 모달 + 식당봉사 신청 승인
 import { useMemo, useState } from 'react'
-import type { Building, Role, TerritoryCard } from '../types'
+import type { Building, RestaurantRequest, Role, TerritoryCard } from '../types'
 import { RestaurantPickerModal } from './RestaurantPickerModal'
 import { normalizeCardSearch } from '../utils/cardSearch'
 
@@ -13,7 +13,11 @@ type Props = {
   role: Role
   buildings: Building[]
   cards: TerritoryCard[]
+  currentVisitor?: string
+  restaurantRequests?: RestaurantRequest[]
   onToggleRestaurantFlag?: (buildingId: number, isRestaurant: boolean) => Promise<void>
+  onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string }) => Promise<void>
+  onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
   onOpenMap: (cardId: number) => void
 }
 
@@ -70,12 +74,49 @@ function ChevD({ size = 14 }: { size?: number }) {
 }
 
 export function RestaurantsTab({
-  role, buildings, cards, onToggleRestaurantFlag, onOpenMap,
+  role, buildings, cards, currentVisitor = '', restaurantRequests = [],
+  onToggleRestaurantFlag, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap,
 }: Props) {
   const canManage = isLeaderOrAdmin(role)
   const [search, setSearch] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [openMenuId, setOpenMenuId] = useState<number | null>(null)
+
+  // 승인 대기 신청 편집 상태
+  const [editingReqId, setEditingReqId] = useState<number | null>(null)
+  const [editReqName, setEditReqName] = useState('')
+  const [editReqAddress, setEditReqAddress] = useState('')
+  const [reqProcessing, setReqProcessing] = useState<number | null>(null)
+
+  const pendingRequests = useMemo(
+    () => restaurantRequests.filter((r) => r.status === 'pending'),
+    [restaurantRequests],
+  )
+
+  const handleStartEdit = (req: RestaurantRequest) => {
+    setEditingReqId(req.id)
+    setEditReqName(req.name)
+    setEditReqAddress(req.address)
+  }
+
+  const handleApprove = async (req: RestaurantRequest) => {
+    if (!onApproveRestaurantRequest) return
+    setReqProcessing(req.id)
+    await onApproveRestaurantRequest(req.id, {
+      name: editingReqId === req.id ? editReqName : req.name,
+      address: editingReqId === req.id ? editReqAddress : req.address,
+      reviewer: currentVisitor,
+    })
+    setReqProcessing(null)
+    setEditingReqId(null)
+  }
+
+  const handleReject = async (reqId: number) => {
+    if (!onRejectRestaurantRequest) return
+    setReqProcessing(reqId)
+    await onRejectRestaurantRequest(reqId, currentVisitor)
+    setReqProcessing(null)
+  }
 
   const restaurants = useMemo(
     () => buildings.filter((b) => b.type === '상가' && b.isRestaurant),
@@ -106,6 +147,91 @@ export function RestaurantsTab({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* ── 식당봉사 승인 대기 ─────────────────────────── */}
+      {canManage && pendingRequests.length > 0 && (
+        <div style={{
+          background: 'var(--gray-50, #f9f8f7)',
+          border: '1px solid var(--line, #e5e4e0)',
+          borderRadius: 12, overflow: 'hidden',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--line, #e5e4e0)',
+            background: 'var(--tint, #EFEFED)',
+          }}>
+            <span style={{ fontSize: 15 }}>🍜</span>
+            <strong style={{ fontSize: 14, color: 'var(--ink)' }}>식당봉사 추가 신청</strong>
+            <span style={{
+              marginLeft: 'auto',
+              background: '#ef4444', color: '#fff',
+              borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 700,
+            }}>{pendingRequests.length}</span>
+          </div>
+          {pendingRequests.map((req) => (
+            <div key={req.id} style={{
+              padding: '14px 16px',
+              borderBottom: '1px solid var(--line, #e5e4e0)',
+            }}>
+              {editingReqId === req.id ? (
+                /* 편집 모드 */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <input
+                    value={editReqName}
+                    onChange={(e) => setEditReqName(e.target.value)}
+                    placeholder="식당 이름"
+                    style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--line)', fontSize: 14 }}
+                  />
+                  <input
+                    value={editReqAddress}
+                    onChange={(e) => setEditReqAddress(e.target.value)}
+                    placeholder="주소"
+                    style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--line)', fontSize: 14 }}
+                  />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                    <button type="button" onClick={() => handleApprove(req)} disabled={!!reqProcessing}
+                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      {reqProcessing === req.id ? '처리 중...' : '승인'}
+                    </button>
+                    <button type="button" onClick={() => setEditingReqId(null)}
+                      style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', fontSize: 13, cursor: 'pointer' }}>
+                      취소
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* 기본 모드 */
+                <>
+                  <div style={{ marginBottom: 6 }}>
+                    <strong style={{ fontSize: 14, color: 'var(--ink)' }}>{req.name}</strong>
+                    <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 8 }}>{req.address}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>
+                    신청: {req.requestedBy}
+                    {req.memo && <> · <em style={{ fontStyle: 'normal', color: 'var(--ink-light, #666)' }}>"{req.memo}"</em></>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" onClick={() => handleApprove(req)} disabled={!!reqProcessing}
+                      style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      {reqProcessing === req.id ? '처리 중...' : '승인'}
+                    </button>
+                    <button type="button" onClick={() => handleStartEdit(req)}
+                      style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', fontSize: 13, cursor: 'pointer' }}>
+                      수정
+                    </button>
+                    <button type="button" onClick={() => handleReject(req.id)} disabled={!!reqProcessing}
+                      style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #fca5a5', background: '#fff', color: '#ef4444', fontSize: 13, cursor: 'pointer' }}>
+                      거절
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* 상단 카운트 + 추가 */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',

@@ -162,6 +162,21 @@ export type RawVisitHistory = {
   created_at: string
   special_period_id?: number | null
   invitation_left?: boolean | null
+  visit_type?: 'card' | 'restaurant' | null
+}
+
+export type RawRestaurantRequest = {
+  id: number
+  name: string
+  address: string
+  requested_by: string
+  requested_at: string
+  status: 'pending' | 'approved' | 'rejected'
+  memo: string | null
+  visited_at: string | null
+  reviewer: string | null
+  reviewed_at: string | null
+  building_id: number | null
 }
 
 export type RawServiceSession = {
@@ -406,6 +421,23 @@ export function toVisitHistory(raw: RawVisitHistory): VisitHistory {
     createdAt: raw.created_at,
     specialPeriodId: raw.special_period_id ?? null,
     invitationLeft: raw.invitation_left ?? false,
+    visitType: raw.visit_type ?? 'card',
+  }
+}
+
+export function toRestaurantRequest(raw: RawRestaurantRequest): import('../types').RestaurantRequest {
+  return {
+    id: raw.id,
+    name: raw.name,
+    address: raw.address,
+    requestedBy: raw.requested_by,
+    requestedAt: raw.requested_at,
+    status: raw.status,
+    memo: raw.memo,
+    visitedAt: raw.visited_at,
+    reviewer: raw.reviewer,
+    reviewedAt: raw.reviewed_at,
+    buildingId: raw.building_id,
   }
 }
 
