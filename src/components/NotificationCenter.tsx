@@ -171,10 +171,18 @@ function formatRelativeTime(iso: string): string {
 
 function translateNotiTitle(title: string, language: AppLanguage): string {
   if (language === 'ko') return title
-  if (title === '일정이 변경되었습니다') return language === 'zh' ? '日程已更改' : 'Event changed'
-  if (title === '시스템: 채팅방이 생성되었습니다.') return language === 'zh' ? '系统：聊天室已创建。' : 'System: Chat room created.'
-  const match = title.match(/시스템: (.*)님이 합류했습니다./)
-  if (match) return language === 'zh' ? `系统：${match[1]} 已加入。` : `System: ${match[1]} joined.`
+  const zh = language === 'zh'
+  // 알림 타입별 제목 번역 (DB에서 생성되는 한국어 문자열)
+  if (title === '일정이 변경되었습니다') return zh ? '日程已更改' : 'Event updated'
+  if (title === '새 댓글') return zh ? '新评论' : 'New comment'
+  if (title === '댓글에서 언급됨') return zh ? '评论中提到了你' : 'You were mentioned'
+  if (title === '새 채팅 메시지') return zh ? '新聊天消息' : 'New chat message'
+  if (title === '채팅에서 언급됨') return zh ? '聊天中提到了你' : 'Mentioned in chat'
+  if (title === '새 공지') return zh ? '新公告' : 'New notice'
+  if (title === '봉사 카드가 배정되었습니다') return zh ? '传道卡已分配' : 'Service card assigned'
+  if (title === '시스템: 채팅방이 생성되었습니다.') return zh ? '系统：聊天室已创建。' : 'System: Chat room created.'
+  const matchJoin = title.match(/시스템: (.*)님이 합류했습니다\./)
+  if (matchJoin) return zh ? `系统：${matchJoin[1]} 已加入。` : `System: ${matchJoin[1]} joined.`
   return title
 }
 

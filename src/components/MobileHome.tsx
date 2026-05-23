@@ -1357,7 +1357,7 @@ export function MobileHome({
                 </section>
 
                 <div style={{ padding: '0 16px', marginBottom: 16 }}>
-                  <PwaInstallSection />
+                  <PwaInstallSection language={language} />
                 </div>
 
                 <div style={{ padding: '0 16px', marginBottom: 16 }}>

@@ -13,10 +13,11 @@
 
 import { useMemo, useState } from 'react'
 import type { CalendarEvent, Role } from '../../types'
+import { t, type AppLanguage } from '../../i18n'
 import { CommentSection, type MentionUser } from '../CommentSection'
 
 type Props = {
-  language?: string
+  language?: AppLanguage
   event: CalendarEvent
   role: Role
   currentVisitor: string
@@ -241,7 +242,7 @@ export function AdminEventDetailSheet({
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
-              {event.endTime ? `${event.time} — ${event.endTime}` : (event.time || '시간 미정')}
+              {event.endTime ? `${event.time} — ${event.endTime}` : (event.time || t(language ?? 'ko', 'calendar.timeTbd'))}
             </span>
             {event.hasMeeting && (
               <span
@@ -254,7 +255,7 @@ export function AdminEventDetailSheet({
                   fontWeight: 500,
                 }}
               >
-                봉사 모임
+                {t(language ?? 'ko', 'calendar.meeting')}
               </span>
             )}
           </div>
@@ -373,7 +374,7 @@ export function AdminEventDetailSheet({
           <SectionHead
             title={
               <>
-                신청자
+                {t(language ?? 'ko', 'calendar.applicantSection')}
                 <span style={{ fontWeight: 500, color: 'var(--muted)', fontSize: 13, marginLeft: 6 }}>
                   {applicants.length}
                 </span>
@@ -450,12 +451,12 @@ export function AdminEventDetailSheet({
                   flexShrink: 0,
                 }}
               >
-                + 추가
+                {t(language ?? 'ko', 'calendar.addSelf')}
               </button>
             )}
             {applicants.length === 0 && !canApply && (
               <span style={{ fontSize: 13, color: 'var(--muted-2)', padding: '6px 4px', flexShrink: 0 }}>
-                아직 신청자가 없습니다
+                {t(language ?? 'ko', 'calendar.noApplicants')}
               </span>
             )}
           </div>
@@ -488,7 +489,7 @@ export function AdminEventDetailSheet({
               }}
             >
               <ChatIcon />
-              채팅 열기
+              {t(language ?? 'ko', 'calendar.openChat')}
             </button>
           }
         />

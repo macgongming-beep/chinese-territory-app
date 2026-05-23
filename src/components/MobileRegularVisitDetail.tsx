@@ -105,9 +105,9 @@ export function MobileRegularVisitDetail({
           <h1>{t(language, 'territory.regularVisit')}</h1>
         </header>
         <div className="mobile-rv-detail-empty">
-          <p>정기방문 항목을 찾을 수 없습니다.</p>
+          <p>{t(language, 'territory.notFound')}</p>
           <button type="button" onClick={() => navigate('/territory?section=regular')}>
-            목록으로
+            {t(language, 'territory.backToList')}
           </button>
         </div>
       </main>
@@ -145,7 +145,7 @@ export function MobileRegularVisitDetail({
 
   const handleDeleteLog = async (logId: number) => {
     if (!onDeleteReturnVisitLog) return
-    if (!window.confirm('이 기록을 삭제할까요?')) return
+    if (!window.confirm(t(language, 'territory.deleteLogConfirm'))) return
     await onDeleteReturnVisitLog(logId)
   }
 
@@ -200,7 +200,7 @@ export function MobileRegularVisitDetail({
           <h1 className="mobile-rv-title">{label}</h1>
           {rv.address && <p className="mobile-rv-title-addr">{rv.address}</p>}
           <p className="mobile-rv-title-last">
-            마지막 방문 · {lastVisitLabel}
+            {t(language, 'territory.lastVisitPrefix')} {lastVisitLabel}
           </p>
         </section>
 
@@ -212,12 +212,12 @@ export function MobileRegularVisitDetail({
             onClick={() => { setLogResult(null); setLogMemo(''); setShowQuickLog(true) }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            기록
+            {t(language, 'territory.record')}
           </button>
           {(building || rv.address) && (
             <button type="button" className="mobile-rv-act-ghost" onClick={handleOpenMap}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polygon points="3 7 9 4 15 7 21 4 21 17 15 20 9 17 3 20"/><line x1="9" y1="4" x2="9" y2="17"/><line x1="15" y1="7" x2="15" y2="20"/></svg>
-              지도
+              {t(language, 'rv.map')}
             </button>
           )}
         </div>
@@ -226,14 +226,14 @@ export function MobileRegularVisitDetail({
         {avgIntervalDays && (
           <section className="mobile-rv-card mobile-rv-insight">
             <p>
-              평균 방문 간격 <b>{avgIntervalDays}일</b>
+              <b>{t(language, 'territory.avgInterval', { days: avgIntervalDays })}</b>
               {latestVisit && (() => {
                 const lastTime = new Date(latestVisit).getTime()
                 const nextTime = lastTime + avgIntervalDays * 86_400_000
                 const d = new Date(nextTime)
                 const m = d.getMonth() + 1
                 const day = d.getDate()
-                return ` · 다음 권장 ${m}/${day}`
+                return ` · ${t(language, 'territory.nextRecommend', { date: `${m}/${day}` })}`
               })()}
             </p>
           </section>
@@ -242,7 +242,7 @@ export function MobileRegularVisitDetail({
         {/* 히스토리 */}
         <section className="mobile-rv-history">
           <h3 className="mobile-rv-section-title">
-            {language === 'ko' ? '방문 기록' : language === 'zh' ? '访问记录' : 'Visit History'} <span className="rv-count">{myLogs.length}건</span>
+            {t(language, 'rv.records')} <span className="rv-count">{myLogs.length}{t(language, 'territory.visitCountSuffix')}</span>
           </h3>
           {myLogs.length === 0 ? (
             <p className="mobile-rv-history-empty">{language === 'ko' ? '아직 기록이 없습니다.' : language === 'zh' ? '暂无记录。' : 'No records yet.'}</p>
@@ -256,7 +256,7 @@ export function MobileRegularVisitDetail({
                       <span className="mobile-rv-history-date">{fmtFullDate(log.visitedAt, language)}</span>
                       {log.result && (
                         <span className={`mobile-rv-result-chip is-${log.result === '만남' ? 'met' : 'absent'}`}>
-                          {log.result}
+                          {log.result === '만남' ? t(language, 'rv.meet') : t(language, 'rv.absent')}
                         </span>
                       )}
                       <span className="mobile-rv-history-actions">
@@ -366,8 +366,19 @@ export function MobileRegularVisitDetail({
       {/* 26b — 빠른 기록 시트 */}
       {showQuickLog && (() => {
         const todayD = new Date()
-        const dow = ['일', '월', '화', '수', '목', '금', '토'][todayD.getDay()]
-        const dateLabel = `${todayD.getMonth() + 1}월 ${todayD.getDate()}일 (${dow})`
+        const dows = language === 'zh'
+          ? ['日', '一', '二', '三', '四', '五', '六']
+          : language === 'en'
+          ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+          : ['일', '월', '화', '수', '목', '금', '토']
+        const dow = dows[todayD.getDay()]
+        const m = todayD.getMonth() + 1
+        const d = todayD.getDate()
+        const dateLabel = language === 'zh'
+          ? `${m}月${d}日 (${dow})`
+          : language === 'en'
+          ? `${todayD.toLocaleString('en-US', { month: 'short' })} ${d} (${dow})`
+          : `${m}월 ${d}일 (${dow})`
         return (
           <div className="rv-sheet-backdrop" onClick={() => setShowQuickLog(false)}>
             <div className="rv-sheet" onClick={(e) => e.stopPropagation()}>
@@ -409,7 +420,7 @@ export function MobileRegularVisitDetail({
               />
               <div className="rv-sheet-actions">
                 <button type="button" className="rv-sheet-btn rv-sheet-btn-ghost" onClick={() => setShowQuickLog(false)}>
-                  취소
+                  {t(language, 'common.cancel')}
                 </button>
                 <button
                   type="button"
@@ -417,7 +428,7 @@ export function MobileRegularVisitDetail({
                   disabled={logSaving || (!logResult && !logMemo.trim())}
                   onClick={handleAddLog}
                 >
-                  {logSaving ? '…' : '저장'}
+                  {logSaving ? '…' : t(language, 'common.save')}
                 </button>
               </div>
             </div>
