@@ -355,7 +355,7 @@ export function AppHeader({
           onOpenNotifications={onOpenNotifications}
           onOpenChat={onOpenChat}
           onOpenMenu={onOpenMenu}
-          
+          language={language}
           className="app-header__actions-inline"
         />
       </div>

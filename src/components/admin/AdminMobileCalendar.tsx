@@ -541,6 +541,7 @@ export function AdminMobileCalendar({
       {/* ── 일정 상세 시트 ─────────────── */}
       {detailEvent && (
         <AdminEventDetailSheet
+          language={language}
           event={detailEvent}
           role={role}
           currentVisitor={currentVisitor}
