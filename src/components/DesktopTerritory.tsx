@@ -244,6 +244,12 @@ export function DesktopTerritory({
   const [csvParsing, setCsvParsing] = useState(false)
   const [csvImporting, setCsvImporting] = useState(false)
   const [reassigningByBoundary, setReassigningByBoundary] = useState(false)
+  const [reassigningChecked, setReassigningChecked] = useState(false)
+  // "미배정 건물" 카드 ID (이 카드에 속한 건물 = 아직 구역 미지정)
+  const unassignedCardId = useMemo(
+    () => cards.find((c) => c.name === '미배정 건물')?.id ?? null,
+    [cards],
+  )
   const [bulkLeaderNames, setBulkLeaderNames] = useState<string[]>([])
   const [bulkAssigning, setBulkAssigning] = useState(false)
   const [pointVisitEditor, setPointVisitEditor] = useState<{
@@ -594,6 +600,13 @@ export function DesktopTerritory({
     x.localeCompare(y, 'ko', { numeric: true, sensitivity: 'base' })
 
   const sortedBuildings = [...filteredBuildings].sort((a, b) => {
+    // 미배정 건물은 별도 필터 없을 때 항상 맨 위
+    if (buildingCardFilter === '전체' && unassignedCardId) {
+      const aIsUnassigned = a.cardId === unassignedCardId
+      const bIsUnassigned = b.cardId === unassignedCardId
+      if (aIsUnassigned && !bIsUnassigned) return -1
+      if (!aIsUnassigned && bIsUnassigned) return 1
+    }
     const dir = buildingSort.dir === 'asc' ? 1 : -1
     if (buildingSort.key === '카드') {
       const cardA = cardMap.get(a.cardId)?.name ?? ''
@@ -1130,6 +1143,43 @@ export function DesktopTerritory({
     setReassigningByBoundary(true)
     await onReassignBuildingsToCards(updates)
     setReassigningByBoundary(false)
+  }
+
+  // 선택된 건물만 좌표 기준 재배정 (미배정 필터 사용 시)
+  const handleReassignCheckedByBoundary = async () => {
+    if (reassigningChecked || checkedBuildingIds.size === 0) return
+    const checkedBuildings = buildings.filter((b) => checkedBuildingIds.has(b.id))
+    const updates: Array<{ buildingId: number; cardId: number }> = []
+    let noCoords = 0
+    let outsideBounds = 0
+
+    for (const building of checkedBuildings) {
+      const lat = Number(building.lat)
+      const lng = Number(building.lng)
+      if (!isValidMapCoordinate(lat, lng)) { noCoords++; continue }
+      const matchedCardId = findCardForCoordinates(lat, lng, cardBoundaries)
+      if (!matchedCardId) { outsideBounds++; continue }
+      if (matchedCardId !== building.cardId) updates.push({ buildingId: building.id, cardId: matchedCardId })
+    }
+
+    if (updates.length === 0) {
+      const msgs = []
+      if (noCoords > 0) msgs.push(`좌표 없음 ${noCoords}개`)
+      if (outsideBounds > 0) msgs.push(`구역선 밖 ${outsideBounds}개`)
+      showToast(`재배정 가능한 건물이 없습니다. (${msgs.join(', ') || '이미 올바른 카드'})`, 'info')
+      return
+    }
+
+    const parts = [`${updates.length}개 재배정 예정`]
+    if (noCoords > 0) parts.push(`좌표없음 ${noCoords}개 건너뜀`)
+    if (outsideBounds > 0) parts.push(`구역선밖 ${outsideBounds}개 건너뜀`)
+    const confirmed = window.confirm(parts.join(' · ') + '\n\n계속할까요?')
+    if (!confirmed) return
+
+    setReassigningChecked(true)
+    await onReassignBuildingsToCards(updates)
+    setReassigningChecked(false)
+    setCheckedBuildingIds(new Set())
   }
 
   const toggleCheckedCard = (cardId: number) => {
@@ -1947,6 +1997,17 @@ export function DesktopTerritory({
                     선택 삭제{checkedBuildingIds.size > 0 ? ` ${checkedBuildingIds.size}` : ''}
                   </button>
                 )}
+                {buildingCardFilter === unassignedCardId && checkedBuildingIds.size > 0 && (
+                  <button
+                    className="tbl-ghost-btn"
+                    style={{ color: 'var(--primary-600)', fontWeight: 600 }}
+                    disabled={reassigningChecked}
+                    onClick={handleReassignCheckedByBoundary}
+                    type="button"
+                  >
+                    {reassigningChecked ? '재배정 중...' : `선택 ${checkedBuildingIds.size}개 카드 재배정`}
+                  </button>
+                )}
                 <button className="tbl-ghost-btn" disabled={reassigningByBoundary} onClick={handleReassignByBoundary} type="button">
                   {reassigningByBoundary ? '재배정 중...' : '좌표 기준 재배정'}
                 </button>
@@ -2145,7 +2206,10 @@ export function DesktopTerritory({
               <span className="tbl-filter-label">카드</span>
               <select className="tbl-filter-select" value={buildingCardFilter} onChange={(e) => setBuildingCardFilter(e.target.value === '전체' ? '전체' : Number(e.target.value))}>
                 <option value="전체">전체 카드</option>
-                {filteredCards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {unassignedCardId && (
+                  <option value={unassignedCardId}>⚠ 미배정 건물</option>
+                )}
+                {filteredCards.filter((c) => c.id !== unassignedCardId).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <button
                 className={`tbl-filter-toggle${buildingFilterPanelOpen ? ' active' : ''}`}
@@ -2451,6 +2515,18 @@ export function DesktopTerritory({
               const regularCount = building.units.filter((unit) => unit.isRegularVisit).length
               const isEditing = editingBuildingId === building.id
               const isDuplicate = duplicateBuildingIds.has(building.id)
+              // 미배정 필터 활성 시 추천 카드 계산
+              const showRecommendation = buildingCardFilter === unassignedCardId && unassignedCardId !== null
+              const recommendationBadge = showRecommendation
+                ? (() => {
+                    const lat = Number(building.lat); const lng = Number(building.lng)
+                    if (!isValidMapCoordinate(lat, lng)) return { label: '좌표없음', color: '#d97706', bg: '#fffbeb' }
+                    const cId = findCardForCoordinates(lat, lng, cardBoundaries)
+                    if (!cId) return { label: '구역선밖', color: '#dc2626', bg: '#fef2f2' }
+                    const cName = cardMap.get(cId)?.name ?? `카드${cId}`
+                    return { label: `→ ${cName}`, color: '#16a34a', bg: '#f0fdf4' }
+                  })()
+                : null
               return (
                 <div className={`building-management-block${isDuplicate ? ' dup-address-row' : ''}`} key={building.id}>
                   <div className={`building-management-row${isEditing ? ' is-editing' : ''}`} role="row">
@@ -2520,7 +2596,17 @@ export function DesktopTerritory({
                           {building.name || '건물명 없음'}
                         </button>
                         <span title={building.address}>{formatDisplayAddress(building.address)}</span>
-                        <span>{card?.name ?? '카드 없음'}</span>
+                        <span>
+                          {card?.name ?? '카드 없음'}
+                          {recommendationBadge && (
+                            <span style={{
+                              display: 'inline-block', marginLeft: 6, fontSize: 10.5, fontWeight: 600,
+                              color: recommendationBadge.color, background: recommendationBadge.bg,
+                              border: `1px solid ${recommendationBadge.color}30`,
+                              borderRadius: 5, padding: '1px 5px', verticalAlign: 'middle',
+                            }}>{recommendationBadge.label}</span>
+                          )}
+                        </span>
                         <span>{building.type}</span>
                         <span>{building.units.length}개</span>
                         <span>{chineseCount}건</span>

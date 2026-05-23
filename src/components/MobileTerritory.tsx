@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
+import type { ActiveRestaurantSession, Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t } from '../i18n'
 import { RestaurantServiceSheet } from './RestaurantServiceSheet'
@@ -103,6 +103,57 @@ export function MobileTerritory({
   const [showRegularDetail, setShowRegularDetail] = useState(false)
   const [rvCollapsed, setRvCollapsed] = useState(false)
   const [showRestaurantSheet, setShowRestaurantSheet] = useState(false)
+
+  // ── 식당봉사 활성 세션 ────────────────────────────────────
+  const RS_KEY = `rs:${currentVisitor}`
+  const [activeRestaurantSession, setActiveRestaurantSession] = useState<ActiveRestaurantSession | null>(() => {
+    try {
+      const raw = localStorage.getItem(`rs:${currentVisitor}`)
+      if (!raw) return null
+      const s = JSON.parse(raw) as ActiveRestaurantSession
+      if (Date.now() - new Date(s.startedAt).getTime() > 86400000) {
+        localStorage.removeItem(`rs:${currentVisitor}`)
+        return null
+      }
+      return s
+    } catch { return null }
+  })
+  const [showSessionMemo, setShowSessionMemo] = useState(false)
+  const [sessionMemo, setSessionMemo] = useState('')
+  const [sessionSaving, setSessionSaving] = useState(false)
+  const [showSessionMenu, setShowSessionMenu] = useState(false)
+
+  const saveSession = (s: ActiveRestaurantSession | null) => {
+    setActiveRestaurantSession(s)
+    if (s) localStorage.setItem(RS_KEY, JSON.stringify(s))
+    else localStorage.removeItem(RS_KEY)
+  }
+
+  const handleStartSession = (partial: Omit<ActiveRestaurantSession, 'startedAt'>) => {
+    saveSession({ ...partial, startedAt: new Date().toISOString() } as ActiveRestaurantSession)
+  }
+
+  const handleCancelSession = () => {
+    saveSession(null)
+    setShowSessionMemo(false)
+    setSessionMemo('')
+    setShowSessionMenu(false)
+  }
+
+  const handleSaveSessionResult = async () => {
+    if (!activeRestaurantSession) return
+    setSessionSaving(true)
+    if (activeRestaurantSession.kind === 'building' && onAddRestaurantVisit) {
+      await onAddRestaurantVisit(activeRestaurantSession.unitId, sessionMemo)
+    } else if (activeRestaurantSession.kind === 'request' && onUpdateRestaurantRequestMemo) {
+      await onUpdateRestaurantRequestMemo(activeRestaurantSession.requestId, sessionMemo)
+    }
+    setSessionSaving(false)
+    saveSession(null)
+    setShowSessionMemo(false)
+    setSessionMemo('')
+  }
+
   const [colorPickId, setColorPickId] = useState<number | null>(null)
   const [rvColors, setRvColors] = useState<Record<number, string>>(() => {
     try { return JSON.parse(localStorage.getItem('rvColors') ?? '{}') } catch { return {} }
@@ -601,9 +652,102 @@ export function MobileTerritory({
             </section>
           )}
 
-          {/* 식당봉사 버튼 */}
+          {/* 식당봉사 섹션 */}
           {(role === 'leader' || role === 'user') && (onAddRestaurantVisit || onSubmitRestaurantRequest) && (
             <section className="mobile-territory-section mt-restaurant-section">
+
+              {/* 활성 세션 카드 */}
+              {activeRestaurantSession && (
+                <div className="mt-rs-active-card">
+                  <div className="mt-rs-active-header">
+                    <span className="mt-rs-active-icon">🍜</span>
+                    <div className="mt-rs-active-info">
+                      <strong className="mt-rs-active-name">{activeRestaurantSession.name}</strong>
+                      <span className="mt-rs-active-addr">{activeRestaurantSession.address}</span>
+                    </div>
+                    {activeRestaurantSession.kind === 'request' && (
+                      <span className="mt-rs-pending-badge">승인대기</span>
+                    )}
+                    <div className="mt-rs-active-dots-wrap" style={{ position: 'relative' }}>
+                      <button
+                        type="button"
+                        className="mt-rs-dots-btn"
+                        onClick={() => setShowSessionMenu((v) => !v)}
+                        aria-label="더보기"
+                      >
+                        ···
+                      </button>
+                      {showSessionMenu && (
+                        <>
+                          <div
+                            style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+                            onClick={() => setShowSessionMenu(false)}
+                          />
+                          <div className="mt-rs-menu">
+                            <a
+                              className="mt-rs-menu-item"
+                              href={`https://map.naver.com/v5/search/${encodeURIComponent(activeRestaurantSession.address)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => setShowSessionMenu(false)}
+                            >
+                              🗺 길찾기
+                            </a>
+                            <button
+                              type="button"
+                              className="mt-rs-menu-item mt-rs-menu-danger"
+                              onClick={() => { handleCancelSession(); setShowSessionMenu(false) }}
+                            >
+                              ✕ 봉사 취소하기
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 메모/결과 입력 토글 */}
+                  {showSessionMemo ? (
+                    <div className="mt-rs-memo-form">
+                      <textarea
+                        className="mt-rs-memo-input"
+                        placeholder="봉사 결과 메모 (선택)"
+                        value={sessionMemo}
+                        onChange={(e) => setSessionMemo(e.target.value)}
+                        rows={2}
+                        autoFocus
+                      />
+                      <div className="mt-rs-memo-actions">
+                        <button
+                          type="button"
+                          className="mt-rs-save-btn"
+                          onClick={handleSaveSessionResult}
+                          disabled={sessionSaving}
+                        >
+                          {sessionSaving ? '저장 중...' : '봉사 기록 저장'}
+                        </button>
+                        <button
+                          type="button"
+                          className="mt-rs-cancel-btn"
+                          onClick={() => { setShowSessionMemo(false); setSessionMemo('') }}
+                        >
+                          취소
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="mt-rs-memo-toggle-btn"
+                      onClick={() => setShowSessionMemo(true)}
+                    >
+                      📝 메모 / 봉사 결과 입력
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* 식당봉사 탐색 버튼 */}
               <button
                 type="button"
                 className="mt-restaurant-btn"
@@ -1373,15 +1517,14 @@ export function MobileTerritory({
     </div>
 
     {/* 식당봉사 시트 */}
-    {showRestaurantSheet && onAddRestaurantVisit && onSubmitRestaurantRequest && (
+    {showRestaurantSheet && onSubmitRestaurantRequest && (
       <RestaurantServiceSheet
         buildings={buildings}
         visitHistories={visitHistories}
         currentVisitor={currentVisitor}
         restaurantRequests={restaurantRequests}
-        onAddVisit={onAddRestaurantVisit}
+        onStartSession={handleStartSession}
         onSubmitRequest={onSubmitRestaurantRequest}
-        onUpdateRequestMemo={onUpdateRestaurantRequestMemo}
         onClose={() => setShowRestaurantSheet(false)}
       />
     )}

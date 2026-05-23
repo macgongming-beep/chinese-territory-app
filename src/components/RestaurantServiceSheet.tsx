@@ -2,10 +2,9 @@
  * RestaurantServiceSheet — 식당봉사 바텀시트
  *
  * 봉사자 흐름:
- *  1. 식당 검색 (이름/주소) → 지역별 그룹 목록 + 내가 신청한 대기 항목
- *  2. 선택 → 이전 기록 + 메모 입력 → 저장
- *  3. 없으면 → 추가 신청 (이름+주소만, 메모 없음)
- *  4. 대기 항목 선택 → 메모 추가/수정
+ *  1. 검색 → 식당 선택 → 미리보기(이름+이전기록) → "이 식당에서 봉사하기"
+ *  2. onStartSession 호출 → 시트 닫힘 → 활동탭에 활성 세션 표시
+ *  3. 없으면 → 추가 신청 (이름+주소)
  */
 import { useMemo, useState } from 'react'
 import type { Building, RestaurantRequest, VisitHistory } from '../types'
@@ -60,15 +59,12 @@ function ClockIcon() {
 }
 
 // ── 유틸 ─────────────────────────────────────────────────────
-
 const KNOWN_DISTRICTS = ['처인구', '기흥구', '수지구', '영통구', '화성시']
 
 function extractDistrict(address: string): string {
-  // 알려진 구/시 이름 우선 매칭
   for (const d of KNOWN_DISTRICTS) {
     if (address.includes(d)) return d
   }
-  // 그 외 주소에서 첫 번째 구/시/군 추출
   const match = address.match(/[가-힣]+[구시군]/)
   return match ? match[0] : '기타'
 }
@@ -89,29 +85,26 @@ type Props = {
   visitHistories: VisitHistory[]
   currentVisitor: string
   restaurantRequests?: RestaurantRequest[]
-  onAddVisit: (unitId: number, memo: string) => Promise<void>
+  onStartSession: (session: { kind: 'building'; buildingId: number; unitId: number; name: string; address: string } | { kind: 'request'; requestId: number; name: string; address: string }) => void
   onSubmitRequest: (name: string, address: string, memo: string) => Promise<void>
-  onUpdateRequestMemo?: (requestId: number, memo: string) => Promise<void>
   onClose: () => void
 }
 
-type View = 'search' | 'record' | 'record-pending' | 'add-request'
+type View = 'search' | 'preview' | 'preview-pending' | 'add-request'
 
 export function RestaurantServiceSheet({
   buildings,
   visitHistories,
   currentVisitor,
   restaurantRequests = [],
-  onAddVisit,
+  onStartSession,
   onSubmitRequest,
-  onUpdateRequestMemo,
   onClose,
 }: Props) {
   const [view, setView] = useState<View>('search')
   const [search, setSearch] = useState('')
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
   const [selectedRequest, setSelectedRequest] = useState<RestaurantRequest | null>(null)
-  const [memo, setMemo] = useState('')
   const [saving, setSaving] = useState(false)
 
   // 추가 신청 폼
@@ -127,12 +120,11 @@ export function RestaurantServiceSheet({
       else next.add(d)
       return next
     })
+  // 검색 중이면 모든 그룹 자동 펼침
+  const isGroupOpen = (district: string) => search.trim() ? true : openDistricts.has(district)
 
-  // 식당 목록 (is_restaurant = true)
-  const restaurants = useMemo(
-    () => buildings.filter((b) => b.isRestaurant),
-    [buildings],
-  )
+  // 식당 목록
+  const restaurants = useMemo(() => buildings.filter((b) => b.isRestaurant), [buildings])
 
   // 내가 신청한 대기 중 항목
   const myPendingRequests = useMemo(
@@ -167,42 +159,32 @@ export function RestaurantServiceSheet({
     return visitHistories
       .filter((h) => unitIds.has(h.unitId))
       .sort((a, b) => b.visitedAt.localeCompare(a.visitedAt))
-      .slice(0, 10)
+      .slice(0, 8)
   }, [selectedBuilding, visitHistories])
 
   // ── 핸들러 ────────────────────────────────────────────────
   const handleSelectBuilding = (b: Building) => {
     setSelectedBuilding(b)
-    setMemo('')
-    setView('record')
+    setView('preview')
   }
 
   const handleSelectPendingRequest = (req: RestaurantRequest) => {
     setSelectedRequest(req)
-    setMemo(req.memo ?? '')
-    setView('record-pending')
+    setView('preview-pending')
   }
 
-  const handleSaveVisit = async () => {
+  const handleStartBuildingSession = () => {
     if (!selectedBuilding) return
     const unit = selectedBuilding.units[0]
     if (!unit) return
-    setSaving(true)
-    await onAddVisit(unit.id, memo)
-    setSaving(false)
-    setView('search')
-    setSelectedBuilding(null)
-    setMemo('')
+    onStartSession({ kind: 'building', buildingId: selectedBuilding.id, unitId: unit.id, name: selectedBuilding.name || selectedBuilding.address, address: selectedBuilding.address })
+    onClose()
   }
 
-  const handleSavePendingMemo = async () => {
-    if (!selectedRequest || !onUpdateRequestMemo) return
-    setSaving(true)
-    await onUpdateRequestMemo(selectedRequest.id, memo)
-    setSaving(false)
-    setView('search')
-    setSelectedRequest(null)
-    setMemo('')
+  const handleStartRequestSession = () => {
+    if (!selectedRequest) return
+    onStartSession({ kind: 'request', requestId: selectedRequest.id, name: selectedRequest.name, address: selectedRequest.address })
+    onClose()
   }
 
   const handleSubmitRequest = async () => {
@@ -224,7 +206,6 @@ export function RestaurantServiceSheet({
     setView('search')
     setSelectedBuilding(null)
     setSelectedRequest(null)
-    setMemo('')
   }
 
   // ── 렌더: 검색 ───────────────────────────────────────────
@@ -232,7 +213,6 @@ export function RestaurantServiceSheet({
     return (
       <div className="mobile-sheet-backdrop" onClick={onClose}>
         <section className="mobile-sheet restaurant-service-sheet" onClick={(e) => e.stopPropagation()}>
-          {/* 헤더 */}
           <div className="mobile-sheet-handle" />
           <div className="restaurant-sheet-head">
             <span className="restaurant-sheet-icon"><ForkIcon /></span>
@@ -240,7 +220,6 @@ export function RestaurantServiceSheet({
             <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}>×</button>
           </div>
 
-          {/* 검색 */}
           <div className="restaurant-search-wrap">
             <SearchIcon />
             <input
@@ -255,9 +234,8 @@ export function RestaurantServiceSheet({
             )}
           </div>
 
-          {/* 결과 목록 */}
           <div className="restaurant-list-body">
-            {/* 내가 신청 대기 중인 항목 (검색 없을 때만 표시) */}
+            {/* 내가 신청 대기 중인 항목 */}
             {!search.trim() && myPendingRequests.length > 0 && (
               <div className="restaurant-pending-section">
                 <p className="restaurant-pending-label">
@@ -273,9 +251,6 @@ export function RestaurantServiceSheet({
                     <div className="restaurant-item-info">
                       <strong className="restaurant-item-name">{req.name}</strong>
                       <span className="restaurant-item-address">{req.address}</span>
-                      {req.memo && (
-                        <span className="restaurant-item-last">메모: {req.memo}</span>
-                      )}
                     </div>
                     <span className="restaurant-item-pending-badge">대기중</span>
                     <ChevronRight />
@@ -308,9 +283,9 @@ export function RestaurantServiceSheet({
                     >
                       <span className="restaurant-group-label">{district}</span>
                       <span className="restaurant-group-count">{items.length}</span>
-                      <ChevronDown open={openDistricts.has(district)} />
+                      <ChevronDown open={isGroupOpen(district)} />
                     </button>
-                    {openDistricts.has(district) && (
+                    {isGroupOpen(district) && (
                       <ul className="restaurant-group-list">
                         {items.map((b) => {
                           const unitIds = new Set(b.units.map((u) => u.id))
@@ -358,8 +333,8 @@ export function RestaurantServiceSheet({
     )
   }
 
-  // ── 렌더: 기록 모드 (승인된 식당) ─────────────────────────
-  if (view === 'record' && selectedBuilding) {
+  // ── 렌더: 미리보기 (승인된 식당) ──────────────────────────
+  if (view === 'preview' && selectedBuilding) {
     return (
       <div className="mobile-sheet-backdrop" onClick={handleBack}>
         <section className="mobile-sheet restaurant-service-sheet" onClick={(e) => e.stopPropagation()}>
@@ -368,12 +343,11 @@ export function RestaurantServiceSheet({
             <button type="button" className="restaurant-back-btn" onClick={handleBack} aria-label="뒤로">
               <BackIcon />
             </button>
-            <h2>{selectedBuilding.name}</h2>
+            <h2>{selectedBuilding.name || selectedBuilding.address}</h2>
             <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}>×</button>
           </div>
 
           <div className="restaurant-record-body">
-            {/* 식당 정보 */}
             <div className="restaurant-record-info">
               <span className="restaurant-record-address">{selectedBuilding.address}</span>
             </div>
@@ -397,25 +371,16 @@ export function RestaurantServiceSheet({
               </div>
             )}
 
-            {/* 메모 입력 */}
-            <div className="restaurant-memo-section">
-              <label className="restaurant-memo-label">메모</label>
-              <textarea
-                className="restaurant-memo-input"
-                placeholder={`${currentVisitor}님의 식당봉사 메모를 남겨주세요`}
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                rows={3}
-              />
-            </div>
+            {buildingHistories.length === 0 && (
+              <p className="restaurant-no-history">아직 방문 기록이 없습니다</p>
+            )}
 
             <button
               type="button"
-              className="restaurant-save-btn"
-              onClick={handleSaveVisit}
-              disabled={saving}
+              className="restaurant-save-btn restaurant-start-btn"
+              onClick={handleStartBuildingSession}
             >
-              {saving ? '저장 중...' : '기록 남기기'}
+              🍜 이 식당에서 봉사하기
             </button>
           </div>
         </section>
@@ -423,8 +388,8 @@ export function RestaurantServiceSheet({
     )
   }
 
-  // ── 렌더: 대기 중 신청 메모 ───────────────────────────────
-  if (view === 'record-pending' && selectedRequest) {
+  // ── 렌더: 미리보기 (승인 대기 신청) ──────────────────────
+  if (view === 'preview-pending' && selectedRequest) {
     return (
       <div className="mobile-sheet-backdrop" onClick={handleBack}>
         <section className="mobile-sheet restaurant-service-sheet" onClick={(e) => e.stopPropagation()}>
@@ -445,25 +410,16 @@ export function RestaurantServiceSheet({
               </span>
             </div>
 
-            {/* 메모 입력 */}
-            <div className="restaurant-memo-section">
-              <label className="restaurant-memo-label">메모</label>
-              <textarea
-                className="restaurant-memo-input"
-                placeholder="방문 내용을 간단히 남겨주세요"
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                rows={3}
-              />
-            </div>
+            <p style={{ fontSize: 13, color: 'var(--muted)', margin: '12px 0 0', lineHeight: 1.6 }}>
+              관리자 승인 후 목록에 추가됩니다.<br />봉사 기록은 승인 후 반영됩니다.
+            </p>
 
             <button
               type="button"
-              className="restaurant-save-btn"
-              onClick={handleSavePendingMemo}
-              disabled={saving || !onUpdateRequestMemo}
+              className="restaurant-save-btn restaurant-start-btn"
+              onClick={handleStartRequestSession}
             >
-              {saving ? '저장 중...' : '메모 저장'}
+              🍜 이 식당에서 봉사하기
             </button>
           </div>
         </section>

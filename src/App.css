@@ -28739,3 +28739,177 @@ button:focus-visible {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── 식당봉사 활성 세션 카드 (MobileTerritory) ────────────── */
+.mt-rs-active-card {
+  border: 1.5px solid var(--primary-200, #c7d2fe);
+  border-radius: 14px;
+  background: var(--primary-50, #eef2ff);
+  overflow: hidden;
+}
+.mt-rs-active-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.mt-rs-active-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.mt-rs-active-info {
+  flex: 1;
+  min-width: 0;
+}
+.mt-rs-active-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mt-rs-active-addr {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mt-rs-pending-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--warning-600, #d97706);
+  background: var(--warning-50, #fffbeb);
+  border: 1px solid var(--warning-200, #fde68a);
+  border-radius: 6px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+.mt-rs-active-dots-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.mt-rs-dots-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 18px;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+.mt-rs-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 50;
+  min-width: 148px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  padding: 4px;
+}
+.mt-rs-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 0;
+}
+.mt-rs-menu-item:hover { background: var(--tint); }
+.mt-rs-menu-danger { color: var(--status-danger, #ef4444) !important; }
+.mt-rs-memo-form {
+  border-top: 1px solid var(--primary-100, #e0e7ff);
+  padding: 10px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255,255,255,0.5);
+}
+.mt-rs-memo-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  font-size: 14px;
+  background: var(--surface);
+  resize: none;
+  font-family: inherit;
+  color: var(--ink);
+  outline: none;
+}
+.mt-rs-memo-input:focus { border-color: var(--primary-400, #818cf8); }
+.mt-rs-memo-actions {
+  display: flex;
+  gap: 8px;
+}
+.mt-rs-save-btn {
+  flex: 1;
+  padding: 9px 0;
+  border: none;
+  border-radius: 10px;
+  background: var(--ink, #1A1A18);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mt-rs-cancel-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.mt-rs-memo-toggle-btn {
+  flex: 1;
+  padding: 9px 0;
+  border: 1.5px solid var(--primary-300, #a5b4fc);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--primary-700, #4338ca);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 식당봉사 시트 "봉사하기" 버튼 */
+.restaurant-start-btn {
+  width: 100%;
+  padding: 13px 0;
+  border: none;
+  border-radius: 12px;
+  background: var(--ink, #1A1A18);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.restaurant-no-history {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  padding: 16px 0;
+}

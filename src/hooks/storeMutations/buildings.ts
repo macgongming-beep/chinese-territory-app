@@ -138,7 +138,7 @@ export function makeBuildingMutations(deps: {
       }
 
       // 방문기록 삽입
-      const visitRows: Array<{ unit_id: number; result: string; visitor: string; visited_at: string; time_slot?: string; memo?: string }> = []
+      const visitRows: Array<{ unit_id: number; result: string; visitor_name: string; visited_at: string; time_slot?: string; memo?: string }> = []
       for (const unit of units) {
         if (!unit.visitHistories || unit.visitHistories.length === 0) continue
         const insertedUnit = unitsResult.data?.find((item: { id: number; number: string }) => item.number === unit.number)
@@ -147,7 +147,7 @@ export function makeBuildingMutations(deps: {
           visitRows.push({
             unit_id: insertedUnit.id,
             result: vh.result,
-            visitor: vh.visitor,
+            visitor_name: vh.visitor ?? '',
             visited_at: vh.visitedAt,
             ...(vh.timeSlot ? { time_slot: vh.timeSlot } : {}),
             ...(vh.memo ? { memo: vh.memo } : {}),
