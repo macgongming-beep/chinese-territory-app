@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ActiveRestaurantSession, Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
-import { t } from '../i18n'
+import { t, translateKoreanAddress } from '../i18n'
 import { RestaurantServiceSheet } from './RestaurantServiceSheet'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
@@ -41,6 +41,7 @@ function fmtDate(dateStr: string, language: AppLanguage): string {
 
 export function MobileTerritory({
   language,
+  translatePlaceNames = false,
   buildings,
   cards,
   calendarEvents = [],
@@ -70,6 +71,7 @@ export function MobileTerritory({
   restaurantRequests = [],
 }: {
   language: AppLanguage
+  translatePlaceNames?: boolean
   buildings: Building[]
   cards: TerritoryCard[]
   calendarEvents?: CalendarEvent[]
@@ -844,7 +846,7 @@ export function MobileTerritory({
                               <span className={`rv-status-dot rv-status-${rv.lastResult}`} />
                             )}
                           </div>
-                          {rv.address && <span className="rv-address">{rv.address}</span>}
+                          {rv.address && <span className="rv-address">{translateKoreanAddress(rv.address, language, translatePlaceNames)}</span>}
                           <span className="rv-meta-row">
                             {rv.lastVisitedAt
                               ? `${t(language, 'home.lastVisit')} · ${fmtDate(rv.lastVisitedAt, language)}`
@@ -1290,7 +1292,7 @@ export function MobileTerritory({
                 {/* 헤더 */}
                 <div className="rv-log-header">
                   <strong>{logTarget.nickname || logTarget.displayName}</strong>
-                  <span className="rv-log-target-addr">{logTarget.address}</span>
+                  <span className="rv-log-target-addr">{translateKoreanAddress(logTarget.address, language, translatePlaceNames)}</span>
                 </div>
 
                 {/* 방문 기록 목록 */}
@@ -1560,6 +1562,7 @@ export function MobileTerritory({
       <RestaurantServiceSheet
         role={role}
         language={language}
+        translatePlaceNames={translatePlaceNames}
         buildings={buildings}
         visitHistories={visitHistories}
         currentVisitor={currentVisitor}

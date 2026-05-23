@@ -209,6 +209,8 @@ export function MobileHome({
   currentVisitor,
   currentUser,
   language,
+  translatePlaceNames = false,
+  onChangeTranslatePlaceNames,
   actualRole,
   viewMode,
   notices,
@@ -294,6 +296,8 @@ export function MobileHome({
   currentVisitor: string
   currentUser: AuthUser
   language: AppLanguage
+  translatePlaceNames?: boolean
+  onChangeTranslatePlaceNames?: (v: boolean) => void
   actualRole: Role
   viewMode: Role
   notices: Notice[]
@@ -1017,6 +1021,7 @@ export function MobileHome({
                 />
                 <MobileTerritory
                   language={language}
+                  translatePlaceNames={translatePlaceNames}
                   buildings={buildings}
                   cards={cards}
                   calendarEvents={calendarEvents}
@@ -1294,6 +1299,21 @@ export function MobileHome({
                       </button>
                     ))}
                   </div>
+                  {language !== 'ko' && onChangeTranslatePlaceNames && (
+                    <label style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      marginTop: 10, cursor: 'pointer',
+                      fontSize: 13, color: 'var(--text)',
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={translatePlaceNames}
+                        onChange={(e) => onChangeTranslatePlaceNames(e.target.checked)}
+                        style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--ink)' }}
+                      />
+                      {t(language, 'settings.translatePlaceNames')}
+                    </label>
+                  )}
                 </section>
 
                 <section className="mobile-settings-menu" aria-label="관리 메뉴">

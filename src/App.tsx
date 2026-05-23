@@ -35,6 +35,10 @@ function getLanguageStorageKey(userId: number) {
   return `chsLanguage:${userId}`
 }
 
+function getTranslatePlaceNamesKey(userId: number) {
+  return `chsTranslatePlace:${userId}`
+}
+
 function getInitialLanguage(): AppLanguage {
   if (typeof window === 'undefined') return 'ko'
   const storedLanguage = window.localStorage.getItem('chsLanguage:guest')
@@ -50,6 +54,7 @@ function App() {
   const actualRole: Role = user?.role ?? 'user'
   const [mobileViewMode, setMobileViewMode] = useState<Role>(actualRole)
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage)
+  const [translatePlaceNames, setTranslatePlaceNames] = useState(false)
   const [isDesktop, setIsDesktop] = useState<boolean>(getInitialDesktopMode)
 
   const {
@@ -184,7 +189,14 @@ function App() {
     if (!user) return
     const storedLanguage = window.localStorage.getItem(getLanguageStorageKey(user.id))
     setLanguage(isAppLanguage(storedLanguage) ? storedLanguage : 'ko')
+    const storedTranslate = window.localStorage.getItem(getTranslatePlaceNamesKey(user.id))
+    setTranslatePlaceNames(storedTranslate === 'true')
   }, [user])
+
+  const handleChangeTranslatePlaceNames = (enabled: boolean) => {
+    setTranslatePlaceNames(enabled)
+    if (user) window.localStorage.setItem(getTranslatePlaceNamesKey(user.id), String(enabled))
+  }
 
   const handleChangeViewMode = (role: Role) => {
     setMobileViewMode(role)
@@ -363,6 +375,8 @@ function App() {
               currentVisitor={user.name}
               currentUser={user}
               language={language}
+              translatePlaceNames={translatePlaceNames}
+              onChangeTranslatePlaceNames={handleChangeTranslatePlaceNames}
               actualRole={actualRole}
               viewMode={mobileViewMode}
               notices={notices}

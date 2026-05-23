@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react'
 import type { Building, RestaurantRequest, VisitHistory } from '../types'
 import { normalizeCardSearch } from '../utils/cardSearch'
-import { t, type AppLanguage } from '../i18n'
+import { t, translateKoreanAddress, type AppLanguage } from '../i18n'
 
 // ── 아이콘 ────────────────────────────────────────────────────
 function ForkIcon() {
@@ -91,6 +91,7 @@ type Props = {
   onSubmitRequest: (name: string, address: string, memo: string) => Promise<void>
   onClose: () => void
   language: AppLanguage
+  translatePlaceNames?: boolean
 }
 
 type View = 'search' | 'preview' | 'preview-pending' | 'add-request'
@@ -105,6 +106,7 @@ export function RestaurantServiceSheet({
   onSubmitRequest,
   onClose,
   language,
+  translatePlaceNames = false,
 }: Props) {
   const [view, setView] = useState<View>('search')
   const [search, setSearch] = useState('')
@@ -288,7 +290,7 @@ export function RestaurantServiceSheet({
                       className="restaurant-group-head"
                       onClick={() => toggleDistrict(district)}
                     >
-                      <span className="restaurant-group-label">{district}</span>
+                      <span className="restaurant-group-label">{translateKoreanAddress(district, language, translatePlaceNames)}</span>
                       <span className="restaurant-group-count">{items.length}</span>
                       <ChevronDown open={isGroupOpen(district)} />
                     </button>
@@ -308,7 +310,7 @@ export function RestaurantServiceSheet({
                               >
                                 <div className="restaurant-item-info">
                                   <strong className="restaurant-item-name">{b.name}</strong>
-                                  <span className="restaurant-item-address">{b.address}</span>
+                                  <span className="restaurant-item-address">{translateKoreanAddress(b.address, language, translatePlaceNames)}</span>
                                   {lastHistory && (
                                     <span className="restaurant-item-last">
                                       마지막: {fmtVisitDate(lastHistory.visitedAt)}
@@ -356,7 +358,7 @@ export function RestaurantServiceSheet({
 
           <div className="restaurant-record-body">
             <div className="restaurant-record-info">
-              <span className="restaurant-record-address">{selectedBuilding.address}</span>
+              <span className="restaurant-record-address">{translateKoreanAddress(selectedBuilding.address, language, translatePlaceNames)}</span>
             </div>
 
             {/* 이전 기록 */}
@@ -421,7 +423,7 @@ export function RestaurantServiceSheet({
 
           <div className="restaurant-record-body">
             <div className="restaurant-record-info">
-              <span className="restaurant-record-address">{selectedRequest.address}</span>
+              <span className="restaurant-record-address">{translateKoreanAddress(selectedRequest.address, language, translatePlaceNames)}</span>
               <span className="restaurant-pending-status-badge">
                 <ClockIcon /> {t(language, 'restaurant.myPending')}
               </span>
