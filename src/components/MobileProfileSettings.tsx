@@ -3,14 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import type { AuthUser } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
+import { t, type AppLanguage } from '../i18n'
 import { AppHeader } from './AppHeader'
 
 export function MobileProfileSettings({
   user,
+  language = 'ko',
   onChangePin,
   onUpdateProfile,
 }: {
   user: AuthUser
+  language?: AppLanguage
   onChangePin: (newPin: string) => Promise<boolean>
   onUpdateProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
 }) {
@@ -28,13 +31,14 @@ export function MobileProfileSettings({
   }, [user.name, user.phone])
 
   const canUsePhone = user.role === 'leader' || user.role === 'admin' || user.role === 'developer'
-  const roleLabel = user.role === 'user' ? '봉사자' : roleLabels[user.role as Role]
-  const accountSubtitle = `${roleLabel} 계정`
+  const roleLabel = user.role === 'user' ? t(language, 'role.user') : roleLabels[user.role as Role]
+  const accountSubtitle = `${roleLabel} ${t(language, 'profile.accountSuffix')}`
 
   return (
     <div className="mobile-profile-page">
       <AppHeader
-        pageTitle="내 정보"
+        pageTitle={t(language, 'profile.myInfo')}
+        language={language}
         subtitle={accountSubtitle}
         showBack
         onBack={() => navigate('/settings')}
@@ -53,14 +57,14 @@ export function MobileProfileSettings({
       </section>
 
       <section className="mobile-profile-card">
-        <h2>개인 정보</h2>
+        <h2>{t(language, 'profile.personalInfo')}</h2>
         <label>
-          <span>닉네임</span>
+          <span>{t(language, 'profile.nickname')}</span>
           <input value={name} onChange={(event) => setName(event.target.value)} />
         </label>
         {canUsePhone && (
           <label>
-            <span>핸드폰 번호</span>
+            <span>{t(language, 'profile.phone')}</span>
             <input
               inputMode="tel"
               placeholder="010-0000-0000"
@@ -81,25 +85,25 @@ export function MobileProfileSettings({
           }}
           type="button"
         >
-          저장
+          {t(language, 'common.save')}
         </button>
       </section>
 
       <section className="mobile-profile-card">
-        <h2>비밀번호</h2>
+        <h2>{t(language, 'profile.password')}</h2>
         <label>
-          <span>새 비밀번호</span>
+          <span>{t(language, 'profile.newPassword')}</span>
           <input
-            placeholder="새 비밀번호를 입력하세요"
+            placeholder={t(language, 'profile.newPasswordPlaceholder')}
             type="password"
             value={newPin}
             onChange={(event) => setNewPin(event.target.value)}
           />
         </label>
         <label>
-          <span>새 비밀번호 확인</span>
+          <span>{t(language, 'profile.confirmPassword')}</span>
           <input
-            placeholder="다시 입력하세요"
+            placeholder={t(language, 'profile.confirmPasswordPlaceholder')}
             type="password"
             value={newPinConfirm}
             onChange={(event) => setNewPinConfirm(event.target.value)}
@@ -109,7 +113,7 @@ export function MobileProfileSettings({
           disabled={savingPin || !newPin.trim() || !newPinConfirm.trim()}
           onClick={async () => {
             if (newPin !== newPinConfirm) {
-              window.alert('새 비밀번호가 서로 일치하지 않습니다.')
+              window.alert(t(language, 'profile.pinMismatch'))
               return
             }
             setSavingPin(true)
@@ -130,7 +134,7 @@ export function MobileProfileSettings({
           }}
           type="button"
         >
-          비밀번호 변경
+          {t(language, 'profile.changePassword')}
         </button>
       </section>
     </div>

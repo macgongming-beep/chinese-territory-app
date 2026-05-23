@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { Notice, Role } from '../types'
+import { t, type AppLanguage } from '../i18n'
 import { CommentSection, type MentionUser } from './CommentSection'
 
 const PRIORITY_COLOR: Record<Notice['priority'], { bg: string; color: string }> = {
@@ -9,7 +10,14 @@ const PRIORITY_COLOR: Record<Notice['priority'], { bg: string; color: string }> 
   정보: { bg: 'var(--status-info-bg)', color: 'var(--status-info)' },
 }
 
+function translatePriority(priority: Notice['priority'], language: AppLanguage): string {
+  if (priority === '긴급') return t(language, 'notices.priorityUrgent')
+  if (priority === '정보') return t(language, 'notices.priorityInfo')
+  return t(language, 'notices.priorityNormal')
+}
+
 export function MobileNotices({
+  language = 'ko',
   currentVisitor,
   currentUserId,
   notices,
@@ -18,6 +26,7 @@ export function MobileNotices({
   onCreateNotice,
   onDeleteNotice,
 }: {
+  language?: AppLanguage
   currentVisitor: string
   currentUserId?: number | null
   notices: Notice[]
@@ -63,7 +72,7 @@ export function MobileNotices({
           <div className="mobile-sheet">
             <div className="mobile-sheet-handle" />
             <div className="mobile-sheet-title">
-              <h2>공지 작성</h2>
+              <h2>{t(language, 'notices.create')}</h2>
               <button className="mobile-sheet-close" onClick={() => setShowCreate(false)} type="button">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -71,29 +80,29 @@ export function MobileNotices({
               </button>
             </div>
             <div className="mobile-form-field">
-              <label>중요도</label>
+              <label>{t(language, 'notices.priority')}</label>
               <select value={priority} onChange={(e) => setPriority(e.target.value as Notice['priority'])}>
-                <option value="일반">일반</option>
-                <option value="정보">정보</option>
-                <option value="긴급">긴급</option>
+                <option value="일반">{t(language, 'notices.priorityNormal')}</option>
+                <option value="정보">{t(language, 'notices.priorityInfo')}</option>
+                <option value="긴급">{t(language, 'notices.priorityUrgent')}</option>
               </select>
             </div>
             <div className="mobile-form-field">
-              <label>제목 *</label>
-              <input placeholder="공지 제목" value={title} onChange={(e) => setTitle(e.target.value)} />
+              <label>{t(language, 'notices.titleLabel')}</label>
+              <input placeholder={t(language, 'notices.titlePlaceholder')} value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
             <div className="mobile-form-field">
-              <label>내용 *</label>
-              <textarea placeholder="공지 내용을 입력하세요" value={content} onChange={(e) => setContent(e.target.value)} style={{ minHeight: '120px' }} />
+              <label>{t(language, 'notices.contentLabel')}</label>
+              <textarea placeholder={t(language, 'notices.contentPlaceholder')} value={content} onChange={(e) => setContent(e.target.value)} style={{ minHeight: '120px' }} />
             </div>
-            <button className="mobile-form-save" disabled={!title.trim() || !content.trim()} onClick={handleCreate} type="button">등록</button>
-            <button className="mobile-form-cancel" onClick={() => setShowCreate(false)} type="button">취소</button>
+            <button className="mobile-form-save" disabled={!title.trim() || !content.trim()} onClick={handleCreate} type="button">{t(language, 'comment.submit')}</button>
+            <button className="mobile-form-cancel" onClick={() => setShowCreate(false)} type="button">{t(language, 'common.cancel')}</button>
           </div>
         </>
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>공지사항</h2>
+        <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>{t(language, 'notices.sectionTitle')}</h2>
         {isAdmin && (
           <button
             onClick={() => setShowCreate(true)}
@@ -105,21 +114,21 @@ export function MobileNotices({
             }}
             type="button"
           >
-            + 공지 작성
+            {t(language, 'notices.createBtn')}
           </button>
         )}
       </div>
 
       {notices.length === 0 && (
         <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--muted)', fontSize: 13, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
-          등록된 공지가 없습니다
+          {t(language, 'notices.empty')}
         </div>
       )}
 
       {notices.map((notice) => (
         <div className="mobile-notice-card" id={`mobile-notice-${notice.id}`} key={notice.id}>
           <span className="mobile-notice-priority" style={{ background: PRIORITY_COLOR[notice.priority]?.bg, color: PRIORITY_COLOR[notice.priority]?.color }}>
-            {notice.priority}
+            {translatePriority(notice.priority, language)}
           </span>
           <h3 className="mobile-notice-title">{notice.title}</h3>
           <p className="mobile-notice-content">{notice.content}</p>
@@ -127,7 +136,7 @@ export function MobileNotices({
             <span className="mobile-notice-meta">{notice.author} · {notice.createdAt.slice(0, 10)}</span>
             {isAdmin && (
               <button
-                onClick={() => { if (confirm('공지를 삭제할까요?')) onDeleteNotice(notice.id) }}
+                onClick={() => { if (confirm(t(language, 'notices.deleteConfirm'))) onDeleteNotice(notice.id) }}
                 style={{
                   height: 26, minHeight: 26, padding: '0 10px',
                   borderRadius: 8, border: 'none',
@@ -136,12 +145,13 @@ export function MobileNotices({
                 }}
                 type="button"
               >
-                삭제
+                {t(language, 'common.delete')}
               </button>
             )}
           </div>
           <CommentSection
             compact
+            language={language}
             currentUserId={currentUserId}
             currentVisitor={currentVisitor}
             role={role}

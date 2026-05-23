@@ -902,6 +902,7 @@ export function MobileHome({
                   onOpenMenu={() => navigate('/settings')}
                 />
                 <MobileNotices
+                  language={language}
                   currentVisitor={currentVisitor}
                   currentUserId={currentUser.id}
                   notices={notices}
@@ -917,6 +918,7 @@ export function MobileHome({
             <Route path="/profile" element={
               <MobileProfileSettings
                 user={currentUser}
+                language={language}
                 onChangePin={onChangePin}
                 onUpdateProfile={onUpdateMyProfile}
               />

@@ -724,7 +724,7 @@ export function MobileTerritory({
                     <div className="mt-rs-memo-form">
                       <textarea
                         className="mt-rs-memo-input"
-                        placeholder="봉사 결과 메모 (선택)"
+                        placeholder={t(language, 'territory.sessionMemoPlaceholder')}
                         value={sessionMemo}
                         onChange={(e) => setSessionMemo(e.target.value)}
                         rows={2}
@@ -780,7 +780,7 @@ export function MobileTerritory({
                 </span>
                 <span className="mt-restaurant-label">{t(language, 'territory.restaurant')}</span>
                 <span className="mt-restaurant-count">
-                  {buildings.filter((b) => b.isRestaurant).length}{t(language, 'territory.restaurantRegistered')}
+                  {t(language, 'home.viewAllBtn')}
                 </span>
                 <span className="mt-restaurant-arrow" aria-hidden>›</span>
               </button>
@@ -1268,7 +1268,22 @@ export function MobileTerritory({
           const logs = returnVisitLogs
             .filter((l) => l.returnVisitId === logTarget.id)
             .slice(0, 12)
-          const todayLabel = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })
+          const todayLabel = (() => {
+            const d = new Date()
+            const m = d.getMonth() + 1
+            const day = d.getDate()
+            if (language === 'zh') {
+              const dows = ['日', '一', '二', '三', '四', '五', '六']
+              return `${m}月${day}日 (周${dows[d.getDay()]})`
+            }
+            if (language === 'en') {
+              const dows = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+              const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+              return `${months[d.getMonth()]} ${day} (${dows[d.getDay()]})`
+            }
+            const dows = ['일', '월', '화', '수', '목', '금', '토']
+            return `${m}월 ${day}일 (${dows[d.getDay()]})`
+          })()
           return (
             <div className="rv-log-backdrop" onClick={() => setLogTarget(null)}>
               <div className="rv-log-sheet" onClick={(e) => e.stopPropagation()}>
