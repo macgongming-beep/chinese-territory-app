@@ -191,12 +191,29 @@ export function useNotifications(userId: number | null | undefined) {
     }
   }, [userId, notifications, fetchAll])
 
+  // 읽음 처리된 알림 전체 삭제
+  const clearReadNotifications = useCallback(async () => {
+    if (!userId || notifications.every((n) => !n.isRead)) return
+    const token = getAuthToken()
+    if (!token) return
+    // 낙관적 갱신
+    setNotifications((prev) => prev.filter((n) => !n.isRead))
+    const { error } = await supabase.rpc('clear_read_notifications', {
+      p_token: token,
+    })
+    if (error) {
+      console.warn('[notifications] clearRead failed:', error)
+      await fetchAll()
+    }
+  }, [userId, notifications, fetchAll])
+
   return {
     notifications,
     unreadCount,
     loading,
     markRead,
     markAllRead,
+    clearReadNotifications,
     refetch: fetchAll,
   }
 }

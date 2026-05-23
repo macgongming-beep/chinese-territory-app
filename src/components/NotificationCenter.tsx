@@ -194,6 +194,7 @@ export function NotificationCenter({
   notifications,
   markRead,
   markAllRead,
+  clearReadNotifications,
 }: {
   language?: AppLanguage
   userId: number | null
@@ -202,6 +203,7 @@ export function NotificationCenter({
   notifications: AppNotification[]
   markRead: (id: number) => Promise<void>
   markAllRead: () => Promise<void>
+  clearReadNotifications?: () => Promise<void>
 }) {
   const navigate = useNavigate()
   const { chats: userChats } = useUserChats(userId, userName ?? null, { realtime: false })
@@ -385,10 +387,27 @@ export function NotificationCenter({
               )}
               {(readOthers.length > 0 || readChatGroups.length > 0) && (
                 <>
-                  <span style={{
-                    fontSize: 12, fontWeight: 600, color: 'var(--muted)',
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '12px 4px 6px',
-                  }}>{t(language, 'header.oldNoti')}</span>
+                  }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>
+                      {t(language, 'header.oldNoti')}
+                    </span>
+                    {clearReadNotifications && (
+                      <button
+                        onClick={clearReadNotifications}
+                        type="button"
+                        style={{
+                          height: 24, padding: '0 8px',
+                          borderRadius: 6, border: '1px solid var(--line-2)',
+                          background: 'var(--surface)', color: 'var(--muted)',
+                          fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
+                          lineHeight: 1,
+                        }}
+                      >{t(language, 'header.clearOldNoti')}</button>
+                    )}
+                  </div>
                   {readChatGroups.map((g) => (
                     <ChatGroupItem
                       key={`chatgroup-${g.eventId}`}

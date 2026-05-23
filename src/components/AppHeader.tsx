@@ -172,7 +172,7 @@ export function AppHeaderActionButtons({
   const [openNotifications, setOpenNotifications] = useState(false)
   const [openChat, setOpenChat] = useState(false)
   const [headerChatTarget, setHeaderChatTarget] = useState<HeaderChatTarget>(null)
-  const { unreadCount, notifications: notifList, markRead: notifMarkRead, markAllRead: notifMarkAllRead } = useNotifications(userId ?? null)
+  const { unreadCount, notifications: notifList, markRead: notifMarkRead, markAllRead: notifMarkAllRead, clearReadNotifications: notifClearRead } = useNotifications(userId ?? null)
   const { totalUnread } = useUserChats(userId ?? null, userName)
   const resolvedNotificationCount = notificationCount ?? unreadCount
   const resolvedChatCount = chatCount ?? totalUnread
@@ -279,6 +279,7 @@ export function AppHeaderActionButtons({
               notifications={notifList}
               markRead={notifMarkRead}
               markAllRead={notifMarkAllRead}
+              clearReadNotifications={notifClearRead}
             />
           </HeaderOverlayErrorBoundary>
         </HeaderOverlayPortal>
