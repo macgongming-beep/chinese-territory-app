@@ -26636,7 +26636,7 @@ button:focus-visible {
   margin-top: 1px;
 }
 .mh-week-dot.filled {
-  background: #B8862A;
+  background: var(--ink);
 }
 
 /* [B안] 이번 주 일정 자세한 카드 리스트 */
@@ -26678,7 +26678,7 @@ button:focus-visible {
 .mh-week-row-date {
   font-size: 12px;
   font-weight: 700;
-  color: #B8862A;
+  color: var(--ink);
   letter-spacing: -0.005em;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
