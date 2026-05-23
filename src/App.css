@@ -22417,7 +22417,7 @@ button:focus-visible {
 }
 
 .unit-col-header.with-invitation {
-  grid-template-columns: 1fr 38px 32px 32px 32px;
+  grid-template-columns: 1fr 44px 32px 32px 32px;
 }
 
 .unit-col-header span:not(:first-child) {
@@ -22442,7 +22442,7 @@ button:focus-visible {
 }
 
 .unit-grid-main.with-invitation {
-  grid-template-columns: 1fr 38px 32px 32px 32px;
+  grid-template-columns: 1fr 44px 32px 32px 32px;
 }
 
 .unit-name-btn {

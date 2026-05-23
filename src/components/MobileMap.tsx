@@ -1349,7 +1349,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                         }}
                                         title={t(language, 'map.invitationLeft')}
                                         type="button"
-                                      >{hasInv ? '✓' : '✉'}</button>
+                                      >{hasInv ? '✓' : ''}</button>
                                       {isPopupOpen && (
                                         <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 200, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.18)', padding: '10px 8px', width: 148, display: 'flex', flexDirection: 'column', gap: 5 }}>
                                           <p style={{ margin: '0 0 5px', fontSize: 11, color: 'var(--muted)', textAlign: 'center', fontWeight: 600 }}>{t(language, 'map.invitationHow')}</p>
