@@ -1479,8 +1479,8 @@ export function formatCardCount(lang: AppLanguage, count: number): string {
   return `카드 ${count}개`
 }
 
-export function formatLeadSub(lang: AppLanguage, applied: number, cards: number): string {
-  return `${formatApplied(lang, applied)} · ${formatCardCount(lang, cards)}`
+export function formatLeadSub(lang: AppLanguage, applied: number, _cards: number): string {
+  return formatApplied(lang, applied)
 }
 
 export function formatPeriod(lang: AppLanguage, hour: number): string {
