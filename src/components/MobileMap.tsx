@@ -1336,7 +1336,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                   const hasInv = latestHistory?.invitationLeft
                                   const isPopupOpen = invitationPopupUnitId === unit.id
                                   return (
-                                    <div style={{ position: 'relative' }}>
+                                    <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                                       <button
                                         className={`unit-check-btn unit-check-btn-invitation${hasInv ? ' ucb-invitation' : ''}${!canRecordVisits ? ' locked' : ''}`}
                                         onClick={() => {

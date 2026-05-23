@@ -1837,7 +1837,7 @@ export function DesktopMap({
                               )
                               const isPopupOpen = invitationPopupUnitId === unit.id
                               return (
-                                <div style={{ position: 'relative' }}>
+                                <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                                   <button
                                     className={`unit-check-btn unit-check-btn-invitation${todayInvitation ? ' ucb-invitation' : ''}${!canRecordVisits ? ' locked' : ''}`}
                                     onClick={() => {
@@ -1852,7 +1852,7 @@ export function DesktopMap({
                                     }}
                                     type="button"
                                     title="초대장"
-                                  >{todayInvitation ? '✓' : '✉'}</button>
+                                  >{todayInvitation ? '✓' : ''}</button>
                                   {isPopupOpen && (
                                     <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 200, marginTop: 4, background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', padding: '10px 8px', width: 160, display: 'flex', flexDirection: 'column', gap: 6 }}>
                                       <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--gray-500)', textAlign: 'center', fontWeight: 600 }}>초대장 전달 방식</p>
