@@ -529,6 +529,7 @@ export function MobileCalendar({
                 )}
                 <CommentSection
                   compact
+                  language={language}
                   currentUserId={currentUserId}
                   currentVisitor={currentVisitor}
                   role={role}

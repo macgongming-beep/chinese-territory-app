@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { showToast } from '../lib/toast'
+import { t, type AppLanguage } from '../i18n'
 import type { Role } from '../types'
 
 export type MentionUser = {
@@ -34,6 +35,7 @@ type CommentSectionProps = {
   title?: string
   compact?: boolean
   headerRight?: import('react').ReactNode  // sec-head 우측 (예: '채팅 열기' 링크)
+  language?: AppLanguage
 }
 
 function getMentionQuery(value: string) {
@@ -66,10 +68,12 @@ export function CommentSection({
   currentUserId,
   role = 'user',
   users = [],
-  title = '댓글',
+  title,
   compact = false,
   headerRight,
+  language = 'ko',
 }: CommentSectionProps) {
+  const lang = language
   const [comments, setComments] = useState<CommentRecord[]>([])
   const [draft, setDraft] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -208,7 +212,7 @@ export function CommentSection({
   if (missingTable) {
     return (
       <section className={`comment-section${compact ? ' comment-section--compact' : ''}`}>
-        <div className="comment-empty">댓글 기능은 V1+ SQL 적용 후 사용할 수 있습니다.</div>
+        <div className="comment-empty">{t(lang, 'comment.notReady')}</div>
       </section>
     )
   }
@@ -216,16 +220,16 @@ export function CommentSection({
   return (
     <section className={`comment-section${compact ? ' comment-section--compact' : ''}`}>
       <div className="comment-section__head">
-        <strong>{title}</strong>
-        <span>{comments.length}개</span>
+        <strong>{title ?? t(lang, 'comment.title')}</strong>
+        <span>{t(lang, 'comment.count', { n: comments.length })}</span>
         {headerRight && <div style={{ marginLeft: 'auto' }}>{headerRight}</div>}
       </div>
 
       <div className="comment-list">
         {loading && comments.length === 0 ? (
-          <div className="comment-empty">댓글을 불러오는 중...</div>
+          <div className="comment-empty">{t(lang, 'comment.loading')}</div>
         ) : comments.length === 0 ? (
-          <div className="comment-empty">아직 댓글이 없습니다.</div>
+          <div className="comment-empty">{t(lang, 'comment.empty')}</div>
         ) : (
           comments.map((comment) => (
             <article className="comment-item" key={comment.id}>
@@ -246,8 +250,8 @@ export function CommentSection({
                       </button>
                       {menuCommentId === comment.id && (
                         <div className="comment-action-popover">
-                          {canEdit(comment) && <button onClick={() => startEdit(comment)} type="button">수정</button>}
-                          {canDelete(comment) && <button className="danger" onClick={() => { setMenuCommentId(null); void deleteComment(comment) }} type="button">삭제</button>}
+                          {canEdit(comment) && <button onClick={() => startEdit(comment)} type="button">{t(lang, 'common.edit')}</button>}
+                          {canDelete(comment) && <button className="danger" onClick={() => { setMenuCommentId(null); void deleteComment(comment) }} type="button">{t(lang, 'common.delete')}</button>}
                         </div>
                       )}
                     </div>
@@ -265,8 +269,8 @@ export function CommentSection({
                       value={editDraft}
                     />
                     <div className="comment-edit-actions">
-                      <button disabled={!editDraft.trim()} onClick={() => saveEdit(comment)} type="button">저장</button>
-                      <button onClick={cancelEdit} type="button">취소</button>
+                      <button disabled={!editDraft.trim()} onClick={() => saveEdit(comment)} type="button">{t(lang, 'common.save')}</button>
+                      <button onClick={cancelEdit} type="button">{t(lang, 'common.cancel')}</button>
                     </div>
                   </div>
                 ) : (
@@ -284,7 +288,7 @@ export function CommentSection({
           onKeyDown={(event) => {
             if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') void submitComment()
           }}
-          placeholder="댓글 입력 · @로 멘션"
+          placeholder={t(lang, 'comment.placeholder')}
           rows={compact ? 1 : 3}
           value={draft}
         />
@@ -302,7 +306,7 @@ export function CommentSection({
             ))}
           </div>
         )}
-        <button disabled={!draft.trim()} onClick={submitComment} type="button">등록</button>
+        <button disabled={!draft.trim()} onClick={submitComment} type="button">{t(lang, 'comment.submit')}</button>
       </div>
     </section>
   )

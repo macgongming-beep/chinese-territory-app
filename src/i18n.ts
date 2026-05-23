@@ -459,6 +459,14 @@ const dictionary = {
     'chat.reupload': '다시 올리기',
     'chat.cannotLoad': '채팅을 불러올 수 없습니다.',
 
+    'comment.title': '댓글',
+    'comment.loading': '댓글을 불러오는 중...',
+    'comment.empty': '아직 댓글이 없습니다.',
+    'comment.placeholder': '댓글 입력 · @로 멘션',
+    'comment.submit': '등록',
+    'comment.count': '{n}개',
+    'comment.notReady': '댓글 기능은 V1+ SQL 적용 후 사용할 수 있습니다.',
+
     'pwa.installTitle': '홈 화면에 설치',
     'pwa.bannerTitle': '봉사 알림 받으시려면',
     'pwa.bannerDesc': '홈 화면에 추가해주세요',
@@ -930,6 +938,14 @@ const dictionary = {
     'chat.reupload': '重新上传',
     'chat.cannotLoad': '无法加载聊天。',
 
+    'comment.title': '评论',
+    'comment.loading': '加载中...',
+    'comment.empty': '暂无评论。',
+    'comment.placeholder': '输入评论 · @提及',
+    'comment.submit': '发布',
+    'comment.count': '{n}条',
+    'comment.notReady': '评论功能需要应用 V1+ SQL 后才能使用。',
+
     'pwa.installTitle': '安装到主屏幕',
     'pwa.bannerTitle': '如需接收传道通知',
     'pwa.bannerDesc': '请添加到主屏幕',
@@ -1399,6 +1415,14 @@ const dictionary = {
     'chat.photoExpiredDesc': 'The photo has been deleted after the storage period.',
     'chat.reupload': 'Re-upload',
     'chat.cannotLoad': 'Cannot load chat.',
+
+    'comment.title': 'Comments',
+    'comment.loading': 'Loading comments...',
+    'comment.empty': 'No comments yet.',
+    'comment.placeholder': 'Add a comment · @mention',
+    'comment.submit': 'Post',
+    'comment.count': '{n}',
+    'comment.notReady': 'Comment feature requires V1+ SQL.',
 
     'pwa.installTitle': 'Install to home screen',
     'pwa.bannerTitle': 'To receive service alerts',

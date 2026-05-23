@@ -67,8 +67,19 @@ function initial(name: string) {
 
 function formatDateHeader(iso: string, language = 'ko') {
   const d = new Date(iso)
-  const dows = (language === 'zh' ? ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'] : language === 'en' ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] : ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'])
-  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${dows[d.getDay()]})`
+  const m = d.getMonth() + 1
+  const day = d.getDate()
+  if (language === 'zh') {
+    const dows = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+    return `${m}月${day}日 (${dows[d.getDay()]})`
+  }
+  if (language === 'en') {
+    const dows = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `${months[d.getMonth()]} ${day} (${dows[d.getDay()]})`
+  }
+  const dows = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
+  return `${m}월 ${day}일 (${dows[d.getDay()]})`
 }
 
 export function AdminEventDetailSheet({
@@ -464,6 +475,7 @@ export function AdminEventDetailSheet({
 
         <CommentSection
           compact
+          language={language}
           currentUserId={currentUserId}
           currentVisitor={currentVisitor}
           role={role}
