@@ -26551,7 +26551,7 @@ button:focus-visible {
 .mh-upcoming-date {
   font-size: 12px;
   font-weight: 700;
-  color: #B8862A;
+  color: var(--ink);
   letter-spacing: -0.005em;
 }
 .mh-upcoming-title {
