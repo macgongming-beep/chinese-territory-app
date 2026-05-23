@@ -281,6 +281,7 @@ export function MobileHome({
   onSetRegularVisitor,
   onAddRestaurantVisit,
   onSubmitRestaurantRequest,
+  onUpdateRestaurantRequestMemo,
   restaurantRequests = [],
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
@@ -369,8 +370,9 @@ export function MobileHome({
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
   onAddRestaurantVisit?: (unitId: number, memo: string) => Promise<void>
   onSubmitRestaurantRequest?: (name: string, address: string, memo: string) => Promise<void>
+  onUpdateRestaurantRequestMemo?: (requestId: number, memo: string) => Promise<void>
   restaurantRequests?: import('../types').RestaurantRequest[]
-  onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string }) => Promise<void>
+  onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
 }) {
   const navigate = useNavigate()
@@ -1019,6 +1021,8 @@ export function MobileHome({
                   visitHistories={visitHistories}
                   onAddRestaurantVisit={onAddRestaurantVisit}
                   onSubmitRestaurantRequest={onSubmitRestaurantRequest}
+                  onUpdateRestaurantRequestMemo={onUpdateRestaurantRequestMemo}
+                  restaurantRequests={restaurantRequests}
                 />
                 </>
               )

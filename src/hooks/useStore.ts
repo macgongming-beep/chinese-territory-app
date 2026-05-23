@@ -424,6 +424,7 @@ export function useStore() {
   const {
     addRestaurantVisit,
     submitRestaurantRequest,
+    updateRestaurantRequestMemo,
     approveRestaurantRequest,
     rejectRestaurantRequest,
   } = makeRestaurantServiceMutations({ fetchAll, buildings })
@@ -528,6 +529,7 @@ export function useStore() {
     restaurantRequests,
     addRestaurantVisit,
     submitRestaurantRequest,
+    updateRestaurantRequestMemo,
     approveRestaurantRequest,
     rejectRestaurantRequest,
   }

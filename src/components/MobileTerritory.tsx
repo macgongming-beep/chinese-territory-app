@@ -66,6 +66,8 @@ export function MobileTerritory({
   visitHistories = [],
   onAddRestaurantVisit,
   onSubmitRestaurantRequest,
+  onUpdateRestaurantRequestMemo,
+  restaurantRequests = [],
 }: {
   language: AppLanguage
   buildings: Building[]
@@ -82,6 +84,8 @@ export function MobileTerritory({
   visitHistories?: VisitHistory[]
   onAddRestaurantVisit?: (unitId: number, memo: string) => Promise<void>
   onSubmitRestaurantRequest?: (name: string, address: string, memo: string) => Promise<void>
+  onUpdateRestaurantRequestMemo?: (requestId: number, memo: string) => Promise<void>
+  restaurantRequests?: import('../types').RestaurantRequest[]
   onOpenMap: (cardId: number) => void
   onEndServiceSession: (sessionId: number) => void
   onCreateManualReturnVisit?: (input: { displayName: string; address: string; memo: string; unitId?: number | null; buildingId?: number | null }) => Promise<void>
@@ -1374,8 +1378,10 @@ export function MobileTerritory({
         buildings={buildings}
         visitHistories={visitHistories}
         currentVisitor={currentVisitor}
+        restaurantRequests={restaurantRequests}
         onAddVisit={onAddRestaurantVisit}
         onSubmitRequest={onSubmitRestaurantRequest}
+        onUpdateRequestMemo={onUpdateRestaurantRequestMemo}
         onClose={() => setShowRestaurantSheet(false)}
       />
     )}

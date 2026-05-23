@@ -49,7 +49,7 @@ type Props = {
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
   restaurantRequests?: import('../../types').RestaurantRequest[]
-  onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string }) => Promise<void>
+  onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
 }
 

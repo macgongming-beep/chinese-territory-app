@@ -9,6 +9,20 @@ function isLeaderOrAdmin(role: Role): boolean {
   return role === 'leader' || role === 'admin' || role === 'developer'
 }
 
+// Naver Maps 지오코딩 (Promise wrapping)
+function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  return new Promise((resolve) => {
+    const naver = (window as Window & { naver?: { maps?: { Service?: { geocode?: (opts: { query: string }, cb: (status: string, res: { v2?: { addresses?: Array<{ x: string; y: string }> } }) => void) => void } } } }).naver
+    const geocode = naver?.maps?.Service?.geocode
+    if (!geocode) { resolve(null); return }
+    geocode({ query: address }, (status, res) => {
+      const addr = res?.v2?.addresses?.[0]
+      if (status !== 'OK' || !addr) { resolve(null); return }
+      resolve({ lat: parseFloat(addr.y), lng: parseFloat(addr.x) })
+    })
+  })
+}
+
 type Props = {
   role: Role
   buildings: Building[]
@@ -16,7 +30,7 @@ type Props = {
   currentVisitor?: string
   restaurantRequests?: RestaurantRequest[]
   onToggleRestaurantFlag?: (buildingId: number, isRestaurant: boolean) => Promise<void>
-  onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string }) => Promise<void>
+  onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
   onOpenMap: (cardId: number) => void
 }
@@ -87,6 +101,12 @@ export function RestaurantsTab({
   const [editReqName, setEditReqName] = useState('')
   const [editReqAddress, setEditReqAddress] = useState('')
   const [reqProcessing, setReqProcessing] = useState<number | null>(null)
+  const [geocoding, setGeocoding] = useState(false)
+  // 건물 매칭 선택: null = 새 건물 생성, number = 기존 건물 id
+  const [matchingReqId, setMatchingReqId] = useState<number | null>(null)
+  const [matchedBuildings, setMatchedBuildings] = useState<Building[]>([])
+  const [selectedMatchId, setSelectedMatchId] = useState<number | null | 'new'>('new')
+  const [geocodedCoords, setGeocodedCoords] = useState<{ lat: number; lng: number } | null>(null)
 
   const pendingRequests = useMemo(
     () => restaurantRequests.filter((r) => r.status === 'pending'),
@@ -97,18 +117,56 @@ export function RestaurantsTab({
     setEditingReqId(req.id)
     setEditReqName(req.name)
     setEditReqAddress(req.address)
+    setMatchingReqId(null)
+    setMatchedBuildings([])
+    setSelectedMatchId('new')
+    setGeocodedCoords(null)
   }
 
   const handleApprove = async (req: RestaurantRequest) => {
     if (!onApproveRestaurantRequest) return
+    const name = editingReqId === req.id ? editReqName : req.name
+    const address = editingReqId === req.id ? editReqAddress : req.address
+
+    // 건물 매칭 단계가 아직 실행되지 않았으면 먼저 지오코딩 + 매칭 확인
+    if (matchingReqId !== req.id) {
+      setGeocoding(true)
+      setMatchingReqId(req.id)
+      setEditingReqId(req.id)
+      setEditReqName(name)
+      setEditReqAddress(address)
+
+      // 주소 기반 기존 건물 찾기
+      const addrNorm = address.trim()
+      const found = buildings.filter((b) =>
+        b.address.trim() === addrNorm || b.address.includes(addrNorm) || addrNorm.includes(b.address.trim())
+      )
+      setMatchedBuildings(found)
+      setSelectedMatchId(found.length > 0 ? found[0].id : 'new')
+
+      // 지오코딩
+      const coords = await geocodeAddress(address)
+      setGeocodedCoords(coords)
+      setGeocoding(false)
+      return // 매칭 UI 표시 — 다음 클릭에 실제 승인
+    }
+
+    // 실제 승인 처리
     setReqProcessing(req.id)
     await onApproveRestaurantRequest(req.id, {
-      name: editingReqId === req.id ? editReqName : req.name,
-      address: editingReqId === req.id ? editReqAddress : req.address,
+      name,
+      address,
       reviewer: currentVisitor,
+      existingBuildingId: selectedMatchId === 'new' ? null : (selectedMatchId as number),
+      lat: geocodedCoords?.lat,
+      lng: geocodedCoords?.lng,
     })
     setReqProcessing(null)
     setEditingReqId(null)
+    setMatchingReqId(null)
+    setMatchedBuildings([])
+    setSelectedMatchId('new')
+    setGeocodedCoords(null)
   }
 
   const handleReject = async (reqId: number) => {
@@ -174,27 +232,74 @@ export function RestaurantsTab({
               padding: '14px 16px',
               borderBottom: '1px solid var(--line, #e5e4e0)',
             }}>
-              {editingReqId === req.id ? (
-                /* 편집 모드 */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <input
-                    value={editReqName}
-                    onChange={(e) => setEditReqName(e.target.value)}
-                    placeholder="식당 이름"
-                    style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--line)', fontSize: 14 }}
-                  />
-                  <input
-                    value={editReqAddress}
-                    onChange={(e) => setEditReqAddress(e.target.value)}
-                    placeholder="주소"
-                    style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--line)', fontSize: 14 }}
-                  />
+              {matchingReqId === req.id ? (
+                /* 매칭 + 지오코딩 단계 */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    <input
+                      value={editReqName}
+                      onChange={(e) => setEditReqName(e.target.value)}
+                      placeholder="식당 이름"
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--line)', fontSize: 14, marginBottom: 6 }}
+                    />
+                    <input
+                      value={editReqAddress}
+                      onChange={(e) => setEditReqAddress(e.target.value)}
+                      placeholder="주소"
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--line)', fontSize: 14 }}
+                    />
+                  </div>
+
+                  {geocoding ? (
+                    <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid var(--muted)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                      주소 위치 확인 중...
+                    </div>
+                  ) : (
+                    <>
+                      {geocodedCoords ? (
+                        <div style={{ fontSize: 12, color: 'var(--status-success, #22c55e)' }}>
+                          📍 위치 확인됨 ({geocodedCoords.lat.toFixed(5)}, {geocodedCoords.lng.toFixed(5)})
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>📍 위치를 찾지 못했습니다. 지도에서 직접 확인하세요.</div>
+                      )}
+
+                      {/* 기존 건물 매칭 선택 */}
+                      {matchedBuildings.length > 0 && (
+                        <div>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', marginBottom: 6 }}>
+                            같은 주소의 기존 건물이 있습니다. 어느 건물로 등록할까요?
+                          </p>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {matchedBuildings.map((b) => (
+                              <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, border: `1.5px solid ${selectedMatchId === b.id ? 'var(--primary-500, #6366f1)' : 'var(--line)'}`, cursor: 'pointer', background: selectedMatchId === b.id ? 'var(--primary-50, #eef2ff)' : 'var(--surface)' }}>
+                                <input type="radio" name={`match-${req.id}`} value={b.id} checked={selectedMatchId === b.id} onChange={() => setSelectedMatchId(b.id)} style={{ accentColor: 'var(--primary-500)' }} />
+                                <div>
+                                  <strong style={{ fontSize: 13 }}>{b.name || b.address}</strong>
+                                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>{b.address} · 세대 {b.units.length}개</div>
+                                </div>
+                              </label>
+                            ))}
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, border: `1.5px solid ${selectedMatchId === 'new' ? 'var(--primary-500, #6366f1)' : 'var(--line)'}`, cursor: 'pointer', background: selectedMatchId === 'new' ? 'var(--primary-50, #eef2ff)' : 'var(--surface)' }}>
+                              <input type="radio" name={`match-${req.id}`} value="new" checked={selectedMatchId === 'new'} onChange={() => setSelectedMatchId('new')} style={{ accentColor: 'var(--primary-500)' }} />
+                              <div>
+                                <strong style={{ fontSize: 13 }}>새 건물로 추가</strong>
+                                <div style={{ fontSize: 11, color: 'var(--muted)' }}>미배정 건물 카드에 새로 생성</div>
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
                   <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                    <button type="button" onClick={() => handleApprove(req)} disabled={!!reqProcessing}
+                    <button type="button" onClick={() => handleApprove(req)} disabled={!!reqProcessing || geocoding}
                       style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                      {reqProcessing === req.id ? '처리 중...' : '승인'}
+                      {reqProcessing === req.id ? '처리 중...' : '승인 확정'}
                     </button>
-                    <button type="button" onClick={() => setEditingReqId(null)}
+                    <button type="button" onClick={() => { setMatchingReqId(null); setEditingReqId(null) }}
                       style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', fontSize: 13, cursor: 'pointer' }}>
                       취소
                     </button>
@@ -212,9 +317,9 @@ export function RestaurantsTab({
                     {req.memo && <> · <em style={{ fontStyle: 'normal', color: 'var(--ink-light, #666)' }}>"{req.memo}"</em></>}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button type="button" onClick={() => handleApprove(req)} disabled={!!reqProcessing}
+                    <button type="button" onClick={() => handleApprove(req)} disabled={!!reqProcessing || geocoding}
                       style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                      {reqProcessing === req.id ? '처리 중...' : '승인'}
+                      {geocoding && matchingReqId === req.id ? '확인 중...' : '승인'}
                     </button>
                     <button type="button" onClick={() => handleStartEdit(req)}
                       style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', fontSize: 13, cursor: 'pointer' }}>

@@ -28421,7 +28421,7 @@ button:focus-visible {
 }
 
 /* ── 식당봉사 활동 버튼 (MobileTerritory) ─────────────────── */
-.mt-restaurant-section { padding: 0 16px 0; }
+.mt-restaurant-section { padding: 0; }
 .mt-restaurant-btn {
   width: 100%;
   display: flex;
@@ -28685,4 +28685,57 @@ button:focus-visible {
   padding: 10px 14px;
   background: var(--tint);
   border-radius: 10px;
+}
+
+/* 대기 중 신청 섹션 */
+.restaurant-pending-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-bottom: 1px solid var(--line, #e5e4e0);
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+.restaurant-pending-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 16px 4px;
+  margin: 0;
+}
+.restaurant-item--pending {
+  border-left: 3px solid var(--warning-400, #f59e0b) !important;
+}
+.restaurant-item-pending-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--warning-600, #d97706);
+  background: var(--warning-50, #fffbeb);
+  border: 1px solid var(--warning-200, #fde68a);
+  border-radius: 6px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.restaurant-pending-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--warning-600, #d97706);
+  background: var(--warning-50, #fffbeb);
+  border: 1px solid var(--warning-200, #fde68a);
+  border-radius: 8px;
+  padding: 3px 8px;
+  margin-top: 6px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }

@@ -58,15 +58,39 @@ export function makeRestaurantServiceMutations(deps: {
     showToast('식당 추가 신청이 완료됐습니다. 관리자 승인 후 반영됩니다.')
   }
 
+  /** 봉사자: 신청한 식당의 메모 업데이트 */
+  const updateRestaurantRequestMemo = async (
+    requestId: number,
+    memo: string,
+  ): Promise<void> => {
+    const result = await supabase
+      .from('restaurant_requests')
+      .update({ memo: memo.trim() || null })
+      .eq('id', requestId)
+    if (result.error) {
+      reportMutationError('메모를 저장하지 못했습니다.', result.error)
+      return
+    }
+    await fetchAll()
+    showToast('메모가 저장됐습니다 🍜')
+  }
+
   /** 관리자: 식당 신청 승인 */
   const approveRestaurantRequest = async (
     requestId: number,
-    opts: { name: string; address: string; reviewer: string },
+    opts: {
+      name: string
+      address: string
+      reviewer: string
+      existingBuildingId?: number | null
+      lat?: number
+      lng?: number
+    },
   ): Promise<void> => {
-    // 같은 주소 기존 건물 찾기
-    const existingBuilding = buildings.find(
-      (b) => b.address.trim() === opts.address.trim(),
-    )
+    // 기존 건물 직접 지정 OR 주소 매칭
+    const existingBuilding = opts.existingBuildingId
+      ? buildings.find((b) => b.id === opts.existingBuildingId) ?? null
+      : buildings.find((b) => b.address.trim() === opts.address.trim()) ?? null
 
     let resolvedBuildingId: number
     let resolvedUnitId: number
@@ -125,8 +149,8 @@ export function makeRestaurantServiceMutations(deps: {
           name: opts.name.trim(),
           address: opts.address.trim(),
           type: '상가',
-          lat: 0,
-          lng: 0,
+          lat: opts.lat ?? 0,
+          lng: opts.lng ?? 0,
           is_restaurant: true,
         })
         .select('id')
@@ -213,6 +237,7 @@ export function makeRestaurantServiceMutations(deps: {
   return {
     addRestaurantVisit,
     submitRestaurantRequest,
+    updateRestaurantRequestMemo,
     approveRestaurantRequest,
     rejectRestaurantRequest,
   }

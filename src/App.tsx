@@ -149,6 +149,7 @@ function App() {
     restaurantRequests,
     addRestaurantVisit,
     submitRestaurantRequest,
+    updateRestaurantRequestMemo,
     approveRestaurantRequest,
     rejectRestaurantRequest,
   } = useStore()
@@ -428,6 +429,7 @@ function App() {
               restaurantRequests={restaurantRequests}
               onAddRestaurantVisit={addRestaurantVisit}
               onSubmitRestaurantRequest={submitRestaurantRequest}
+              onUpdateRestaurantRequestMemo={updateRestaurantRequestMemo}
               onApproveRestaurantRequest={approveRestaurantRequest}
               onRejectRestaurantRequest={rejectRestaurantRequest}
             />
