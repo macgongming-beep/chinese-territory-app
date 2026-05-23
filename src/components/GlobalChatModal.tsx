@@ -1,6 +1,8 @@
 // 글로벌 채팅 목록 모달 (헤더 💬 클릭 시 슬라이드 다운)
 // 메시지 미리보기 X (사생활 보호 결정)
 import { useState } from 'react'
+import { t } from '../i18n'
+import type { AppLanguage } from '../i18n'
 import { useUserChats, type UserChat } from '../hooks/useUserChats'
 import type { Role } from '../types'
 import { ChatRoom } from './ChatRoom'
@@ -58,6 +60,7 @@ function ChatEmptyIcon() {
 }
 
 export function GlobalChatModal({
+  language = 'ko',
   userId,
   userName,
   role = 'user',
@@ -66,7 +69,9 @@ export function GlobalChatModal({
   onSelectChat,
   onBackToList,
   onClose,
+  
 }: {
+  language?: string
   userId: number | null
   userName: string
   role?: Role
@@ -75,7 +80,9 @@ export function GlobalChatModal({
   onSelectChat?: (chat: Pick<UserChat, 'eventId' | 'eventTitle' | 'eventDate' | 'eventTime'>) => void
   onBackToList?: () => void
   onClose: () => void
+
 }) {
+  const lang = (language ?? 'ko') as AppLanguage
   const [localSelectedChat, setLocalSelectedChat] = useState<UserChat | null>(null)
   const { activeChats, lockedChats, loading } = useUserChats(userId, userName, { realtime: false })
   const selectedChat = controlledSelectedChat ?? localSelectedChat
@@ -162,7 +169,7 @@ export function GlobalChatModal({
               {selectedChat ? selectedChat.eventTitle || '채팅방' : '채팅'}
             </span>
             {!selectedChat && (
-              <span style={{ fontSize: 13, color: 'var(--muted)' }}>일정별 대화방</span>
+              <span style={{ fontSize: 13, color: 'var(--muted)' }}>{t(lang, 'header.chatSubtitle')}</span>
             )}
             {selectedChat && (
               <span style={{
@@ -211,8 +218,8 @@ export function GlobalChatModal({
           ) : !userId ? (
             <div className="header-action-panel__empty" style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
               <ChatEmptyIcon />
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#475569' }}>로그인 정보 확인이 필요합니다</p>
-              <p style={{ margin: '6px 0 0', fontSize: 12 }}>다시 로그인하면 채팅 목록을 불러올 수 있습니다.</p>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#475569' }}>{t(lang, 'header.notiLoginTitle')}</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12 }}>{t(lang, 'header.notiLoginDesc')}</p>
             </div>
           ) : loading && activeChats.length === 0 && lockedChats.length === 0 && (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
@@ -223,8 +230,8 @@ export function GlobalChatModal({
           {!selectedChat && userId && !loading && activeChats.length === 0 && lockedChats.length === 0 && (
             <div className="header-action-panel__empty" style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
               <ChatEmptyIcon />
-              <p style={{ margin: 0, fontSize: 14 }}>참여한 봉사 채팅방이 없습니다</p>
-              <p style={{ margin: '6px 0 0', fontSize: 12 }}>일정 상세에서 [참여]를 누르면 채팅방에 입장됩니다</p>
+              <p style={{ margin: 0, fontSize: 14 }}>{t(lang, 'header.chatEmpty')}</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12 }}>{t(lang, 'header.chatEmptyDesc')}</p>
             </div>
           )}
 
@@ -234,7 +241,7 @@ export function GlobalChatModal({
               <p style={{
                 margin: 0, padding: '4px 8px 6px', fontSize: 12, fontWeight: 600,
                 color: 'var(--muted)',
-              }}>활성</p>
+              }}>{t(lang, 'header.chatActive')}</p>
               {activeChats.map((chat) => (
                 <ChatRow key={chat.eventId} chat={chat} onClick={handleClick} />
               ))}
@@ -247,7 +254,7 @@ export function GlobalChatModal({
               <p style={{
                 margin: 0, padding: '12px 8px 6px', fontSize: 12, fontWeight: 600,
                 color: 'var(--muted)',
-              }}>지난 대화</p>
+              }}>{t(lang, 'header.chatPast')}</p>
               {lockedChats.map((chat) => (
                 <ChatRow key={chat.eventId} chat={chat} onClick={handleClick} />
               ))}

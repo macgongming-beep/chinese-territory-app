@@ -1,4 +1,5 @@
 // 관리자 모바일 캘린더 — design_handoff 02 / 02b / 03 화면
+import { t, weekdayShortLabels } from '../../i18n'
 //
 // 구조:
 //   - 월 카드 (헤더 + nav + grid)
@@ -17,8 +18,7 @@ import { Card } from '../ui'
 import { AdminEventDetailSheet } from './AdminEventDetailSheet'
 import type { MentionUser } from '../CommentSection'
 
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
-const WEEKDAY_LABELS = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
+// WEEKDAYS / WEEKDAY_LABELS defined inside component now via i18n
 const TIME_PRESET_STORAGE_KEY = 'chs-admin-calendar-time-presets-v1'
 const TIME_PRESETS_MAX = 5
 type TimePreset = {
@@ -149,8 +149,8 @@ function buildCalendarDays(year: number, month: number): (number | null)[] {
   return cells
 }
 
-function formatMonthHeader(year: number, month: number) {
-  return `${year}년 ${month}월`
+function formatMonthHeader(year: number, month: number, language: AppLanguage) {
+  return language === 'zh' ? `${year}年 ${month}月` : `${year}년 ${month}월`
 }
 
 // ── 아이콘 ─────────────────────────────
@@ -177,7 +177,16 @@ function PlusIcon({ size = 12 }: { size?: number }) {
   )
 }
 
+const WEEKDAY_LABELS: Record<AppLanguage, string[]> = {
+  ko: ['일', '월', '화', '수', '목', '금', '토'],
+  zh: ['日', '一', '二', '三', '四', '五', '六'],
+  en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+}
+
+function CalendarEmptyIcon() { return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>; }
+
 export function AdminMobileCalendar({
+  language,
   events,
   role,
   currentVisitor,
@@ -312,7 +321,7 @@ export function AdminMobileCalendar({
               <ChevL />
             </NavButton>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>
-              {formatMonthHeader(year, month)}
+              {formatMonthHeader(year, month, language)}
             </h3>
             <NavButton onClick={nextMonth}>
               <ChevR size={14} color="var(--text)" />
@@ -345,13 +354,13 @@ export function AdminMobileCalendar({
             fontVariantNumeric: 'tabular-nums',
           }}
         >
-          {WEEKDAYS.map((d, i) => (
+          {weekdayShortLabels[language].map((d) => (
             <div
               key={d}
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: i === 0 ? 'var(--status-danger)' : 'var(--muted)',
+                color: d === '일' ? 'var(--status-danger)' : 'var(--muted)',
                 paddingBottom: 8,
               }}
             >
@@ -424,7 +433,7 @@ export function AdminMobileCalendar({
         <SectionHead
           title={
             <>
-              {month}월 {selectedDay}일 ({WEEKDAY_LABELS[selectedDow]})
+              {t(language, 'calendar.dateHeader', { month, day: selectedDay, dow: WEEKDAY_LABELS[language][selectedDow] })}
               {selectedEvents.length > 0 && (
                 <span style={{ fontWeight: 500, color: 'var(--muted)', fontSize: 13, marginLeft: 6 }}>
                   {selectedEvents.length}
@@ -454,19 +463,20 @@ export function AdminMobileCalendar({
                   cursor: 'pointer',
                 }}
               >
-                <PlusIcon /> 일정 추가
+                <PlusIcon /> {t(language, 'calendar.addEvent')}
               </button>
             ) : null
           }
         />
         {selectedEvents.length === 0 ? (
-          <Card padding={18} style={{ marginTop: 10, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-            등록된 일정이 없습니다
-          </Card>
+          <div className="cal-selected-empty">
+            <CalendarEmptyIcon />
+            {t(language, 'calendar.noEvents')}
+          </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
             {selectedEvents.map((event) => (
-              <DayEventCard key={event.id} event={event} onClick={() => setDetailEventId(event.id)} />
+              <DayEventCard language={language} key={event.id} event={event} onClick={() => setDetailEventId(event.id)} />
             ))}
           </div>
         )}
@@ -477,17 +487,17 @@ export function AdminMobileCalendar({
         <section>
           <SectionHead
             title={
-              <>
-                다가오는 일정
+              <div className="cal-upcoming-title">
+                {t(language, 'calendar.upcomingEvents')}
                 <span style={{ fontWeight: 500, color: 'var(--muted)', fontSize: 13, marginLeft: 6 }}>
                   {upcomingEvents.length}
                 </span>
-              </>
+              </div>
             }
           />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
             {upcomingEvents.map((event) => (
-              <UpcomingEventCard key={event.id} event={event} onClick={() => setDetailEventId(event.id)} />
+              <UpcomingEventCard language={language} key={event.id} event={event} onClick={() => setDetailEventId(event.id)} />
             ))}
           </div>
         </section>
@@ -495,7 +505,7 @@ export function AdminMobileCalendar({
 
       {/* ── 일정 추가/편집 시트 ─────────── */}
       {(addOpen || editingEvent) && (
-        <EventAddSheet
+        <EventAddSheet language={language}
           defaultDate={selectedDateStr}
           editingEvent={editingEvent}
           leaderNames={leaderNames}
@@ -560,7 +570,7 @@ export function AdminMobileCalendar({
                   if (detailEvent.seriesId && onDeleteEventSeries) {
                     setScopeAction({ kind: 'delete', event: detailEvent })
                     setDetailEventId(null)
-                  } else if (window.confirm(`"${detailEvent.title}" 일정을 삭제할까요?`)) {
+                  } else if (window.confirm(t(language, 'calendar.deleteConfirm'))) {
                     onDeleteEvent(detailEvent.id)
                     setDetailEventId(null)
                   }
@@ -571,7 +581,7 @@ export function AdminMobileCalendar({
       )}
 
       {scopeAction && (
-        <SeriesScopeSheet
+        <SeriesScopeSheet language={language}
           action={scopeAction}
           onClose={() => setScopeAction(null)}
           onDeleteEvent={onDeleteEvent}
@@ -603,7 +613,7 @@ function SectionHead({ title, right }: { title: React.ReactNode; right?: React.R
   )
 }
 
-function SeriesScopeSheet({
+function SeriesScopeSheet({ language, 
   action,
   onClose,
   onDeleteEvent,
@@ -611,6 +621,7 @@ function SeriesScopeSheet({
   onUpdateEvent,
   onUpdateEventSeries,
 }: {
+  language: AppLanguage
   action: { kind: 'edit'; event: CalendarEvent; input: EventInput } | { kind: 'delete'; event: CalendarEvent }
   onClose: () => void
   onDeleteEvent?: (id: number) => void
@@ -662,22 +673,22 @@ function SeriesScopeSheet({
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 4 }}>
           <strong style={{ color: 'var(--ink)', fontSize: 17, fontWeight: 750 }}>
-            {isEdit ? '반복 일정 수정' : '반복 일정 삭제'}
+            {isEdit ? t(language, 'calendar.editRepeatTitle') : t(language, 'calendar.deleteRepeatTitle')}
           </strong>
           <span style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.35 }}>
-            이 일정은 반복 일정입니다. 적용 범위를 선택해 주세요.
+            {t(language, 'calendar.repeatScopeDesc')}
           </span>
         </div>
 
         <ScopeButton
-          description={`${action.event.date} 일정만 적용`}
-          label={`이 일정만 ${isEdit ? '수정' : '삭제'}`}
+          description={t(language, 'calendar.onlyThisInstance', { date: action.event.date })}
+          label={t(language, isEdit ? 'calendar.onlyThisEdit' : 'calendar.onlyThisDelete')}
           onClick={handleOnly}
         />
         <ScopeButton
           danger={!isEdit}
-          description={`${action.event.date}부터 적용`}
-          label={`이후 반복 일정 모두 ${isEdit ? '수정' : '삭제'}`}
+          description={t(language, 'calendar.fromThisInstance', { date: action.event.date })}
+          label={t(language, isEdit ? 'calendar.allFutureEdit' : 'calendar.allFutureDelete')}
           onClick={handleSeries}
           primary={isEdit}
         />
@@ -697,7 +708,7 @@ function SeriesScopeSheet({
             cursor: 'pointer',
           }}
         >
-          취소
+          {t(language, 'common.cancel')}
         </button>
       </div>
     </div>
@@ -764,12 +775,12 @@ function NavButton({ onClick, children }: { onClick: () => void; children: React
 }
 
 // ── 그 날 일정 카드 ────────────────────
-function DayEventCard({ event, onClick }: { event: CalendarEvent; onClick?: () => void }) {
+function DayEventCard({ language,  event, onClick }: { event: CalendarEvent; onClick?: () => void ; language: AppLanguage }) {
   const meta: string[] = []
   if (event.place) meta.push(event.place)
   if (event.leader) meta.push(event.leader)
   if (event.applicants && event.applicants.length > 0) {
-    meta.push(`신청 ${event.applicants.length}명`)
+    meta.push(t(language, 'home.appliedLabel') + ` ${event.applicants.length}`)
   }
   return (
     <button
@@ -798,7 +809,7 @@ function DayEventCard({ event, onClick }: { event: CalendarEvent; onClick?: () =
           }}
         >
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
-            {event.time || '시간 미정'}
+            {event.time || t(language, 'calendar.timeTbd')}
           </span>
           {event.endTime && (
             <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
@@ -810,7 +821,7 @@ function DayEventCard({ event, onClick }: { event: CalendarEvent; onClick?: () =
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{event.title}</span>
             {event.hasMeeting && (
-              <span
+              <span className="cal-badge meeting-badge"
                 style={{
                   fontSize: 10.5,
                   padding: '2px 7px',
@@ -820,7 +831,7 @@ function DayEventCard({ event, onClick }: { event: CalendarEvent; onClick?: () =
                   fontWeight: 500,
                 }}
               >
-                봉사모임
+                {t(language, 'calendar.meeting')}
               </span>
             )}
           </div>
@@ -838,10 +849,10 @@ function DayEventCard({ event, onClick }: { event: CalendarEvent; onClick?: () =
 }
 
 // ── 다가오는 일정 카드 ─────────────────
-function UpcomingEventCard({ event, onClick }: { event: CalendarEvent; onClick?: () => void }) {
+function UpcomingEventCard({ language,  event, onClick }: { event: CalendarEvent; onClick?: () => void ; language: AppLanguage }) {
   const d = new Date(event.date)
   const dStr = `${d.getMonth() + 1}/${d.getDate()}`
-  const dow = WEEKDAYS[d.getDay()]
+  const dow = WEEKDAY_LABELS[language][d.getDay()]
   const meta: string[] = []
   if (event.time) meta.push(formatTimeRange(event.time, event.endTime))
   if (event.place) meta.push(event.place)
@@ -882,7 +893,7 @@ function UpcomingEventCard({ event, onClick }: { event: CalendarEvent; onClick?:
 }
 
 // ── 일정 추가/편집 바텀 시트 ────────────────
-function EventAddSheet({
+function EventAddSheet({ language, 
   defaultDate,
   editingEvent,
   leaderNames,
@@ -894,7 +905,7 @@ function EventAddSheet({
   leaderNames: string[]
   onClose: () => void
   onSubmit: (input: EventSheetInput) => void
-}) {
+; language: AppLanguage }) {
   const [date, setDate] = useState(editingEvent?.date ?? defaultDate)
   const [time, setTime] = useState(editingEvent?.time ?? '')
   const [endTime, setEndTime] = useState(editingEvent?.endTime ?? '')
@@ -964,7 +975,7 @@ function EventAddSheet({
         {/* 제목 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>{isEditing ? '일정 편집' : '새 일정 추가'}</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>{t(language, isEditing ? 'calendar.editEvent' : 'calendar.addEvent')}</span>
             <span style={{ fontSize: 12, color: 'var(--muted)' }}>{date.replace(/-/g, '.')}</span>
           </div>
           <button
@@ -990,24 +1001,24 @@ function EventAddSheet({
           <Field
             label={
               <>
-                일정 제목 <span style={{ color: 'var(--status-danger)' }}>*</span>
+                {t(language, 'calendar.eventTitle')} <span style={{ color: 'var(--status-danger)' }}>*</span>
               </>
             }
           >
-            <TextInput value={title} onChange={setTitle} placeholder="일정 제목" />
+            <TextInput value={title} onChange={setTitle} placeholder={t(language, 'calendar.eventTitle')} />
           </Field>
 
           <Field
             label={
               <>
-                상세 설명 <span style={{ color: 'var(--muted)', fontWeight: 500 }}>(선택)</span>
+                {t(language, 'calendar.eventDesc')} <span style={{ color: 'var(--muted)', fontWeight: 500 }}>({t(language, 'common.optional')})</span>
               </>
             }
           >
-            <TextArea value={memo} onChange={setMemo} placeholder="추가 설명" />
+            <TextArea value={memo} onChange={setMemo} placeholder={t(language, 'calendar.eventDescPlaceholder')} />
           </Field>
 
-          <Field label="날짜와 시간">
+          <Field label={t(language, 'calendar.dateAndTime')}>
             <div
               style={{
                 display: 'flex',
@@ -1039,17 +1050,17 @@ function EventAddSheet({
                   <SettingToggle
                     checked={repeat}
                     compact
-                    description="같은 요일로 반복 일정을 생성합니다."
-                    label="매주 반복"
+                    description={t(language, 'calendar.repeatDesc')}
+                    label={t(language, 'calendar.repeatWeekly')}
                     onChange={setRepeat}
                   />
                   {repeat && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: 8, alignItems: 'center', minWidth: 0 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>종료일</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{t(language, 'calendar.endDate')}</span>
                       <TextInput type="date" value={repeatEnd} onChange={setRepeatEnd} subtle />
                       {repeatEnd && (
                         <span style={{ gridColumn: '1 / -1', color: 'var(--muted)', fontSize: 11.5, fontWeight: 600 }}>
-                          {repeatCount}개 일정 생성 예정
+                          {t(language, 'calendar.repeatCount', { count: repeatCount })}
                         </span>
                       )}
                     </div>
@@ -1058,7 +1069,7 @@ function EventAddSheet({
               )}
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>자주 쓰는 시간</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{t(language, 'calendar.timePresets')}</span>
                 <button
                   type="button"
                   onClick={() => setTimeSettingsOpen((value) => !value)}
@@ -1073,7 +1084,7 @@ function EventAddSheet({
                     cursor: 'pointer',
                   }}
                 >
-                  {timeSettingsOpen ? '설정 닫기' : '시간 설정'}
+                  {timeSettingsOpen ? t(language, 'calendar.closeSettings') : t(language, 'calendar.editTimeSettings')}
                 </button>
               </div>
 
@@ -1108,37 +1119,37 @@ function EventAddSheet({
               </div>
 
               {timeSettingsOpen && (
-                <TimePresetEditor presets={timePresets} onChange={updateTimePresets} />
+                <TimePresetEditor language={language} presets={timePresets} onChange={updateTimePresets} />
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', gap: 6, alignItems: 'center', minWidth: 0 }}>
-                <TimeBox label="시작" value={time} onChange={setTime} />
+                <TimeBox label={t(language, 'calendar.timeStart')} value={time} onChange={setTime} />
                 <span style={{ color: 'var(--muted-2)', fontSize: 13, fontWeight: 700 }}>—</span>
-                <TimeBox label="종료" value={endTime} onChange={setEndTime} placeholder="선택" />
+                <TimeBox label={t(language, 'calendar.timeEnd')} value={endTime} onChange={setEndTime} placeholder={t(language, 'common.select')} />
               </div>
             </div>
           </Field>
 
-          <Field label="모임 장소">
-            <TextInput value={place} onChange={setPlace} placeholder="장소 입력" />
-            <TextInput value={mapLink} onChange={setMapLink} placeholder="네이버 지도 링크 (선택)" />
+          <Field label={t(language, 'calendar.location')}>
+            <TextInput value={place} onChange={setPlace} placeholder={t(language, 'calendar.location')} />
+            <TextInput value={mapLink} onChange={setMapLink} placeholder={t(language, 'calendar.mapLinkPlaceholder')} />
           </Field>
 
-          <Field label="인도자">
-            <Select value={leader} onChange={setLeader} options={['', ...leaderNames]} placeholder="선택 안함" />
+          <Field label={t(language, 'calendar.leader')}>
+            <Select value={leader} onChange={setLeader} options={['', ...leaderNames]} placeholder={t(language, 'common.selectNone')} />
           </Field>
 
-          <Field label="설정">
+          <Field label={t(language, 'calendar.settings')}>
             <SettingToggle
               checked={hasMeeting}
-              description="모임 일정이면 카드에 표시됩니다."
-              label="봉사모임"
+              description={t(language, 'calendar.meetingDesc')}
+              label={t(language, 'calendar.meeting')}
               onChange={setHasMeeting}
             />
             <SettingToggle
               checked={allowApplications}
-              description="봉사자들이 이 일정에 신청할 수 있습니다."
-              label="봉사 신청 받기"
+              description={t(language, 'calendar.allowApplicationsDesc')}
+              label={t(language, 'calendar.allowApplications')}
               onChange={setAllowApplications}
             />
           </Field>
@@ -1163,7 +1174,7 @@ function EventAddSheet({
             letterSpacing: '-0.005em',
           }}
         >
-          저장
+          {t(language, 'common.save')}
         </button>
       </div>
     </div>
@@ -1277,13 +1288,13 @@ function TimeBox({
   )
 }
 
-function TimePresetEditor({
+function TimePresetEditor({ language, 
   presets,
   onChange,
 }: {
   presets: TimePreset[]
   onChange: (presets: TimePreset[]) => void
-}) {
+; language: AppLanguage }) {
   const updatePreset = (index: number, patch: Partial<TimePreset>) => {
     onChange(presets.map((preset, i) => i === index ? { ...preset, ...patch } : preset))
   }
@@ -1295,10 +1306,10 @@ function TimePresetEditor({
     onChange([
       ...presets,
       {
-        label: `시간 ${presets.length + 1}`,
+        label: t(language, 'calendar.timePresetLabel', { count: presets.length + 1 }),
         time,
         durationMinutes: 120,
-        title: '방문',
+        title: t(language, 'calendar.defaultEventTitle'),
       },
     ])
   }
@@ -1323,7 +1334,7 @@ function TimePresetEditor({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 750, color: 'var(--ink)' }}>빠른 시간 편집</span>
+        <span style={{ fontSize: 12, fontWeight: 750, color: 'var(--ink)' }}>{t(language, 'calendar.editTimeSettings')}</span>
         <button
           type="button"
           disabled={presets.length >= TIME_PRESETS_MAX}
@@ -1340,7 +1351,7 @@ function TimePresetEditor({
             padding: '6px 9px',
           }}
         >
-          + 추가
+          {t(language, 'common.add')}
         </button>
       </div>
 
@@ -1364,23 +1375,23 @@ function TimePresetEditor({
             }}
           >
             <MiniInput
-              ariaLabel="시간 라벨"
+              ariaLabel={t(language, 'calendar.timePresetLabelField')}
               value={preset.label}
               onChange={(value) => updatePreset(index, { label: value })}
-              placeholder="라벨"
+              placeholder={t(language, 'calendar.label')}
             />
             <MiniInput
-              ariaLabel="시작 시간"
+              ariaLabel={t(language, 'calendar.startTime')}
               type="time"
               value={preset.time}
               onChange={(value) => updatePreset(index, { time: value })}
             />
             <MiniInput
-              ariaLabel="소요 시간"
+              ariaLabel={t(language, 'calendar.duration')}
               type="number"
               value={String(preset.durationMinutes)}
               onChange={(value) => updatePreset(index, { durationMinutes: Number(value) || 120 })}
-              suffix="분"
+              suffix={t(language, 'common.minutes')}
             />
             <button
               type="button"
@@ -1401,13 +1412,13 @@ function TimePresetEditor({
                 display: 'grid',
                 placeItems: 'center',
               }}
-              aria-label="빠른 시간 삭제"
+              aria-label={t(language, 'common.delete')}
             >
               ×
             </button>
           </div>
           <MiniInput
-            ariaLabel="기본 제목"
+            ariaLabel={t(language, 'calendar.defaultTitle')}
             value={preset.title}
             onChange={(value) => updatePreset(index, { title: value })}
             placeholder="기본 제목"

@@ -296,7 +296,7 @@ export function PwaInstallModal({ onClose }: { onClose: () => void }) {
 /**
  * 설정 페이지에서 보여줄 PWA 상태 + 설치 안내 버튼
  */
-export function PwaInstallSection() {
+export function PwaInstallSection({ language = 'ko' }: { language?: string } = {}) {
   const { user } = useAuth()
   const [installed, setInstalled] = useState(isPWAInstalled())
   const [showModal, setShowModal] = useState(false)
@@ -350,18 +350,18 @@ export function PwaInstallSection() {
   }
 
   const pushOn = isPushSupported() && subscribed
-  const installSub = installed ? '홈 화면 앱으로 사용 중' : '알림을 받으려면 PWA 설치 필요'
+  const installSub = installed ? (language === 'ko' ? '홈 화면 앱으로 사용 중' : language === 'zh' ? '已作为主屏幕应用使用' : 'Using as home screen app') : (language === 'ko' ? '알림을 받으려면 PWA 설치 필요' : language === 'zh' ? '需要安装 PWA 才能接收通知' : 'PWA installation required for notifications')
   const pushSub =
-    !isPushSupported() ? '기기에서 푸시 알림 미지원'
-    : notifPermission === 'denied' ? '브라우저 설정에서 허용 필요'
-    : pushOn ? '이 기기 알림 켜짐'
-    : '이 기기 알림 꺼짐'
+    !isPushSupported() ? (language === 'ko' ? '기기에서 푸시 알림 미지원' : language === 'zh' ? '设备不支持推送通知' : 'Device push not supported')
+    : notifPermission === 'denied' ? (language === 'ko' ? '브라우저 설정에서 허용 필요' : language === 'zh' ? '需要在浏览器设置中允许' : 'Need permission in browser')
+    : pushOn ? (language === 'ko' ? '이 기기 알림 켜짐' : language === 'zh' ? '此设备通知已开启' : 'Notifications on')
+    : (language === 'ko' ? '이 기기 알림 꺼짐' : language === 'zh' ? '此设备通知已关闭' : 'Notifications off')
 
   return (
     <>
       {/* ── 이 기기 섹션 헤더 ──────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0 4px', marginBottom: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>이 기기</h2>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>{language === 'ko' ? '이 기기' : language === 'zh' ? '此设备' : 'This device'}</h2>
       </div>
 
       {/* ── 홈 화면에 설치 카드 ───────────── */}
@@ -371,7 +371,7 @@ export function PwaInstallSection() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>홈 화면에 설치</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{language === 'ko' ? '홈 화면에 설치' : language === 'zh' ? '安装到主屏幕' : 'Install to home screen'}</span>
             <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{installSub}</span>
           </div>
           {installed ? (
@@ -406,7 +406,7 @@ export function PwaInstallSection() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>푸시 알림</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{language === 'ko' ? '푸시 알림' : language === 'zh' ? '推送通知' : 'Push notifications'}</span>
             <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{pushSub}</span>
           </div>
           {isPushSupported() && user && notifPermission !== 'denied' && (
@@ -446,7 +446,7 @@ export function PwaInstallSection() {
             )
           )}
           {notifPermission === 'denied' && (
-            <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--status-danger)' }}>설정 필요</span>
+            <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--status-danger)' }}>{language === 'ko' ? '설정 필요' : language === 'zh' ? '需要设置' : 'Setup needed'}</span>
           )}
         </div>
       </div>

@@ -327,22 +327,18 @@ export function AdminMobileZone({
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 16px 24px' }}>
         <TerritoryInlineTabs active="informal" onChange={setZoneKind} cardCount={cards.length} informalCount={informalCount} restaurantCount={restaurantCount} />
-        {onUploadInformalAsset && onDeleteInformalAsset && onCreateInformalGroup && onRenameInformalGroup && onDeleteInformalGroup && onMoveAssetToGroup ? (
-          <InformalCardsTab
-            role={role}
-            currentVisitor={currentVisitor}
-            informalAssets={informalAssets}
-            informalGroups={informalGroups}
-            onUpload={onUploadInformalAsset}
-            onDelete={onDeleteInformalAsset}
-            onCreateGroup={onCreateInformalGroup}
-            onRenameGroup={onRenameInformalGroup}
-            onDeleteGroup={onDeleteInformalGroup}
-            onMoveAsset={onMoveAssetToGroup}
-          />
-        ) : (
-          <p style={{ padding: 24, textAlign: 'center', color: 'var(--muted)' }}>비공식 카드 기능을 사용할 수 없습니다.</p>
-        )}
+        <InformalCardsTab
+          role={role}
+          currentVisitor={currentVisitor}
+          informalAssets={informalAssets}
+          informalGroups={informalGroups}
+          onUpload={onUploadInformalAsset || (() => Promise.resolve({ ok: false }))}
+          onDelete={onDeleteInformalAsset || (() => Promise.resolve())}
+          onCreateGroup={onCreateInformalGroup || (() => Promise.resolve(null))}
+          onRenameGroup={onRenameInformalGroup || (() => Promise.resolve())}
+          onDeleteGroup={onDeleteInformalGroup || (() => Promise.resolve())}
+          onMoveAsset={onMoveAssetToGroup || (() => Promise.resolve())}
+        />
       </div>
     )
   }

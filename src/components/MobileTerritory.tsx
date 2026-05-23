@@ -660,13 +660,22 @@ export function MobileTerritory({
               {activeRestaurantSession && (
                 <div className="mt-rs-active-card">
                   <div className="mt-rs-active-header">
-                    <span className="mt-rs-active-icon">🍜</span>
+                    <span className="mt-rs-active-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 13h18"></path>
+                        <path d="M4 13a8 8 0 0 0 16 0"></path>
+                        <path d="M8 21h8"></path>
+                        <path d="M9 9v-3"></path>
+                        <path d="M12 9v-4"></path>
+                        <path d="M15 9v-3"></path>
+                      </svg>
+                    </span>
                     <div className="mt-rs-active-info">
                       <strong className="mt-rs-active-name">{activeRestaurantSession.name}</strong>
                       <span className="mt-rs-active-addr">{activeRestaurantSession.address}</span>
                     </div>
                     {activeRestaurantSession.kind === 'request' && (
-                      <span className="mt-rs-pending-badge">승인대기</span>
+                      <span className="mt-rs-pending-badge">{t(language, 'restaurant.myPending')}</span>
                     )}
                     <div className="mt-rs-active-dots-wrap" style={{ position: 'relative' }}>
                       <button
@@ -686,19 +695,23 @@ export function MobileTerritory({
                           <div className="mt-rs-menu">
                             <a
                               className="mt-rs-menu-item"
+                              style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                               href={`https://map.naver.com/v5/search/${encodeURIComponent(activeRestaurantSession.address)}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={() => setShowSessionMenu(false)}
                             >
-                              🗺 길찾기
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 11a3 3 0 1 0 6 0 3 3 0 0 0-6 0z"/><path d="M17.657 16.657L13.414 20.9a2 2 0 0 1-2.827 0l-4.244-4.243a8 8 0 1 1 11.314 0z"/></svg>
+                              {t(language, 'territory.findRoute')}
                             </a>
                             <button
                               type="button"
                               className="mt-rs-menu-item mt-rs-menu-danger"
+                              style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                               onClick={() => { handleCancelSession(); setShowSessionMenu(false) }}
                             >
-                              ✕ 봉사 취소하기
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                              {t(language, 'territory.cancelService')}
                             </button>
                           </div>
                         </>
@@ -724,14 +737,14 @@ export function MobileTerritory({
                           onClick={handleSaveSessionResult}
                           disabled={sessionSaving}
                         >
-                          {sessionSaving ? '저장 중...' : '봉사 기록 저장'}
+                          {sessionSaving ? t(language, 'territory.saving') : t(language, 'territory.saveRecord')}
                         </button>
                         <button
                           type="button"
                           className="mt-rs-cancel-btn"
                           onClick={() => { setShowSessionMemo(false); setSessionMemo('') }}
                         >
-                          취소
+                          {t(language, 'territory.cancel')}
                         </button>
                       </div>
                     </div>
@@ -740,8 +753,10 @@ export function MobileTerritory({
                       type="button"
                       className="mt-rs-memo-toggle-btn"
                       onClick={() => setShowSessionMemo(true)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                     >
-                      📝 메모 / 봉사 결과 입력
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      {t(language, 'territory.memoResultInput')}
                     </button>
                   )}
                 </div>
@@ -753,10 +768,19 @@ export function MobileTerritory({
                 className="mt-restaurant-btn"
                 onClick={() => setShowRestaurantSheet(true)}
               >
-                <span className="mt-restaurant-icon" aria-hidden>🍜</span>
-                <span className="mt-restaurant-label">식당봉사</span>
+                <span className="mt-restaurant-icon" aria-hidden>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 13h18"></path>
+                    <path d="M4 13a8 8 0 0 0 16 0"></path>
+                    <path d="M8 21h8"></path>
+                    <path d="M9 9v-3"></path>
+                    <path d="M12 9v-4"></path>
+                    <path d="M15 9v-3"></path>
+                  </svg>
+                </span>
+                <span className="mt-restaurant-label">{t(language, 'territory.restaurant')}</span>
                 <span className="mt-restaurant-count">
-                  {buildings.filter((b) => b.isRestaurant).length}개 등록
+                  {buildings.filter((b) => b.isRestaurant).length}{t(language, 'territory.restaurantRegistered')}
                 </span>
                 <span className="mt-restaurant-arrow" aria-hidden>›</span>
               </button>
@@ -897,7 +921,7 @@ export function MobileTerritory({
                       {/* 색상 피커 */}
                       {isColorPick && (
                         <div className="rv-color-picker" onClick={(e) => e.stopPropagation()}>
-                          {['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#8b5cf6','#ec4899','#6b7280'].map((c) => (
+                          {['#94a3b8','#fca5a5','#fcd34d','#6ee7b7','#93c5fd','#c4b5fd','#f9a8d4','#d1d5db'].map((c) => (
                             <button
                               key={c}
                               className={`rv-color-dot${cardColor === c ? ' selected' : ''}`}
@@ -1519,6 +1543,8 @@ export function MobileTerritory({
     {/* 식당봉사 시트 */}
     {showRestaurantSheet && onSubmitRestaurantRequest && (
       <RestaurantServiceSheet
+        role={role}
+        language={language}
         buildings={buildings}
         visitHistories={visitHistories}
         currentVisitor={currentVisitor}

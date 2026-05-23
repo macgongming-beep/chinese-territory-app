@@ -3,6 +3,7 @@ import { Component } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { t, type AppLanguage } from '../i18n'
 import { useNotifications } from '../hooks/useNotifications'
 import { useUserChats } from '../hooks/useUserChats'
 import type { Role } from '../types'
@@ -38,6 +39,7 @@ type AppHeaderProps = {
   onOpenMenu?: () => void
   rightSlot?: ReactNode
   className?: string
+  language?: AppLanguage
 }
 
 type AppHeaderActionButtonsProps = {
@@ -53,11 +55,13 @@ type AppHeaderActionButtonsProps = {
   className?: string
   buttonClassName?: string
   showMenu?: boolean
+  language?: AppLanguage
 }
 
 type HeaderOverlayErrorBoundaryProps = {
   children: ReactNode
   onClose: () => void
+  language?: AppLanguage
 }
 
 type HeaderOverlayErrorBoundaryState = {
@@ -76,18 +80,19 @@ class HeaderOverlayErrorBoundary extends Component<HeaderOverlayErrorBoundaryPro
   }
 
   render() {
+    const { language = 'ko' } = this.props
     if (!this.state.error) return this.props.children
 
     return (
       <div className="header-action-panel-backdrop" onClick={this.props.onClose}>
         <section className="header-action-panel" onClick={(event) => event.stopPropagation()}>
           <div className="header-action-panel__head">
-            <h2>불러오지 못했습니다</h2>
-            <button type="button" aria-label="닫기" onClick={this.props.onClose}>×</button>
+            <h2>{t(language, 'header.errorTitle')}</h2>
+            <button type="button" aria-label={t(language, 'header.close')} onClick={this.props.onClose}>×</button>
           </div>
           <div className="header-action-panel__empty">
-            <strong>패널을 여는 중 문제가 발생했습니다.</strong>
-            <p>새로고침 후 다시 시도해 주세요.</p>
+            <strong>{t(language, 'header.errorDesc')}</strong>
+            <p>{t(language, 'header.errorRefresh')}</p>
             <small>{this.state.error.message}</small>
           </div>
         </section>
@@ -159,6 +164,7 @@ export function AppHeaderActionButtons({
   className = 'app-header__actions',
   buttonClassName = 'app-header__action',
   showMenu = true,
+  language = 'ko',
 }: AppHeaderActionButtonsProps) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -216,8 +222,6 @@ export function AppHeaderActionButtons({
     }
   }
 
-  // 외부 컴포넌트(일정 상세 시트 등)에서 'app:open-event-chat' 이벤트 dispatch 하면
-  // GlobalChatModal 을 그 일정으로 바로 열어줌.
   useEffect(() => {
     function onOpenEventChat(e: Event) {
       const detail = (e as CustomEvent).detail as {
@@ -234,7 +238,6 @@ export function AppHeaderActionButtons({
     }
     window.addEventListener('app:open-event-chat', onOpenEventChat)
     return () => window.removeEventListener('app:open-event-chat', onOpenEventChat)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search, location.hash])
 
   return (
@@ -243,7 +246,7 @@ export function AppHeaderActionButtons({
         <button
           type="button"
           className={buttonClassName}
-          aria-label={resolvedNotificationCount ? `알림 ${resolvedNotificationCount}개` : '알림'}
+          aria-label={resolvedNotificationCount ? t(language, 'header.notificationCount').replace('{count}', String(resolvedNotificationCount)) : t(language, 'header.notifications')}
           onClick={handleOpenNotifications}
         >
           <HeaderActionIcon name="notification" />
@@ -252,14 +255,14 @@ export function AppHeaderActionButtons({
         <button
           type="button"
           className={buttonClassName}
-          aria-label={resolvedChatCount ? `채팅 ${resolvedChatCount}개` : '채팅'}
+          aria-label={resolvedChatCount ? t(language, 'header.chatCount').replace('{count}', String(resolvedChatCount)) : t(language, 'header.chats')}
           onClick={handleOpenChat}
         >
           <HeaderActionIcon name="chat" />
           <IconBadge count={resolvedChatCount} />
         </button>
         {showMenu ? (
-          <button type="button" className={buttonClassName} aria-label="더보기" onClick={onOpenMenu}>
+          <button type="button" className={buttonClassName} aria-label={t(language, 'header.menu')} onClick={onOpenMenu}>
             <HeaderActionIcon name="menu" />
           </button>
         ) : null}
@@ -267,7 +270,7 @@ export function AppHeaderActionButtons({
 
       {openNotifications ? (
         <HeaderOverlayPortal>
-          <HeaderOverlayErrorBoundary onClose={() => setOpenNotifications(false)}>
+          <HeaderOverlayErrorBoundary  onClose={() => setOpenNotifications(false)}>
             <NotificationCenter
               userId={userId ?? null}
               userName={userName}
@@ -281,7 +284,7 @@ export function AppHeaderActionButtons({
       ) : null}
       {openChat ? (
         <HeaderOverlayPortal>
-          <HeaderOverlayErrorBoundary onClose={handleCloseChat}>
+          <HeaderOverlayErrorBoundary  onClose={handleCloseChat}>
             <GlobalChatModal
               userId={userId ?? null}
               userName={userName}
@@ -291,6 +294,7 @@ export function AppHeaderActionButtons({
               onSelectChat={handleOpenChatRoom}
               onBackToList={() => setHeaderChatTarget(null)}
               onClose={handleCloseChat}
+              
             />
           </HeaderOverlayErrorBoundary>
         </HeaderOverlayPortal>
@@ -318,6 +322,7 @@ export function AppHeader({
   onOpenMenu,
   rightSlot,
   className,
+  language = 'ko',
 }: AppHeaderProps) {
   const headerSubtitle = isHome && date ? formatHeaderDate(date) : subtitle
   const rootClassName = ['app-header', `app-header--${variant}`, className].filter(Boolean).join(' ')
@@ -326,7 +331,7 @@ export function AppHeader({
     <header className={rootClassName}>
       <div className="app-header__left">
         {showBack ? (
-          <button type="button" className="app-header__back" aria-label="뒤로가기" onClick={onBack}>
+          <button type="button" className="app-header__back" aria-label={t(language, 'header.back')} onClick={onBack}>
             ‹
           </button>
         ) : null}
@@ -349,6 +354,7 @@ export function AppHeader({
           onOpenNotifications={onOpenNotifications}
           onOpenChat={onOpenChat}
           onOpenMenu={onOpenMenu}
+          
           className="app-header__actions-inline"
         />
       </div>

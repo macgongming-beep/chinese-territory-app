@@ -9,6 +9,7 @@
 import { useMemo, useState } from 'react'
 import type { Building, RestaurantRequest, VisitHistory } from '../types'
 import { normalizeCardSearch } from '../utils/cardSearch'
+import { t, type AppLanguage } from '../i18n'
 
 // ── 아이콘 ────────────────────────────────────────────────────
 function ForkIcon() {
@@ -81,6 +82,7 @@ function fmtVisitDate(iso: string): string {
 
 // ── Props ─────────────────────────────────────────────────────
 type Props = {
+  role?: string
   buildings: Building[]
   visitHistories: VisitHistory[]
   currentVisitor: string
@@ -88,11 +90,13 @@ type Props = {
   onStartSession: (session: { kind: 'building'; buildingId: number; unitId: number; name: string; address: string } | { kind: 'request'; requestId: number; name: string; address: string }) => void
   onSubmitRequest: (name: string, address: string, memo: string) => Promise<void>
   onClose: () => void
+  language: AppLanguage
 }
 
 type View = 'search' | 'preview' | 'preview-pending' | 'add-request'
 
 export function RestaurantServiceSheet({
+  role,
   buildings,
   visitHistories,
   currentVisitor,
@@ -100,6 +104,7 @@ export function RestaurantServiceSheet({
   onStartSession,
   onSubmitRequest,
   onClose,
+  language,
 }: Props) {
   const [view, setView] = useState<View>('search')
   const [search, setSearch] = useState('')
@@ -216,30 +221,30 @@ export function RestaurantServiceSheet({
           <div className="mobile-sheet-handle" />
           <div className="restaurant-sheet-head">
             <span className="restaurant-sheet-icon"><ForkIcon /></span>
-            <h2>식당봉사</h2>
-            <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}>×</button>
+            <h2>{t(language, 'restaurant.title')}</h2>
+            <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
 
           <div className="restaurant-search-wrap">
             <SearchIcon />
             <input
               className="restaurant-search-input"
-              placeholder="식당 이름 또는 주소 검색"
+              placeholder={t(language, 'restaurant.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
             />
             {search && (
-              <button type="button" className="restaurant-search-clear" onClick={() => setSearch('')}>×</button>
+              <button type="button" className="restaurant-search-clear" onClick={() => setSearch('')}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
             )}
           </div>
 
           <div className="restaurant-list-body">
-            {/* 내가 신청 대기 중인 항목 */}
-            {!search.trim() && myPendingRequests.length > 0 && (
+            {/* 내가 신청 대기 중인 항목 (관리자만 표시) */}
+            {role === 'admin' && !search.trim() && myPendingRequests.length > 0 && (
               <div className="restaurant-pending-section">
                 <p className="restaurant-pending-label">
-                  <ClockIcon /> 승인 대기 중
+                  <ClockIcon /> {t(language, 'restaurant.myPending')}
                 </p>
                 {myPendingRequests.map((req) => (
                   <button
@@ -264,13 +269,15 @@ export function RestaurantServiceSheet({
                 {search.trim() ? (
                   <>
                     <p>"{search}" 검색 결과가 없습니다</p>
-                    <button type="button" className="restaurant-add-request-btn" onClick={handleOpenAddRequest}>
-                      + 이 식당 추가 신청
-                    </button>
+                    {role === 'admin' && (
+                      <button type="button" className="restaurant-add-request-btn" onClick={handleOpenAddRequest}>
+                        + 이 식당 추가 신청
+                      </button>
+                    )}
                   </>
-                ) : myPendingRequests.length === 0 ? (
+                ) : (role === 'admin' && myPendingRequests.length > 0) ? null : (
                   <p>등록된 식당이 없습니다</p>
-                ) : null}
+                )}
               </div>
             ) : (
               <>
@@ -318,7 +325,7 @@ export function RestaurantServiceSheet({
                     )}
                   </div>
                 ))}
-                {search.trim() && (
+                {role === 'admin' && search.trim() && (
                   <div className="restaurant-add-row">
                     <button type="button" className="restaurant-add-request-btn" onClick={handleOpenAddRequest}>
                       + "{search}" 식당 추가 신청
@@ -344,7 +351,7 @@ export function RestaurantServiceSheet({
               <BackIcon />
             </button>
             <h2>{selectedBuilding.name || selectedBuilding.address}</h2>
-            <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}>×</button>
+            <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
 
           <div className="restaurant-record-body">
@@ -362,7 +369,7 @@ export function RestaurantServiceSheet({
                       <span className="restaurant-history-date">{fmtVisitDate(h.visitedAt)}</span>
                       {h.visitor && <span className="restaurant-history-visitor">{h.visitor}</span>}
                       {h.visitType === 'restaurant' && (
-                        <span className="restaurant-history-badge">식당봉사</span>
+                        <span className="restaurant-history-badge">{t(language, 'restaurant.badge')}</span>
                       )}
                       {h.memo && <span className="restaurant-history-memo">"{h.memo}"</span>}
                     </li>
@@ -372,7 +379,7 @@ export function RestaurantServiceSheet({
             )}
 
             {buildingHistories.length === 0 && (
-              <p className="restaurant-no-history">아직 방문 기록이 없습니다</p>
+              <p className="restaurant-no-history">{t(language, 'restaurant.noHistory')}</p>
             )}
 
             <button
@@ -380,7 +387,17 @@ export function RestaurantServiceSheet({
               className="restaurant-save-btn restaurant-start-btn"
               onClick={handleStartBuildingSession}
             >
-              🍜 이 식당에서 봉사하기
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 13h18"></path>
+                  <path d="M4 13a8 8 0 0 0 16 0"></path>
+                  <path d="M8 21h8"></path>
+                  <path d="M9 9v-3"></path>
+                  <path d="M12 9v-4"></path>
+                  <path d="M15 9v-3"></path>
+                </svg>
+                {t(language, 'restaurant.serveHere')}
+              </span>
             </button>
           </div>
         </section>
@@ -399,14 +416,14 @@ export function RestaurantServiceSheet({
               <BackIcon />
             </button>
             <h2>{selectedRequest.name}</h2>
-            <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}>×</button>
+            <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
 
           <div className="restaurant-record-body">
             <div className="restaurant-record-info">
               <span className="restaurant-record-address">{selectedRequest.address}</span>
               <span className="restaurant-pending-status-badge">
-                <ClockIcon /> 승인 대기 중
+                <ClockIcon /> {t(language, 'restaurant.myPending')}
               </span>
             </div>
 
@@ -419,7 +436,17 @@ export function RestaurantServiceSheet({
               className="restaurant-save-btn restaurant-start-btn"
               onClick={handleStartRequestSession}
             >
-              🍜 이 식당에서 봉사하기
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 13h18"></path>
+                  <path d="M4 13a8 8 0 0 0 16 0"></path>
+                  <path d="M8 21h8"></path>
+                  <path d="M9 9v-3"></path>
+                  <path d="M12 9v-4"></path>
+                  <path d="M15 9v-3"></path>
+                </svg>
+                {t(language, 'restaurant.serveHere')}
+              </span>
             </button>
           </div>
         </section>
@@ -436,8 +463,8 @@ export function RestaurantServiceSheet({
           <button type="button" className="restaurant-back-btn" onClick={handleBack} aria-label="뒤로">
             <BackIcon />
           </button>
-          <h2>식당 추가 신청</h2>
-          <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}>×</button>
+          <h2>{t(language, 'restaurant.adminApprove')}</h2>
+          <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
 
         <div className="restaurant-record-body">

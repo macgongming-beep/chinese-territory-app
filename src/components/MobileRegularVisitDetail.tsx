@@ -35,7 +35,7 @@ function fmtFullDate(value: string, language: AppLanguage) {
 }
 
 export function MobileRegularVisitDetail({
-  language,
+  language = 'ko',
   returnVisits,
   returnVisitLogs,
   buildings,
@@ -242,10 +242,10 @@ export function MobileRegularVisitDetail({
         {/* 히스토리 */}
         <section className="mobile-rv-history">
           <h3 className="mobile-rv-section-title">
-            방문 기록 <span className="rv-count">{myLogs.length}건</span>
+            {language === 'ko' ? '방문 기록' : language === 'zh' ? '访问记录' : 'Visit History'} <span className="rv-count">{myLogs.length}건</span>
           </h3>
           {myLogs.length === 0 ? (
-            <p className="mobile-rv-history-empty">아직 기록이 없습니다.</p>
+            <p className="mobile-rv-history-empty">{language === 'ko' ? '아직 기록이 없습니다.' : language === 'zh' ? '暂无记录。' : 'No records yet.'}</p>
           ) : (
             <ul className="mobile-rv-history-list">
               {myLogs.map((log) => {
@@ -275,8 +275,8 @@ export function MobileRegularVisitDetail({
                     {isEdit ? (
                       <div className="mobile-rv-history-edit">
                         <div className="mobile-rv-result-toggle">
-                          <button type="button" className={editLogResult === '만남' ? 'is-active' : ''} onClick={() => setEditLogResult((prev) => prev === '만남' ? null : '만남')}>만남</button>
-                          <button type="button" className={editLogResult === '부재' ? 'is-active' : ''} onClick={() => setEditLogResult((prev) => prev === '부재' ? null : '부재')}>부재</button>
+                          <button type="button" className={editLogResult === '만남' ? 'is-active' : ''} onClick={() => setEditLogResult((prev) => prev === '만남' ? null : '만남')}>{language === 'ko' ? '만남' : language === 'zh' ? '见面' : 'Met'}</button>
+                          <button type="button" className={editLogResult === '부재' ? 'is-active' : ''} onClick={() => setEditLogResult((prev) => prev === '부재' ? null : '부재')}>{language === 'ko' ? '부재' : language === 'zh' ? '不在' : 'Absent'}</button>
                         </div>
                         <textarea
                           className="mobile-rv-memo-input"
@@ -392,19 +392,19 @@ export function MobileRegularVisitDetail({
                     type="button"
                     className={`rv-sheet-chip${logResult === '만남' ? ' is-active' : ''}`}
                     onClick={() => setLogResult((prev) => prev === '만남' ? null : '만남')}
-                  >만남</button>
+                  >{language === 'ko' ? '만남' : language === 'zh' ? '见面' : 'Met'}</button>
                   <button
                     type="button"
                     className={`rv-sheet-chip${logResult === '부재' ? ' is-active' : ''}`}
                     onClick={() => setLogResult((prev) => prev === '부재' ? null : '부재')}
-                  >부재</button>
+                  >{language === 'ko' ? '부재' : language === 'zh' ? '不在' : 'Absent'}</button>
                 </div>
               </div>
               <textarea
                 className="rv-sheet-memo"
                 value={logMemo}
                 onChange={(e) => setLogMemo(e.target.value)}
-                placeholder="메모 (선택)"
+                placeholder={language === "ko" ? "메모 (선택)" : language === "zh" ? "备注（选填）" : "Memo (optional)"}
                 rows={3}
               />
               <div className="rv-sheet-actions">

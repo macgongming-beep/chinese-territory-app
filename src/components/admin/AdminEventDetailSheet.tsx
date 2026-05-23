@@ -16,6 +16,7 @@ import type { CalendarEvent, Role } from '../../types'
 import { CommentSection, type MentionUser } from '../CommentSection'
 
 type Props = {
+  language?: string
   event: CalendarEvent
   role: Role
   currentVisitor: string
@@ -63,13 +64,14 @@ function initial(name: string) {
   return name.slice(0, 1)
 }
 
-function formatDateHeader(iso: string) {
+function formatDateHeader(iso: string, language = 'ko') {
   const d = new Date(iso)
-  const dows = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
+  const dows = (language === 'zh' ? ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'] : language === 'en' ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] : ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'])
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${dows[d.getDay()]})`
 }
 
 export function AdminEventDetailSheet({
+  language = 'ko',
   event,
   role,
   currentVisitor,
@@ -148,8 +150,8 @@ export function AdminEventDetailSheet({
             <ChevL />
           </button>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.015em' }}>일정</span>
-            <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--muted)' }}>{formatDateHeader(event.date)}</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.015em' }}>{language === 'ko' ? '일정' : language === 'zh' ? '日程' : 'Event'}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--muted)' }}>{formatDateHeader(event.date, language)}</span>
           </div>
         </div>
         {role === 'admin' && (onDelete || onEdit) && (
@@ -202,7 +204,7 @@ export function AdminEventDetailSheet({
                         fontSize: 13, color: 'var(--text)',
                         cursor: 'pointer', borderRadius: 6,
                       }}
-                    >수정</button>
+                    >{language === 'ko' ? '수정' : language === 'zh' ? '修改' : 'Edit'}</button>
                   )}
                   {onDelete && (
                     <button
@@ -215,7 +217,7 @@ export function AdminEventDetailSheet({
                         fontSize: 13, color: 'var(--status-danger)',
                         cursor: 'pointer', borderRadius: 6,
                       }}
-                    >삭제</button>
+                    >{language === 'ko' ? '삭제' : language === 'zh' ? '删除' : 'Delete'}</button>
                   )}
                 </div>
               </>
@@ -263,7 +265,7 @@ export function AdminEventDetailSheet({
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
               <Avatar name={event.leader} size={24} />
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{event.leader}</span>
-              <span style={{ fontSize: 12, color: 'var(--muted)' }}>인도자</span>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>{language === 'ko' ? '인도자' : language === 'zh' ? '带头人' : 'Conductor'}</span>
             </div>
           )}
         </section>
@@ -288,14 +290,14 @@ export function AdminEventDetailSheet({
               letterSpacing: '-0.005em',
             }}
           >
-            {isApplied ? '신청 취소' : '신청하기'}
+            {isApplied ? (language === 'ko' ? '신청 취소' : language === 'zh' ? '取消申请' : 'Cancel') : (language === 'ko' ? '신청하기' : language === 'zh' ? '申请参与' : 'Apply')}
           </button>
         )}
 
         {/* 상세 설명 */}
         {event.memo && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <SectionHead title="상세 설명" />
+            <SectionHead title={language === "ko" ? "상세 설명" : language === "zh" ? "详细说明" : "Details"} />
             <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
               {event.memo}
             </div>
@@ -307,7 +309,7 @@ export function AdminEventDetailSheet({
             지도 썸네일 미리보기는 네이버 X-Frame-Options 차단으로 불가능. */}
         {event.place && event.mapLink && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <SectionHead title="위치" />
+            <SectionHead title={language === "ko" ? "위치" : language === "zh" ? "位置" : "Location"} />
             <a
               href={event.mapLink}
               target="_blank"
@@ -333,7 +335,7 @@ export function AdminEventDetailSheet({
               </span>
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{event.place}</span>
-                <span style={{ fontSize: 12, color: 'var(--muted)' }}>네이버 지도에서 보기</span>
+                <span style={{ fontSize: 12, color: 'var(--muted)' }}>{language === 'ko' ? '네이버 지도에서 보기' : language === 'zh' ? '在 Naver 地图中查看' : 'View on Naver Map'}</span>
               </div>
               <span style={{ color: 'var(--muted-2)', flexShrink: 0 }}>
                 <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -346,7 +348,7 @@ export function AdminEventDetailSheet({
         )}
         {event.place && !event.mapLink && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <SectionHead title="위치" />
+            <SectionHead title={language === "ko" ? "위치" : language === "zh" ? "位置" : "Location"} />
             <div style={{
               display: 'flex', alignItems: 'center', gap: 12,
               padding: '14px 16px',

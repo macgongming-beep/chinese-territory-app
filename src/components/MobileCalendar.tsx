@@ -539,7 +539,7 @@ export function MobileCalendar({
                 <section className="chat-room chat-room--compact chat-room-summary">
                   <div className="chat-room__head">
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                      <strong>채팅</strong>
+                      <strong>{t(language, 'header.chats')}</strong>
                       <span>{event.title}</span>
                     </div>
                   </div>
@@ -549,9 +549,9 @@ export function MobileCalendar({
                     onClick={() => setChatEvent(event)}
                     type="button"
                   >
-                    채팅방 열기
+                    {t(language, 'calendar.openChat')}
                   </button>
-                  {!canAccessChat && <p className="chat-summary-muted">참여한 봉사 채팅방만 볼 수 있습니다.</p>}
+                  {!canAccessChat && <p className="chat-summary-muted">{t(language, 'calendar.chatOnlyJoined')}</p>}
                 </section>
               </div>
             </div>
@@ -562,7 +562,7 @@ export function MobileCalendar({
         <div className="cal-modal-backdrop" onClick={() => setDeleteConfirmEvent(null)}>
           <div className="cal-modal" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
             <div className="cal-modal-head">
-              <div className="cal-modal-title"><h2>일정 삭제</h2></div>
+              <div className="cal-modal-title"><h2>{t(language, 'calendar.deleteEvent')}</h2></div>
               <button className="cal-modal-close" onClick={() => setDeleteConfirmEvent(null)} type="button">✕</button>
             </div>
             <div className="cal-modal-body" style={{ padding: '16px 20px' }}>
@@ -574,21 +574,21 @@ export function MobileCalendar({
               </p>
               <div style={{ padding: '12px 14px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10 }}>
                 <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#92400e' }}>
-                  ⚠️ 함께 삭제됩니다
+                  {t(language, 'calendar.deleteWarning')}
                 </p>
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 12, color: '#78350f', lineHeight: 1.8 }}>
-                  <li>· 채팅방 (메시지 전체)</li>
-                  <li>· 신청자 {deleteConfirmEvent.applicants.length}명</li>
-                  <li>· 봉사자 카드 배정 {deleteConfirmEvent.cardAssignments.length}건</li>
-                  <li>· 일정에 달린 댓글</li>
+                <ul className="cal-delete-warning-list" style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 12, color: '#78350f', lineHeight: 1.8 }}>
+                  <li>{t(language, 'calendar.deleteChat')}</li>
+                  <li>{t(language, 'calendar.deleteApplicants').replace('{count}', String(deleteConfirmEvent.applicants.length))}</li>
+                  <li>{t(language, 'calendar.deleteAssignments').replace('{count}', String(deleteConfirmEvent.cardAssignments.length))}</li>
+                  <li>{t(language, 'calendar.deleteComments')}</li>
                 </ul>
               </div>
-              <p style={{ margin: '12px 0 0', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>
-                이 작업은 되돌릴 수 없습니다.
+              <p className="cal-delete-irreversible" style={{ margin: '12px 0 0', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>
+                {t(language, 'calendar.deleteIrreversible')}
               </p>
             </div>
             <div className="cal-modal-foot">
-              <button className="cal-cancel-btn" onClick={() => setDeleteConfirmEvent(null)} type="button">취소</button>
+              <button className="cal-cancel-btn" onClick={() => setDeleteConfirmEvent(null)} type="button">{t(language, 'header.close')}</button>
               <button
                 className="cal-save-btn"
                 style={{ background: '#dc2626', borderColor: '#dc2626' }}
@@ -598,7 +598,7 @@ export function MobileCalendar({
                 }}
                 type="button"
               >
-                삭제
+                {t(language, 'calendar.delete')}
               </button>
             </div>
           </div>
@@ -613,7 +613,7 @@ export function MobileCalendar({
                 <strong>{chatEvent.title}</strong>
                 <span>{chatEvent.date} · {chatEvent.time || '시간 미정'}</span>
               </div>
-              <button onClick={() => setChatEvent(null)} type="button">닫기</button>
+              <button onClick={() => setChatEvent(null)} type="button">{t(language, 'header.close')}</button>
             </div>
             <ChatRoom
               canAccess

@@ -1,3 +1,4 @@
+import { t, type AppLanguage } from '../i18n'
 // 알림 센터 (헤더 🔔 클릭 시 슬라이드 다운)
 import { useNavigate } from 'react-router-dom'
 import type { AppNotification, NotificationType } from '../hooks/useNotifications'
@@ -167,7 +168,18 @@ function formatRelativeTime(iso: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
+
+function translateNotiTitle(title: string, language: AppLanguage): string {
+  if (language === 'ko') return title
+  if (title === '일정이 변경되었습니다') return language === 'zh' ? '日程已更改' : 'Event changed'
+  if (title === '시스템: 채팅방이 생성되었습니다.') return language === 'zh' ? '系统：聊天室已创建。' : 'System: Chat room created.'
+  const match = title.match(/시스템: (.*)님이 합류했습니다./)
+  if (match) return language === 'zh' ? `系统：${match[1]} 已加入。` : `System: ${match[1]} joined.`
+  return title
+}
+
 export function NotificationCenter({
+  language = 'ko',
   userId,
   userName,
   onClose,
@@ -175,6 +187,7 @@ export function NotificationCenter({
   markRead,
   markAllRead,
 }: {
+  language?: AppLanguage
   userId: number | null
   userName?: string | null
   onClose: () => void
@@ -216,7 +229,7 @@ export function NotificationCenter({
         window.dispatchEvent(new CustomEvent('app:open-event-chat', {
           detail: {
             eventId,
-            eventTitle: info?.title ?? n.title ?? '봉사 채팅',
+            eventTitle: info?.title ?? n.title ? translateNotiTitle(n.title, language) : t(language, 'calendar.chatRoomTitle'),
             eventDate: info?.eventDate ?? '',
             eventTime: info?.eventTime ?? null,
           },
@@ -240,7 +253,7 @@ export function NotificationCenter({
     window.dispatchEvent(new CustomEvent('app:open-event-chat', {
       detail: {
         eventId: group.eventId,
-        eventTitle: info?.title ?? '봉사 채팅',
+        eventTitle: info?.title ?? t(language, 'calendar.chatRoomTitle'),
         eventDate: info?.eventDate ?? '',
         eventTime: info?.eventTime ?? null,
       },
@@ -307,7 +320,7 @@ export function NotificationCenter({
                   fontSize: 12, fontWeight: 600, cursor: 'pointer',
                 }}
                 type="button"
-              >모두 읽음</button>
+              >{t(language, 'header.markAllRead')}</button>
             )}
             <button
               onClick={onClose}
@@ -333,12 +346,12 @@ export function NotificationCenter({
         <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {!userId ? (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--muted)' }}>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>로그인 정보 확인이 필요합니다</p>
-              <p style={{ margin: '6px 0 0', fontSize: 12.5 }}>다시 로그인하면 알림을 불러올 수 있습니다.</p>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{t(language, 'header.notiLoginTitle')}</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12.5 }}>{t(language, 'header.notiLoginDesc')}</p>
             </div>
           ) : !hasAny ? (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--muted)' }}>
-              <p style={{ margin: 0, fontSize: 14 }}>아직 알림이 없습니다</p>
+              <p style={{ margin: 0, fontSize: 14 }}>{t(language, 'header.notiEmpty')}</p>
             </div>
           ) : (
             <>
@@ -347,17 +360,18 @@ export function NotificationCenter({
                   <span style={{
                     fontSize: 12, fontWeight: 600, color: 'var(--muted)',
                     padding: '0 4px 6px',
-                  }}>새 알림</span>
+                  }}>{t(language, 'header.newNoti')}</span>
                   {unreadChatGroups.map((g) => (
                     <ChatGroupItem
                       key={`chatgroup-${g.eventId}`}
                       group={g}
                       info={chatInfoMap.get(g.eventId)}
+                      language={language}
                       onClick={handleClickChatGroup}
                     />
                   ))}
                   {unreadOthers.map((n) => (
-                    <NotificationItem key={n.id} notification={n} onClick={handleClickItem} />
+                    <NotificationItem key={n.id} notification={n} language={language} onClick={handleClickItem} />
                   ))}
                 </>
               )}
@@ -366,17 +380,18 @@ export function NotificationCenter({
                   <span style={{
                     fontSize: 12, fontWeight: 600, color: 'var(--muted)',
                     padding: '12px 4px 6px',
-                  }}>이전 알림</span>
+                  }}>{t(language, 'header.oldNoti')}</span>
                   {readChatGroups.map((g) => (
                     <ChatGroupItem
                       key={`chatgroup-${g.eventId}`}
                       group={g}
                       info={chatInfoMap.get(g.eventId)}
+                      language={language}
                       onClick={handleClickChatGroup}
                     />
                   ))}
                   {readOthers.map((n) => (
-                    <NotificationItem key={n.id} notification={n} onClick={handleClickItem} />
+                    <NotificationItem key={n.id} notification={n} language={language} onClick={handleClickItem} />
                   ))}
                 </>
               )}
@@ -392,14 +407,16 @@ export function NotificationCenter({
 function ChatGroupItem({
   group,
   info,
+  language = 'ko',
   onClick,
 }: {
   group: ChatGroup
   info?: { title: string; participantCount: number }
+  language?: AppLanguage
   onClick: (group: ChatGroup) => void
 }) {
   const meta = TYPE_LABEL.chat
-  const eventTitle = info?.title ?? '봉사 채팅'
+  const eventTitle = info?.title ?? t(language, 'calendar.chatRoomTitle')
   const participantCount = info?.participantCount ?? 0
   const isAllRead = group.unreadCount === 0
   // 최신 메시지 body 에서 author 분리: "author: content" 형태
@@ -443,9 +460,11 @@ function ChatGroupItem({
 
 function NotificationItem({
   notification: n,
+  language = 'ko',
   onClick,
 }: {
   notification: AppNotification
+  language?: AppLanguage
   onClick: (n: AppNotification) => void
 }) {
   const meta = TYPE_LABEL[n.type] ?? { icon: 'bell' as const, color: 'var(--text)', bg: 'var(--tint)' }
@@ -467,7 +486,7 @@ function NotificationItem({
             <span className="notification-row__unread-dot" />
           )}
           <span className="notification-row__title">
-            {n.title}
+            {translateNotiTitle(n.title ?? '', language)}
           </span>
           </div>
         </div>

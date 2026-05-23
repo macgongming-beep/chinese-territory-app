@@ -14,10 +14,10 @@ function isLeaderOrAdmin(role: Role): boolean {
 function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   return new Promise((resolve) => {
     const naver = (window as Window & { naver?: { maps?: { Service?: { geocode?: (opts: { query: string }, cb: (status: string, res: { v2?: { addresses?: Array<{ x: string; y: string }> } }) => void) => void } } } }).naver
-    const geocode = naver?.maps?.Service?.geocode
-    if (!geocode) { resolve(null); return }
+    if (!naver?.maps?.Service?.geocode) { resolve(null); return }
     const timer = setTimeout(() => resolve(null), 4000) // 4초 내 응답 없으면 null
-    geocode({ query: address }, (status, res) => {
+    // 주의: geocode를 구조분해할당 하면 this 컨텍스트를 잃어 콜백이 안 올 수 있음
+    naver.maps.Service.geocode({ query: address }, (status: string, res: any) => {
       clearTimeout(timer)
       const addr = res?.v2?.addresses?.[0]
       if (status !== 'OK' || !addr) { resolve(null); return }
@@ -196,11 +196,12 @@ function PendingRequestCard({
         />
       </div>
 
-      {/* 주소 + 🔍 재확인 버튼 (flex 컨테이너로 묶어서 버튼이 밖으로 안 튀어나오게) */}
+      {/* 주소 + 🔍 재확인 버튼 (깔끔한 이너 버튼 형태의 flex 컨테이너) */}
       <div style={{
-        display: 'flex', alignItems: 'stretch',
+        display: 'flex', alignItems: 'center',
+        padding: '3px 4px 3px 10px',
         border: `1.5px solid ${addressDirty ? 'var(--primary-400, #818cf8)' : 'var(--line)'}`,
-        borderRadius: 8, overflow: 'hidden',
+        borderRadius: 8,
         background: 'var(--surface)',
         marginBottom: 6,
         transition: 'border-color 0.15s',
@@ -212,7 +213,7 @@ function PendingRequestCard({
           autoComplete="new-password"
           style={{
             flex: 1, minWidth: 0,
-            padding: '8px 10px', fontSize: 14,
+            padding: '5px 0', fontSize: 14,
             border: 'none', outline: 'none',
             background: 'transparent', color: 'var(--ink)',
           }}
@@ -223,11 +224,12 @@ function PendingRequestCard({
           disabled={verifyStatus === 'loading'}
           title="주소 재확인"
           style={{
-            flexShrink: 0, width: 38,
+            flexShrink: 0, width: 28, height: 28,
+            borderRadius: 6,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: addressDirty ? 'var(--primary-500, #6366f1)' : 'var(--tint)',
             color: addressDirty ? '#fff' : 'var(--muted)',
-            border: 'none', borderLeft: '1px solid var(--line)',
+            border: 'none',
             cursor: verifyStatus === 'loading' ? 'default' : 'pointer',
             transition: 'background 0.15s, color 0.15s',
           }}
@@ -264,9 +266,11 @@ function PendingRequestCard({
               <span>📍</span> 위치 확인됨
             </div>
           ) : (
-            <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span>📍</span> 위치를 찾지 못했습니다. 아래에서 건물을 직접 선택하세요.
-            </div>
+            matchedBuildings.length === 0 && (
+              <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span>📍</span> 위치를 찾지 못했습니다. 아래에서 건물을 직접 선택하세요.
+              </div>
+            )
           )}
 
           {/* 자동 매칭된 건물 */}
@@ -279,8 +283,8 @@ function PendingRequestCard({
                 {matchedBuildings.map((b) => {
                   const cardName = cards.find((c) => c.id === b.cardId)?.name
                   return (
-                    <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${selectedMatchId === b.id ? 'var(--primary-500, #6366f1)' : 'var(--line)'}`, cursor: 'pointer', background: selectedMatchId === b.id ? 'var(--primary-50, #eef2ff)' : 'var(--surface)' }}>
-                      <input type="radio" name={`match-${req.id}`} value={b.id} checked={selectedMatchId === b.id} onChange={() => setSelectedMatchId(b.id)} style={{ accentColor: 'var(--primary-500)', flexShrink: 0 }} />
+                    <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${selectedMatchId === b.id ? 'var(--ink)' : 'var(--line)'}`, cursor: 'pointer', background: selectedMatchId === b.id ? 'var(--bg-subtle)' : 'var(--surface)' }}>
+                      <input type="radio" name={`match-${req.id}`} value={b.id} checked={selectedMatchId === b.id} onChange={() => setSelectedMatchId(b.id)} style={{ accentColor: 'var(--ink)', flexShrink: 0 }} />
                       <div style={{ minWidth: 0 }}>
                         <strong style={{ fontSize: 13 }}>{b.name || b.address}</strong>
                         <div style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -316,8 +320,8 @@ function PendingRequestCard({
                 {buildingSearchResults.map((b) => {
                   const cardName = cards.find((c) => c.id === b.cardId)?.name
                   return (
-                    <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${selectedMatchId === b.id ? 'var(--primary-500, #6366f1)' : 'var(--line)'}`, cursor: 'pointer', background: selectedMatchId === b.id ? 'var(--primary-50, #eef2ff)' : 'var(--surface)' }}>
-                      <input type="radio" name={`match-${req.id}`} value={b.id} checked={selectedMatchId === b.id} onChange={() => setSelectedMatchId(b.id)} style={{ accentColor: 'var(--primary-500)', flexShrink: 0 }} />
+                    <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${selectedMatchId === b.id ? 'var(--ink)' : 'var(--line)'}`, cursor: 'pointer', background: selectedMatchId === b.id ? 'var(--bg-subtle)' : 'var(--surface)' }}>
+                      <input type="radio" name={`match-${req.id}`} value={b.id} checked={selectedMatchId === b.id} onChange={() => setSelectedMatchId(b.id)} style={{ accentColor: 'var(--ink)', flexShrink: 0 }} />
                       <div style={{ minWidth: 0 }}>
                         <strong style={{ fontSize: 13 }}>{b.name || b.address}</strong>
                         <div style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -332,8 +336,8 @@ function PendingRequestCard({
           </div>
 
           {/* 새 건물로 추가 */}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${selectedMatchId === 'new' ? 'var(--primary-500, #6366f1)' : 'var(--line)'}`, cursor: 'pointer', background: selectedMatchId === 'new' ? 'var(--primary-50, #eef2ff)' : 'var(--surface)' }}>
-            <input type="radio" name={`match-${req.id}`} value="new" checked={selectedMatchId === 'new'} onChange={() => setSelectedMatchId('new')} style={{ accentColor: 'var(--primary-500)', flexShrink: 0 }} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${selectedMatchId === 'new' ? 'var(--ink)' : 'var(--line)'}`, cursor: 'pointer', background: selectedMatchId === 'new' ? 'var(--bg-subtle)' : 'var(--surface)' }}>
+            <input type="radio" name={`match-${req.id}`} value="new" checked={selectedMatchId === 'new'} onChange={() => setSelectedMatchId('new')} style={{ accentColor: 'var(--ink)', flexShrink: 0 }} />
             <div>
               <strong style={{ fontSize: 13 }}>새 건물로 추가</strong>
               <div style={{ fontSize: 11, color: 'var(--muted)' }}>미배정 건물 카드에 새로 생성</div>
@@ -342,12 +346,12 @@ function PendingRequestCard({
 
           {/* 선택 요약 */}
           {selectedMatchId !== 'new' && selectedBuilding && (
-            <div style={{ fontSize: 11, color: 'var(--primary-700, #4338ca)', background: 'var(--primary-50, #eef2ff)', borderRadius: 6, padding: '5px 8px' }}>
+            <div style={{ fontSize: 11, color: 'var(--ink)', background: 'var(--bg-subtle)', borderRadius: 6, padding: '5px 8px', border: '1px solid var(--line)' }}>
               ✓ {selectedBuilding.name || selectedBuilding.address} 건물에 식당으로 등록됩니다
             </div>
           )}
           {selectedMatchId === 'new' && (
-            <div style={{ fontSize: 11, color: 'var(--muted)', background: 'var(--surface)', borderRadius: 6, padding: '5px 8px' }}>
+            <div style={{ fontSize: 11, color: 'var(--ink)', background: 'var(--bg-subtle)', borderRadius: 6, padding: '5px 8px', border: '1px solid var(--line)' }}>
               ✓ 미배정 건물 카드에 새 건물로 추가됩니다
             </div>
           )}
@@ -445,8 +449,17 @@ export function RestaurantsTab({
             borderBottom: '1px solid var(--line, #e5e4e0)',
             background: 'var(--tint, #EFEFED)',
           }}>
-            <span style={{ fontSize: 15 }}>🍜</span>
-            <strong style={{ fontSize: 14, color: 'var(--ink)' }}>식당봉사 추가 신청</strong>
+            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink)' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 13h18"></path>
+                <path d="M4 13a8 8 0 0 0 16 0"></path>
+                <path d="M8 21h8"></path>
+                <path d="M9 9v-3"></path>
+                <path d="M12 9v-4"></path>
+                <path d="M15 9v-3"></path>
+              </svg>
+            </span>
+            <span style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 600 }}>식당봉사 추가 신청</span>
             <span style={{
               marginLeft: 'auto',
               background: '#ef4444', color: '#fff',

@@ -620,6 +620,7 @@ export function MobileHome({
               <>
                 <AppHeader
                   pageTitle={t(language, 'nav.home')}
+                  language={language}
                   subtitle={todayLabel}
                   userId={currentUser.id}
                   userName={currentVisitor}
@@ -732,13 +733,23 @@ export function MobileHome({
                                 <span className="mh-today-title">{event.title}</span>
                                 {kind === 'lead' && <span className="mh-today-pill-lead">{t(language, 'home.leadPill')}</span>}
                               </span>
-                              {event.place && (
-                                <span className="mh-today-where">
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/></svg>
-                                  {event.place}
-                                </span>
-                              )}
-                              {sub && <span className="mh-today-sub">{sub}</span>}
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                                {event.place && (
+                                  <span className="mh-today-where" style={{ margin: 0 }}>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/></svg>
+                                    {event.place}
+                                  </span>
+                                )}
+                                {event.place && sub && <span style={{ color: 'var(--muted-3)', fontSize: 12 }}>·</span>}
+                                {sub && (
+                                  <span className="mh-today-sub" style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    {kind !== 'lead' && event.leader && (
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    )}
+                                    {sub}
+                                  </span>
+                                )}
+                              </span>
                             </span>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
                           </button>
@@ -880,7 +891,8 @@ export function MobileHome({
               <>
                 <AppHeader
                   pageTitle={t(language, 'settings.notice')}
-                  subtitle={`${notices.length}개 · 관리자 작성`}
+                  language={language}
+                  subtitle={(t(language, 'settings.noticeSubtitle') ?? `공지 ${notices.length}개`).replace('{count}', String(notices.length))}
                   showBack
                   onBack={() => navigate('/settings')}
                   userId={currentUser.id}
@@ -915,11 +927,15 @@ export function MobileHome({
               <>
                 <AppHeader
                   pageTitle={t(language, 'nav.calendar')}
+                  language={language}
                   subtitle={(() => {
                     const now = new Date()
                     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
                     const count = calendarEvents.filter((e) => e.date.startsWith(ym)).length
-                    return `${now.getFullYear()}년 ${now.getMonth() + 1}월 · 일정 ${count}개`
+                    return t(language, 'calendar.subtitleCount')
+                      .replace('{year}', String(now.getFullYear()))
+                      .replace('{month}', String(now.getMonth() + 1))
+                      .replace('{count}', String(count))
                   })()}
                   userId={currentUser.id}
                   userName={currentVisitor}
@@ -980,6 +996,7 @@ export function MobileHome({
                 <>
                 <AppHeader
                   pageTitle={t(language, 'nav.myService')}
+                  language={language}
                   subtitle={(() => {
                     const myEvents = calendarEvents.filter((e) =>
                       e.date === today && (
@@ -1033,11 +1050,14 @@ export function MobileHome({
               <>
               <AppHeader
                 pageTitle={t(language, 'nav.zone')}
+                language={language}
                 subtitle={(() => {
                   if (role === 'admin') {
                     const total = cards.length
                     const unassigned = cards.filter((c) => c.status === '미배정').length
-                    return `구역 카드 ${total} · 미배정 ${unassigned}`
+                    return t(language, 'zone.subtitleAdmin')
+                      .replace('{total}', String(total))
+                      .replace('{unassigned}', String(unassigned))
                   }
                   const myCards = cards.filter((c) =>
                     c.assignedLeaders?.includes(currentVisitor) ||
@@ -1092,13 +1112,16 @@ export function MobileHome({
               <>
               <AppHeader
                 pageTitle={t(language, 'nav.assignment')}
+                language={language}
                 subtitle={role === 'admin' ? (() => {
                   const leaderCount = leaderNames.length
                   const unassigned = cards.filter((c) => {
                     const ls = c.assignedLeaders?.length ? c.assignedLeaders : c.assignedLeader ? [c.assignedLeader] : []
                     return ls.length === 0
                   }).length
-                  return `인도자 ${leaderCount}명 · 미배정 ${unassigned}개`
+                  return t(language, 'zone.subtitleAssignment')
+                    .replace('{unassigned}', String(unassigned))
+                    .replace('{leaderCount}', String(leaderCount))
                 })() : (() => {
                   const myEvents = calendarEvents.filter((e) =>
                     e.date === today && (
@@ -1107,12 +1130,12 @@ export function MobileHome({
                       e.applicants?.includes(currentVisitor)
                     )
                   )
-                  if (myEvents.length === 0) return '오늘 일정 없음'
+                  if (myEvents.length === 0) return t(language, 'assignment.subtitleNone')
                   const total = myEvents.reduce((sum, e) => {
                     const participants = new Set([...(e.assigned ?? []), ...(e.applicants ?? [])])
                     return sum + participants.size
                   }, 0)
-                  return `오늘 참여자 ${total}명`
+                  return t(language, 'assignment.subtitleCount').replace('{count}', String(total))
                 })()}
                 userId={currentUser.id}
                 userName={currentVisitor}
@@ -1169,7 +1192,8 @@ export function MobileHome({
               role === 'admin' ? (
                 <div className="mobile-settings-page">
                   <AppHeader
-                    pageTitle="특별 봉사 시즌 관리"
+                    pageTitle={t(language, 'settings.specialSeason')}
+                    language={language}
                     showBack
                     onBack={() => navigate('/settings')}
                     userId={currentUser.id}
@@ -1195,7 +1219,8 @@ export function MobileHome({
             <Route path="/notification-settings" element={
               <div className="mobile-settings-page">
                 <AppHeader
-                  pageTitle="알림 설정"
+                  pageTitle={t(language, 'settings.notificationTitle')}
+                  language={language}
                   showBack
                   onBack={() => navigate('/settings')}
                   userId={currentUser.id}
@@ -1215,6 +1240,7 @@ export function MobileHome({
               <div className="mobile-settings-page">
                 <AppHeader
                   pageTitle={t(language, 'settings.title')}
+                  language={language}
                   subtitle={`${currentVisitor} · ${roleLabel}`}
                   userId={currentUser.id}
                   userName={currentVisitor}
@@ -1284,8 +1310,8 @@ export function MobileHome({
                       <SettingsIcon name="notification" />
                     </span>
                     <span className="mobile-settings-row-text">
-                      <strong>알림 설정</strong>
-                      <small>받을 알림과 방해금지 시간 관리</small>
+                      <strong>{t(language, 'settings.notificationTitle')}</strong>
+                      <small>{t(language, 'settings.notificationDesc')}</small>
                     </span>
                     <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                   </button>
@@ -1306,8 +1332,8 @@ export function MobileHome({
                           <SettingsIcon name="signup" />
                         </span>
                         <span className="mobile-settings-row-text">
-                          <strong>가입 신청</strong>
-                          <small>승인 대기 중인 사용자 확인</small>
+                          <strong>{t(language, 'settings.signup')}</strong>
+                          <small>{t(language, 'settings.signupDesc')}</small>
                         </span>
                         {pendingSignupCount > 0 && (
                           <span className="mobile-settings-badge" aria-label={`승인 대기 ${pendingSignupCount}명`}>
