@@ -185,9 +185,9 @@ export function NotificationCenter({
   const navigate = useNavigate()
   const { chats: userChats } = useUserChats(userId, userName ?? null, { realtime: false })
 
-  const chatInfoMap = new Map<number, { title: string; participantCount: number }>()
+  const chatInfoMap = new Map<number, { title: string; participantCount: number; eventDate: string; eventTime: string | null }>()
   userChats.forEach((c) =>
-    chatInfoMap.set(c.eventId, { title: c.eventTitle, participantCount: c.participantCount })
+    chatInfoMap.set(c.eventId, { title: c.eventTitle, participantCount: c.participantCount, eventDate: c.eventDate, eventTime: c.eventTime })
   )
 
   // 카톡 스타일: 채팅 알림 그룹화, 나머지는 그대로
@@ -211,9 +211,15 @@ export function NotificationCenter({
     if (n.type === 'chat' || n.type === 'mention') {
       const eventId = extractEventIdFromLink(n.link)
       if (eventId) {
+        const info = chatInfoMap.get(eventId)
         onClose()
         window.dispatchEvent(new CustomEvent('app:open-event-chat', {
-          detail: { eventId, eventTitle: n.title ?? '봉사 채팅' },
+          detail: {
+            eventId,
+            eventTitle: info?.title ?? n.title ?? '봉사 채팅',
+            eventDate: info?.eventDate ?? '',
+            eventTime: info?.eventTime ?? null,
+          },
         }))
         return
       }
@@ -235,6 +241,8 @@ export function NotificationCenter({
       detail: {
         eventId: group.eventId,
         eventTitle: info?.title ?? '봉사 채팅',
+        eventDate: info?.eventDate ?? '',
+        eventTime: info?.eventTime ?? null,
       },
     }))
   }

@@ -240,7 +240,15 @@ export function ChatRoom({
 
     if (error) {
       console.error('send_chat_message RPC 실패', error)
-      showToast(error.message ?? '메시지를 보내지 못했습니다.', 'error')
+      // FK 위반 = 삭제된 일정 or 참여 오류
+      const msg = (() => {
+        const m = (error as { message?: string }).message ?? ''
+        if (m.includes('foreign key') || m.includes('violates')) return '이 일정은 삭제됐거나 접근할 수 없습니다.'
+        if (m.includes('참여자가 아닙니다')) return '채팅방 참여자만 메시지를 보낼 수 있습니다.'
+        if (m.includes('잠겼습니다')) return m
+        return '메시지를 보내지 못했습니다.'
+      })()
+      showToast(msg, 'error')
       return
     }
 
