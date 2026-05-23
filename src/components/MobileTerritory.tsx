@@ -540,7 +540,7 @@ export function MobileTerritory({
         <>
           <section className="mobile-territory-section mobile-today-service-section">
             <div className="mt-mini-section-head">
-              <h2>오늘 배정</h2>
+              <h2>{t(language, 'territory.todayAssignment')}</h2>
               <span className="mt-mini-meta">{myTodayAssignments.length}{t(language, 'calendar.countSuffix')}</span>
             </div>
             {myTodayAssignments.length === 0 ? (

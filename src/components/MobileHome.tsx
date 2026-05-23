@@ -1005,7 +1005,7 @@ export function MobileHome({
                         e.applicants?.includes(currentVisitor)
                       )
                     )
-                    return myEvents.length > 0 ? '오늘 봉사 진행중' : '오늘 봉사 없음'
+                    return myEvents.length > 0 ? t(language, 'territory.serviceActive') : t(language, 'territory.serviceNone')
                   })()}
                   userId={currentUser.id}
                   userName={currentVisitor}
