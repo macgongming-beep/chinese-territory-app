@@ -9,13 +9,16 @@ function isLeaderOrAdmin(role: Role): boolean {
   return role === 'leader' || role === 'admin' || role === 'developer'
 }
 
-// Naver Maps 지오코딩 (Promise wrapping)
+// Naver Maps 지오코딩 (Promise wrapping + 4초 타임아웃)
+// 지도 페이지 밖에서는 콜백이 안 돌아오는 경우가 있어 타임아웃 필수
 function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   return new Promise((resolve) => {
     const naver = (window as Window & { naver?: { maps?: { Service?: { geocode?: (opts: { query: string }, cb: (status: string, res: { v2?: { addresses?: Array<{ x: string; y: string }> } }) => void) => void } } } }).naver
     const geocode = naver?.maps?.Service?.geocode
     if (!geocode) { resolve(null); return }
+    const timer = setTimeout(() => resolve(null), 4000) // 4초 내 응답 없으면 null
     geocode({ query: address }, (status, res) => {
+      clearTimeout(timer)
       const addr = res?.v2?.addresses?.[0]
       if (status !== 'OK' || !addr) { resolve(null); return }
       resolve({ lat: parseFloat(addr.y), lng: parseFloat(addr.x) })
@@ -172,12 +175,11 @@ function PendingRequestCard({
     setProcessing(null)
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', boxSizing: 'border-box',
+  const sharedInputStyle: React.CSSProperties = {
     padding: '8px 10px', borderRadius: 8,
     border: '1.5px solid var(--line)', fontSize: 14,
     background: 'var(--surface)', color: 'var(--ink)',
-    outline: 'none',
+    outline: 'none', width: '100%', boxSizing: 'border-box',
   }
 
   return (
@@ -189,19 +191,31 @@ function PendingRequestCard({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="식당 이름"
-          autoComplete="off"
-          style={inputStyle}
+          autoComplete="new-password"
+          style={sharedInputStyle}
         />
       </div>
 
-      {/* 주소 + 🔍 재확인 버튼 */}
-      <div style={{ position: 'relative', marginBottom: 6 }}>
+      {/* 주소 + 🔍 재확인 버튼 (flex 컨테이너로 묶어서 버튼이 밖으로 안 튀어나오게) */}
+      <div style={{
+        display: 'flex', alignItems: 'stretch',
+        border: `1.5px solid ${addressDirty ? 'var(--primary-400, #818cf8)' : 'var(--line)'}`,
+        borderRadius: 8, overflow: 'hidden',
+        background: 'var(--surface)',
+        marginBottom: 6,
+        transition: 'border-color 0.15s',
+      }}>
         <input
           value={address}
           onChange={(e) => { setAddress(e.target.value); setAddressDirty(true) }}
           placeholder="주소"
-          autoComplete="off"
-          style={{ ...inputStyle, paddingRight: 38 }}
+          autoComplete="new-password"
+          style={{
+            flex: 1, minWidth: 0,
+            padding: '8px 10px', fontSize: 14,
+            border: 'none', outline: 'none',
+            background: 'transparent', color: 'var(--ink)',
+          }}
         />
         <button
           type="button"
@@ -209,11 +223,12 @@ function PendingRequestCard({
           disabled={verifyStatus === 'loading'}
           title="주소 재확인"
           style={{
-            position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)',
-            width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, width: 38,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: addressDirty ? 'var(--primary-500, #6366f1)' : 'var(--tint)',
             color: addressDirty ? '#fff' : 'var(--muted)',
-            border: 'none', borderRadius: 6, cursor: 'pointer',
+            border: 'none', borderLeft: '1px solid var(--line)',
+            cursor: verifyStatus === 'loading' ? 'default' : 'pointer',
             transition: 'background 0.15s, color 0.15s',
           }}
         >
