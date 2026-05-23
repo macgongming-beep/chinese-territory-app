@@ -1230,7 +1230,7 @@ export function MobileHome({
                   onOpenMenu={() => navigate('/settings')}
                 />
                 <div style={{ padding: '0 16px', marginBottom: 16 }}>
-                  <NotificationSettings userId={currentUser.id} />
+                  <NotificationSettings userId={currentUser.id} language={language} />
                 </div>
               </div>
             } />

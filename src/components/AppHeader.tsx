@@ -272,6 +272,7 @@ export function AppHeaderActionButtons({
         <HeaderOverlayPortal>
           <HeaderOverlayErrorBoundary  onClose={() => setOpenNotifications(false)}>
             <NotificationCenter
+              language={language}
               userId={userId ?? null}
               userName={userName}
               onClose={() => setOpenNotifications(false)}
@@ -286,6 +287,7 @@ export function AppHeaderActionButtons({
         <HeaderOverlayPortal>
           <HeaderOverlayErrorBoundary  onClose={handleCloseChat}>
             <GlobalChatModal
+              language={language}
               userId={userId ?? null}
               userName={userName}
               role={role}
@@ -294,7 +296,6 @@ export function AppHeaderActionButtons({
               onSelectChat={handleOpenChatRoom}
               onBackToList={() => setHeaderChatTarget(null)}
               onClose={handleCloseChat}
-              
             />
           </HeaderOverlayErrorBoundary>
         </HeaderOverlayPortal>

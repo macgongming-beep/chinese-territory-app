@@ -790,12 +790,12 @@ export function MobileTerritory({
           <section className="mobile-territory-section mobile-regular-section mt-main-section" aria-label={t(language, 'territory.regularVisit')}>
             <div className="mt-main-section-head">
               <button className="mt-main-title-btn" onClick={() => setRvCollapsed((v) => !v)} type="button">
-                <h2>정기 방문</h2>
+                <h2>{t(language, 'territory.regularVisit')}</h2>
                 <span className="mt-main-count">{myReturnVisits.length}</span>
               </button>
               <button className="mt-main-add-btn" onClick={() => { setShowAddSheet(true); setAddNickname(''); setAddAddress(''); setAddMemo(''); setAddLinked(null); setAddUnitPickBuilding(null) }} type="button">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                추가
+                {t(language, 'common.add')}
               </button>
             </div>
 
