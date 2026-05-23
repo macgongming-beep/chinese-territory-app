@@ -10879,14 +10879,14 @@ button:focus-visible {
     width: 100%;
     min-height: 38px;
     border-radius: var(--radius-full);
-    background: var(--primary-500);
+    background: var(--ink, #1A1A18);
     color: #fff;
     font-size: 13px;
     font-weight: 700;
   }
 
   .cal-add-btn:hover {
-    background: var(--primary-600);
+    background: #333330;
   }
 
   /* ── Empty state ── */
@@ -10931,16 +10931,16 @@ button:focus-visible {
     height: 34px;
     padding: 0 16px;
     border-radius: var(--radius-full);
-    border: none;
-    background: var(--primary-50);
-    color: var(--primary-600);
+    border: 1px solid var(--border-default);
+    background: var(--bg-card);
+    color: var(--gray-600);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.15s;
   }
 
-  .cal-empty-add-btn:hover { background: var(--primary-100); }
+  .cal-empty-add-btn:hover { background: var(--gray-50); color: var(--gray-800); }
 
   /* ── 토글 스위치 ── */
   .cal-toggle-switch {

@@ -1,6 +1,6 @@
 // 알림 센터 (헤더 🔔 클릭 시 슬라이드 다운)
 import { useNavigate } from 'react-router-dom'
-import { useNotifications, type AppNotification, type NotificationType } from '../hooks/useNotifications'
+import type { AppNotification, NotificationType } from '../hooks/useNotifications'
 import { useUserChats } from '../hooks/useUserChats'
 import { normalizeAppLink } from '../utils/appNavigation'
 
@@ -171,13 +171,18 @@ export function NotificationCenter({
   userId,
   userName,
   onClose,
+  notifications,
+  markRead,
+  markAllRead,
 }: {
   userId: number | null
   userName?: string | null
   onClose: () => void
+  notifications: AppNotification[]
+  markRead: (id: number) => Promise<void>
+  markAllRead: () => Promise<void>
 }) {
   const navigate = useNavigate()
-  const { notifications, markRead, markAllRead } = useNotifications(userId)
   const { chats: userChats } = useUserChats(userId, userName ?? null, { realtime: false })
 
   const chatInfoMap = new Map<number, { title: string; participantCount: number }>()
@@ -199,21 +204,39 @@ export function NotificationCenter({
   const hasAny = notifications.length > 0
 
   async function handleClickItem(n: AppNotification) {
-    if (!n.isRead) await markRead(n.id)
+    // 읽음 처리 — 백그라운드 (await 없이 낙관적 반영)
+    if (!n.isRead) void markRead(n.id)
+
+    // chat/mention 타입은 globalChatModal 이벤트로 처리
+    if (n.type === 'chat' || n.type === 'mention') {
+      const eventId = extractEventIdFromLink(n.link)
+      if (eventId) {
+        onClose()
+        window.dispatchEvent(new CustomEvent('app:open-event-chat', {
+          detail: { eventId, eventTitle: n.title ?? '봉사 채팅' },
+        }))
+        return
+      }
+    }
+
     onClose()
     const targetLink = resolveNotificationLink(n)
-    if (targetLink) {
-      navigate(targetLink)
-    }
+    if (targetLink) navigate(targetLink)
   }
 
   async function handleClickChatGroup(group: ChatGroup) {
-    // 그룹 내 안 읽음 모두 읽음 처리 (낙관적으로 동시 처리)
+    // 그룹 내 안 읽음 모두 읽음 처리 (백그라운드)
     const unreadIds = group.notifications.filter((n) => !n.isRead).map((n) => n.id)
-    await Promise.all(unreadIds.map((id) => markRead(id)))
+    void Promise.all(unreadIds.map((id) => markRead(id)))
     onClose()
-    const targetLink = normalizeAppLink(group.latest.link)
-    if (targetLink) navigate(targetLink)
+    // globalChatModal 이벤트 dispatch (AppHeader 에서 수신)
+    const info = chatInfoMap.get(group.eventId)
+    window.dispatchEvent(new CustomEvent('app:open-event-chat', {
+      detail: {
+        eventId: group.eventId,
+        eventTitle: info?.title ?? '봉사 채팅',
+      },
+    }))
   }
 
   return (
