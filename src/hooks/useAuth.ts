@@ -97,6 +97,18 @@ export function useAuth() {
             localStorage.setItem('currentVisitor', freshUser.name)
             setAuthSession(freshUser, storedSession.persistent)
             if (restoredToken) setAuthToken(restoredToken, storedSession.persistent)
+            
+            // 자동 로그인 기록 업데이트 (에러 발생해도 로그인 흐름을 끊지 않도록 무시)
+            try {
+              await supabase.rpc('auth_record_auto_login', {
+                p_user_id: data.id,
+                p_device_label: getDeviceLabel(),
+                p_user_agent: typeof navigator === 'undefined' ? null : navigator.userAgent
+              })
+            } catch (err) {
+              console.error(err)
+            }
+
             setLoading(false)
             return
           }

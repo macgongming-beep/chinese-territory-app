@@ -5,11 +5,33 @@ const TIME_SLOTS: TimeSlot[] = ['오전', '오후', '저녁']
 type ScopeFilter = 'all' | 'regular' | number
 type TrendMode = 'monthly' | 'weekly'
 
-// ── SVG 꺾은선 차트 ────────────────────────────────────────────
+/* ── 색상 팔레트 (톤 통일) ──────────────────────────────────── */
+const C = {
+  ink: '#1e293b',
+  text: '#334155',
+  muted: '#64748b',
+  subtle: '#94a3b8',
+  line: '#e2e8f0',
+  bg: '#f8fafc',
+  surface: '#fff',
+  // 의미 색상 — 채도 낮춘 톤
+  green: '#3d8b5e',
+  greenBg: '#f0f7f3',
+  greenLight: '#d1e8da',
+  amber: '#a16b1e',
+  amberBg: '#faf6ee',
+  amberLight: '#f0e4c8',
+  red: '#b84040',
+  redBg: '#fdf3f3',
+  brand: '#475569',
+  brandBg: '#f1f5f9',
+}
+
+/* ── SVG 꺾은선 차트 ──────────────────────────────────────── */
 function LineChart({
   data,
-  meetColor = '#22c55e',
-  totalColor = '#94a3b8',
+  meetColor = C.green,
+  totalColor = C.subtle,
 }: {
   data: Array<{ label: string; total: number; meetings: number }>
   meetColor?: string
@@ -25,27 +47,65 @@ function LineChart({
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H }} preserveAspectRatio="none">
-      <polygon points={`${tx(0)},${H} ${totalPts} ${tx(n-1)},${H}`} fill={`${totalColor}20`} />
-      <polyline points={totalPts} fill="none" stroke={totalColor} strokeWidth="2" strokeLinejoin="round" />
-      <polygon points={`${tx(0)},${H} ${meetPts} ${tx(n-1)},${H}`} fill={`${meetColor}30`} />
-      <polyline points={meetPts}  fill="none" stroke={meetColor}  strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points={`${tx(0)},${H} ${totalPts} ${tx(n-1)},${H}`} fill={`${totalColor}15`} />
+      <polyline points={totalPts} fill="none" stroke={totalColor} strokeWidth="1.5" strokeLinejoin="round" />
+      <polygon points={`${tx(0)},${H} ${meetPts} ${tx(n-1)},${H}`} fill={`${meetColor}20`} />
+      <polyline points={meetPts}  fill="none" stroke={meetColor}  strokeWidth="2" strokeLinejoin="round" />
       {data.map((d, i) => (
         <React.Fragment key={i}>
-          <circle cx={tx(i)} cy={ty(d.total)}    r="3.5" fill={totalColor} />
-          <circle cx={tx(i)} cy={ty(d.meetings)} r="3"   fill={meetColor} />
+          <circle cx={tx(i)} cy={ty(d.total)}    r="3" fill={totalColor} />
+          <circle cx={tx(i)} cy={ty(d.meetings)} r="2.5" fill={meetColor} />
         </React.Fragment>
       ))}
     </svg>
   )
 }
 
-// ── 미니 진행바 ─────────────────────────────────────────────────
+/* ── 미니 진행바 ─────────────────────────────────────────── */
 function MiniBar({ pct, color }: { pct: number; color: string }) {
   return (
-    <div style={{ height: 5, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden', marginTop: 6 }}>
-      <div style={{ width: `${Math.min(100, pct)}%`, height: '100%', background: color, borderRadius: 3, transition: 'width .4s' }} />
+    <div style={{ height: 4, background: C.line, borderRadius: 2, overflow: 'hidden', marginTop: 6 }}>
+      <div style={{ width: `${Math.min(100, pct)}%`, height: '100%', background: color, borderRadius: 2, transition: 'width .4s' }} />
     </div>
   )
+}
+
+/* ── 스타일 상수 ─────────────────────────────────────────── */
+const cardStyle: React.CSSProperties = {
+  background: C.surface,
+  borderRadius: 10,
+  padding: '22px 24px',
+  marginBottom: 14,
+  border: `1px solid ${C.line}`,
+}
+const titleStyle: React.CSSProperties = {
+  fontSize: 14,
+  fontWeight: 700,
+  color: C.ink,
+  margin: '0 0 16px',
+  letterSpacing: '-0.01em',
+}
+const statBoxStyle = (bg = C.bg): React.CSSProperties => ({
+  padding: '14px 16px',
+  background: bg,
+  borderRadius: 8,
+})
+const labelStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: C.muted,
+  fontWeight: 600,
+  marginBottom: 4,
+}
+const bigNumStyle = (color = C.ink): React.CSSProperties => ({
+  fontSize: 24,
+  fontWeight: 800,
+  color,
+  fontVariantNumeric: 'tabular-nums',
+})
+const smallMeta: React.CSSProperties = {
+  fontSize: 11,
+  color: C.subtle,
+  marginTop: 3,
 }
 
 export function DesktopStats({
@@ -70,14 +130,14 @@ export function DesktopStats({
   const [selectedRegion, setSelectedRegion]     = useState<string | null>(null)
   const [selectedArea, setSelectedArea]         = useState<string | null>(null)
 
-  // ── 필터 ────────────────────────────────────────────────────
+  // ── 필터 ──
   const filteredHistories = useMemo(() => {
     if (scope === 'all') return visitHistories
     if (scope === 'regular') return visitHistories.filter(h => !h.specialPeriodId)
     return visitHistories.filter(h => h.specialPeriodId === scope)
   }, [visitHistories, scope])
 
-  // ── 1. 전체 요약 ─────────────────────────────────────────────
+  // ── 1. 전체 요약 ──
   const summary = useMemo(() => {
     const total     = filteredHistories.length
     const meetings  = filteredHistories.filter(h => h.result === '만남').length
@@ -88,7 +148,7 @@ export function DesktopStats({
     return { total, meetings, absences, koreans, invitations, meetingRate }
   }, [filteredHistories])
 
-  // ── 2. 이번달 vs 지난달 비교 ─────────────────────────────────
+  // ── 2. 이번달 vs 지난달 ──
   const monthComparison = useMemo(() => {
     const now = new Date()
     const thisKey  = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -103,7 +163,7 @@ export function DesktopStats({
     }
   }, [filteredHistories])
 
-  // ── 3. 중국인 세대 통계 ──────────────────────────────────────
+  // ── 3. 중국인 세대 통계 ──
   const chineseStats = useMemo(() => {
     const ids = new Set<number>()
     for (const b of buildings) for (const u of b.units) if (u.isChinese) ids.add(u.id)
@@ -120,7 +180,7 @@ export function DesktopStats({
     return { totalUnits: ids.size, total, meetings, absences, rate, slots }
   }, [buildings, filteredHistories])
 
-  // ── 4. 시간대별 통계 ─────────────────────────────────────────
+  // ── 4. 시간대별 통계 ──
   const slotStats = useMemo(() => TIME_SLOTS.map(slot => {
     const sh = filteredHistories.filter(h => h.timeSlot === slot)
     const meetings = sh.filter(h => h.result === '만남').length
@@ -128,7 +188,7 @@ export function DesktopStats({
     return { slot, total: sh.length, meetings, absences, meetingRate: sh.length > 0 ? meetings / sh.length * 100 : 0, absenceRate: sh.length > 0 ? absences / sh.length * 100 : 0 }
   }), [filteredHistories])
 
-  // ── 5. 결과 분포 ─────────────────────────────────────────────
+  // ── 5. 결과 분포 ──
   const resultDistribution = useMemo(() => (
     ['만남', '부재', '한국인'] as const
   ).map(result => {
@@ -137,7 +197,7 @@ export function DesktopStats({
     return { result, count, pct }
   }), [filteredHistories])
 
-  // ── 7. 월별 추이 (12개월) ────────────────────────────────────
+  // ── 7. 월별 추이 ──
   const monthlyTrend = useMemo(() => {
     const now = new Date()
     return Array.from({ length: 12 }, (_, idx) => {
@@ -149,7 +209,7 @@ export function DesktopStats({
     })
   }, [filteredHistories])
 
-  // ── 8. 주간 추이 (8주) ───────────────────────────────────────
+  // ── 8. 주간 추이 ──
   const weeklyTrend = useMemo(() => {
     const today = new Date()
     return Array.from({ length: 8 }, (_, idx) => {
@@ -163,7 +223,7 @@ export function DesktopStats({
     })
   }, [filteredHistories])
 
-  // ── 9. 카드별 통계 ───────────────────────────────────────────
+  // ── 9. 카드별 통계 ──
   const cardStats = useMemo(() => {
     const byCard = new Map<number, Set<number>>()
     for (const b of buildings) {
@@ -183,7 +243,6 @@ export function DesktopStats({
     }).sort((a, b) => b.visitRate - a.visitRate)
   }, [cards, buildings, filteredHistories])
 
-  // 구역/동 필터 파생
   const allRegions = useMemo(() => [...new Set(cardStats.map(c => c.region))].filter(Boolean).sort(), [cardStats])
   const areasForRegion = useMemo(() =>
     selectedRegion ? [...new Set(cardStats.filter(c => c.region === selectedRegion).map(c => c.area))].filter(Boolean).sort() : [],
@@ -195,7 +254,7 @@ export function DesktopStats({
     return true
   }), [cardStats, selectedRegion, selectedArea])
 
-  // ── 10. 요일별 통계 ─────────────────────────────────────────
+  // ── 10. 요일별 통계 ──
   const dayOfWeekStats = useMemo(() => {
     const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
     const IS_WEEKEND  = [true, false, false, false, false, false, true]
@@ -206,7 +265,6 @@ export function DesktopStats({
       if (h.result === '만남') map[dow].meetings++
       if (h.result === '부재') map[dow].absences++
     }
-    // 월~일 순 (1,2,3,4,5,6,0)
     const ordered = [1, 2, 3, 4, 5, 6, 0].map((dow) => ({
       label: DAY_LABELS[dow],
       isWeekend: IS_WEEKEND[dow],
@@ -227,9 +285,8 @@ export function DesktopStats({
     }
   }, [filteredHistories])
 
-  // ── 10-b. 요일×시간대 부재율 매트릭스 ───────────────────────
+  // ── 10-b. 요일×시간대 히트맵 ──
   const daySlotMatrix = useMemo(() => {
-    // map[dow][slot] = { total, absences }
     const map: Record<number, Record<string, { total: number; absences: number; meetings: number }>> = {}
     for (let d = 0; d < 7; d++) {
       map[d] = {}
@@ -244,7 +301,6 @@ export function DesktopStats({
       if (h.result === '부재') cell.absences++
       if (h.result === '만남') cell.meetings++
     }
-    // 월~일 순 (1,2,3,4,5,6,0)
     const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
     const IS_WEEKEND  = [true, false, false, false, false, false, true]
     const days = [1, 2, 3, 4, 5, 6, 0].map((dow) => ({
@@ -262,13 +318,12 @@ export function DesktopStats({
         }
       }),
     }))
-    // 전체 최고 부재율 (색상 기준용)
     const allRates = days.flatMap((d) => d.slots.map((s) => s.absenceRate ?? 0))
     const maxAbsence = Math.max(1, ...allRates)
     return { days, maxAbsence }
   }, [filteredHistories])
 
-  // ── 11. 미방문 세대 현황 ────────────────────────────────────
+  // ── 11. 미방문 세대 ──
   const unvisitedStats = useMemo(() => {
     const allIds = new Set<number>()
     const chineseIds = new Set<number>()
@@ -293,7 +348,7 @@ export function DesktopStats({
     }
   }, [buildings, visitHistories])
 
-  // ── 12. 봉사자별 통계 (개발자만) ────────────────────────────
+  // ── 12. 봉사자별 (개발자 전용) ──
   const visitorStats = useMemo(() => {
     if (!isDeveloper) return []
     const map = new Map<string, { total: number; meetings: number; absences: number; invitations: number }>()
@@ -324,148 +379,147 @@ export function DesktopStats({
       .sort((a, b) => b.hours - a.hours)
   }, [serviceSessions, isDeveloper])
 
-  // ── 스타일 상수 ──────────────────────────────────────────────
-  const card: React.CSSProperties = { background: '#fff', borderRadius: 12, padding: '20px', marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }
-  const ttl: React.CSSProperties  = { fontSize: 15, fontWeight: 700, color: '#1e293b', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }
   const trendData = trendMode === 'monthly' ? monthlyTrend : weeklyTrend
   const diff = monthComparison.this.rate - monthComparison.prev.rate
-  const diffColor = diff > 0 ? '#16a34a' : diff < 0 ? '#dc2626' : '#64748b'
+  const diffColor = diff > 0 ? C.green : diff < 0 ? C.red : C.muted
+
+  /* ── 공통 칩 버튼 ─────────────────────────────────────────── */
+  const chipBtn = (active: boolean, accent = C.ink): React.CSSProperties => ({
+    padding: '5px 13px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+    border: `1px solid ${active ? accent : C.line}`,
+    background: active ? `${accent}0d` : C.surface,
+    color: active ? accent : C.muted,
+    transition: 'all .15s',
+  })
+
+  /* ── 테이블 공통 스타일 ─────────────────────────────────────── */
+  const thStyle = (align: 'left' | 'right' = 'right'): React.CSSProperties => ({
+    padding: '10px 8px', fontSize: 11, color: C.muted, fontWeight: 600, textAlign: align,
+    borderBottom: `1.5px solid ${C.line}`, letterSpacing: '0.02em',
+  })
+  const tdStyle = (align: 'left' | 'right' = 'right'): React.CSSProperties => ({
+    padding: '9px 8px', textAlign: align, fontSize: 13, color: C.text,
+  })
+
+  /* ── 결과별 색상 (절제된 팔레트) ───────────────────────────── */
+  const resultColor = (r: string) =>
+    r === '만남' ? C.green : r === '부재' ? C.amber : C.brand
 
   return (
-    <section className="desktop-content" style={{ padding: '32px', maxWidth: 1100, margin: '0 auto' }}>
+    <section className="desktop-content" style={{ padding: '32px', maxWidth: 1060, margin: '0 auto' }}>
       <header className="page-header">
         <div className="page-header-text">
-          <h1 className="page-header-title">통계 대시보드</h1>
+          <h1 className="page-header-title">통계</h1>
         </div>
       </header>
 
       {/* ── 분석 범위 ── */}
-      <div style={card}>
-        <h2 style={ttl}>📊 분석 범위</h2>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={cardStyle}>
+        <h2 style={titleStyle}>분석 범위</h2>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {[
-            { key: 'all' as ScopeFilter, label: '전체', accent: '#2563eb' },
-            { key: 'regular' as ScopeFilter, label: '일반 봉사만', accent: '#2563eb' },
-            ...specialPeriods.map(p => ({ key: p.id as ScopeFilter, label: `🟠 ${p.label}`, accent: '#f59e0b' })),
-          ].map(({ key, label, accent }) => {
-            const active = scope === key
-            return (
-              <button key={String(key)} onClick={() => setScope(key)} type="button" style={{
-                padding: '6px 14px', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                border: `1px solid ${active ? accent : '#e2e8f0'}`,
-                background: active ? `${accent}18` : '#fff',
-                color: active ? accent : '#475569',
-              }}>{label}</button>
-            )
-          })}
+            { key: 'all' as ScopeFilter, label: '전체' },
+            { key: 'regular' as ScopeFilter, label: '일반 봉사' },
+            ...specialPeriods.map(p => ({ key: p.id as ScopeFilter, label: p.label })),
+          ].map(({ key, label }) => (
+            <button key={String(key)} onClick={() => setScope(key)} type="button" style={chipBtn(scope === key)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 전체 요약 ── */}
+      <div style={cardStyle}>
+        <h2 style={titleStyle}>전체 요약</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8 }}>
+          {[
+            { label: '총 방문', value: summary.total, color: C.ink },
+            { label: '만남',   value: summary.meetings, color: C.green, pct: summary.meetingRate },
+            { label: '부재',   value: summary.absences, color: C.amber, pct: summary.total > 0 ? summary.absences / summary.total * 100 : 0 },
+            { label: '한국인', value: summary.koreans,  color: C.brand, pct: summary.total > 0 ? summary.koreans / summary.total * 100 : 0 },
+            { label: '만남률', value: `${summary.meetingRate.toFixed(1)}%`, color: C.green, pct: summary.meetingRate },
+            ...(scope !== 'regular' && scope !== 'all' ? [{ label: '초대장', value: summary.invitations, color: C.amber, pct: summary.total > 0 ? summary.invitations / summary.total * 100 : 0 }] : []),
+          ].map(s => (
+            <div key={s.label} style={statBoxStyle()}>
+              <div style={labelStyle}>{s.label}</div>
+              <div style={bigNumStyle(s.color)}>{s.value}</div>
+              {'pct' in s && s.pct != null && <MiniBar pct={s.pct as number} color={s.color} />}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* ── 이번달 vs 지난달 ── */}
-      <div style={card}>
-        <h2 style={ttl}>📆 이번달 vs 지난달</h2>
+      <div style={cardStyle}>
+        <h2 style={titleStyle}>월간 비교</h2>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 16, alignItems: 'center' }}>
-          {/* 지난달 */}
-          <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: 10 }}>
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>{monthComparison.prev.label}</div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#1e293b' }}>{monthComparison.prev.rate.toFixed(1)}<span style={{ fontSize: 14, fontWeight: 600, color: '#64748b' }}>%</span></div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>만남 {monthComparison.prev.meetings} / 방문 {monthComparison.prev.total}</div>
-            <MiniBar pct={monthComparison.prev.rate} color="#94a3b8" />
+          <div style={statBoxStyle()}>
+            <div style={labelStyle}>{monthComparison.prev.label}</div>
+            <div style={bigNumStyle(C.text)}>{monthComparison.prev.rate.toFixed(1)}<span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}>%</span></div>
+            <div style={smallMeta}>만남 {monthComparison.prev.meetings} / 방문 {monthComparison.prev.total}</div>
+            <MiniBar pct={monthComparison.prev.rate} color={C.subtle} />
           </div>
-          {/* 화살표 */}
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 22, color: diffColor }}>{diff > 0 ? '↑' : diff < 0 ? '↓' : '→'}</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: diffColor }}>{diff === 0 ? '동일' : `${Math.abs(diff).toFixed(1)}%p`}</div>
+            <div style={{ fontSize: 18, color: diffColor, fontWeight: 600 }}>{diff > 0 ? '↑' : diff < 0 ? '↓' : '→'}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: diffColor }}>{diff === 0 ? '동일' : `${Math.abs(diff).toFixed(1)}%p`}</div>
           </div>
-          {/* 이번달 */}
-          <div style={{ padding: '14px 16px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
-            <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, marginBottom: 4 }}>{monthComparison.this.label} (이번달)</div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#14532d' }}>{monthComparison.this.rate.toFixed(1)}<span style={{ fontSize: 14, fontWeight: 600, color: '#16a34a' }}>%</span></div>
-            <div style={{ fontSize: 11, color: '#86efac', marginTop: 3 }}>만남 {monthComparison.this.meetings} / 방문 {monthComparison.this.total}</div>
-            <MiniBar pct={monthComparison.this.rate} color="#22c55e" />
+          <div style={statBoxStyle(C.greenBg)}>
+            <div style={{ ...labelStyle, color: C.green }}>{monthComparison.this.label} (이번달)</div>
+            <div style={bigNumStyle(C.green)}>{monthComparison.this.rate.toFixed(1)}<span style={{ fontSize: 13, fontWeight: 600, color: C.green }}>%</span></div>
+            <div style={smallMeta}>만남 {monthComparison.this.meetings} / 방문 {monthComparison.this.total}</div>
+            <MiniBar pct={monthComparison.this.rate} color={C.green} />
           </div>
         </div>
       </div>
 
       {/* ── 미방문 세대 현황 ── */}
-      <div style={card}>
-        <h2 style={ttl}>🚪 미방문 세대 현황</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-          {/* 전체 */}
-          <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: 10 }}>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, marginBottom: 4 }}>전체 세대</div>
+      <div style={cardStyle}>
+        <h2 style={titleStyle}>미방문 세대 현황</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: unvisitedStats.chTotal > 0 ? '1fr 1fr' : '1fr', gap: 10 }}>
+          <div style={statBoxStyle()}>
+            <div style={labelStyle}>전체 세대</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-              <span style={{ fontSize: 26, fontWeight: 800, color: '#dc2626' }}>{unvisitedStats.unvisited.toLocaleString()}</span>
-              <span style={{ fontSize: 13, color: '#94a3b8' }}>/ {unvisitedStats.total.toLocaleString()}세대</span>
+              <span style={bigNumStyle(C.red)}>{unvisitedStats.unvisited.toLocaleString()}</span>
+              <span style={{ fontSize: 13, color: C.subtle }}>/ {unvisitedStats.total.toLocaleString()}</span>
             </div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>
-              미방문 {unvisitedStats.unvisitedRate.toFixed(1)}% · 방문완료 {unvisitedStats.visitedRate.toFixed(1)}%
-            </div>
-            <div style={{ marginTop: 8, height: 7, background: '#fee2e2', borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{ width: `${unvisitedStats.visitedRate}%`, height: '100%', background: '#22c55e', borderRadius: 4, transition: 'width .4s' }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3, fontSize: 10, color: '#94a3b8' }}>
-              <span>방문완료 {unvisitedStats.visited}</span><span>미방문 {unvisitedStats.unvisited}</span>
+            <div style={smallMeta}>미방문 {unvisitedStats.unvisitedRate.toFixed(1)}% · 방문완료 {unvisitedStats.visitedRate.toFixed(1)}%</div>
+            <div style={{ marginTop: 8, height: 5, background: C.line, borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ width: `${unvisitedStats.visitedRate}%`, height: '100%', background: C.green, borderRadius: 3, transition: 'width .4s' }} />
             </div>
           </div>
-          {/* 중국인 */}
           {unvisitedStats.chTotal > 0 && (
-            <div style={{ padding: '14px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
-              <div style={{ fontSize: 11, color: '#92400e', fontWeight: 700, marginBottom: 4 }}>중국인 세대</div>
+            <div style={statBoxStyle(C.amberBg)}>
+              <div style={{ ...labelStyle, color: C.amber }}>중국인 세대</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 26, fontWeight: 800, color: '#b45309' }}>{unvisitedStats.chUnvisited.toLocaleString()}</span>
-                <span style={{ fontSize: 13, color: '#d97706' }}>/ {unvisitedStats.chTotal}세대</span>
+                <span style={bigNumStyle(C.amber)}>{unvisitedStats.chUnvisited.toLocaleString()}</span>
+                <span style={{ fontSize: 13, color: C.amber }}>/ {unvisitedStats.chTotal}</span>
               </div>
-              <div style={{ fontSize: 11, color: '#b45309', marginTop: 3 }}>
-                미방문 {unvisitedStats.chTotal > 0 ? ((unvisitedStats.chUnvisited / unvisitedStats.chTotal) * 100).toFixed(1) : 0}%
-              </div>
-              <div style={{ marginTop: 8, height: 7, background: '#fef3c7', borderRadius: 4, overflow: 'hidden' }}>
-                <div style={{ width: `${unvisitedStats.chVisitedRate}%`, height: '100%', background: '#f59e0b', borderRadius: 4, transition: 'width .4s' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3, fontSize: 10, color: '#b45309' }}>
-                <span>방문완료 {unvisitedStats.chVisited}</span><span>미방문 {unvisitedStats.chUnvisited}</span>
+              <div style={{ ...smallMeta, color: C.amber }}>미방문 {unvisitedStats.chTotal > 0 ? ((unvisitedStats.chUnvisited / unvisitedStats.chTotal) * 100).toFixed(1) : 0}%</div>
+              <div style={{ marginTop: 8, height: 5, background: C.amberLight, borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ width: `${unvisitedStats.chVisitedRate}%`, height: '100%', background: C.amber, borderRadius: 3, transition: 'width .4s' }} />
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── 전체 요약 ── */}
-      <div style={card}>
-        <h2 style={ttl}>전체 요약</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
-          {[
-            { label: '총 방문', value: summary.total, color: '#1e293b', pct: null },
-            { label: '만남',   value: summary.meetings, color: '#16a34a', pct: summary.meetingRate },
-            { label: '부재',   value: summary.absences, color: '#ca8a04', pct: summary.total > 0 ? summary.absences / summary.total * 100 : 0 },
-            { label: '한국인', value: summary.koreans,  color: '#3730a3', pct: summary.total > 0 ? summary.koreans / summary.total * 100 : 0 },
-            { label: '만남률', value: `${summary.meetingRate.toFixed(1)}%`, color: '#2563eb', pct: summary.meetingRate },
-            ...(scope !== 'regular' && scope !== 'all' ? [{ label: '초대장', value: summary.invitations, color: '#f59e0b', pct: summary.total > 0 ? summary.invitations / summary.total * 100 : 0 }] : []),
-          ].map(s => (
-            <div key={s.label} style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 9 }}>
-              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>{s.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: s.color, marginTop: 3 }}>{s.value}</div>
-              {s.pct != null && <MiniBar pct={s.pct} color={s.color} />}
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ── 결과 분포 ── */}
-      <div style={card}>
-        <h2 style={ttl}>결과 분포</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+      <div style={cardStyle}>
+        <h2 style={titleStyle}>결과 분포</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {resultDistribution.map(r => (
             <div key={r.result} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 52, fontSize: 12, fontWeight: 700, color: '#475569' }}>{r.result}</div>
-              <div style={{ flex: 1, height: 18, background: '#f1f5f9', borderRadius: 9, overflow: 'hidden' }}>
+              <div style={{ width: 48, fontSize: 12, fontWeight: 600, color: C.text }}>{r.result}</div>
+              <div style={{ flex: 1, height: 14, background: C.bg, borderRadius: 7, overflow: 'hidden' }}>
                 <div style={{
-                  width: `${r.pct}%`, height: '100%', transition: 'width .3s',
-                  background: r.result === '만남' ? '#22c55e' : r.result === '부재' ? '#eab308' : '#6366f1',
+                  width: `${r.pct}%`, height: '100%', transition: 'width .3s', borderRadius: 7,
+                  background: resultColor(r.result),
+                  opacity: 0.7,
                 }} />
               </div>
-              <div style={{ width: 96, fontSize: 12, textAlign: 'right', color: '#475569' }}>
-                <strong>{r.count}건</strong> ({r.pct.toFixed(1)}%)
+              <div style={{ width: 90, fontSize: 12, textAlign: 'right', color: C.text }}>
+                <strong>{r.count}건</strong> <span style={{ color: C.subtle }}>({r.pct.toFixed(1)}%)</span>
               </div>
             </div>
           ))}
@@ -473,44 +527,34 @@ export function DesktopStats({
       </div>
 
       {/* ── 시간대별 분석 ── */}
-      <div style={card}>
-        <h2 style={ttl}>⏰ 시간대별 분석</h2>
-        <div style={{ display: 'flex', gap: 12 }}>
+      <div style={cardStyle}>
+        <h2 style={titleStyle}>시간대별 분석</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
           {slotStats.map(s => {
             const best = slotStats.reduce((a, b) => a.meetingRate > b.meetingRate ? a : b)
-            const worst = slotStats.reduce((a, b) => a.absenceRate > b.absenceRate ? a : b)
-            const isBest  = s.slot === best.slot && s.total > 0
-            const isWorst = s.slot === worst.slot && s.total > 0 && s !== best
+            const isBest = s.slot === best.slot && s.total > 0
             return (
               <div key={s.slot} style={{
-                flex: 1, padding: '14px 16px', borderRadius: 10,
-                background: isBest ? '#f0fdf4' : isWorst ? '#fff7ed' : '#f8fafc',
-                border: `1px solid ${isBest ? '#bbf7d0' : isWorst ? '#fed7aa' : '#f1f5f9'}`,
+                ...statBoxStyle(isBest ? C.greenBg : C.bg),
+                border: isBest ? `1px solid ${C.greenLight}` : 'none',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>{s.slot}</div>
-                  {isBest  && <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#dcfce7', padding: '2px 7px', borderRadius: 10 }}>✓ 최고</span>}
-                  {isWorst && <span style={{ fontSize: 10, fontWeight: 700, color: '#ea580c', background: '#ffedd5', padding: '2px 7px', borderRadius: 10 }}>주의</span>}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{s.slot}</div>
+                  {isBest && <span style={{ fontSize: 10, fontWeight: 600, color: C.green, background: C.greenLight, padding: '2px 7px', borderRadius: 4 }}>최고</span>}
                 </div>
-                {/* 만남률 */}
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#16a34a', fontWeight: 700, marginBottom: 3 }}>
-                    <span>만남률</span><span>{s.meetingRate.toFixed(1)}% <span style={{ fontWeight: 400, color: '#86efac' }}>({s.meetings}건)</span></span>
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.green, fontWeight: 600, marginBottom: 3 }}>
+                    <span>만남률</span><span>{s.meetingRate.toFixed(1)}% <span style={{ fontWeight: 400, color: C.subtle }}>({s.meetings}건)</span></span>
                   </div>
-                  <div style={{ height: 7, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: `${s.meetingRate}%`, height: '100%', background: '#22c55e', borderRadius: 4 }} />
-                  </div>
+                  <MiniBar pct={s.meetingRate} color={C.green} />
                 </div>
-                {/* 부재율 */}
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#dc2626', fontWeight: 700, marginBottom: 3 }}>
-                    <span>부재율</span><span>{s.absenceRate.toFixed(1)}% <span style={{ fontWeight: 400, color: '#fca5a5' }}>({s.absences}건)</span></span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.amber, fontWeight: 600, marginBottom: 3 }}>
+                    <span>부재율</span><span>{s.absenceRate.toFixed(1)}% <span style={{ fontWeight: 400, color: C.subtle }}>({s.absences}건)</span></span>
                   </div>
-                  <div style={{ height: 7, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: `${s.absenceRate}%`, height: '100%', background: '#f87171', borderRadius: 4 }} />
-                  </div>
+                  <MiniBar pct={s.absenceRate} color={C.amber} />
                 </div>
-                <div style={{ marginTop: 8, fontSize: 10, color: '#94a3b8' }}>총 {s.total}회 방문</div>
+                <div style={{ marginTop: 8, fontSize: 10, color: C.subtle }}>총 {s.total}회</div>
               </div>
             )
           })}
@@ -518,58 +562,56 @@ export function DesktopStats({
       </div>
 
       {/* ── 요일별 만남률 ── */}
-      <div style={card}>
-        <h2 style={ttl}>📅 요일별 만남률</h2>
-        {/* 평일/주말 요약 */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+      <div style={cardStyle}>
+        <h2 style={titleStyle}>요일별 만남률</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
           {[
-            { label: '평일 평균', ...dayOfWeekStats.weekday, color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-            { label: '주말 평균', ...dayOfWeekStats.weekend, color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+            { label: '평일 평균', ...dayOfWeekStats.weekday },
+            { label: '주말 평균', ...dayOfWeekStats.weekend },
           ].map(g => (
-            <div key={g.label} style={{ flex: 1, padding: '12px 14px', background: g.bg, borderRadius: 10, border: `1px solid ${g.border}` }}>
-              <div style={{ fontSize: 11, color: g.color, fontWeight: 700, marginBottom: 4 }}>{g.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: g.color }}>{g.rate.toFixed(1)}<span style={{ fontSize: 13 }}>%</span></div>
-              <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>만남 {g.meetings} / {g.total}회</div>
+            <div key={g.label} style={statBoxStyle()}>
+              <div style={labelStyle}>{g.label}</div>
+              <div style={bigNumStyle(C.ink)}>{g.rate.toFixed(1)}<span style={{ fontSize: 13, color: C.muted }}>%</span></div>
+              <div style={smallMeta}>만남 {g.meetings} / {g.total}회</div>
             </div>
           ))}
         </div>
-        {/* 요일별 바 차트 */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 100 }}>
+        {/* 요일 바 차트 */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 100 }}>
           {dayOfWeekStats.days.map((d) => {
             const maxRate = Math.max(1, ...dayOfWeekStats.days.map(x => x.meetingRate))
             const barH = d.total > 0 ? Math.max(8, (d.meetingRate / maxRate) * 80) : 4
             return (
               <div key={d.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: d.meetingRate >= maxRate * 0.8 ? '#16a34a' : '#94a3b8' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: d.meetingRate >= maxRate * 0.8 ? C.green : C.subtle }}>
                   {d.total > 0 ? `${d.meetingRate.toFixed(0)}%` : '-'}
                 </div>
                 <div style={{
-                  width: '100%', borderRadius: '4px 4px 0 0',
+                  width: '100%', borderRadius: '3px 3px 0 0',
                   height: barH,
-                  background: d.isWeekend
-                    ? (d.meetingRate >= maxRate * 0.8 ? '#7c3aed' : '#c4b5fd')
-                    : (d.meetingRate >= maxRate * 0.8 ? '#16a34a' : '#93c5fd'),
+                  background: d.isWeekend ? (C.muted) : (d.meetingRate >= maxRate * 0.8 ? C.green : C.subtle),
+                  opacity: d.isWeekend ? 0.4 : 0.6,
                   transition: 'height .3s',
                 }} />
-                <div style={{ fontSize: 12, fontWeight: 700, color: d.isWeekend ? '#7c3aed' : '#475569' }}>{d.label}</div>
-                <div style={{ fontSize: 9, color: '#cbd5e1' }}>{d.total > 0 ? `${d.total}회` : '없음'}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: d.isWeekend ? C.muted : C.text }}>{d.label}</div>
+                <div style={{ fontSize: 9, color: C.subtle }}>{d.total > 0 ? `${d.total}회` : ''}</div>
               </div>
             )
           })}
         </div>
 
-        {/* ── 요일×시간대 부재율 히트맵 ── */}
-        <div style={{ marginTop: 20, borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#475569', marginBottom: 10 }}>
-            시간대별 부재율 <span style={{ fontSize: 11, fontWeight: 400, color: '#94a3b8' }}>— 빨갈수록 부재 많음 (피하면 좋은 시간)</span>
+        {/* 요일×시간대 히트맵 */}
+        <div style={{ marginTop: 20, borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 10 }}>
+            시간대별 부재율 <span style={{ fontSize: 11, fontWeight: 400, color: C.subtle }}>— 진할수록 부재 비율 높음</span>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 3, fontSize: 12 }}>
               <thead>
                 <tr>
-                  <th style={{ width: 44, textAlign: 'left', fontSize: 11, color: '#94a3b8', fontWeight: 600, paddingBottom: 4 }} />
+                  <th style={{ width: 44, textAlign: 'left', fontSize: 11, color: C.subtle, fontWeight: 600, paddingBottom: 4 }} />
                   {daySlotMatrix.days.map((d) => (
-                    <th key={d.label} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: d.isWeekend ? '#7c3aed' : '#475569', paddingBottom: 4 }}>
+                    <th key={d.label} style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, color: d.isWeekend ? C.muted : C.text, paddingBottom: 4 }}>
                       {d.label}
                     </th>
                   ))}
@@ -578,25 +620,24 @@ export function DesktopStats({
               <tbody>
                 {TIME_SLOTS.map((slot) => (
                   <tr key={slot}>
-                    <td style={{ fontSize: 11, color: '#64748b', fontWeight: 700, paddingRight: 6, whiteSpace: 'nowrap' }}>{slot}</td>
+                    <td style={{ fontSize: 11, color: C.muted, fontWeight: 600, paddingRight: 6, whiteSpace: 'nowrap' }}>{slot}</td>
                     {daySlotMatrix.days.map((d) => {
                       const cell = d.slots.find((s) => s.slot === slot)!
                       const rate = cell.absenceRate
                       const intensity = rate !== null ? rate / daySlotMatrix.maxAbsence : 0
-                      // null = 데이터 없음 → 회색
                       const bg = rate === null
-                        ? '#f8fafc'
+                        ? C.bg
                         : rate === 0
-                          ? '#f0fdf4'
-                          : `rgba(239,68,68,${Math.max(0.08, intensity * 0.85)})`
-                      const textColor = rate === null ? '#cbd5e1' : intensity > 0.6 ? '#fff' : '#1e293b'
+                          ? C.greenBg
+                          : `rgba(180,64,64,${Math.max(0.06, intensity * 0.5)})`
+                      const textColor = rate === null ? C.subtle : intensity > 0.7 ? '#fff' : C.ink
                       return (
-                        <td key={slot + d.label} style={{ textAlign: 'center', padding: '7px 4px', borderRadius: 6, background: bg, transition: 'background .2s' }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: textColor }}>
+                        <td key={slot + d.label} style={{ textAlign: 'center', padding: '7px 4px', borderRadius: 5, background: bg, transition: 'background .2s' }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: textColor }}>
                             {rate === null ? '–' : `${rate.toFixed(0)}%`}
                           </div>
                           {cell.total > 0 && (
-                            <div style={{ fontSize: 9, color: intensity > 0.6 ? 'rgba(255,255,255,0.7)' : '#94a3b8', marginTop: 1 }}>
+                            <div style={{ fontSize: 9, color: intensity > 0.7 ? 'rgba(255,255,255,0.6)' : C.subtle, marginTop: 1 }}>
                               {cell.absences}/{cell.total}
                             </div>
                           )}
@@ -611,31 +652,28 @@ export function DesktopStats({
         </div>
       </div>
 
-      {/* ── 중국인 세대 특화 ── */}
+      {/* ── 중국인 세대 분석 ── */}
       {chineseStats.totalUnits > 0 && (
-        <div style={card}>
-          <h2 style={ttl}>🇨🇳 중국인 세대 분석</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            {/* 전체 접촉률 */}
-            <div style={{ padding: '14px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
-              <div style={{ fontSize: 12, color: '#92400e', fontWeight: 700, marginBottom: 6 }}>전체 접촉률</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: '#92400e' }}>{chineseStats.rate.toFixed(1)}<span style={{ fontSize: 14 }}>%</span></div>
-              <div style={{ fontSize: 11, color: '#b45309', marginTop: 3 }}>만남 {chineseStats.meetings} / 방문 {chineseStats.total} · 중국인 세대 {chineseStats.totalUnits}개</div>
-              <MiniBar pct={chineseStats.rate} color="#f59e0b" />
-              <div style={{ marginTop: 8, fontSize: 12, color: '#92400e' }}>부재 {chineseStats.absences}회</div>
+        <div style={cardStyle}>
+          <h2 style={titleStyle}>중국인 세대 분석</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div style={statBoxStyle(C.amberBg)}>
+              <div style={{ ...labelStyle, color: C.amber }}>만남률</div>
+              <div style={bigNumStyle(C.amber)}>{chineseStats.rate.toFixed(1)}<span style={{ fontSize: 13 }}>%</span></div>
+              <div style={{ ...smallMeta, color: C.amber }}>만남 {chineseStats.meetings} / 방문 {chineseStats.total} · {chineseStats.totalUnits}세대</div>
+              <MiniBar pct={chineseStats.rate} color={C.amber} />
             </div>
-            {/* 시간대별 */}
             <div>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, marginBottom: 8 }}>시간대별 만남률</div>
+              <div style={{ ...labelStyle, marginBottom: 8 }}>시간대별 만남률</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {chineseStats.slots.map(sl => (
                   <div key={sl.slot} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 36, fontSize: 12, fontWeight: 700, color: '#475569' }}>{sl.slot}</div>
-                    <div style={{ flex: 1, height: 14, background: '#f1f5f9', borderRadius: 7, overflow: 'hidden' }}>
-                      <div style={{ width: `${sl.rate}%`, height: '100%', background: '#f59e0b', transition: 'width .3s' }} />
+                    <div style={{ width: 32, fontSize: 12, fontWeight: 600, color: C.text }}>{sl.slot}</div>
+                    <div style={{ flex: 1, height: 10, background: C.bg, borderRadius: 5, overflow: 'hidden' }}>
+                      <div style={{ width: `${sl.rate}%`, height: '100%', background: C.amber, opacity: 0.7, transition: 'width .3s' }} />
                     </div>
-                    <div style={{ width: 60, fontSize: 12, textAlign: 'right', fontWeight: 700, color: '#92400e' }}>
-                      {sl.rate.toFixed(1)}% <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 400 }}>({sl.total})</span>
+                    <div style={{ width: 56, fontSize: 11, textAlign: 'right', fontWeight: 600, color: C.amber }}>
+                      {sl.rate.toFixed(1)}% <span style={{ fontSize: 10, color: C.subtle, fontWeight: 400 }}>({sl.total})</span>
                     </div>
                   </div>
                 ))}
@@ -645,42 +683,37 @@ export function DesktopStats({
         </div>
       )}
 
-
-      {/* ── 방문 추이 꺾은선 ── */}
-      <div style={card}>
+      {/* ── 방문 추이 ── */}
+      <div style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h2 style={{ ...ttl, margin: 0 }}>📈 방문 추이</h2>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <h2 style={{ ...titleStyle, margin: 0 }}>방문 추이</h2>
+          <div style={{ display: 'flex', gap: 4 }}>
             {(['monthly', 'weekly'] as TrendMode[]).map(m => (
-              <button key={m} onClick={() => setTrendMode(m)} type="button" style={{
-                padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                border: `1px solid ${trendMode === m ? '#2563eb' : '#e2e8f0'}`,
-                background: trendMode === m ? '#eff6ff' : '#fff',
-                color: trendMode === m ? '#1d4ed8' : '#475569',
-              }}>{m === 'monthly' ? '월별' : '주별'}</button>
+              <button key={m} onClick={() => setTrendMode(m)} type="button" style={chipBtn(trendMode === m)}>
+                {m === 'monthly' ? '월별' : '주별'}
+              </button>
             ))}
           </div>
         </div>
         <LineChart data={trendData} />
-        {/* X축 레이블 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, padding: '0 8px' }}>
           {trendData.map((d, i) => (
-            <div key={i} style={{ fontSize: 10, color: '#94a3b8', flex: 1, textAlign: 'center' }}>{d.label}</div>
+            <div key={i} style={{ fontSize: 10, color: C.subtle, flex: 1, textAlign: 'center' }}>{d.label}</div>
           ))}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 14, marginTop: 10, fontSize: 11, color: '#64748b' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ display: 'inline-block', width: 10, height: 3, background: '#22c55e', borderRadius: 2 }} />만남</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ display: 'inline-block', width: 10, height: 3, background: '#94a3b8', borderRadius: 2 }} />총 방문</span>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 14, marginTop: 10, fontSize: 11, color: C.muted }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ display: 'inline-block', width: 10, height: 2, background: C.green, borderRadius: 1 }} />만남</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ display: 'inline-block', width: 10, height: 2, background: C.subtle, borderRadius: 1 }} />총 방문</span>
         </div>
       </div>
 
-      {/* ── 카드별 테이블 (접기/펼치기 + 구역 필터) ── */}
-      <div style={card}>
+      {/* ── 카드별 상세 ── */}
+      <div style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: cardTableOpen ? 14 : 0 }}>
-          <h2 style={{ ...ttl, margin: 0 }}>📋 카드별 상세</h2>
+          <h2 style={{ ...titleStyle, margin: 0 }}>카드별 상세</h2>
           <button
             onClick={() => setCardTableOpen(v => !v)}
-            style={{ fontSize: 12, color: '#64748b', background: '#f1f5f9', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
+            style={{ fontSize: 12, color: C.muted, background: C.bg, border: `1px solid ${C.line}`, borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
           >
             {cardTableOpen ? '닫기 ▲' : '열기 ▼'}
           </button>
@@ -688,72 +721,57 @@ export function DesktopStats({
 
         {cardTableOpen && (
           <>
-            {/* 구(Region) 필터 */}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-              <button
-                onClick={() => { setSelectedRegion(null); setSelectedArea(null) }}
-                style={{ fontSize: 12, padding: '4px 10px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, background: selectedRegion === null ? '#2563eb' : '#f1f5f9', color: selectedRegion === null ? '#fff' : '#64748b' }}
-              >전체</button>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
+              <button onClick={() => { setSelectedRegion(null); setSelectedArea(null) }} style={chipBtn(selectedRegion === null)} type="button">전체</button>
               {allRegions.map(r => (
-                <button key={r}
-                  onClick={() => { setSelectedRegion(r); setSelectedArea(null) }}
-                  style={{ fontSize: 12, padding: '4px 10px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, background: selectedRegion === r ? '#2563eb' : '#f1f5f9', color: selectedRegion === r ? '#fff' : '#64748b' }}
-                >{r}</button>
+                <button key={r} onClick={() => { setSelectedRegion(r); setSelectedArea(null) }} style={chipBtn(selectedRegion === r)} type="button">{r}</button>
               ))}
             </div>
 
-            {/* 동(Area) 필터 — 구 선택 시만 표시 */}
             {selectedRegion && areasForRegion.length > 0 && (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, paddingLeft: 8, borderLeft: '2px solid #e2e8f0' }}>
-                <button
-                  onClick={() => setSelectedArea(null)}
-                  style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: 'none', cursor: 'pointer', background: selectedArea === null ? '#0ea5e9' : '#f1f5f9', color: selectedArea === null ? '#fff' : '#64748b' }}
-                >전체</button>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10, paddingLeft: 8, borderLeft: `2px solid ${C.line}` }}>
+                <button onClick={() => setSelectedArea(null)} style={chipBtn(selectedArea === null)} type="button">전체</button>
                 {areasForRegion.map(a => (
-                  <button key={a}
-                    onClick={() => setSelectedArea(a)}
-                    style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: 'none', cursor: 'pointer', background: selectedArea === a ? '#0ea5e9' : '#f1f5f9', color: selectedArea === a ? '#fff' : '#64748b' }}
-                  >{a}</button>
+                  <button key={a} onClick={() => setSelectedArea(a)} style={chipBtn(selectedArea === a)} type="button">{a}</button>
                 ))}
               </div>
             )}
 
-            {/* 테이블 */}
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                  <tr>
                     {['카드', '방문률', '방문/세대', '만남률', '만남/총방문'].map(h => (
-                      <th key={h} style={{ padding: '10px 8px', fontSize: 11, color: '#64748b', fontWeight: 700, textAlign: h === '카드' ? 'left' : 'right' }}>{h}</th>
+                      <th key={h} style={thStyle(h === '카드' ? 'left' : 'right')}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredCardStats.map(c => (
-                    <tr key={c.cardId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '9px 8px', fontWeight: 600 }}>
-                        <div>{c.name}</div>
+                    <tr key={c.cardId} style={{ borderBottom: `1px solid ${C.bg}` }}>
+                      <td style={tdStyle('left')}>
+                        <div style={{ fontWeight: 600, color: C.ink }}>{c.name}</div>
                         {(c.region || c.area) && (
-                          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>{[c.region, c.area].filter(Boolean).join(' · ')}</div>
+                          <div style={{ fontSize: 10, color: C.subtle, marginTop: 1 }}>{[c.region, c.area].filter(Boolean).join(' · ')}</div>
                         )}
                       </td>
-                      <td style={{ padding: '9px 8px', textAlign: 'right' }}>
+                      <td style={tdStyle()}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-                          <div style={{ width: 56, height: 5, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ width: `${c.visitRate}%`, height: '100%', background: c.visitRate >= 80 ? '#22c55e' : c.visitRate >= 50 ? '#3b82f6' : '#94a3b8' }} />
+                          <div style={{ width: 48, height: 4, background: C.bg, borderRadius: 2, overflow: 'hidden' }}>
+                            <div style={{ width: `${c.visitRate}%`, height: '100%', background: c.visitRate >= 80 ? C.green : C.subtle }} />
                           </div>
-                          <strong style={{ minWidth: 38 }}>{c.visitRate.toFixed(0)}%</strong>
+                          <strong style={{ minWidth: 36, color: C.ink }}>{c.visitRate.toFixed(0)}%</strong>
                         </div>
                       </td>
-                      <td style={{ padding: '9px 8px', textAlign: 'right', color: '#64748b' }}>{c.visited} / {c.totalUnits}</td>
-                      <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 700, color: c.meetingRate >= 30 ? '#16a34a' : '#94a3b8' }}>{c.meetingRate.toFixed(1)}%</td>
-                      <td style={{ padding: '9px 8px', textAlign: 'right', color: '#64748b' }}>{c.meetings} / {c.totalVisits}</td>
+                      <td style={tdStyle()}>{c.visited} / {c.totalUnits}</td>
+                      <td style={{ ...tdStyle(), fontWeight: 600, color: c.meetingRate >= 30 ? C.green : C.subtle }}>{c.meetingRate.toFixed(1)}%</td>
+                      <td style={tdStyle()}>{c.meetings} / {c.totalVisits}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {filteredCardStats.length === 0 && (
-                <p style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', padding: '20px 0' }}>해당 구역의 카드가 없습니다</p>
+                <p style={{ fontSize: 12, color: C.subtle, textAlign: 'center', padding: '20px 0' }}>해당 구역의 카드가 없습니다</p>
               )}
             </div>
           </>
@@ -762,26 +780,26 @@ export function DesktopStats({
 
       {/* ── 봉사자별 (개발자 전용) ── */}
       {isDeveloper && visitorStats.length > 0 && (
-        <div style={card}>
-          <h2 style={ttl}>👤 봉사자별 활동량</h2>
+        <div style={cardStyle}>
+          <h2 style={titleStyle}>봉사자별 활동량</h2>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                <tr>
                   {['봉사자','방문','만남','부재','만남률','초대장'].map(h => (
-                    <th key={h} style={{ padding: '10px 8px', fontSize: 11, color: '#64748b', fontWeight: 700, textAlign: h === '봉사자' ? 'left' : 'right' }}>{h}</th>
+                    <th key={h} style={thStyle(h === '봉사자' ? 'left' : 'right')}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {visitorStats.map(v => (
-                  <tr key={v.visitor} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '9px 8px', fontWeight: 600 }}>{v.visitor}</td>
-                    <td style={{ padding: '9px 8px', textAlign: 'right' }}><strong>{v.total}</strong></td>
-                    <td style={{ padding: '9px 8px', textAlign: 'right', color: '#16a34a' }}>{v.meetings}</td>
-                    <td style={{ padding: '9px 8px', textAlign: 'right', color: '#ca8a04' }}>{v.absences}</td>
-                    <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 700, color: v.meetingRate >= 30 ? '#16a34a' : '#94a3b8' }}>{v.meetingRate.toFixed(1)}%</td>
-                    <td style={{ padding: '9px 8px', textAlign: 'right', color: '#f59e0b' }}>{v.invitations}</td>
+                  <tr key={v.visitor} style={{ borderBottom: `1px solid ${C.bg}` }}>
+                    <td style={{ ...tdStyle('left'), fontWeight: 600, color: C.ink }}>{v.visitor}</td>
+                    <td style={tdStyle()}><strong>{v.total}</strong></td>
+                    <td style={{ ...tdStyle(), color: C.green }}>{v.meetings}</td>
+                    <td style={{ ...tdStyle(), color: C.amber }}>{v.absences}</td>
+                    <td style={{ ...tdStyle(), fontWeight: 600, color: v.meetingRate >= 30 ? C.green : C.subtle }}>{v.meetingRate.toFixed(1)}%</td>
+                    <td style={{ ...tdStyle(), color: C.amber }}>{v.invitations}</td>
                   </tr>
                 ))}
               </tbody>
@@ -790,23 +808,23 @@ export function DesktopStats({
         </div>
       )}
       {isDeveloper && sessionTimeStats.length > 0 && (
-        <div style={card}>
-          <h2 style={ttl}>⏱️ 봉사자별 누적 시간</h2>
+        <div style={cardStyle}>
+          <h2 style={titleStyle}>봉사자별 누적 시간</h2>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                <tr>
                   {['봉사자','세션','누적 시간'].map(h => (
-                    <th key={h} style={{ padding: '10px 8px', fontSize: 11, color: '#64748b', fontWeight: 700, textAlign: h === '봉사자' ? 'left' : 'right' }}>{h}</th>
+                    <th key={h} style={thStyle(h === '봉사자' ? 'left' : 'right')}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {sessionTimeStats.map(s => (
-                  <tr key={s.visitor} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '9px 8px', fontWeight: 600 }}>{s.visitor}</td>
-                    <td style={{ padding: '9px 8px', textAlign: 'right', color: '#64748b' }}>{s.sessions}회</td>
-                    <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 700, color: '#2563eb' }}>{s.hours}시간</td>
+                  <tr key={s.visitor} style={{ borderBottom: `1px solid ${C.bg}` }}>
+                    <td style={{ ...tdStyle('left'), fontWeight: 600, color: C.ink }}>{s.visitor}</td>
+                    <td style={tdStyle()}>{s.sessions}회</td>
+                    <td style={{ ...tdStyle(), fontWeight: 600, color: C.ink }}>{s.hours}시간</td>
                   </tr>
                 ))}
               </tbody>

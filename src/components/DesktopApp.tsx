@@ -11,13 +11,20 @@ import { DesktopMyService } from './DesktopMyService'
 import { DesktopMap } from './DesktopMap'
 import { DesktopAdminAssignment } from './DesktopAdminAssignment'
 import { DesktopLeaderAssignment } from './DesktopLeaderAssignment'
-import { DesktopUsers } from './DesktopUsers'
+import { MobileUsers } from './MobileUsers'
+import { MobileNotices } from './MobileNotices'
+import { MobileSignupRequests } from './MobileSignupRequests'
+import { DesktopProfileSettings } from './DesktopProfileSettings'
+import { DesktopDataManagement } from './DesktopDataManagement'
+import { DesktopSpecialPeriods } from './DesktopSpecialPeriods'
+import { DesktopNotificationSettings } from './DesktopNotificationSettings'
 import { ServiceLogPage } from './ServiceLogPage'
 import { AppHeaderActionButtons } from './AppHeader'
 import type { Building, CalendarEvent, CardBoundary, DesktopPage, EventInformalAssignment, EventRestaurantAssignment, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { CsvBuildingImport } from '../utils/csvBuildingImport'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 import { roleLabels } from '../types'
+import type { AppLanguage } from '../i18n'
 
 const pageToPath: Record<DesktopPage, string> = {
   '홈': '/',
@@ -141,7 +148,12 @@ export function DesktopApp({
   restaurantRequests = [],
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
+  language,
+  currentUser,
+  onChangePin,
+  onUpdateMyProfile,
 }: {
+  language: AppLanguage
   buildings: Building[]
   calendarEvents: CalendarEvent[]
   cardBoundaries: CardBoundary[]
@@ -212,12 +224,12 @@ export function DesktopApp({
   onDeleteSpecialPeriod: (id: number) => void
   specialPeriods: SpecialPeriod[]
   onDeleteUnit: (buildingId: number, unitId: number) => void
-  onRemoveParticipantFromEvent: (eventId: number, userName: string) => void
+  onRemoveParticipantFromEvent: (eventId: number, userId: number) => Promise<void>
   onAddParticipantToEvent: (eventId: number, userName: string) => void
   allUsers: Array<{ id: number; name: string; role: string }>
   returnVisits?: ReturnVisit[]
   returnVisitLogs?: ReturnVisitLog[]
-  onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
+  onAddReturnVisitLog: (returnVisitId: number, date: string, desc: string) => Promise<number | null>
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
@@ -274,6 +286,9 @@ export function DesktopApp({
   restaurantRequests?: import('../types').RestaurantRequest[]
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
+  currentUser: import('../hooks/useAuth').AuthUser
+  onChangePin: (newPin: string) => Promise<boolean>
+  onUpdateMyProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -292,7 +307,7 @@ export function DesktopApp({
   // /zone?view=map 에서 지도 뷰 (인도자 구역 탭 내부 토글)
   const showZoneMapView = location.pathname === '/zone' && searchParams.get('view') === 'map'
 
-  const rawActivePage = pathToPage[location.pathname] || '홈'
+  const rawActivePage = location.pathname.startsWith('/settings') ? '설정' : pathToPage[location.pathname] || '홈'
   // 인도자가 /map에 있을 때 → '구역' 탭 활성화 (지도 탭 없음)
   const activePage: DesktopPage =
     rawActivePage === '지도' && viewMode === 'leader' ? '구역' : rawActivePage
@@ -301,7 +316,7 @@ export function DesktopApp({
     ? ['홈', '캘린더', '활동', '지도', '설정']
     : viewMode === 'leader'
       ? ['홈', '캘린더', '활동', '배정', '구역', '설정']
-      : ['홈', '공지', '캘린더', '구역', '지도', '배정', '사용자', '통계', '설정']
+      : ['홈', '캘린더', '구역', '지도', '배정', '통계', '설정']
 
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
   const focusedMapBuildingId = searchParams.get('buildingId') ? Number(searchParams.get('buildingId')) : null
@@ -456,6 +471,7 @@ export function DesktopApp({
       <Routes>
         <Route path="/" element={
           <DesktopHome
+            language={language}
             calendarEvents={calendarEvents}
             cards={cards}
             currentVisitor={currentVisitor}
@@ -723,22 +739,6 @@ export function DesktopApp({
             />
           )
         } />
-        <Route path="/users" element={
-          <DesktopUsers
-            visitHistories={visitHistories}
-          />
-        } />
-        <Route path="/notices" element={
-          <DesktopNotices
-            currentVisitor={currentVisitor}
-            currentUserId={currentUserId}
-            role={actualRole}
-            notices={notices}
-            mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
-            onCreateNotice={onCreateNotice}
-            onDeleteNotice={onDeleteNotice}
-          />
-        } />
         <Route path="/stats" element={
           <DesktopStats
             cards={cards}
@@ -753,19 +753,67 @@ export function DesktopApp({
           <DesktopSettings
             currentVisitor={currentVisitor}
             currentUserId={currentUserId}
-            actualRole={actualRole}
+            actualRole={viewMode}
             onLogout={onLogout}
-            specialPeriods={specialPeriods}
-            onCreateSpecialPeriod={async (input) => onCreateSpecialPeriod(input)}
-            onUpdateSpecialPeriod={async (id, input) => onUpdateSpecialPeriod(id, input)}
-            onDeleteSpecialPeriod={async (id) => onDeleteSpecialPeriod(id)}
           />
-        } />
-        <Route path="/service-logs" element={
-          (viewMode === 'leader' || viewMode === 'admin')
-            ? <ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={viewMode} />
-            : <Navigate to="/" replace />
-        } />
+        }>
+          <Route index element={<Navigate to="profile" replace />} />
+          <Route path="profile" element={
+            <DesktopProfileSettings
+              user={currentUser}
+              language={language}
+              onChangePin={onChangePin}
+              onUpdateProfile={onUpdateMyProfile}
+            />
+          } />
+          <Route path="notification" element={
+            <DesktopNotificationSettings userId={currentUserId} />
+          } />
+          <Route path="data-management" element={
+            (viewMode === 'admin' || viewMode === 'developer')
+              ? <DesktopDataManagement />
+              : <Navigate to="/settings/profile" replace />
+          } />
+          <Route path="special-periods" element={
+            (viewMode === 'admin' || viewMode === 'developer')
+              ? <DesktopSpecialPeriods
+                  specialPeriods={specialPeriods}
+                  onCreateSpecialPeriod={async (input) => onCreateSpecialPeriod(input)}
+                  onUpdateSpecialPeriod={async (id, input) => onUpdateSpecialPeriod(id, input)}
+                  onDeleteSpecialPeriod={async (id) => onDeleteSpecialPeriod(id)}
+                />
+              : <Navigate to="/settings/profile" replace />
+          } />
+          <Route path="users" element={
+            (viewMode === 'admin' || viewMode === 'developer')
+              ? <div style={{ maxWidth: 640, width: '100%', position: 'relative' }}><MobileUsers isEmbedded /></div>
+              : <Navigate to="/settings/profile" replace />
+          } />
+          <Route path="signup-requests" element={
+            (viewMode === 'admin' || viewMode === 'developer')
+              ? <div style={{ maxWidth: 640, width: '100%', position: 'relative' }}><MobileSignupRequests isEmbedded /></div>
+              : <Navigate to="/settings/profile" replace />
+          } />
+          <Route path="notices" element={
+            <div style={{ maxWidth: 640, width: '100%', position: 'relative' }}>
+              <MobileNotices
+                language={language}
+                currentVisitor={currentVisitor}
+                currentUserId={currentUserId}
+                role={actualRole}
+                notices={notices}
+                mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
+                onCreateNotice={onCreateNotice}
+                onDeleteNotice={onDeleteNotice}
+              />
+            </div>
+          } />
+          <Route path="service-logs" element={
+            (viewMode === 'admin' || viewMode === 'leader')
+              ? <div style={{ maxWidth: 640, width: '100%', position: 'relative' }}><ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={viewMode} isEmbedded /></div>
+              : <Navigate to="/settings/profile" replace />
+          } />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </main>

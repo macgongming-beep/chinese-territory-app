@@ -10,6 +10,7 @@ type ServiceLogPageProps = {
   cards: TerritoryCard[]
   calendarEvents: CalendarEvent[]
   role: Role
+  isEmbedded?: boolean
 }
 
 function formatDateTime(iso: string): string {
@@ -35,7 +36,7 @@ function groupByDay(logs: ServiceLog[]): Map<string, ServiceLog[]> {
   return groups
 }
 
-export function ServiceLogPage({ cards, calendarEvents, role }: ServiceLogPageProps) {
+export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: ServiceLogPageProps) {
   const [selectedCardId, setSelectedCardId] = useState<number | null>(null)
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
 
@@ -72,18 +73,28 @@ export function ServiceLogPage({ cards, calendarEvents, role }: ServiceLogPagePr
   }
 
   return (
-    <section style={{ padding: '20px 24px', maxWidth: 1100, margin: '0 auto' }}>
-      <header style={{ marginBottom: 20 }}>
-        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          관리자 메뉴
-        </p>
-        <h1 style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#1e293b' }}>
-          봉사 로그
-        </h1>
-        <p style={{ margin: '6px 0 0', fontSize: 13, color: '#64748b' }}>
-          {role === 'leader' ? '담당 카드의 봉사 활동만 표시됩니다.' : '회중 전체 봉사 활동을 시간순으로 확인합니다.'}
-        </p>
-      </header>
+    <section style={{ padding: isEmbedded ? '0 4px 32px' : '20px 24px', maxWidth: 1100, margin: '0 auto' }}>
+      {!isEmbedded && (
+        <header style={{ marginBottom: 20 }}>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            관리자 메뉴
+          </p>
+          <h1 style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#1e293b' }}>
+            봉사 로그
+          </h1>
+          <p style={{ margin: '6px 0 0', fontSize: 13, color: '#64748b' }}>
+            {role === 'leader' ? '담당 카드의 봉사 활동만 표시됩니다.' : '회중 전체 봉사 활동을 시간순으로 확인합니다.'}
+          </p>
+        </header>
+      )}
+      {isEmbedded && (
+        <div style={{ paddingBottom: 16 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gray-900)' }}>봉사 로그</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
+            {role === 'leader' ? '담당 카드의 봉사 활동만 표시됩니다.' : '회중 전체 봉사 활동을 시간순으로 확인합니다.'}
+          </p>
+        </div>
+      )}
 
       {/* 필터 */}
       <div style={{
@@ -154,8 +165,8 @@ export function ServiceLogPage({ cards, calendarEvents, role }: ServiceLogPagePr
           onClick={handleCSV}
           disabled={logs.length === 0}
           style={{
-            padding: '7px 14px', borderRadius: 7, border: '1px solid #2563eb',
-            background: '#2563eb', color: '#fff', fontSize: 13, fontWeight: 700,
+            padding: '7px 14px', borderRadius: 7, border: '1px solid var(--ink)',
+            background: 'var(--ink)', color: 'var(--surface, #fff)', fontSize: 13, fontWeight: 700,
             cursor: logs.length === 0 ? 'not-allowed' : 'pointer',
             opacity: logs.length === 0 ? 0.5 : 1,
           }}

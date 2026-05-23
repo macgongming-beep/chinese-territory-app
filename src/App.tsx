@@ -269,6 +269,7 @@ function App() {
       >
         {isDesktop ? (
           <DesktopApp
+            language={language}
             leaderNames={leaderNames}
             buildings={buildings}
             calendarEvents={calendarEvents}
@@ -280,6 +281,9 @@ function App() {
             viewMode={mobileViewMode}
             notices={notices}
             serviceSessions={serviceSessions}
+            currentUser={user}
+            onChangePin={changePin}
+            onUpdateMyProfile={updateMyProfile}
             onAddUnit={addUnitToBuilding}
             onApplyToEvent={applyToEvent}
             onSetCardLeaders={setCardLeaders}

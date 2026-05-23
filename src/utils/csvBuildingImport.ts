@@ -46,6 +46,7 @@ export type CsvSkippedRow = {
   reason: string
   hint: string
   address?: string
+  rawRow?: string[]
 }
 
 // ── 유틸리티 함수 ────────────────────────────────────────────────

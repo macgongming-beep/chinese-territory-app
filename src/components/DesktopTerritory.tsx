@@ -241,6 +241,7 @@ export function DesktopTerritory({
   const [csvPreviewRows, setCsvPreviewRows] = useState<CsvPreviewRow[]>([])
   const [csvSkippedRows, setCsvSkippedRows] = useState(0)
   const [csvSkippedDetails, setCsvSkippedDetails] = useState<CsvSkippedRow[]>([])
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
   const [csvParsing, setCsvParsing] = useState(false)
   const [csvImporting, setCsvImporting] = useState(false)
   const [reassigningByBoundary, setReassigningByBoundary] = useState(false)
@@ -802,6 +803,7 @@ export function DesktopTerritory({
     setCsvPreviewRows([])
     setCsvSkippedRows(0)
     setCsvSkippedDetails([])
+    setCsvHeaders([])
 
     const rows = parseCsv(await file.text())
     if (rows.length < 2) {
@@ -810,19 +812,21 @@ export function DesktopTerritory({
       return
     }
 
-    const headers = rows[0].map(normalizeCsvKey)
+    const headers = rows[0]
+    setCsvHeaders(headers)
+    const normalizedHeaders = headers.map(normalizeCsvKey)
     const findValue = (row: string[], keys: string[]) => {
       const normalizedKeys = keys.map(normalizeCsvKey)
-      const index = headers.findIndex((header) => normalizedKeys.includes(header))
+      const index = normalizedHeaders.findIndex((header) => normalizedKeys.includes(header))
       return index >= 0 ? row[index]?.trim() ?? '' : ''
     }
 
     const previewRows: CsvPreviewRow[] = []
     const skippedDetails: CsvSkippedRow[] = []
     let skipped = 0
-    const skipRow = (rowNumber: number, reason: string, hint: string, address?: string) => {
+    const skipRow = (rowNumber: number, reason: string, hint: string, address?: string, rawRow?: string[]) => {
       skipped += 1
-      skippedDetails.push({ rowNumber, reason, hint, address })
+      skippedDetails.push({ rowNumber, reason, hint, address, rawRow })
     }
 
     // buildingKey → accumulated data (group rows by building)
@@ -896,7 +900,7 @@ export function DesktopTerritory({
       const explicitCard = cardById ?? cardByName
 
       if (!address) {
-        skipRow(rowNumber, '주소 없음', '`주소` 컬럼에 지번/도로명 주소를 넣어 주세요.')
+        skipRow(rowNumber, '주소 없음', '`주소` 컬럼에 지번/도로명 주소를 넣어 주세요.', undefined, row)
         continue
       }
 
@@ -906,6 +910,7 @@ export function DesktopTerritory({
           '카드 ID 매칭 실패',
           'CSV의 cardId/카드ID가 앱의 실제 카드 ID와 일치하는지 확인하거나, 카드 ID 칸을 비워 주소 기반 자동 배정을 사용해 주세요.',
           address,
+          row
         )
         continue
       }
@@ -914,7 +919,7 @@ export function DesktopTerritory({
       if (!coordinates) {
         const geocoded = await geocodeAddress(address)
         if (!geocoded) {
-          skipRow(rowNumber, '주소 좌표 변환 실패', '주소를 더 자세히 쓰거나 위도/경도를 직접 입력해 주세요.', address)
+          skipRow(rowNumber, '주소 좌표 변환 실패', '주소를 더 자세히 쓰거나 위도/경도를 직접 입력해 주세요.', address, row)
           continue
         }
         coordinates = geocoded
@@ -922,14 +927,19 @@ export function DesktopTerritory({
       const { lat, lng } = coordinates
 
       const autoCardId = explicitCard ? null : findCardForCoordinates(lat, lng, cardBoundaries)
-      const card = explicitCard ?? cards.find((item) => item.id === autoCardId)
+      let card = explicitCard ?? cards.find((item) => item.id === autoCardId)
+
+      if (!card && unassignedCardId) {
+        card = cards.find((item) => item.id === unassignedCardId)
+      }
 
       if (!card) {
         skipRow(
           rowNumber,
           '자동 카드 배정 실패',
-          'CSV에 카드명을 직접 넣거나, 해당 주소가 포함되는 카드 구역선을 먼저 그려 주세요.',
+          'CSV에 카드명을 직접 넣거나, 해당 주소가 포함되는 카드 구역선을 먼저 그려 주세요. (미배정 건물 카드도 없습니다)',
           address,
+          row
         )
         continue
       }
@@ -1845,6 +1855,35 @@ export function DesktopTerritory({
                     </div>
                   ))}
                   {csvSkippedDetails.length > 8 && <p>외 {csvSkippedDetails.length - 8}개 제외 사유가 더 있습니다.</p>}
+                  
+                  {csvHeaders.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const csvContent = [
+                          csvHeaders.map(h => `"${String(h).replace(/"/g, '""')}"`).join(','),
+                          ...csvSkippedDetails
+                            .filter(item => item.rawRow)
+                            .map(item => item.rawRow!.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                        ].join('\n')
+                        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+                        const url = URL.createObjectURL(blob)
+                        const link = document.createElement('a')
+                        link.href = url
+                        link.download = 'skipped_rows.csv'
+                        link.click()
+                        URL.revokeObjectURL(url)
+                      }}
+                      style={{
+                        marginTop: 12, padding: '8px 12px', background: '#fff', border: '1px solid #d8dbe0',
+                        borderRadius: 8, fontSize: 13, fontWeight: 700, color: '#4b5563', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 6, width: 'fit-content'
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                      제외된 항목 다운로드
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -2093,10 +2132,10 @@ export function DesktopTerritory({
                   className="tbl-chip"
                   onClick={() => setAreaExpanded((v) => !v)}
                   type="button"
-                  style={{ color: 'var(--primary-600)', borderColor: 'var(--primary-200)', background: 'var(--primary-50)' }}
+                  style={{ color: 'var(--ink-700)', borderColor: 'var(--line-3)', background: 'var(--gray-50)' }}
                 >
                   {areaExpanded ? '접기 ▴' : `더보기 ▾`}
-                  {!areaExpanded && <span className="tbl-chip__count" style={{ background: 'var(--primary-100)', color: 'var(--primary-700)' }}>{areaFilterOptions.length - AREA_CHIP_LIMIT}</span>}
+                  {!areaExpanded && <span className="tbl-chip__count" style={{ background: 'var(--gray-200)', color: 'var(--ink-700)' }}>{areaFilterOptions.length - AREA_CHIP_LIMIT}</span>}
                 </button>
               )}
             </div>

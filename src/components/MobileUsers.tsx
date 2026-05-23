@@ -28,7 +28,7 @@ function formatLastLogin(value?: string | null) {
   return `마지막 로그인 ${date.getMonth() + 1}/${date.getDate()}`
 }
 
-export function MobileUsers() {
+export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
   const navigate = useNavigate()
   const {
     user: currentUser,
@@ -103,14 +103,16 @@ export function MobileUsers() {
   if (!isAdminLike) {
     return (
       <div className="mobile-users-page">
-        <AppHeader
-          pageTitle="사용자"
-          showBack
-          onBack={() => navigate('/settings')}
-          userId={currentUser?.id}
-          userName={currentUser?.name}
-          onOpenMenu={() => navigate('/settings')}
-        />
+        {!isEmbedded && (
+          <AppHeader
+            pageTitle="사용자"
+            showBack
+            onBack={() => navigate('/settings')}
+            userId={currentUser?.id}
+            userName={currentUser?.name}
+            onOpenMenu={() => navigate('/settings')}
+          />
+        )}
         <section className="mobile-users-empty">관리자만 사용할 수 있습니다.</section>
       </div>
     )
@@ -120,15 +122,24 @@ export function MobileUsers() {
     const canDelete = currentUser?.id !== selectedUser.id
     return (
       <div className="mobile-users-page">
-        <AppHeader
-          pageTitle="사용자 편집"
-          subtitle={`${displayRole(selectedUser.role)} · ${formatLastLogin(selectedUser.lastLoginAt)}`}
-          showBack
-          onBack={() => setSelectedUserId(null)}
-          userId={currentUser?.id}
-          userName={currentUser?.name}
-          onOpenMenu={() => navigate('/settings')}
-        />
+        {!isEmbedded && (
+          <AppHeader
+            pageTitle="사용자 편집"
+            subtitle={`${displayRole(selectedUser.role)} · ${formatLastLogin(selectedUser.lastLoginAt)}`}
+            showBack
+            onBack={() => setSelectedUserId(null)}
+            userId={currentUser?.id}
+            userName={currentUser?.name}
+            onOpenMenu={() => navigate('/settings')}
+          />
+        )}
+        {isEmbedded && (
+          <div style={{ marginBottom: 16 }}>
+            <button className="ds-btn ds-btn-secondary" onClick={() => setSelectedUserId(null)} type="button">
+              뒤로
+            </button>
+          </div>
+        )}
 
         <section className="mobile-user-detail-card">
           <div className={`mobile-user-avatar ${roleClass(selectedUser.role)}`}>
@@ -229,15 +240,23 @@ export function MobileUsers() {
 
   return (
     <div className="mobile-users-page">
-      <AppHeader
-        pageTitle="사용자"
-        subtitle={`회중 ${users.length}명 · 관리자 ${adminCount}`}
-        showBack
-        onBack={() => navigate('/settings')}
-        userId={currentUser?.id}
-        userName={currentUser?.name}
-        onOpenMenu={() => navigate('/settings')}
-      />
+      {!isEmbedded && (
+        <AppHeader
+          pageTitle="사용자"
+          subtitle={`회중 ${users.length}명 · 관리자 ${adminCount}`}
+          showBack
+          onBack={() => navigate('/settings')}
+          userId={currentUser?.id}
+          userName={currentUser?.name}
+          onOpenMenu={() => navigate('/settings')}
+        />
+      )}
+      {isEmbedded && (
+        <div style={{ padding: '0 4px 16px' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gray-900)' }}>사용자 관리</h2>
+          <p style={{ color: 'var(--gray-500)', fontSize: 13, marginTop: 4 }}>회중 {users.length}명 · 관리자 {adminCount}</p>
+        </div>
+      )}
 
       <section className="mobile-users-toolbar">
         <div className="mobile-users-search-row">

@@ -14,6 +14,7 @@ import { AdminMobileZone } from './admin/AdminMobileZone'
 import { MobileUsers } from './MobileUsers'
 import { MobileSignupRequests } from './MobileSignupRequests'
 import { MobileProfileSettings } from './MobileProfileSettings'
+import { UserMobileHome } from './UserMobileHome'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 // InformalCardsTab / RestaurantsTab 은 AdminMobileZone 내부에서 사용됨 (직접 import 불필요)
 import type { AuthUser } from '../hooks/useAuth'
@@ -659,234 +660,25 @@ export function MobileHome({
                     onSelectWeekDate={setSelectedWeekDate}
                     onOpenEventDetail={(id) => navigate(`/calendar?openEvent=${id}`)}
                   />
-                ) : (<div className="mh-page">
-
-                {/* ─── 공지 (최상단) ─── */}
-                {latestNotices.length > 0 && (
-                  <section className="mobile-home-section">
-                    <div className="mh-sec-head">
-                      <h2>
-                        {t(language, 'home.notice')}
-                        <span className="mh-cnt">{notices.length}</span>
-                      </h2>
-                      <button className="mh-all" onClick={() => navigate('/notices')} type="button">
-                        {t(language, 'home.viewAllBtn')}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
-                      </button>
-                    </div>
-                    <div className="mh-notice-list">
-                      {latestNotices.map((notice) => (
-                        <button
-                          key={notice.id}
-                          type="button"
-                          className="mh-notice-row"
-                          onClick={() => navigate('/notices')}
-                        >
-                          <span className="mh-notice-pill">{t(language, 'home.noticePill')}</span>
-                          <span className="mh-notice-title">{notice.title}</span>
-                          <span className="mh-notice-date">{notice.createdAt.slice(5, 10).replace('-', '/')}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </section>
+                ) : (
+                  <UserMobileHome
+                    language={language}
+                    notices={notices}
+                    todayEvents={todayEvents}
+                    myTodayEvents={myTodayEvents}
+                    today={today}
+                    selectedWeekDate={selectedWeekDate}
+                    weekDays={weekDays}
+                    selectedDateEvents={selectedDateEvents}
+                    leaderCards={leaderCards}
+                    role={role}
+                    onSelectWeekDate={setSelectedWeekDate}
+                    onOpenNotices={() => navigate('/notices')}
+                    onOpenCalendar={() => navigate('/calendar')}
+                    onOpenEventDetail={(id) => navigate(`/calendar?openEvent=${id}`)}
+                    onOpenZone={() => navigate('/zone')}
+                  />
                 )}
-
-                {/* ─── 오늘 봉사 — 디자인 24/25 ─── */}
-                <section className="mobile-home-section">
-                  <div className="mh-sec-head">
-                    <h2>
-                      {t(language, 'home.todayServiceShort')}
-                      {myTodayEvents.length > 0 && <span className="mh-cnt">{myTodayEvents.length}</span>}
-                    </h2>
-                    <button className="mh-all" onClick={() => navigate('/calendar')} type="button">
-                      {t(language, 'home.viewAllBtn')}
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
-                    </button>
-                  </div>
-                  {myTodayEvents.length === 0 ? (
-                    <div className="mh-empty-line">
-                      <span>{t(language, 'home.noTodayServiceShort')}</span>
-                    </div>
-                  ) : (
-                    <div className="mh-today-list">
-                      {myTodayEvents.map(({ event, kind }) => {
-                        const hour = Number(event.time.split(':')[0] ?? 0)
-                        const period = formatPeriod(language, hour)
-                        const sub = kind === 'lead'
-                          ? formatLeadSub(language, event.applicants.length, event.cardAssignments.length)
-                          : kind === 'join'
-                            ? (event.leader
-                              ? `${formatLeaderOf(language, event.leader)}${event.applicants.length > 0 ? ` · ${formatApplied(language, event.applicants.length)}` : ''}`
-                              : '')
-                            : (event.leader
-                              ? `${formatLeaderOf(language, event.leader)} · ${formatApplied(language, event.applicants.length)}${event.allowApplications ? ` · ${t(language, 'home.signupOpen')}` : ''}`
-                              : `${formatApplied(language, event.applicants.length)}${event.allowApplications ? ` · ${t(language, 'home.signupOpen')}` : ''}`)
-                        return (
-                          <button
-                            key={event.id}
-                            type="button"
-                            className={`mh-today-serving${kind === 'lead' ? ' is-lead' : ''}${kind === 'avail' ? ' is-avail' : ''}`}
-                            onClick={() => navigate(`/calendar?openEvent=${event.id}`)}
-                          >
-                            <span className="mh-today-time">
-                              <span className="mh-today-time-hour">{event.time.split(':')[0]}</span>
-                              <span className="mh-today-time-period">{period}</span>
-                            </span>
-                            <span className="mh-today-body">
-                              <span className="mh-today-title-row">
-                                <span className="mh-today-title">{event.title}</span>
-                                {kind === 'lead' && <span className="mh-today-pill-lead">{t(language, 'home.leadPill')}</span>}
-                              </span>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                                {event.place && (
-                                  <span className="mh-today-where" style={{ margin: 0 }}>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/></svg>
-                                    {event.place}
-                                  </span>
-                                )}
-                                {event.place && sub && <span style={{ color: 'var(--muted-3)', fontSize: 12 }}>·</span>}
-                                {sub && (
-                                  <span className="mh-today-sub" style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                    {kind !== 'lead' && event.leader && (
-                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                                    )}
-                                    {sub}
-                                  </span>
-                                )}
-                              </span>
-                            </span>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                </section>
-
-                {/* ─── 이번 주 일정 (A안) ─── */}
-                {(() => {
-                  const activeDate = selectedWeekDate ?? today
-                  const wdShort = weekdayShortLabels[language]
-                  return (
-                    <section className="mobile-home-section">
-                      <div className="mh-sec-head">
-                        <h2>{t(language, 'home.weekSchedule')}</h2>
-                        <button className="mh-all" onClick={() => navigate('/calendar')} type="button">
-                          {t(language, 'home.viewAllBtn')}
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
-                        </button>
-                      </div>
-                      <div className="mh-week-dots">
-                        {weekDays.map((d, i) => {
-                          const isToday = i === 0
-                          const isSelected = d.iso === activeDate
-                          return (
-                            <button
-                              key={d.iso}
-                              type="button"
-                              className={`mh-week-dot-cell${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`}
-                              onClick={() => setSelectedWeekDate(d.iso)}
-                            >
-                              <span className="mh-week-dot-wd">{wdShort[d.date.getDay()]}</span>
-                              <span className="mh-week-dot-day">{d.date.getDate()}</span>
-                              <span className={`mh-week-dot${d.hasEvent ? ' filled' : ''}`} />
-                            </button>
-                          )
-                        })}
-                      </div>
-                      {selectedDateEvents.length === 0 ? (
-                        <div className="mh-empty-line" style={{ marginTop: 10 }}>
-                          <span>{activeDate === today ? t(language, 'home.noEventsToday') : t(language, 'home.noEventsThisDay')}</span>
-                        </div>
-                      ) : (
-                        selectedDateEvents.map((event) => {
-                          const date = new Date(event.date + 'T00:00:00')
-                          const todayDate = new Date(today + 'T00:00:00')
-                          const diff = Math.round((date.getTime() - todayDate.getTime()) / 86400000)
-                          const dateLabel = diff === 0 ? t(language, 'home.dateToday') : diff === 1 ? t(language, 'home.dateTomorrow') : diff === 2 ? t(language, 'home.dateDayAfter') : `${date.getMonth() + 1}/${date.getDate()}(${wdShort[date.getDay()]})`
-                          const participantCount = new Set([...(event.assigned ?? []), ...(event.applicants ?? [])]).size
-                          return (
-                            <button
-                              key={event.id}
-                              type="button"
-                              className="mh-upcoming-row mh-upcoming-row--featured"
-                              onClick={() => navigate(`/calendar?openEvent=${event.id}`)}
-                            >
-                              <span className="mh-upcoming-date">{dateLabel} {event.time}</span>
-                              <span className="mh-upcoming-title">{event.title}</span>
-                              <span className="mh-upcoming-meta">
-                                {event.leader ? formatLeaderOf(language, event.leader) : ''}
-                                {participantCount > 0 ? ` · ${formatJoined(language, participantCount)}` : ''}
-                              </span>
-                            </button>
-                          )
-                        })
-                      )}
-                    </section>
-                  )
-                })()}
-
-                {/* ─── 인도자 전용 — 담당 카드 진행 (미니 카드 그리드) ─── */}
-                {role === 'leader' && leaderCards.length > 0 && (
-                  <section className="mobile-home-section">
-                    <div className="mh-sec-head">
-                      <h2>
-                        {t(language, 'home.assignedCards')}
-                        <span className="mh-cnt">{leaderCards.length}</span>
-                      </h2>
-                      {leaderCards.length > 4 && (
-                        <button className="mh-all" onClick={() => navigate('/zone?reset=true')} type="button">
-                          {t(language, 'home.viewAllBtn')}
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><polyline points="9 6 15 12 9 18"/></svg>
-                        </button>
-                      )}
-                    </div>
-                    <div className="mh-card-grid">
-                      {leaderCards.slice(0, 4).map((card) => {
-                        const pct = Math.min(100, Math.max(0, card.progress ?? 0))
-                        const colorClass = pct >= 70 ? 'high' : pct >= 30 ? 'mid' : 'low'
-                        return (
-                          <button
-                            key={card.id}
-                            type="button"
-                            className="mh-card-tile"
-                            onClick={() => navigate(`/zone?region=${encodeURIComponent(card.region)}&dong=${encodeURIComponent(card.area)}`)}
-                          >
-                            <span className="mh-card-tile-name">{card.name}</span>
-                            <span className={`mh-card-tile-pct ${colorClass}`}>{pct}%</span>
-                            <span className="mh-card-tile-meta">{card.completed}/{card.units}세대</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </section>
-                )}
-
-                {/* ─── 인도자 전용 — 진행률 바 리스트 ─── */}
-                {role === 'leader' && leaderCards.length > 0 && (
-                  <section className="mobile-home-section">
-                    <div className="mh-sec-head">
-                      <h2>{t(language, 'home.progressRate')}</h2>
-                    </div>
-                    <div className="mh-progress-list">
-                      {leaderCards.slice(0, 5).map((card) => {
-                        const pct = Math.min(100, Math.max(0, card.progress ?? 0))
-                        const colorClass = pct >= 70 ? 'high' : pct >= 30 ? 'mid' : 'low'
-                        return (
-                          <div key={card.id} className="mh-progress-row">
-                            <span className="mh-progress-name">{card.name}</span>
-                            <div className="mh-progress-bar-track">
-                              <div className={`mh-progress-bar-fill ${colorClass}`} style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="mh-progress-pct">{pct}%</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </section>
-                )}
-
-                </div>)}
               </>
             } />
 
@@ -1317,16 +1109,18 @@ export function MobileHome({
                 </section>
 
                 <section className="mobile-settings-menu" aria-label="관리 메뉴">
-                  <button onClick={() => navigate('/notices')} type="button">
-                    <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
-                      <SettingsIcon name="notice" />
-                    </span>
-                    <span className="mobile-settings-row-text">
-                      <strong>{t(language, 'settings.notice')}</strong>
-                      <small>{t(language, 'settings.noticeDesc')}</small>
-                    </span>
-                    <span className="mobile-settings-chevron" aria-hidden="true">›</span>
-                  </button>
+                  {role === 'admin' && (
+                    <button onClick={() => navigate('/notices')} type="button">
+                      <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
+                        <SettingsIcon name="notice" />
+                      </span>
+                      <span className="mobile-settings-row-text">
+                        <strong>{t(language, 'settings.notice')}</strong>
+                        <small>{t(language, 'settings.noticeDesc')}</small>
+                      </span>
+                      <span className="mobile-settings-chevron" aria-hidden="true">›</span>
+                    </button>
+                  )}
                   <button onClick={() => navigate('/notification-settings')} type="button">
                     <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
                       <SettingsIcon name="notification" />

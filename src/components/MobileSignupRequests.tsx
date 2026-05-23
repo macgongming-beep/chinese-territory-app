@@ -27,7 +27,7 @@ function formatDate(value?: string | null) {
   return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`
 }
 
-export function MobileSignupRequests() {
+export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
   const navigate = useNavigate()
   const {
     user: currentUser,
@@ -68,6 +68,24 @@ export function MobileSignupRequests() {
   if (!isAdminLike) {
     return (
       <div className="mobile-signup-requests-page">
+        {!isEmbedded && (
+          <AppHeader
+            pageTitle="가입 신청"
+            showBack
+            onBack={() => navigate('/settings')}
+            userId={currentUser?.id}
+            userName={currentUser?.name}
+            onOpenMenu={() => navigate('/settings')}
+          />
+        )}
+        <section className="signup-request-empty-card">관리자만 사용할 수 있습니다.</section>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mobile-signup-requests-page">
+      {!isEmbedded && (
         <AppHeader
           pageTitle="가입 신청"
           showBack
@@ -76,21 +94,12 @@ export function MobileSignupRequests() {
           userName={currentUser?.name}
           onOpenMenu={() => navigate('/settings')}
         />
-        <section className="signup-request-empty-card">관리자만 사용할 수 있습니다.</section>
-      </div>
-    )
-  }
-
-  return (
-    <div className="mobile-signup-requests-page">
-      <AppHeader
-        pageTitle="가입 신청"
-        showBack
-        onBack={() => navigate('/settings')}
-        userId={currentUser?.id}
-        userName={currentUser?.name}
-        onOpenMenu={() => navigate('/settings')}
-      />
+      )}
+      {isEmbedded && (
+        <div style={{ padding: '0 4px 16px' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gray-900)', marginBottom: 8 }}>가입 신청 관리</h2>
+        </div>
+      )}
 
       <nav className="signup-request-tabs" aria-label="가입 신청 상태">
         {(['pending', 'approved', 'blocked'] as ApprovalTab[]).map((tab) => (
