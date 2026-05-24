@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import type { Role } from '../types'
-import { roleLabels } from '../types'
+
 
 function isAdminLike(role: Role): boolean {
   return role === 'admin' || role === 'developer'
@@ -28,11 +28,9 @@ function SidebarLink({ to, icon, label }: { to: string; icon: React.ReactNode; l
 }
 
 export function DesktopSettings({
-  currentVisitor,
   actualRole,
   onLogout,
 }: {
-  currentVisitor: string
   currentUserId: number
   actualRole: Role
   onLogout: () => void

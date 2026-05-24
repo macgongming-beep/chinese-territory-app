@@ -3,7 +3,7 @@ import { showToast } from '../lib/toast'
 import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { DesktopCalendar } from './DesktopCalendar'
 import { DesktopHome } from './DesktopHome'
-import { DesktopNotices } from './DesktopNotices'
+
 import { DesktopSettings } from './DesktopSettings'
 import { DesktopStats } from './DesktopStats'
 import { DesktopTerritory } from './DesktopTerritory'
@@ -224,12 +224,12 @@ export function DesktopApp({
   onDeleteSpecialPeriod: (id: number) => void
   specialPeriods: SpecialPeriod[]
   onDeleteUnit: (buildingId: number, unitId: number) => void
-  onRemoveParticipantFromEvent: (eventId: number, userId: number) => Promise<void>
+  onRemoveParticipantFromEvent: (eventId: number, userName: string) => void
   onAddParticipantToEvent: (eventId: number, userName: string) => void
   allUsers: Array<{ id: number; name: string; role: string }>
   returnVisits?: ReturnVisit[]
   returnVisitLogs?: ReturnVisitLog[]
-  onAddReturnVisitLog: (returnVisitId: number, date: string, desc: string) => Promise<number | null>
+  onAddReturnVisitLog: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
@@ -751,7 +751,6 @@ export function DesktopApp({
         } />
         <Route path="/settings" element={
           <DesktopSettings
-            currentVisitor={currentVisitor}
             currentUserId={currentUserId}
             actualRole={viewMode}
             onLogout={onLogout}

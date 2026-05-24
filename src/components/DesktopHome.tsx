@@ -143,7 +143,6 @@ export function DesktopHome({
         <UserMobileHome
           language={language}
           notices={notices}
-          todayEvents={todayEvents}
           myTodayEvents={myTodayEvents}
           today={today}
           selectedWeekDate={selectedWeekDate}

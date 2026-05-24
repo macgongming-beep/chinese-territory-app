@@ -1,8 +1,7 @@
-import { useNavigate } from 'react-router-dom'
 import { NotificationSettings } from './NotificationSettings'
 
 export function DesktopNotificationSettings({ userId }: { userId: number }) {
-  const navigate = useNavigate()
+  
 
   return (
     <div className="desk-settings-subpage" style={{ maxWidth: 640 }}>

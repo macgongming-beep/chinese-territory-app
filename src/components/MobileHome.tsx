@@ -19,7 +19,7 @@ import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, Ev
 // InformalCardsTab / RestaurantsTab 은 AdminMobileZone 내부에서 사용됨 (직접 import 불필요)
 import type { AuthUser } from '../hooks/useAuth'
 import type { AppLanguage } from '../i18n'
-import { languageLabels, t, formatLeaderOf, formatJoined, formatApplied, formatLeadSub, formatPeriod, weekdayShortLabels } from '../i18n'
+import { languageLabels, t } from '../i18n'
 import { SpecialPeriodBanner } from './SpecialPeriodBanner'
 import { SpecialPeriodSettings } from './SpecialPeriodSettings'
 import { PwaInstallSection } from './PwaInstall'
@@ -414,9 +414,7 @@ export function MobileHome({
   const inProgressCards = useMemo(() => cards.filter((c) => c.status === '진행중'), [cards])
   const totalUnits = useMemo(() => cards.reduce((sum, card) => sum + card.units, 0), [cards])
   const completedUnits = useMemo(() => cards.reduce((sum, card) => sum + card.completed, 0), [cards])
-  const latestNotices = useMemo(() =>
-    notices.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 2),
-    [notices])
+
   const todayEvents = useMemo(() =>
     calendarEvents.filter((e) => e.date === today).sort((a, b) => a.time.localeCompare(b.time)),
     [calendarEvents, today])
@@ -664,7 +662,6 @@ export function MobileHome({
                   <UserMobileHome
                     language={language}
                     notices={notices}
-                    todayEvents={todayEvents}
                     myTodayEvents={myTodayEvents}
                     today={today}
                     selectedWeekDate={selectedWeekDate}

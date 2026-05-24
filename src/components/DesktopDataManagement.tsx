@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export function DesktopDataManagement() {
-  const navigate = useNavigate()
+  
 
   const [resetEnabled, setResetEnabled] = useState(true)
   const [resetDays, setResetDays] = useState(90)

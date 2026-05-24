@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import type { SpecialPeriod } from '../types'
 import { SpecialPeriodSettings } from './SpecialPeriodSettings'
 
@@ -13,7 +12,7 @@ export function DesktopSpecialPeriods({
   onUpdateSpecialPeriod: (id: number, input: { label: string; startDate: string; endDate: string; color: string; hasInvitation?: boolean }) => Promise<void> | void
   onDeleteSpecialPeriod: (id: number) => Promise<void> | void
 }) {
-  const navigate = useNavigate()
+  
 
   return (
     <div className="desk-settings-subpage" style={{ maxWidth: 640 }}>

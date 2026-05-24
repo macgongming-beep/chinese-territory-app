@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import type { AuthUser } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
@@ -16,7 +15,7 @@ export function DesktopProfileSettings({
   onChangePin: (newPin: string) => Promise<boolean>
   onUpdateProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
 }) {
-  const navigate = useNavigate()
+  
   const [name, setName] = useState(user.name)
   const [phone, setPhone] = useState(user.phone ?? '')
   const [newPin, setNewPin] = useState('')
