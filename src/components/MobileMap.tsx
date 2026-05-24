@@ -39,6 +39,7 @@ export function MobileMap({
   focusedCardIds = [],
   focusedBuildingId,
   regularVisitScope = false,
+  onOpenLocationSettings,
   onBack,
   onAddUnit,
   onCreateBuilding,
@@ -71,6 +72,7 @@ export function MobileMap({
   focusedBuildingId?: number | null
   regularVisitScope?: boolean
   focusedScopeLabel?: string
+  onOpenLocationSettings?: () => void
   onBack: () => void
   onAddUnit: (buildingId: number, unitNumber: string) => void
   onCreateBuilding: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => void
@@ -1015,6 +1017,13 @@ export function MobileMap({
               selectedCardId={mapSelectedCardId}
               highlightedCardIds={mapAggregateMarkers.length > 0 ? emptyHighlightedCardIds : scopedCardIds}
               onSelectAggregate={handleSelectAggregateMarker}
+              onLocationPermissionBlocked={() => {
+                showToast(
+                  '위치 권한이 꺼져 있습니다. 설정에서 위치 권한을 허용하면 현재 위치를 볼 수 있습니다.',
+                  'error',
+                  onOpenLocationSettings ? { label: '설정 보기', onClick: onOpenLocationSettings } : undefined,
+                )
+              }}
               onSelectBuilding={(id) => {
                 if (editingPinMode) return
                 if (selectedBuildingId === id) {
@@ -1303,7 +1312,12 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                         const slng = pos.coords.longitude
                                         openUrl(`https://map.naver.com/p/directions/${slng},${slat},${sname},,ADDRESS_POI/${building.lng},${building.lat},${dname},,PLACE_POI/-/walk`)
                                       },
-                                      () => fallback(),
+                                      (error) => {
+                                        if (error.code === error.PERMISSION_DENIED) {
+                                          showToast('위치 권한이 꺼져 있습니다. 설정에서 위치 권한을 허용하면 현재 위치를 볼 수 있습니다.', 'error')
+                                        }
+                                        fallback()
+                                      },
                                       { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
                                     )
                                   }}

@@ -64,6 +64,11 @@ export function DesktopSettings({
             icon={<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>}
             label="알림 디바이스 설정"
           />
+          <SidebarLink
+            to="/settings/location-permission"
+            icon={<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s7-4.6 7-11a7 7 0 1 0-14 0c0 6.4 7 11 7 11Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>}
+            label="위치 권한"
+          />
         </div>
 
         {isAdminLike(actualRole) && (

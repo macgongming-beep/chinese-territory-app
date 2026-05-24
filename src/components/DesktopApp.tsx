@@ -18,6 +18,7 @@ import { DesktopProfileSettings } from './DesktopProfileSettings'
 import { DesktopDataManagement } from './DesktopDataManagement'
 import { DesktopSpecialPeriods } from './DesktopSpecialPeriods'
 import { DesktopNotificationSettings } from './DesktopNotificationSettings'
+import { LocationPermissionSettings } from './LocationPermissionSettings'
 import { ServiceLogPage } from './ServiceLogPage'
 import { AppHeaderActionButtons } from './AppHeader'
 import type { Building, CalendarEvent, CardBoundary, DesktopPage, EventInformalAssignment, EventRestaurantAssignment, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
@@ -797,6 +798,16 @@ export function DesktopApp({
           } />
           <Route path="notification" element={
             <DesktopNotificationSettings userId={currentUserId} role={actualRole} />
+          } />
+          <Route path="location-permission" element={
+            <div className="desk-settings-subpage" style={{ maxWidth: 640 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gray-900)', marginBottom: 24 }}>위치 권한</h2>
+              <div className="desktop-profile-stack" style={{ display: 'grid', gap: 24 }}>
+                <article className="desk-card ds-card">
+                  <LocationPermissionSettings language={language} />
+                </article>
+              </div>
+            </div>
           } />
           <Route path="data-management" element={
             (viewMode === 'admin' || viewMode === 'developer')

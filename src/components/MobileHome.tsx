@@ -24,6 +24,7 @@ import { SpecialPeriodBanner } from './SpecialPeriodBanner'
 import { SpecialPeriodSettings } from './SpecialPeriodSettings'
 import { PwaInstallSection } from './PwaInstall'
 import { NotificationSettings } from './NotificationSettings'
+import { LocationPermissionSettings } from './LocationPermissionSettings'
 import { AppUpdateCard } from './AppUpdateCard'
 import { AppHeader } from './AppHeader'
 import { formatRelativeVisitDate, getLatestReturnVisitDate, getUserReturnVisits, normalizeVisitorName } from '../utils/returnVisits'
@@ -142,7 +143,7 @@ function NavIcon({ name }: { name: IconName }) {
   )
 }
 
-function SettingsIcon({ name }: { name: 'notice' | 'users' | 'signup' | 'season' | 'notification' | 'logout' }) {
+function SettingsIcon({ name }: { name: 'notice' | 'users' | 'signup' | 'season' | 'notification' | 'location' | 'logout' }) {
   if (name === 'users') {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -184,6 +185,14 @@ function SettingsIcon({ name }: { name: 'notice' | 'users' | 'signup' | 'season'
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M18 9a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
         <path d="M10 21a2 2 0 0 0 4 0" />
+      </svg>
+    )
+  }
+  if (name === 'location') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 21s7-4.6 7-11a7 7 0 1 0-14 0c0 6.4 7 11 7 11Z" />
+        <circle cx="12" cy="10" r="2.4" />
       </svg>
     )
   }
@@ -681,6 +690,7 @@ export function MobileHome({
             specialPeriods={specialPeriods}
             allUsers={allUsers.map(u => ({ id: u.id, name: u.name }))}
             onSetRegularVisitor={onSetRegularVisitor}
+            onOpenLocationSettings={() => navigate('/location-permission-settings')}
           />
           {BottomNav}
         </>
@@ -1112,6 +1122,26 @@ export function MobileHome({
               </div>
             } />
 
+            {/* 위치 권한 */}
+            <Route path="/location-permission-settings" element={
+              <div className="mobile-settings-page">
+                <AppHeader
+                  pageTitle={t(language, 'settings.locationTitle')}
+                  language={language}
+                  showBack
+                  onBack={() => navigate('/settings')}
+                  userId={currentUser.id}
+                  userName={currentVisitor}
+                  role={role}
+                  chatUsers={headerChatUsers}
+                  onOpenMenu={() => navigate('/settings')}
+                />
+                <div style={{ padding: '0 16px', marginBottom: 16 }}>
+                  <LocationPermissionSettings language={language} />
+                </div>
+              </div>
+            } />
+
             {/* 설정 */}
             <Route path="/settings" element={
               <div className="mobile-settings-page">
@@ -1206,6 +1236,16 @@ export function MobileHome({
                     <span className="mobile-settings-row-text">
                       <strong>{t(language, 'settings.notificationTitle')}</strong>
                       <small>{t(language, 'settings.notificationDesc')}</small>
+                    </span>
+                    <span className="mobile-settings-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button onClick={() => navigate('/location-permission-settings')} type="button">
+                    <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
+                      <SettingsIcon name="location" />
+                    </span>
+                    <span className="mobile-settings-row-text">
+                      <strong>{t(language, 'settings.locationTitle')}</strong>
+                      <small>{t(language, 'settings.locationDesc')}</small>
                     </span>
                     <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                   </button>

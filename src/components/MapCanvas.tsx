@@ -364,6 +364,7 @@ function NaverMapCanvas({
   onToggleAddingBuilding,
   onOpenActionMenu,
   onToggleDrawingBoundary: _onToggleDrawingBoundary,
+  onLocationPermissionBlocked,
   onMovePreviewPin,
   onMoveBuilding,
 }: {
@@ -401,6 +402,7 @@ function NaverMapCanvas({
   onToggleAddingBuilding?: (val: boolean) => void
   onOpenActionMenu?: () => void
   onToggleDrawingBoundary?: (val: boolean) => void
+  onLocationPermissionBlocked?: () => void
   onMovePreviewPin?: (lat: number, lng: number) => void
   onMoveBuilding?: (id: number, lat: number, lng: number) => void
 }) {
@@ -787,7 +789,13 @@ function NaverMapCanvas({
         }
         mapInstanceRef.current.morph(latLng, 16)
       },
-      () => showToast('위치 정보를 가져올 수 없습니다.', 'error')
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          onLocationPermissionBlocked?.()
+          return
+        }
+        showToast('위치 정보를 가져올 수 없습니다.', 'error')
+      },
     )
   }
 
@@ -1375,6 +1383,7 @@ export function MapCanvas({
   onToggleAddingBuilding,
   onOpenActionMenu,
   onToggleDrawingBoundary,
+  onLocationPermissionBlocked,
   onMovePreviewPin,
   onMoveBuilding,
 }: {
@@ -1411,6 +1420,7 @@ export function MapCanvas({
   onToggleAddingBuilding?: (val: boolean) => void
   onOpenActionMenu?: () => void
   onToggleDrawingBoundary?: (val: boolean) => void
+  onLocationPermissionBlocked?: () => void
   onMovePreviewPin?: (lat: number, lng: number) => void
   onMoveBuilding?: (id: number, lat: number, lng: number) => void
 }) {
@@ -1458,6 +1468,7 @@ export function MapCanvas({
           onToggleAddingBuilding={onToggleAddingBuilding}
           onOpenActionMenu={onOpenActionMenu}
           onToggleDrawingBoundary={onToggleDrawingBoundary}
+          onLocationPermissionBlocked={onLocationPermissionBlocked}
           onMovePreviewPin={onMovePreviewPin}
           onMoveBuilding={onMoveBuilding}
         />
