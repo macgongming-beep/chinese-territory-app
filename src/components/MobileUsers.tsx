@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth, type LoginLogRecord } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
 import { AppHeader } from './AppHeader'
@@ -28,6 +28,14 @@ function formatLastLogin(value?: string | null) {
   return `마지막 로그인 ${date.getMonth() + 1}/${date.getDate()}`
 }
 
+function formatLoginDateTime(value?: string | null) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  const pad = (num: number) => String(num).padStart(2, '0')
+  return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
   const navigate = useNavigate()
   const {
@@ -39,6 +47,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
     updateUserRole,
     resetUserPin,
     deleteUser,
+    fetchUserLoginLogs,
   } = useAuth()
 
   const [search, setSearch] = useState('')
@@ -52,6 +61,9 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
   const [editLoginId, setEditLoginId] = useState('')
   const [editName, setEditName] = useState('')
   const [editPin, setEditPin] = useState('')
+  const [loginLogs, setLoginLogs] = useState<LoginLogRecord[]>([])
+  const [loadingLoginLogs, setLoadingLoginLogs] = useState(false)
+  const [loginLogsExpanded, setLoginLogsExpanded] = useState(false)
 
   const isAdminLike = currentUser?.role === 'admin' || currentUser?.role === 'developer'
 
@@ -91,7 +103,30 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
     setEditLoginId(selectedUser.loginId)
     setEditName(selectedUser.name)
     setEditPin('')
+    setLoginLogsExpanded(false)
   }, [selectedUser])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadLogs = async () => {
+      if (!selectedUser || currentUser?.role !== 'developer') {
+        setLoginLogs([])
+        return
+      }
+      setLoadingLoginLogs(true)
+      try {
+        const logs = await fetchUserLoginLogs(selectedUser.id, 30)
+        if (!cancelled) setLoginLogs(logs)
+      } finally {
+        if (!cancelled) setLoadingLoginLogs(false)
+      }
+    }
+    void loadLogs()
+    return () => {
+      cancelled = true
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.role, selectedUser?.id])
 
   const resetAddForm = () => {
     setNewLoginId('')
@@ -120,6 +155,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
 
   if (selectedUser) {
     const canDelete = currentUser?.id !== selectedUser.id
+    const visibleLoginLogs = loginLogsExpanded ? loginLogs : loginLogs.slice(0, 3)
     return (
       <div className="mobile-users-page">
         {!isEmbedded && (
@@ -175,6 +211,38 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
             아이디 · 닉네임 저장
           </button>
         </section>
+
+        {currentUser?.role === 'developer' && (
+          <section className="mobile-user-manage-card mobile-user-login-card">
+            <div className="mobile-user-login-head">
+              <h2>로그인 기록</h2>
+              <span>{loginLogsExpanded ? `${loginLogs.length}건` : `최근 ${Math.min(loginLogs.length, 3)}건`}</span>
+            </div>
+            {loadingLoginLogs ? (
+              <p className="mobile-login-empty">로그인 기록을 불러오는 중입니다.</p>
+            ) : loginLogs.length === 0 ? (
+              <p className="mobile-login-empty">아직 로그인 기록이 없습니다.</p>
+            ) : (
+              <div className={`mobile-login-list${loginLogsExpanded ? ' is-expanded' : ''}`}>
+                {visibleLoginLogs.map((log) => (
+                  <div className="mobile-login-row" key={log.id}>
+                    <span>로그인</span>
+                    <strong>{formatLoginDateTime(log.logged_in_at)}</strong>
+                  </div>
+                ))}
+                {loginLogs.length > 3 && (
+                  <button
+                    className="mobile-login-toggle"
+                    onClick={() => setLoginLogsExpanded((value) => !value)}
+                    type="button"
+                  >
+                    {loginLogsExpanded ? '접기' : `더 보기 ${loginLogs.length - 3}건`}
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="mobile-user-manage-card mobile-user-role-card">
           <h2>사용자 권한</h2>
@@ -350,7 +418,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
               <span className={`mobile-user-avatar ${roleClass(item.role)}`}>{item.name.slice(0, 1)}</span>
               <span className="mobile-users-row-main">
                 <strong>{item.name}{currentUser?.id === item.id ? <small> (나)</small> : null}</strong>
-                <small>{item.loginId}</small>
+                <small>{item.loginId} · {formatLastLogin(item.lastLoginAt)}</small>
               </span>
               <span className={`mobile-user-role-badge ${roleClass(item.role)}`}>
                 {displayRole(item.role)}

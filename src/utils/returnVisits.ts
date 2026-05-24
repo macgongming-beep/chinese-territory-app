@@ -1,9 +1,14 @@
 import type { AppLanguage } from '../i18n'
 import type { ReturnVisit, ReturnVisitLog } from '../types'
 
+export function normalizeVisitorName(value: string | null | undefined) {
+  return (value ?? '').trim().replace(/\s+/g, '')
+}
+
 export function getUserReturnVisits(returnVisits: ReturnVisit[], currentVisitor: string) {
+  const current = normalizeVisitorName(currentVisitor)
   return returnVisits.filter(
-    (visit) => visit.assignedUserName === currentVisitor || visit.createdBy === currentVisitor,
+    (visit) => normalizeVisitorName(visit.assignedUserName) === current || normalizeVisitorName(visit.createdBy) === current,
   )
 }
 

@@ -17,7 +17,7 @@ import { MobileProfileSettings } from './MobileProfileSettings'
 import { UserMobileHome } from './UserMobileHome'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 // InformalCardsTab / RestaurantsTab 은 AdminMobileZone 내부에서 사용됨 (직접 import 불필요)
-import type { AuthUser } from '../hooks/useAuth'
+import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import type { AppLanguage } from '../i18n'
 import { languageLabels, t } from '../i18n'
 import { SpecialPeriodBanner } from './SpecialPeriodBanner'
@@ -26,7 +26,7 @@ import { PwaInstallSection } from './PwaInstall'
 import { NotificationSettings } from './NotificationSettings'
 import { AppUpdateCard } from './AppUpdateCard'
 import { AppHeader } from './AppHeader'
-import { formatRelativeVisitDate, getLatestReturnVisitDate, getUserReturnVisits } from '../utils/returnVisits'
+import { formatRelativeVisitDate, getLatestReturnVisitDate, getUserReturnVisits, normalizeVisitorName } from '../utils/returnVisits'
 
 type MobileTab = '홈' | '캘린더' | '활동' | '구역' | '지도' | '배정' | '설정'
 
@@ -223,6 +223,7 @@ export function MobileHome({
   allUsers = [],
   onChangePin,
   onUpdateMyProfile,
+  onFetchMyLoginLogs,
   onApplyToEvent,
   onAddParticipantToEvent: _onAddParticipantToEvent,
   onToggleUser: _onToggleUser,
@@ -310,6 +311,7 @@ export function MobileHome({
   allUsers?: Array<{ id: number; name: string; phone?: string | null; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked' }>
   onChangePin: (newPin: string) => Promise<boolean>
   onUpdateMyProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
+  onFetchMyLoginLogs: (limit?: number) => Promise<LoginLogRecord[]>
   onApplyToEvent: (eventId: number) => void
   onAddParticipantToEvent?: (eventId: number, userName: string) => void
   onToggleUser: (cardId: number, userName: string) => void
@@ -472,6 +474,10 @@ export function MobileHome({
 
   // (정기방문 미리보기는 활동 탭으로 이동, 홈에서는 미사용)
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
+  const mapScope = searchParams.get('scope')
+  const isRegularVisitMapScope = mapScope === 'regularVisits'
+  const focusedReturnVisitId = searchParams.get('returnVisitId') ? Number(searchParams.get('returnVisitId')) : null
+  const requestedRegularVisitBuildingId = searchParams.get('buildingId') ? Number(searchParams.get('buildingId')) : null
   const focusedMapCardIds = useMemo(() => {
     const raw = searchParams.get('cardIds')
     if (!raw) return []
@@ -480,7 +486,58 @@ export function MobileHome({
       .map((value) => Number(value))
       .filter((value) => Number.isFinite(value))
   }, [searchParams])
-  const focusedMapScopeLabel = searchParams.get('scope') === 'mine' ? t(language, 'zone.myTerritories') : undefined
+  const focusedMapScopeLabel = mapScope === 'mine'
+    ? t(language, 'zone.myTerritories')
+    : isRegularVisitMapScope
+      ? t(language, 'territory.regularVisit')
+      : undefined
+  const legacyRegularVisitBuildingIds = useMemo(() => {
+    const ids = new Set<number>()
+    const currentName = normalizeVisitorName(currentVisitor)
+    buildings.forEach((building) => {
+      if (building.units.some((unit) => unit.isRegularVisit && normalizeVisitorName(unit.regularVisitor) === currentName)) {
+        ids.add(building.id)
+      }
+    })
+    return ids
+  }, [buildings, currentVisitor])
+  const regularVisitBuildingIds = useMemo(() => {
+    const ids = new Set<number>()
+    myRegularVisits.forEach((rv) => {
+      if (Number.isFinite(rv.buildingId)) ids.add(rv.buildingId)
+    })
+    legacyRegularVisitBuildingIds.forEach((id) => ids.add(id))
+    return ids
+  }, [legacyRegularVisitBuildingIds, myRegularVisits])
+  const focusedRegularVisitBuildingId = useMemo(() => {
+    if (!isRegularVisitMapScope) return null
+    const fromReturnVisit = focusedReturnVisitId
+      ? myRegularVisits.find((rv) => rv.id === focusedReturnVisitId)?.buildingId ?? null
+      : null
+    if (fromReturnVisit != null) return fromReturnVisit
+    if (requestedRegularVisitBuildingId != null && regularVisitBuildingIds.has(requestedRegularVisitBuildingId)) {
+      return requestedRegularVisitBuildingId
+    }
+    return null
+  }, [focusedReturnVisitId, isRegularVisitMapScope, myRegularVisits, regularVisitBuildingIds, requestedRegularVisitBuildingId])
+  const regularVisitVisibleBuildingIds = useMemo(() => {
+    const ids = new Set<number>()
+    if (!isRegularVisitMapScope) return ids
+    if (focusedRegularVisitBuildingId != null) {
+      ids.add(focusedRegularVisitBuildingId)
+      return ids
+    }
+    regularVisitBuildingIds.forEach((id) => ids.add(id))
+    return ids
+  }, [focusedRegularVisitBuildingId, isRegularVisitMapScope, regularVisitBuildingIds])
+  const regularVisitVisibleCardIds = useMemo(() => {
+    const ids = new Set<number>()
+    if (!isRegularVisitMapScope) return ids
+    buildings.forEach((building) => {
+      if (regularVisitVisibleBuildingIds.has(building.id)) ids.add(building.cardId)
+    })
+    return ids
+  }, [buildings, isRegularVisitMapScope, regularVisitVisibleBuildingIds])
   // map 의 onBack 은 navigate(-1) 로 직전 URL(드릴 상태 포함) 정확 복귀.
   const userVisibleMapCardIds = useMemo(() => {
     const ids = new Set<number>()
@@ -514,19 +571,30 @@ export function MobileHome({
   }, [cards, currentVisitor, serviceSessions, calendarEvents])
   const isUserMapScope = role === 'user'
   const mapCards = useMemo(
-    () => isUserMapScope ? cards.filter((card) => userVisibleMapCardIds.has(card.id)) : cards,
-    [cards, isUserMapScope, userVisibleMapCardIds],
+    () => {
+      if (isRegularVisitMapScope) return cards.filter((card) => regularVisitVisibleCardIds.has(card.id))
+      return isUserMapScope ? cards.filter((card) => userVisibleMapCardIds.has(card.id)) : cards
+    },
+    [cards, isRegularVisitMapScope, isUserMapScope, regularVisitVisibleCardIds, userVisibleMapCardIds],
   )
   const mapBuildings = useMemo(
-    () => isUserMapScope ? buildings.filter((building) => userVisibleMapCardIds.has(building.cardId)) : buildings,
-    [buildings, isUserMapScope, userVisibleMapCardIds],
+    () => {
+      if (isRegularVisitMapScope) return buildings.filter((building) => regularVisitVisibleBuildingIds.has(building.id))
+      return isUserMapScope ? buildings.filter((building) => userVisibleMapCardIds.has(building.cardId)) : buildings
+    },
+    [buildings, isRegularVisitMapScope, isUserMapScope, regularVisitVisibleBuildingIds, userVisibleMapCardIds],
   )
   const mapCardBoundaries = useMemo(
-    () => isUserMapScope ? cardBoundaries.filter((boundary) => userVisibleMapCardIds.has(boundary.cardId)) : cardBoundaries,
-    [cardBoundaries, isUserMapScope, userVisibleMapCardIds],
+    () => {
+      if (isRegularVisitMapScope) return cardBoundaries.filter((boundary) => regularVisitVisibleCardIds.has(boundary.cardId))
+      return isUserMapScope ? cardBoundaries.filter((boundary) => userVisibleMapCardIds.has(boundary.cardId)) : cardBoundaries
+    },
+    [cardBoundaries, isRegularVisitMapScope, isUserMapScope, regularVisitVisibleCardIds, userVisibleMapCardIds],
   )
   const safeFocusedMapCardId =
-    isUserMapScope && focusedMapCardId && !userVisibleMapCardIds.has(focusedMapCardId)
+    isRegularVisitMapScope
+      ? null
+      : isUserMapScope && focusedMapCardId && !userVisibleMapCardIds.has(focusedMapCardId)
       ? null
       : focusedMapCardId
   const safeFocusedMapCardIds = isUserMapScope
@@ -592,6 +660,8 @@ export function MobileHome({
             serviceSessions={serviceSessions}
             focusedCardId={safeFocusedMapCardId}
             focusedCardIds={safeFocusedMapCardIds}
+            focusedBuildingId={focusedRegularVisitBuildingId}
+            regularVisitScope={isRegularVisitMapScope}
             focusedScopeLabel={focusedMapScopeLabel}
             onBack={() => navigate(-1)}
             onAddUnit={onAddUnit}
@@ -714,6 +784,7 @@ export function MobileHome({
                 language={language}
                 onChangePin={onChangePin}
                 onUpdateProfile={onUpdateMyProfile}
+                onFetchLoginLogs={onFetchMyLoginLogs}
               />
             } />
 
@@ -820,6 +891,16 @@ export function MobileHome({
                   returnVisits={returnVisits}
                   returnVisitLogs={returnVisitLogs}
                   onOpenMap={(cardId) => navigate(`/map?cardId=${cardId}`)}
+                  onOpenRegularVisitMap={(returnVisitId) => {
+                    const params = new URLSearchParams()
+                    params.set('scope', 'regularVisits')
+                    if (returnVisitId) {
+                      const rv = myRegularVisits.find((item) => item.id === returnVisitId)
+                      params.set('returnVisitId', String(returnVisitId))
+                      if (rv?.buildingId) params.set('buildingId', String(rv.buildingId))
+                    }
+                    navigate(`/map?${params.toString()}`)
+                  }}
                   onEndServiceSession={onEndServiceSession}
                   onCreateManualReturnVisit={onCreateManualReturnVisit}
                   onAddReturnVisitLog={onAddReturnVisitLog}

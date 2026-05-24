@@ -66,14 +66,14 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
   // 권한 안내
   if (role !== 'leader' && role !== 'admin') {
     return (
-      <section style={{ padding: 24 }}>
+      <section style={{ padding: 24, width: '100%' }}>
         <p style={{ color: '#94a3b8' }}>봉사 로그는 인도자/관리자만 볼 수 있습니다.</p>
       </section>
     )
   }
 
   return (
-    <section style={{ padding: isEmbedded ? '0 4px 32px' : '20px 24px', maxWidth: 1100, margin: '0 auto' }}>
+    <section style={{ padding: isEmbedded ? '0 4px 32px' : '20px 24px', width: '100%', maxWidth: 1100, margin: '0 auto' }}>
       {!isEmbedded && (
         <header style={{ marginBottom: 20 }}>
           <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase' }}>

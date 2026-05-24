@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ActiveRestaurantSession, Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t, translateKoreanAddress } from '../i18n'
+import { getUserReturnVisits, normalizeVisitorName } from '../utils/returnVisits'
 import { RestaurantServiceSheet } from './RestaurantServiceSheet'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
@@ -51,6 +52,7 @@ export function MobileTerritory({
   returnVisits = [],
   returnVisitLogs = [],
   onOpenMap,
+  onOpenRegularVisitMap,
   onEndServiceSession,
   onCreateManualReturnVisit,
   onAddReturnVisitLog,
@@ -89,6 +91,7 @@ export function MobileTerritory({
   onUpdateRestaurantRequestMemo?: (requestId: number, memo: string) => Promise<void>
   restaurantRequests?: import('../types').RestaurantRequest[]
   onOpenMap: (cardId: number) => void
+  onOpenRegularVisitMap?: (returnVisitId?: number) => void
   onEndServiceSession: (sessionId: number) => void
   onCreateManualReturnVisit?: (input: { displayName: string; address: string; memo: string; unitId?: number | null; buildingId?: number | null }) => Promise<void>
   onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
@@ -171,6 +174,7 @@ export function MobileTerritory({
   }
   // 정기방문 카드 메뉴 & 기록 시트
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null)
+  const [sectionMenuOpen, setSectionMenuOpen] = useState(false)
   const [nicknameEditId, setNicknameEditId] = useState<number | null>(null)
   const [nicknameEditValue, setNicknameEditValue] = useState('')
   const [nicknameSaving, setNicknameSaving] = useState(false)
@@ -443,8 +447,9 @@ export function MobileTerritory({
     () =>
       buildings.flatMap((building) => {
         const card = cards.find((item) => item.id === building.cardId)
+        const currentName = normalizeVisitorName(currentVisitor)
         return building.units
-          .filter((unit) => unit.isRegularVisit && unit.regularVisitor === currentVisitor)
+          .filter((unit) => unit.isRegularVisit && normalizeVisitorName(unit.regularVisitor) === currentName)
           .map((unit) => ({ building, card, unit }))
       }),
     [buildings, cards, currentVisitor]
@@ -452,9 +457,7 @@ export function MobileTerritory({
 
   // return_visits 기반 정기방문 목록 (내가 담당 or 내가 생성)
   const myReturnVisits = useMemo(() =>
-    returnVisits.filter(
-      (rv) => rv.assignedUserName === currentVisitor || rv.createdBy === currentVisitor
-    ),
+    getUserReturnVisits(returnVisits, currentVisitor),
     [returnVisits, currentVisitor]
   )
 
@@ -795,10 +798,45 @@ export function MobileTerritory({
                 <h2>{t(language, 'territory.regularVisit')}</h2>
                 <span className="mt-main-count">{myReturnVisits.length}</span>
               </button>
-              <button className="mt-main-add-btn" onClick={() => { setShowAddSheet(true); setAddNickname(''); setAddAddress(''); setAddMemo(''); setAddLinked(null); setAddUnitPickBuilding(null) }} type="button">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                {t(language, 'common.add')}
-              </button>
+              <div className="rv-menu-wrap">
+                <button
+                  className="rv-menu-btn mt-main-menu-btn"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSectionMenuOpen((open) => !open)
+                    setMenuOpenId(null)
+                    setColorPickId(null)
+                  }}
+                  type="button"
+                  aria-label={t(language, 'territory.more')}
+                >⋯</button>
+                {sectionMenuOpen && (
+                  <div className="rv-menu-dropdown mt-main-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className="rv-menu-item"
+                      onClick={() => {
+                        setSectionMenuOpen(false)
+                        setShowAddSheet(true)
+                        setAddNickname('')
+                        setAddAddress('')
+                        setAddMemo('')
+                        setAddLinked(null)
+                        setAddUnitPickBuilding(null)
+                      }}
+                      type="button"
+                    >{t(language, 'territory.regularVisit')} {t(language, 'common.add')}</button>
+                    <button
+                      className="rv-menu-item"
+                      disabled={myReturnVisits.length === 0}
+                      onClick={() => {
+                        setSectionMenuOpen(false)
+                        if (onOpenRegularVisitMap) onOpenRegularVisitMap()
+                      }}
+                      type="button"
+                    >{t(language, 'territory.viewOnMap')}</button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {!rvCollapsed && (myReturnVisits.length === 0 ? (
@@ -863,7 +901,11 @@ export function MobileTerritory({
                           {building ? (
                             <button
                               className="rv-btn rv-btn-map"
-                              onClick={(e) => { e.stopPropagation(); onOpenMap(building.cardId) }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (onOpenRegularVisitMap) onOpenRegularVisitMap(rv.id)
+                                else onOpenMap(building.cardId)
+                              }}
                               type="button"
                             >{t(language, 'zone.map')}</button>
                           ) : rv.address ? (

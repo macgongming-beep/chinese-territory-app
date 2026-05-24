@@ -23,6 +23,7 @@ import { AppHeaderActionButtons } from './AppHeader'
 import type { Building, CalendarEvent, CardBoundary, DesktopPage, EventInformalAssignment, EventRestaurantAssignment, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { CsvBuildingImport } from '../utils/csvBuildingImport'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
+import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import { roleLabels } from '../types'
 import type { AppLanguage } from '../i18n'
 
@@ -152,6 +153,7 @@ export function DesktopApp({
   currentUser,
   onChangePin,
   onUpdateMyProfile,
+  onFetchMyLoginLogs,
 }: {
   language: AppLanguage
   buildings: Building[]
@@ -286,9 +288,10 @@ export function DesktopApp({
   restaurantRequests?: import('../types').RestaurantRequest[]
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
-  currentUser: import('../hooks/useAuth').AuthUser
+  currentUser: AuthUser
   onChangePin: (newPin: string) => Promise<boolean>
   onUpdateMyProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
+  onFetchMyLoginLogs: (limit?: number) => Promise<LoginLogRecord[]>
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -313,7 +316,7 @@ export function DesktopApp({
     rawActivePage === '지도' && viewMode === 'leader' ? '구역' : rawActivePage
 
   const visibleDesktopPages: DesktopPage[] = viewMode === 'user'
-    ? ['홈', '캘린더', '활동', '지도', '설정']
+    ? ['홈', '캘린더', '활동', '설정']
     : viewMode === 'leader'
       ? ['홈', '캘린더', '활동', '배정', '구역', '설정']
       : ['홈', '캘린더', '구역', '지도', '배정', '통계', '설정']
@@ -419,6 +422,7 @@ export function DesktopApp({
             else if (item === '공지') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>;
             else if (item === '캘린더') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>;
             else if (item === '구역') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>;
+            else if (item === '지도') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>;
             else if (item === '활동') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
             else if (item === '배정') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
             else if (item === '통계') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>;
@@ -788,6 +792,7 @@ export function DesktopApp({
               language={language}
               onChangePin={onChangePin}
               onUpdateProfile={onUpdateMyProfile}
+              onFetchLoginLogs={onFetchMyLoginLogs}
             />
           } />
           <Route path="notification" element={

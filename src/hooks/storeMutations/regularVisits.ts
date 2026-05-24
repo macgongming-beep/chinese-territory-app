@@ -9,6 +9,48 @@ export function makeRegularVisitMutations(deps: {
 }) {
   const { fetchAll, buildings, cards, returnVisits } = deps
 
+  const getReturnVisitDisplayName = (building: Building, unitNumber: string) => {
+    const card = cards.find((c) => c.id === building.cardId)
+    const region = (card?.region as string) ?? ''
+    const cardName = card?.name ?? ''
+    let nameWithoutRegion = cardName
+    for (const r of ['처인구', '기흥구', '수지구', '영통구', '화성시']) {
+      if (cardName.startsWith(r)) {
+        nameWithoutRegion = cardName.slice(r.length).trim()
+        break
+      }
+    }
+    if (region && nameWithoutRegion === cardName && cardName.startsWith(region)) {
+      nameWithoutRegion = cardName.slice(region.length).trim()
+    }
+    const dong = nameWithoutRegion.split(' ')[0] || building.name
+    return `${dong} ${unitNumber}`
+  }
+
+  const syncReturnVisitForUnit = async (building: Building, unitId: number, visitorName: string) => {
+    const unit = building.units.find((u) => u.id === unitId)
+    if (!unit) return
+
+    const existing = returnVisits.find((rv) => rv.unitId === unitId)
+    const payload = {
+      unit_id: unitId,
+      building_id: building.id,
+      display_name: existing?.displayName || getReturnVisitDisplayName(building, unit.number),
+      address: building.address,
+      unit_number: unit.number,
+      assigned_user_name: visitorName,
+      created_by: existing?.createdBy || visitorName,
+    }
+
+    const result = existing
+      ? await supabase.from('return_visits').update(payload).eq('id', existing.id)
+      : await supabase.from('return_visits').insert(payload)
+
+    if (result.error) {
+      reportMutationError('활동 정기방문 목록을 동기화하지 못했습니다.', result.error)
+    }
+  }
+
   const toggleRegularVisit = async (buildingId: number, unitId: number, visitorName?: string) => {
     const building = buildings.find((b) => b.id === buildingId)
     const unit = building?.units.find((u) => u.id === unitId)
@@ -30,37 +72,14 @@ export function makeRegularVisitMutations(deps: {
         return
       }
 
-      // return_visits 생성 (중복 방지: 같은 unit_id 존재 시 skip)
-      const existing = returnVisits.find((rv) => rv.unitId === unitId)
-      if (!existing) {
-        const card = cards.find((c) => c.id === building.cardId)
-        const region = (card?.region as string) ?? ''
-        const cardName = card?.name ?? ''
-        let nameWithoutRegion = cardName
-        for (const r of ['처인구', '기흥구', '수지구', '영통구', '화성시']) {
-          if (cardName.startsWith(r)) { nameWithoutRegion = cardName.slice(r.length).trim(); break }
-        }
-        if (region && nameWithoutRegion === cardName && cardName.startsWith(region)) {
-          nameWithoutRegion = cardName.slice(region.length).trim()
-        }
-        const dong = nameWithoutRegion.split(' ')[0] || building.name
-        const displayName = `${dong} ${unit.number}`
-        await supabase.from('return_visits').insert({
-          unit_id: unitId,
-          building_id: buildingId,
-          display_name: displayName,
-          address: building.address,
-          unit_number: unit.number,
-          assigned_user_name: name,
-          created_by: name,
-        })
-      }
+      await syncReturnVisitForUnit(building, unitId, name)
       await fetchAll()
       showToast('정기방문이 등록됐습니다')
     }
   }
 
   const setRegularVisitor = async (unitId: number, visitorName: string, registeredAt?: string) => {
+    const building = buildings.find((item) => item.units.some((unit) => unit.id === unitId))
     const name = visitorName.trim()
     if (!name) {
       const result = await supabase.from('regular_visits').delete().eq('unit_id', unitId)
@@ -83,6 +102,9 @@ export function makeRegularVisitMutations(deps: {
     if (result.error) {
       reportMutationError('정기방문자를 저장하지 못했습니다.', result.error)
       return
+    }
+    if (building) {
+      await syncReturnVisitForUnit(building, unitId, name)
     }
     await fetchAll()
     showToast('정기방문자가 저장됐습니다')

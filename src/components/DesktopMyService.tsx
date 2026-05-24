@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Building, CalendarEvent, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot } from '../types'
+import { getUserReturnVisits } from '../utils/returnVisits'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
   if (!assignment) return []
@@ -148,7 +149,7 @@ export function DesktopMyService({
   }, [activeSessionCardIds, cards, currentVisitor, role])
 
   const myReturnVisits = useMemo(() =>
-    returnVisits.filter((rv) => rv.assignedUserName === currentVisitor || rv.createdBy === currentVisitor),
+    getUserReturnVisits(returnVisits, currentVisitor),
     [currentVisitor, returnVisits],
   )
 

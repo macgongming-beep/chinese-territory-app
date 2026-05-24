@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { AuthUser } from '../hooks/useAuth'
+import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
 import { t, type AppLanguage } from '../i18n'
@@ -11,11 +11,13 @@ export function MobileProfileSettings({
   language = 'ko',
   onChangePin,
   onUpdateProfile,
+  onFetchLoginLogs,
 }: {
   user: AuthUser
   language?: AppLanguage
   onChangePin: (newPin: string) => Promise<boolean>
   onUpdateProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
+  onFetchLoginLogs?: (limit?: number) => Promise<LoginLogRecord[]>
 }) {
   const navigate = useNavigate()
   const [name, setName] = useState(user.name)
@@ -24,15 +26,38 @@ export function MobileProfileSettings({
   const [newPinConfirm, setNewPinConfirm] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPin, setSavingPin] = useState(false)
+  const [loginLogs, setLoginLogs] = useState<LoginLogRecord[]>([])
+  const [loadingLoginLogs, setLoadingLoginLogs] = useState(false)
+  const [loginLogsExpanded, setLoginLogsExpanded] = useState(false)
 
   useEffect(() => {
     setName(user.name)
     setPhone(user.phone ?? '')
   }, [user.name, user.phone])
 
+  useEffect(() => {
+    let cancelled = false
+    const loadLogs = async () => {
+      if (!onFetchLoginLogs) return
+      setLoadingLoginLogs(true)
+      try {
+        const logs = await onFetchLoginLogs(8)
+        if (!cancelled) setLoginLogs(logs)
+      } finally {
+        if (!cancelled) setLoadingLoginLogs(false)
+      }
+    }
+    void loadLogs()
+    return () => {
+      cancelled = true
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id])
+
   const canUsePhone = user.role === 'leader' || user.role === 'admin' || user.role === 'developer'
   const roleLabel = user.role === 'user' ? t(language, 'role.user') : roleLabels[user.role as Role]
   const accountSubtitle = `${roleLabel} ${t(language, 'profile.accountSuffix')}`
+  const visibleLoginLogs = loginLogsExpanded ? loginLogs : loginLogs.slice(0, 3)
 
   return (
     <div className="mobile-profile-page">
@@ -137,6 +162,44 @@ export function MobileProfileSettings({
           {t(language, 'profile.changePassword')}
         </button>
       </section>
+
+      <section className="mobile-profile-card mobile-profile-login-card">
+        <div className="mobile-profile-login-head">
+          <h2>로그인 기록</h2>
+          <span>{loginLogsExpanded ? `${loginLogs.length}건` : `최근 ${Math.min(loginLogs.length, 3)}건`}</span>
+        </div>
+        {loadingLoginLogs ? (
+          <p className="mobile-login-empty">로그인 기록을 불러오는 중입니다.</p>
+        ) : loginLogs.length === 0 ? (
+          <p className="mobile-login-empty">아직 로그인 기록이 없습니다.</p>
+        ) : (
+          <div className={`mobile-login-list${loginLogsExpanded ? ' is-expanded' : ''}`}>
+            {visibleLoginLogs.map((log) => (
+              <div className="mobile-login-row" key={log.id}>
+                <span>로그인</span>
+                <strong>{formatLoginDateTime(log.logged_in_at)}</strong>
+              </div>
+            ))}
+            {loginLogs.length > 3 && (
+              <button
+                className="mobile-login-toggle"
+                onClick={() => setLoginLogsExpanded((value) => !value)}
+                type="button"
+              >
+                {loginLogsExpanded ? '접기' : `더 보기 ${loginLogs.length - 3}건`}
+              </button>
+            )}
+          </div>
+        )}
+      </section>
     </div>
   )
+}
+
+function formatLoginDateTime(value?: string | null) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  const pad = (num: number) => String(num).padStart(2, '0')
+  return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }

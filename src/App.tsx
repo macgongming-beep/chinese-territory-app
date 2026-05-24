@@ -50,7 +50,7 @@ function isRole(value: unknown): value is Role {
 }
 
 function App() {
-  const { user, login, signup, logout, changePin, updateMyProfile, loading: authLoading, allUsers } = useAuth()
+  const { user, login, signup, logout, changePin, updateMyProfile, loading: authLoading, allUsers, fetchMyLoginLogs } = useAuth()
   const actualRole: Role = user?.role ?? 'user'
   const [mobileViewMode, setMobileViewMode] = useState<Role>(actualRole)
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage)
@@ -284,6 +284,7 @@ function App() {
             currentUser={user}
             onChangePin={changePin}
             onUpdateMyProfile={updateMyProfile}
+            onFetchMyLoginLogs={fetchMyLoginLogs}
             onAddUnit={addUnitToBuilding}
             onApplyToEvent={applyToEvent}
             onSetCardLeaders={setCardLeaders}
@@ -391,6 +392,7 @@ function App() {
               allUsers={allUsers}
               onChangePin={changePin}
               onUpdateMyProfile={updateMyProfile}
+              onFetchMyLoginLogs={fetchMyLoginLogs}
               onApplyToEvent={applyToEvent}
               onAddParticipantToEvent={addParticipantToEvent}
               onCreateCalendarEvent={createCalendarEvent}

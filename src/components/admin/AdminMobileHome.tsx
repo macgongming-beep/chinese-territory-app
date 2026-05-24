@@ -6,7 +6,6 @@
 import type { CalendarEvent, Notice, TerritoryCard } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { t, formatLeaderOf, formatJoined, formatPeriod, weekdayShortLabels } from '../../i18n'
-import { Card } from '../ui'
 
 type WeekDay = { date: Date; iso: string; hasEvent: boolean }
 
@@ -75,7 +74,6 @@ export function AdminMobileHome({
   completedUnits,
   inProgressCount,
   unassignedCount,
-  noticeReadCount,
   onOpenNotices,
   onOpenCalendar,
   onOpenZone,
@@ -91,154 +89,85 @@ export function AdminMobileHome({
   const completedPctText = completedPct >= 10 ? completedPct.toFixed(1) : completedPct.toFixed(2)
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 20,
-        padding: '20px 16px 24px',
-      }}
-    >
+    <div className="mh-page">
       {/* ── 공지 ────────────────────────── */}
-      <section>
-        <SectionHeader title={t(language, 'home.notice')} onAll={onOpenNotices} viewAllLabel={t(language, 'home.viewAllBtn')} />
-        {latestNotice ? (
-          <button
-            type="button"
-            onClick={onOpenNotices}
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: 0,
-              border: 'none',
-              background: 'transparent',
-              marginTop: 10,
-              cursor: 'pointer',
-              textAlign: 'left',
-            }}
-          >
-            <Card padding={14}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      background: 'var(--tint)',
-                      color: 'var(--muted)',
-                      fontSize: 10.5,
-                      padding: '2px 7px',
-                      borderRadius: 999,
-                      fontWeight: 600,
-                      letterSpacing: '0.04em',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {t(language, 'home.noticePill')}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 14,
-                      color: 'var(--text)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      minWidth: 0,
-                    }}
-                  >
-                    {latestNotice.title}
-                  </span>
-                </div>
-                {noticeReadCount && (
-                  <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                    {noticeReadCount.read}/{noticeReadCount.total} {t(language, 'home.readSuffix')}
-                  </span>
-                )}
-              </div>
-            </Card>
+      <section className="mobile-home-section">
+        <div className="mh-sec-head">
+          <h2>{t(language, 'home.notice')}</h2>
+          <button type="button" onClick={onOpenNotices} className="mh-all">
+            {t(language, 'home.viewAllBtn')} <ChevR size={14} color="currentColor" />
           </button>
+        </div>
+        {latestNotice ? (
+          <div className="mh-notice-list">
+            <button
+              type="button"
+              className="mh-notice-row"
+              onClick={onOpenNotices}
+            >
+              <span className="mh-notice-pill">{t(language, 'home.noticePill')}</span>
+              <span className="mh-notice-title">{latestNotice.title}</span>
+              <span className="mh-notice-date">{latestNotice.createdAt.slice(5, 10).replace('-', '/')}</span>
+            </button>
+          </div>
         ) : (
-          <Card padding={14} style={{ marginTop: 10, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-            {t(language, 'home.noNoticesShort')}
-          </Card>
+          <div className="mh-empty-line">
+            <span>{t(language, 'home.noNoticesShort')}</span>
+          </div>
         )}
       </section>
 
       {/* ── 오늘의 봉사 ──────────────────── */}
-      <section>
-        <SectionHeader
-          title={
-            <>
-              {t(language, 'home.todayServiceAdmin')} <span style={{ fontWeight: 500, color: 'var(--muted)', fontSize: 13, marginLeft: 6 }}>{todayEvents.length}</span>
-            </>
-          }
-          onAll={onOpenCalendar}
-          viewAllLabel={t(language, 'home.viewAllBtn')}
-        />
+      <section className="mobile-home-section">
+        <div className="mh-sec-head">
+          <h2>
+            {t(language, 'home.todayServiceShort')}
+            <span className="mh-cnt">{todayEvents.length}</span>
+          </h2>
+          <button type="button" onClick={onOpenCalendar} className="mh-all">
+            {t(language, 'home.viewAllBtn')} <ChevR size={14} color="currentColor" />
+          </button>
+        </div>
         {todayEvents.length === 0 ? (
-          <Card padding={18} style={{ marginTop: 10, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-            {t(language, 'home.noEventsShort')}
-          </Card>
+          <div className="mh-empty-line">
+            <span>{t(language, 'home.noTodayServiceShort')}</span>
+          </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-            {todayEvents.slice(0, 3).map((event) => {
+          <div className="mh-today-list">
+            {todayEvents.map((event) => {
               const tb = timeBlock(event.time || '', language)
               return (
                 <button
                   key={event.id}
                   type="button"
-                  onClick={onOpenCalendar}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: 0,
-                    border: 'none',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
+                  className="mh-today-serving"
+                  onClick={() => onOpenEventDetail(event.id)}
                 >
-                  <Card padding={14}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div
-                        style={{
-                          width: 54,
-                          height: 54,
-                          borderRadius: 10,
-                          background: 'var(--ink)',
-                          color: '#fff',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          lineHeight: 1,
-                        }}
-                      >
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>{tb.display}</span>
-                        <span style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>{tb.period}</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 2 }}>
-                        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{event.title}</span>
-                        <span style={{ fontSize: 12, color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          {event.place && (
-                            <>
-                              <PinIcon />
-                              <span>{event.place}</span>
-                            </>
-                          )}
-                          {event.place && event.leader && <span style={{ color: 'var(--muted-3)' }}>·</span>}
-                          {event.leader && (
-                            <>
-                              <UserIcon />
-                              <span>{event.leader}</span>
-                            </>
-                          )}
+                  <span className="mh-today-time">
+                    <span className="mh-today-time-hour">{tb.display}</span>
+                    <span className="mh-today-time-period">{tb.period}</span>
+                  </span>
+                  <span className="mh-today-body">
+                    <span className="mh-today-title-row">
+                      <span className="mh-today-title">{event.title}</span>
+                    </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                      {event.place && (
+                        <span className="mh-today-where" style={{ margin: 0 }}>
+                          <PinIcon />
+                          {event.place}
                         </span>
-                      </div>
-                      <ChevR />
-                    </div>
-                  </Card>
+                      )}
+                      {event.place && event.leader && <span style={{ color: 'var(--muted-3)', fontSize: 12 }}>·</span>}
+                      {event.leader && (
+                        <span className="mh-today-sub" style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <UserIcon />
+                          {event.leader}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                  <ChevR size={14} color="currentColor" />
                 </button>
               )
             })}
@@ -255,7 +184,7 @@ export function AdminMobileHome({
             <div className="mh-sec-head">
               <h2>{t(language, 'home.weekSchedule')}</h2>
               <button type="button" onClick={onOpenCalendar} className="mh-all">
-                {t(language, 'home.viewAllBtn')} <ChevR size={12} color="currentColor" />
+                {t(language, 'home.viewAllBtn')} <ChevR size={14} color="currentColor" />
               </button>
             </div>
             <div className="mh-week-dots">
@@ -281,41 +210,37 @@ export function AdminMobileHome({
                 <span>{activeDate === today ? t(language, 'home.noEventsToday') : t(language, 'home.noEventsThisDay')}</span>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-                {selectedDateEvents.map((event) => {
-                  const date = new Date(event.date + 'T00:00:00')
-                  const todayDate = new Date(today + 'T00:00:00')
-                  const diff = Math.round((date.getTime() - todayDate.getTime()) / 86400000)
-                  const dateLabel = diff === 0 ? t(language, 'home.dateToday') : diff === 1 ? t(language, 'home.dateTomorrow') : diff === 2 ? t(language, 'home.dateDayAfter') : `${date.getMonth() + 1}/${date.getDate()}(${wdShort[date.getDay()]})`
-                  const participantCount = new Set([...(event.assigned ?? []), ...(event.applicants ?? [])]).size
-                  return (
-                    <button key={event.id} type="button" onClick={() => onOpenEventDetail(event.id)} className="mh-upcoming-row mh-upcoming-row--featured">
-                      <span className="mh-upcoming-date">{dateLabel} {event.time}</span>
-                      <span className="mh-upcoming-title">{event.title}</span>
-                      <span className="mh-upcoming-meta">
-                        {event.leader ? formatLeaderOf(language, event.leader) : ''}
-                        {participantCount > 0 ? ` · ${formatJoined(language, participantCount)}` : ''}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
+              selectedDateEvents.map((event) => {
+                const date = new Date(event.date + 'T00:00:00')
+                const todayDate = new Date(today + 'T00:00:00')
+                const diff = Math.round((date.getTime() - todayDate.getTime()) / 86400000)
+                const dateLabel = diff === 0 ? t(language, 'home.dateToday') : diff === 1 ? t(language, 'home.dateTomorrow') : diff === 2 ? t(language, 'home.dateDayAfter') : `${date.getMonth() + 1}/${date.getDate()}(${wdShort[date.getDay()]})`
+                const participantCount = new Set([...(event.assigned ?? []), ...(event.applicants ?? [])]).size
+                return (
+                  <button key={event.id} type="button" onClick={() => onOpenEventDetail(event.id)} className="mh-upcoming-row mh-upcoming-row--featured">
+                    <span className="mh-upcoming-date">{dateLabel} {event.time}</span>
+                    <span className="mh-upcoming-title">{event.title}</span>
+                    <span className="mh-upcoming-meta">
+                      {event.leader ? formatLeaderOf(language, event.leader) : ''}
+                      {participantCount > 0 ? ` · ${formatJoined(language, participantCount)}` : ''}
+                    </span>
+                  </button>
+                )
+              })
             )}
           </section>
         )
       })()}
 
       {/* ── 운영 현황 ────────────────────── */}
-      <section>
-        <SectionHeader title={t(language, 'home.operationStatus')} onAll={onOpenZone} viewAllLabel={t(language, 'home.viewAllBtn')} />
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 8,
-            marginTop: 10,
-          }}
-        >
+      <section className="mobile-home-section">
+        <div className="mh-sec-head">
+          <h2>{t(language, 'home.operationStatus')}</h2>
+          <button type="button" onClick={onOpenZone} className="mh-all">
+            {t(language, 'home.viewAllBtn')} <ChevR size={14} color="currentColor" />
+          </button>
+        </div>
+        <div className="mh-card-grid" style={{ marginTop: 0 }}>
           <StatTile num={cards.length} sub={t(language, 'home.totalCards')} />
           <StatTile num={inProgressCount} sub={t(language, 'home.inProgress')} />
           <StatTile num={unassignedCount} sub={t(language, 'zone.unassigned')} danger />
@@ -326,56 +251,9 @@ export function AdminMobileHome({
   )
 }
 
-function SectionHeader({ title, onAll, viewAllLabel = '전체보기' }: { title: React.ReactNode; onAll?: () => void; viewAllLabel?: string }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'baseline',
-        padding: '0 4px',
-      }}
-    >
-      <h2
-        style={{
-          margin: 0,
-          fontSize: 16,
-          fontWeight: 600,
-          color: 'var(--ink)',
-          letterSpacing: '-0.01em',
-        }}
-      >
-        {title}
-      </h2>
-      {onAll && (
-        <button
-          type="button"
-          onClick={onAll}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            font: 'inherit',
-            fontSize: 13,
-            fontWeight: 500,
-            color: 'var(--muted)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 2,
-            cursor: 'pointer',
-            padding: 0,
-            minHeight: 0,
-          }}
-        >
-          {viewAllLabel} <ChevR size={12} color="var(--muted)" />
-        </button>
-      )}
-    </div>
-  )
-}
-
 function StatTile({ num, unit, sub, danger }: { num: number | string; unit?: string; sub: string; danger?: boolean }) {
   return (
-    <Card padding="14px 14px">
+    <div className="mh-card-tile" style={{ padding: '16px 14px', alignItems: 'center', textAlign: 'center', background: 'var(--surface)' }}>
       <div
         style={{
           fontSize: 26,
@@ -388,7 +266,7 @@ function StatTile({ num, unit, sub, danger }: { num: number | string; unit?: str
         {num}
         {unit && <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--muted)' }}>{unit}</span>}
       </div>
-      <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500, marginTop: 2 }}>{sub}</div>
-    </Card>
+      <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500, marginTop: 4 }}>{sub}</div>
+    </div>
   )
 }

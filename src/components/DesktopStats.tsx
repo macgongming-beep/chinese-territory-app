@@ -406,7 +406,7 @@ export function DesktopStats({
     r === '만남' ? C.green : r === '부재' ? C.amber : C.brand
 
   return (
-    <section className="desktop-content" style={{ padding: '32px', maxWidth: 1060, margin: '0 auto' }}>
+    <section style={{ display: 'flex', flexDirection: 'column', padding: '32px', width: '100%', maxWidth: 1060, margin: '0 auto' }}>
       <header className="page-header">
         <div className="page-header-text">
           <h1 className="page-header-title">통계</h1>

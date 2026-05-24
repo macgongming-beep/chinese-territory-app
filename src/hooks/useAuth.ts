@@ -32,6 +32,11 @@ export type AppUserRecord = {
   lastLoginAt?: string | null
 }
 
+export type LoginLogRecord = {
+  id: number
+  logged_in_at: string
+}
+
 const ROLE_VALUES: Role[] = ['admin', 'leader', 'user', 'developer']
 
 function isRole(value: unknown): value is Role {
@@ -652,7 +657,7 @@ export function useAuth() {
       p_limit: limit,
     })
     if (error) { console.error('fetchMyLoginLogs:', error); return [] }
-    return (data ?? []) as { id: number; logged_in_at: string }[]
+    return (data ?? []) as LoginLogRecord[]
   }
 
   /** 특정 사용자의 로그인 기록 — developer만 조회 가능 (RPC 사용) */
@@ -664,7 +669,7 @@ export function useAuth() {
       p_limit: limit,
     })
     if (error) { console.error('fetchUserLoginLogs:', error); return [] }
-    return (data ?? []) as { id: number; logged_in_at: string }[]
+    return (data ?? []) as LoginLogRecord[]
   }
 
   return {

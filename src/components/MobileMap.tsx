@@ -37,6 +37,8 @@ export function MobileMap({
   serviceSessions,
   focusedCardId,
   focusedCardIds = [],
+  focusedBuildingId,
+  regularVisitScope = false,
   onBack,
   onAddUnit,
   onCreateBuilding,
@@ -66,6 +68,8 @@ export function MobileMap({
   serviceSessions: ServiceSession[]
   focusedCardId?: number | null
   focusedCardIds?: number[]
+  focusedBuildingId?: number | null
+  regularVisitScope?: boolean
   focusedScopeLabel?: string
   onBack: () => void
   onAddUnit: (buildingId: number, unitNumber: string) => void
@@ -138,7 +142,7 @@ export function MobileMap({
   const [buildingTypeFilter, setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
 
   // 지도/패널 상태
-  const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null)
+  const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(focusedBuildingId ?? null)
   const [expandedBuildingIds, setExpandedBuildingIds] = useState<Set<number>>(new Set())
   const [collapsedStatusGroups, setCollapsedStatusGroups] = useState<Set<BuildingStatus>>(new Set(['방문완료']))
   const [hiddenMapStatuses, setHiddenMapStatuses] = useState<Set<BuildingStatus>>(new Set())
@@ -309,6 +313,27 @@ export function MobileMap({
   }, [selectedCardId])
 
   useEffect(() => {
+    if (focusedBuildingId == null) return
+    const building = buildings.find((item) => item.id === focusedBuildingId)
+    if (!building) return
+    setSelectedBuildingId(focusedBuildingId)
+    setExpandedBuildingIds(new Set([focusedBuildingId]))
+    setFullScreenUnit(null)
+    setSheetHeight((height) => Math.max(height, HALF_HEIGHT))
+    setCollapsedStatusGroups((prev) => {
+      const next = new Set(prev)
+      next.delete(getBuildingStatus(building))
+      return next
+    })
+    setTimeout(() => {
+      moveMobileMapToBuilding(building)
+      document.getElementById(`building-card-${focusedBuildingId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 250)
+  // moveMobileMapToBuilding intentionally reads the current map instance.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildings, focusedBuildingId])
+
+  useEffect(() => {
     if (!isUserMap || focusedCardId != null || !activeServiceSession?.primaryCardId) return
     setNavLevel('map')
     setSelectedCardId(activeServiceSession.primaryCardId)
@@ -451,6 +476,7 @@ export function MobileMap({
   const shouldUseAggregateMap =
     !isUserMap &&
     navLevel === 'map' &&
+    !regularVisitScope &&
     selectedCardId == null &&
     !selectedRegion &&
     (focusedCardIdSet.size === 0 || !!selectedArea) &&
