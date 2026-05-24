@@ -14772,6 +14772,27 @@ button:focus-visible {
   white-space: nowrap;
 }
 
+.dla-selected-event-leader {
+  color: var(--ink-500);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.dla-readonly-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 /* ── 헤더 우측 버튼 그룹 ── */
 .dla-header-right {
   display: flex;
@@ -27035,12 +27056,30 @@ button:focus-visible {
   flex-shrink: 0;
   letter-spacing: -0.005em;
 }
+.ma-v2-team-btn.is-readonly {
+  background: var(--paper);
+  color: var(--muted);
+}
 .ma-v2-today-meta {
   margin: 0;
   font-size: 12px;
   color: var(--muted);
   line-height: 1.55;
   letter-spacing: -0.005em;
+}
+
+.ma-view-only-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
 }
 
 /* 다가오는 봉사 list */

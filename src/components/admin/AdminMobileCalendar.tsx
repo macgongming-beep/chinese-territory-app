@@ -68,6 +68,7 @@ type Props = {
   onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput) => void
   onApplyToEvent?: (eventId: number) => void
   specialPeriods?: SpecialPeriod[]
+  globalSettings?: Record<string, string>
 }
 
 function pad2(n: number) {
@@ -201,6 +202,7 @@ export function AdminMobileCalendar({
   onUpdateEventSeries,
   onApplyToEvent,
   specialPeriods = [],
+  globalSettings = {},
 }: Props) {
   const today = useMemo(() => new Date(), [])
   const [year, setYear] = useState(today.getFullYear())
@@ -476,7 +478,7 @@ export function AdminMobileCalendar({
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
             {selectedEvents.map((event) => (
-              <DayEventCard language={language} key={event.id} event={event} onClick={() => setDetailEventId(event.id)} />
+              <DayEventCard language={language} key={event.id} event={event} role={role} globalSettings={globalSettings} onClick={() => setDetailEventId(event.id)} />
             ))}
           </div>
         )}
@@ -776,11 +778,14 @@ function NavButton({ onClick, children }: { onClick: () => void; children: React
 }
 
 // ── 그 날 일정 카드 ────────────────────
-function DayEventCard({ language,  event, onClick }: { event: CalendarEvent; onClick?: () => void ; language: AppLanguage }) {
+function DayEventCard({ language, event, role, globalSettings, onClick }: { event: CalendarEvent; role: Role; globalSettings: Record<string, string>; onClick?: () => void ; language: AppLanguage }) {
   const meta: string[] = []
   if (event.place) meta.push(event.place)
   if (event.leader) meta.push(event.leader)
-  if (event.applicants && event.applicants.length > 0) {
+
+  const hideParticipants = globalSettings.hide_participants_from_users === 'true' && role === 'user'
+  if (!hideParticipants && event.applicants && event.applicants.length > 0) {
+
     meta.push(t(language, 'home.appliedLabel') + ` ${event.applicants.length}`)
   }
   return (

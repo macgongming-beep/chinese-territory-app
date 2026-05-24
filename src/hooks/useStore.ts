@@ -95,6 +95,7 @@ export function useStore() {
   const [eventRestaurantAssignments, setEventRestaurantAssignments] = useState<EventRestaurantAssignment[]>([])
   const [informalGroups, setInformalGroups] = useState<InformalGroup[]>([])
   const [restaurantRequests, setRestaurantRequests] = useState<RestaurantRequest[]>([])
+  const [globalSettings, setGlobalSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [missingCardLeaderAssignmentsTable, setMissingCardLeaderAssignmentsTable] = useState(false)
@@ -138,7 +139,7 @@ export function useStore() {
       eventCardAssignmentsRes, eventAssignmentCardsRes, boundariesRes,
       noticesRes, periodsRes, returnVisitsRes, returnVisitLogsRes, reviewTasksRes,
       informalAssetsRes, eventInformalAssignmentsRes, eventRestaurantAssignmentsRes,
-      informalGroupsRes, restaurantRequestsRes,
+      informalGroupsRes, restaurantRequestsRes, settingsRes,
     ] = await Promise.all([
       supabase.from('buildings').select('*, units(*, regular_visits(*))').order('id'),
       cardsQueryPromise,
@@ -158,6 +159,7 @@ export function useStore() {
       supabase.from('event_restaurant_assignments').select('*'),
       supabase.from('informal_groups').select('*').order('position').order('created_at'),
       supabase.from('restaurant_requests').select('*').order('requested_at', { ascending: false }),
+      supabase.from('app_settings').select('*'),
     ])
 
     if (buildingsRes.error || cardsRes.error || visitsRes.error || eventsRes.error) {
@@ -268,6 +270,7 @@ export function useStore() {
     setEventRestaurantAssignments(eventRestaurantAssignmentsRes.error ? [] : (eventRestaurantAssignmentsRes.data as RawEventRestaurantAssignment[]).map(toEventRestaurantAssignment))
     setInformalGroups(informalGroupsRes.error ? [] : (informalGroupsRes.data as RawInformalGroup[]).map(toInformalGroup))
     setRestaurantRequests(restaurantRequestsRes.error ? [] : (restaurantRequestsRes.data as RawRestaurantRequest[]).map(toRestaurantRequest))
+    setGlobalSettings(settingsRes.error ? {} : Object.fromEntries((settingsRes.data as { key: string; value: string }[]).map(r => [r.key, r.value])))
     if (informalAssetsRes.error || eventInformalAssignmentsRes.error || eventRestaurantAssignmentsRes.error || informalGroupsRes.error) {
       console.warn('v2 신 배정 모델 테이블 일부 미적용 — supabase/v2_assignment_model.sql 실행 필요')
     }
@@ -525,6 +528,7 @@ export function useStore() {
     assignRestaurantToUser,
     removeRestaurantAssignment,
     toggleBuildingRestaurant,
+    globalSettings,
     // 식당봉사
     restaurantRequests,
     addRestaurantVisit,

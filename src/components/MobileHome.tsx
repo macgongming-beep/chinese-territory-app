@@ -13,6 +13,7 @@ import { AdminMobileCalendar } from './admin/AdminMobileCalendar'
 import { AdminMobileZone } from './admin/AdminMobileZone'
 import { MobileUsers } from './MobileUsers'
 import { MobileSignupRequests } from './MobileSignupRequests'
+import { AdminSuggestions } from './admin/AdminSuggestions'
 import { MobileProfileSettings } from './MobileProfileSettings'
 import { UserMobileHome } from './UserMobileHome'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
@@ -298,6 +299,7 @@ export function MobileHome({
   restaurantRequests = [],
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
+  globalSettings = {},
 }: {
   leaderNames?: string[]
   buildings: Building[]
@@ -390,6 +392,7 @@ export function MobileHome({
   restaurantRequests?: import('../types').RestaurantRequest[]
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
+  globalSettings?: Record<string, string>
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -408,7 +411,6 @@ export function MobileHome({
   void todayCardsCollapsed; void setTodayCardsCollapsed
 
   // A안 선택 날짜 (dot row 클릭으로 변경)
-  const [selectedWeekDate, setSelectedWeekDate] = useState<string | null>(null)
 
   const rawActiveTab = pathToTab[location.pathname] || '홈'
   // 인도자는 '지도' 탭이 없으므로 /map 접근 시 '구역' 탭 활성화
@@ -430,22 +432,7 @@ export function MobileHome({
     calendarEvents.filter((e) => e.date === today).sort((a, b) => a.time.localeCompare(b.time)),
     [calendarEvents, today])
   // 7일치 dot row 데이터 (오늘부터 7일) — A안
-  const weekDays = useMemo(() => {
-    const todayDate = new Date(today + 'T00:00:00')
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(todayDate)
-      d.setDate(todayDate.getDate() + i)
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      return { date: d, iso, hasEvent: calendarEvents.some((e) => e.date === iso) }
-    })
-  }, [calendarEvents, today])
   // A안: 선택된 날짜의 일정 목록
-  const selectedDateEvents = useMemo(() => {
-    const date = selectedWeekDate ?? today
-    return calendarEvents
-      .filter((e) => e.date === date)
-      .sort((a, b) => a.time.localeCompare(b.time))
-  }, [calendarEvents, selectedWeekDate, today])
 
   // 디자인 v2: 활동 탭으로 이동. 홈에서는 사용 안 함.
   const myTodaySessions = useMemo(() =>
@@ -721,37 +708,35 @@ export function MobileHome({
                 {role === 'admin' ? (
                   <AdminMobileHome
                     language={language}
-                    notices={notices}
+                    
                     todayEvents={todayEvents}
                     cards={cards}
                     totalUnits={totalUnits}
                     completedUnits={completedUnits}
                     inProgressCount={inProgressCards.length}
                     unassignedCount={cards.filter((c) => c.status === '미배정').length}
-                    onOpenNotices={() => navigate('/notices')}
-                    onOpenCalendar={() => navigate('/calendar')}
+                    
                     onOpenZone={() => navigate('/zone')}
-                    weekDays={weekDays}
-                    today={today}
-                    selectedWeekDate={selectedWeekDate}
-                    selectedDateEvents={selectedDateEvents}
-                    onSelectWeekDate={setSelectedWeekDate}
+                    
+                    
+                    
+                    
+                    
                     onOpenEventDetail={(id) => navigate(`/calendar?openEvent=${id}`)}
                   />
                 ) : (
                   <UserMobileHome
                     language={language}
-                    notices={notices}
+                    
                     myTodayEvents={myTodayEvents}
-                    today={today}
-                    selectedWeekDate={selectedWeekDate}
-                    weekDays={weekDays}
-                    selectedDateEvents={selectedDateEvents}
+                    
+                    
+                    
+                    
                     leaderCards={leaderCards}
                     role={role}
-                    onSelectWeekDate={setSelectedWeekDate}
-                    onOpenNotices={() => navigate('/notices')}
-                    onOpenCalendar={() => navigate('/calendar')}
+                    
+                    
                     onOpenEventDetail={(id) => navigate(`/calendar?openEvent=${id}`)}
                     onOpenZone={() => navigate('/zone')}
                   />
@@ -837,6 +822,7 @@ export function MobileHome({
                   onUpdateEventSeries={role === 'user' ? undefined : onUpdateCalendarEventSeries}
                   onApplyToEvent={onApplyToEvent}
                   specialPeriods={specialPeriods}
+                  globalSettings={globalSettings}
                 />
                 {/* (legacy MobileCalendar 유지 — 향후 제거 가능. 일정 상세 시트 시점별 액션은
                     AdminEventDetailSheet 가 role prop 받아 분기.) */}
@@ -1051,6 +1037,8 @@ export function MobileHome({
                   calendarEvents={calendarEvents}
                   currentVisitor={currentVisitor}
                   role={role}
+                  actualRole={actualRole}
+                
                   onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
                   informalAssets={informalAssets}
                   informalGroups={informalGroups}
@@ -1102,6 +1090,31 @@ export function MobileHome({
               )
             } />
 
+            
+            {/* 봉사 제안 관리 */}
+            <Route path="/suggestions" element={
+              role === 'admin' ? (
+                <div className="mobile-settings-page" style={{ paddingBottom: 60 }}>
+                  <AppHeader
+                    pageTitle="대화 방법 제안 관리"
+                    language={language}
+                    showBack
+                    onBack={() => navigate('/settings')}
+                    userId={currentUser.id}
+                    userName={currentVisitor}
+                    role={role}
+                    chatUsers={headerChatUsers}
+                    onOpenMenu={() => navigate('/settings')}
+                  />
+                  <div style={{ padding: '0 16px' }}>
+                    <AdminSuggestions />
+                  </div>
+                </div>
+              ) : (
+                <Navigate to="/settings" replace />
+              )
+            } />
+    
             {/* 알림 설정 */}
             <Route path="/notification-settings" element={
               <div className="mobile-settings-page">

@@ -3,11 +3,9 @@
 //
 // 헤더는 상위(MobileHome.tsx)의 AppHeader 가 그림.
 
-import type { CalendarEvent, Notice, TerritoryCard } from '../../types'
+import type { CalendarEvent, TerritoryCard } from '../../types'
 import type { AppLanguage } from '../../i18n'
-import { t, formatLeaderOf, formatJoined, formatPeriod, weekdayShortLabels } from '../../i18n'
-
-type WeekDay = { date: Date; iso: string; hasEvent: boolean }
+import { t, formatPeriod } from '../../i18n'
 
 type ChevRIconProps = { size?: number; color?: string }
 function ChevR({ size = 14, color = 'var(--muted-2)' }: ChevRIconProps) {
@@ -38,23 +36,13 @@ function UserIcon() {
 
 type Props = {
   language: AppLanguage
-  notices: Notice[]
   todayEvents: CalendarEvent[]
   cards: TerritoryCard[]
   totalUnits: number
   completedUnits: number
   inProgressCount: number
   unassignedCount: number
-  noticeReadCount?: { read: number; total: number } | null
-  onOpenNotices: () => void
-  onOpenCalendar: () => void
   onOpenZone: () => void
-  // A안
-  weekDays: WeekDay[]
-  today: string
-  selectedWeekDate: string | null
-  selectedDateEvents: CalendarEvent[]
-  onSelectWeekDate: (date: string) => void
   onOpenEventDetail: (eventId: number) => void
 }
 
@@ -65,68 +53,33 @@ function timeBlock(time: string, lang: AppLanguage) {
   return { display: String(hour), period: formatPeriod(lang, hour) }
 }
 
+import { ServiceSuggestionsSection } from '../ServiceSuggestionsSection'
+
 export function AdminMobileHome({
   language,
-  notices,
   todayEvents,
   cards,
   totalUnits,
   completedUnits,
   inProgressCount,
   unassignedCount,
-  onOpenNotices,
-  onOpenCalendar,
   onOpenZone,
-  weekDays,
-  today,
-  selectedWeekDate,
-  selectedDateEvents,
-  onSelectWeekDate,
   onOpenEventDetail,
 }: Props) {
-  const latestNotice = notices.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null
+
   const completedPct = totalUnits > 0 ? (completedUnits / totalUnits) * 100 : 0
   const completedPctText = completedPct >= 10 ? completedPct.toFixed(1) : completedPct.toFixed(2)
 
   return (
     <div className="mh-page">
-      {/* ── 공지 ────────────────────────── */}
-      <section className="mobile-home-section">
-        <div className="mh-sec-head">
-          <h2>{t(language, 'home.notice')}</h2>
-          <button type="button" onClick={onOpenNotices} className="mh-all">
-            {t(language, 'home.viewAllBtn')} <ChevR size={14} color="currentColor" />
-          </button>
-        </div>
-        {latestNotice ? (
-          <div className="mh-notice-list">
-            <button
-              type="button"
-              className="mh-notice-row"
-              onClick={onOpenNotices}
-            >
-              <span className="mh-notice-pill">{t(language, 'home.noticePill')}</span>
-              <span className="mh-notice-title">{latestNotice.title}</span>
-              <span className="mh-notice-date">{latestNotice.createdAt.slice(5, 10).replace('-', '/')}</span>
-            </button>
-          </div>
-        ) : (
-          <div className="mh-empty-line">
-            <span>{t(language, 'home.noNoticesShort')}</span>
-          </div>
-        )}
-      </section>
 
       {/* ── 오늘의 봉사 ──────────────────── */}
       <section className="mobile-home-section">
         <div className="mh-sec-head">
           <h2>
-            {t(language, 'home.todayServiceShort')}
+            오늘의 봉사
             <span className="mh-cnt">{todayEvents.length}</span>
           </h2>
-          <button type="button" onClick={onOpenCalendar} className="mh-all">
-            {t(language, 'home.viewAllBtn')} <ChevR size={14} color="currentColor" />
-          </button>
         </div>
         {todayEvents.length === 0 ? (
           <div className="mh-empty-line">
@@ -143,9 +96,13 @@ export function AdminMobileHome({
                   className="mh-today-serving"
                   onClick={() => onOpenEventDetail(event.id)}
                 >
-                  <span className="mh-today-time">
-                    <span className="mh-today-time-hour">{tb.display}</span>
-                    <span className="mh-today-time-period">{tb.period}</span>
+                  <span className="mh-today-time" style={{ width: 'auto', minWidth: 64, padding: '0 12px', height: 50 }}>
+                    <span className="mh-today-time-hour" style={{ fontSize: event.time.includes(':') ? 14 : 16 }}>
+                      {event.endTime ? `${event.time}~${event.endTime}` : event.time}
+                    </span>
+                    {!event.endTime && (
+                      <span className="mh-today-time-period">{tb.period}</span>
+                    )}
                   </span>
                   <span className="mh-today-body">
                     <span className="mh-today-title-row">
@@ -175,62 +132,7 @@ export function AdminMobileHome({
         )}
       </section>
 
-      {/* ── 이번 주 일정 (A안) ────────────── */}
-      {(() => {
-        const activeDate = selectedWeekDate ?? today
-        const wdShort = weekdayShortLabels[language]
-        return (
-          <section className="mobile-home-section">
-            <div className="mh-sec-head">
-              <h2>{t(language, 'home.weekSchedule')}</h2>
-              <button type="button" onClick={onOpenCalendar} className="mh-all">
-                {t(language, 'home.viewAllBtn')} <ChevR size={14} color="currentColor" />
-              </button>
-            </div>
-            <div className="mh-week-dots">
-              {weekDays.map((d, i) => {
-                const isToday = i === 0
-                const isSelected = d.iso === activeDate
-                return (
-                  <button
-                    key={d.iso}
-                    type="button"
-                    onClick={() => onSelectWeekDate(d.iso)}
-                    className={`mh-week-dot-cell${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`}
-                  >
-                    <span className="mh-week-dot-wd">{wdShort[d.date.getDay()]}</span>
-                    <span className="mh-week-dot-day">{d.date.getDate()}</span>
-                    <span className={`mh-week-dot${d.hasEvent ? ' filled' : ''}`} />
-                  </button>
-                )
-              })}
-            </div>
-            {selectedDateEvents.length === 0 ? (
-              <div className="mh-empty-line" style={{ marginTop: 10 }}>
-                <span>{activeDate === today ? t(language, 'home.noEventsToday') : t(language, 'home.noEventsThisDay')}</span>
-              </div>
-            ) : (
-              selectedDateEvents.map((event) => {
-                const date = new Date(event.date + 'T00:00:00')
-                const todayDate = new Date(today + 'T00:00:00')
-                const diff = Math.round((date.getTime() - todayDate.getTime()) / 86400000)
-                const dateLabel = diff === 0 ? t(language, 'home.dateToday') : diff === 1 ? t(language, 'home.dateTomorrow') : diff === 2 ? t(language, 'home.dateDayAfter') : `${date.getMonth() + 1}/${date.getDate()}(${wdShort[date.getDay()]})`
-                const participantCount = new Set([...(event.assigned ?? []), ...(event.applicants ?? [])]).size
-                return (
-                  <button key={event.id} type="button" onClick={() => onOpenEventDetail(event.id)} className="mh-upcoming-row mh-upcoming-row--featured">
-                    <span className="mh-upcoming-date">{dateLabel} {event.time}</span>
-                    <span className="mh-upcoming-title">{event.title}</span>
-                    <span className="mh-upcoming-meta">
-                      {event.leader ? formatLeaderOf(language, event.leader) : ''}
-                      {participantCount > 0 ? ` · ${formatJoined(language, participantCount)}` : ''}
-                    </span>
-                  </button>
-                )
-              })
-            )}
-          </section>
-        )
-      })()}
+      <ServiceSuggestionsSection />
 
       {/* ── 운영 현황 ────────────────────── */}
       <section className="mobile-home-section">

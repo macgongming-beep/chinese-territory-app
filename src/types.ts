@@ -264,3 +264,32 @@ export type ReviewTask = {
 export type ActiveRestaurantSession =
   | { kind: 'building'; buildingId: number; unitId: number; name: string; address: string; startedAt: string }
   | { kind: 'request'; requestId: number; name: string; address: string; startedAt: string }
+
+export type SuggestionBlockFormat = 'structured' | 'free_text'
+
+export interface StructuredSuggestionBlock {
+  type: string
+    format: 'structured'
+  question: string
+  scripture: string
+  next_visit: string
+}
+
+export interface FreeTextSuggestionBlock {
+  type: string
+    format: 'free_text'
+  body: string
+}
+
+export type SuggestionBlock = StructuredSuggestionBlock | FreeTextSuggestionBlock
+
+export interface ServiceSuggestion {
+  id: number
+  title: string
+  show_title_on_home: boolean
+  tags: string[]
+  last_used_at?: string | null
+  is_visible: boolean
+  content: SuggestionBlock[]
+  created_at?: string
+}

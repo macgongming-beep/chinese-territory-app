@@ -140,6 +140,7 @@ function App() {
     eventInformalAssignments,
     eventRestaurantAssignments,
     informalGroups,
+    globalSettings,
     uploadInformalAsset,
     deleteInformalAsset,
     createInformalGroup,
@@ -366,6 +367,7 @@ function App() {
             onRemoveRestaurantAssignment={removeRestaurantAssignment}
             onToggleBuildingRestaurant={toggleBuildingRestaurant}
             restaurantRequests={restaurantRequests}
+            globalSettings={globalSettings}
             onApproveRestaurantRequest={approveRestaurantRequest}
             onRejectRestaurantRequest={rejectRestaurantRequest}
           />
@@ -450,6 +452,7 @@ function App() {
               onToggleBuildingRestaurant={toggleBuildingRestaurant}
               onSetRegularVisitor={setRegularVisitor}
               restaurantRequests={restaurantRequests}
+            globalSettings={globalSettings}
               onAddRestaurantVisit={addRestaurantVisit}
               onSubmitRestaurantRequest={submitRestaurantRequest}
               onUpdateRestaurantRequestMemo={updateRestaurantRequestMemo}

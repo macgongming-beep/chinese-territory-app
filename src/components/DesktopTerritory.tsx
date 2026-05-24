@@ -2530,13 +2530,13 @@ export function DesktopTerritory({
           )}
           <div className="building-management-table" role="table" aria-label="건물 관리 목록">
             <div className="building-management-head" role="row">
-              <label className="bulk-check">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: 6 }}>
                 <input
                   checked={filteredBuildings.length > 0 && filteredBuildings.every((building) => checkedBuildingIds.has(building.id))}
                   onChange={toggleAllFilteredBuildings}
                   type="checkbox"
                 />
-              </label>
+              </div>
               <span>건물</span>
               <span>주소</span>
               <span>카드</span>
@@ -2544,14 +2544,11 @@ export function DesktopTerritory({
               <span>세대</span>
               <span>중국인</span>
               <span>다수</span>
-              <span>정기</span>
-              <span>메모</span>
               <span>작업</span>
             </div>
             {sortedBuildings.map((building) => {
               const card = cardMap.get(building.cardId)
               const chineseCount = building.units.filter((unit) => unit.isChinese).length
-              const regularCount = building.units.filter((unit) => unit.isRegularVisit).length
               const isEditing = editingBuildingId === building.id
               const isDuplicate = duplicateBuildingIds.has(building.id)
               // 미배정 필터 활성 시 추천 카드 계산
@@ -2569,13 +2566,13 @@ export function DesktopTerritory({
               return (
                 <div className={`building-management-block${isDuplicate ? ' dup-address-row' : ''}`} key={building.id}>
                   <div className={`building-management-row${isEditing ? ' is-editing' : ''}`} role="row">
-                    <label className="bulk-check">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: 6 }}>
                       <input
                         checked={checkedBuildingIds.has(building.id)}
                         onChange={() => toggleCheckedBuilding(building.id)}
                         type="checkbox"
                       />
-                    </label>
+                    </div>
                     {isEditing ? (
                       <>
                         <input
@@ -2614,12 +2611,6 @@ export function DesktopTerritory({
                         >
                           {building.isChineseHeavy ? '다수' : '-'}
                         </button>
-                        <span>{regularCount}건</span>
-                        <input
-                          aria-label="메모"
-                          value={buildingEditDraft.memo}
-                          onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, memo: event.target.value }))}
-                        />
                         <span className="building-row-actions">
                           <button onClick={() => saveBuildingEdit(building)} type="button">저장</button>
                           <button onClick={() => setEditingBuildingId(null)} type="button">취소</button>
@@ -2656,8 +2647,6 @@ export function DesktopTerritory({
                         >
                           {building.isChineseHeavy ? '다수' : '-'}
                         </button>
-                        <span>{regularCount}건</span>
-                        <span>{building.memo || '-'}</span>
                         <span className="building-row-actions">
                           <button onClick={() => startBuildingEdit(building)} type="button">수정</button>
                           <button onClick={() => onOpenBuildingMap(building.id)} type="button">지도</button>

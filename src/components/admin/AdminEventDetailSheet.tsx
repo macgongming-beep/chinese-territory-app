@@ -28,6 +28,7 @@ type Props = {
   onEdit?: () => void
   onApply?: () => void
   onCancelApply?: () => void
+  globalSettings?: Record<string, string>
 }
 
 function ChevL({ size = 18 }: { size?: number }) {
@@ -94,6 +95,7 @@ export function AdminEventDetailSheet({
   onEdit,
   onApply,
   onCancelApply,
+  globalSettings = {},
 }: Props) {
   const isApplied = useMemo(() => event.applicants.includes(currentVisitor), [event.applicants, currentVisitor])
   // 신청은 모든 역할 가능 (admin 도 본인이 참가 의사 표할 수 있음).
@@ -103,6 +105,7 @@ export function AdminEventDetailSheet({
   const applicants = event.applicants ?? []
   const previewApplicants = applicants.slice(0, 6)
   const overflow = applicants.length - previewApplicants.length
+  const hideParticipants = globalSettings.hide_participants_from_users === 'true' && role === 'user'
   const [menuOpen, setMenuOpen] = useState(false)
 
   // 채팅 열기 — AppHeader 가 'app:open-event-chat' 리스닝하고 GlobalChatModal 오픈
@@ -381,6 +384,7 @@ export function AdminEventDetailSheet({
         )}
 
         {/* 신청자 — 디자인 02b 가로 스크롤 칩 strip */}
+        {!hideParticipants && (
         <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <SectionHead
             title={
@@ -472,6 +476,8 @@ export function AdminEventDetailSheet({
             )}
           </div>
         </section>
+
+        )}
 
         <CommentSection
           compact

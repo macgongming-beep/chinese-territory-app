@@ -30,12 +30,20 @@ function buildInitialDraft(event: CalendarEvent): AssignmentDraft {
   return { status: 'draft', updatedAt: null, teams, guests: [] }
 }
 
+function canManageAssignment(event: CalendarEvent | null, currentVisitor: string, role: Role, actualRole?: Role) {
+  if (!event) return false
+  const effectiveRole = actualRole ?? role
+  if (effectiveRole === 'admin' || effectiveRole === 'developer') return true
+  return event.leader === currentVisitor
+}
+
 // ── PC 전용 인도자 배정 뷰 ─────────────────────────────────────────
 function DesktopLeaderAssignmentView({
   cards,
   calendarEvents,
   currentVisitor,
   role,
+  actualRole,
   onAssignCardsToEventParticipantsBulk,
   buildings = [],
   informalAssets = [],
@@ -52,6 +60,7 @@ function DesktopLeaderAssignmentView({
   calendarEvents: CalendarEvent[]
   currentVisitor: string
   role: Role
+  actualRole?: Role
   onAssignCardsToEventParticipantsBulk: (eventId: number, assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>, options?: { silentSuccess?: boolean }) => Promise<void> | void
   informalAssets?: InformalAsset[]
   eventInformalAssignments?: EventInformalAssignment[]
@@ -74,8 +83,7 @@ function DesktopLeaderAssignmentView({
   // 오늘 일정
   const todayEvents = useMemo(() => {
     const all = calendarEvents.filter((e) => e.date === today)
-    const own = all.filter((e) => e.leader === currentVisitor)
-    return own.length > 0 ? own : all
+    return all.sort((a, b) => `${a.time} ${a.title}`.localeCompare(`${b.time} ${b.title}`, 'ko'))
   }, [calendarEvents, currentVisitor, today])
 
   const [selectedEventId, setSelectedEventId] = useState<number>(todayEvents[0]?.id ?? 0)
@@ -102,6 +110,7 @@ function DesktopLeaderAssignmentView({
   }, [selectedEventId, todayEvents])
 
   const selectedEvent = todayEvents.find((e) => e.id === selectedEventId) ?? null
+  const canEditSelectedEvent = canManageAssignment(selectedEvent, currentVisitor, role, actualRole)
 
   useEffect(() => {
     if (!selectedEvent) { setDraft(null); return }
@@ -143,6 +152,7 @@ function DesktopLeaderAssignmentView({
   }
 
   const addCardToTeam = (cardId: number) => {
+    if (!canEditSelectedEvent) return
     if (!draft) return
     if (draft.teams.some((t) => t.cardIds.includes(cardId))) return
 
@@ -166,12 +176,14 @@ function DesktopLeaderAssignmentView({
   }
 
   const removeCardFromTeam = (teamId: string, cardId: number) => {
+    if (!canEditSelectedEvent) return
     if (!draft) return
     const nextTeams = draft.teams.map((t) => t.id !== teamId ? t : { ...t, cardIds: t.cardIds.filter((id) => id !== cardId) })
     persistDraft({ ...draft, teams: nextTeams })
   }
 
   const createEmptyTeam = () => {
+    if (!canEditSelectedEvent) return
     if (!draft) return
     const newTeam: DraftTeam = {
       id: `team-${Date.now()}`,
@@ -183,11 +195,13 @@ function DesktopLeaderAssignmentView({
   }
 
   const deleteTeam = (teamId: string) => {
+    if (!canEditSelectedEvent) return
     if (!draft) return
     persistDraft({ ...draft, teams: draft.teams.filter((t) => t.id !== teamId) })
   }
 
   const toggleMember = (teamId: string, name: string) => {
+    if (!canEditSelectedEvent) return
     if (!draft) return
     const alreadyIn = draft.teams.find((t) => t.id === teamId)?.members.includes(name)
     const nextTeams = draft.teams.map((t) => {
@@ -199,6 +213,7 @@ function DesktopLeaderAssignmentView({
   }
 
   const addGuest = () => {
+    if (!canEditSelectedEvent) return
     const name = addGuestInput.trim()
     if (!name || !draft) return
     if (participants.some((p) => p.name === name)) { showToast('이미 있는 이름입니다.', 'info'); return }
@@ -215,6 +230,7 @@ function DesktopLeaderAssignmentView({
   }
 
   const assignSelectedToTeam = (teamId: string) => {
+    if (!canEditSelectedEvent) return
     if (!draft || selectedParticipants.size === 0) return
     const names = Array.from(selectedParticipants)
     const nextTeams = draft.teams.map((t) => {
@@ -230,6 +246,7 @@ function DesktopLeaderAssignmentView({
   }
 
   const persistShared = async (d: AssignmentDraft) => {
+    if (!canEditSelectedEvent) return
     if (!selectedEvent) return
     const realParticipants = participants.filter((p) => p.tag !== '게스트')
     const assignments = realParticipants.map((p) => {
@@ -240,6 +257,10 @@ function DesktopLeaderAssignmentView({
   }
 
   const saveStatus = async (status: AssignmentStatus) => {
+    if (!canEditSelectedEvent) {
+      showToast('이 봉사는 보기 전용입니다.', 'info')
+      return
+    }
     if (!draft || !selectedEvent) return
     if ((status === 'confirmed' || status === 'shared') && unassigned.length > 0) { setPendingAction(status); return }
     setSaving(true)
@@ -252,6 +273,7 @@ function DesktopLeaderAssignmentView({
   }
 
   const continuePending = async () => {
+    if (!canEditSelectedEvent) return
     if (!pendingAction || !draft) return
     const action = pendingAction; setPendingAction(null); setSaving(true)
     const next = persistDraft(draft, action)
@@ -307,8 +329,14 @@ function DesktopLeaderAssignmentView({
         <div className="page-header-actions">
           {draft && <span className={`dla-status-badge ${draftStatus}`}>{statusLabel}</span>}
           {unassigned.length > 0 && <span className="dla-badge-red">미배정 {unassigned.length}명</span>}
-          <button className="dla-btn-ghost" disabled={saving || !selectedEvent} onClick={() => void saveStatus('draft')} type="button">임시 저장</button>
-          <button className="dla-btn-primary" disabled={saving || !selectedEvent} onClick={() => void saveStatus('shared')} type="button">{shareButtonLabel}</button>
+          {canEditSelectedEvent ? (
+            <>
+              <button className="dla-btn-ghost" disabled={saving || !selectedEvent} onClick={() => void saveStatus('draft')} type="button">임시 저장</button>
+              <button className="dla-btn-primary" disabled={saving || !selectedEvent} onClick={() => void saveStatus('shared')} type="button">{shareButtonLabel}</button>
+            </>
+          ) : (
+            <span className="dla-readonly-badge">보기 전용</span>
+          )}
         </div>
       </header>
 
@@ -325,7 +353,7 @@ function DesktopLeaderAssignmentView({
               onChange={(e) => setSelectedEventId(Number(e.target.value))}
             >
               {todayEvents.map((event) => (
-                <option key={event.id} value={event.id}>{event.time} {event.title} ({event.place})</option>
+                <option key={event.id} value={event.id}>{event.time} {event.title} · 인도자 {event.leader || '미정'} ({event.place})</option>
               ))}
             </select>
           )}
@@ -336,6 +364,7 @@ function DesktopLeaderAssignmentView({
               <strong>{today} {selectedEvent.title}</strong>
               <span>{selectedEvent.time}</span>
             </div>
+            <em className="dla-selected-event-leader">인도자 {selectedEvent.leader || '미정'} · {canEditSelectedEvent ? '편집 가능' : '보기 전용'}</em>
             <small>
               {(() => {
                 const summary = getEventSummary(selectedEvent)
@@ -374,7 +403,7 @@ function DesktopLeaderAssignmentView({
               </label>
             </div>
             {/* 카드 추가 모드일 때 col1 헤더 안내 */}
-            {addCardToTeamId && (
+                    {addCardToTeamId && canEditSelectedEvent && (
               <div className="dla-col1-pick-mode">
                 카드를 클릭해서 팀에 추가하세요
               </div>
@@ -390,7 +419,7 @@ function DesktopLeaderAssignmentView({
                     className={`dla-card-item ${used && !pickMode ? 'used' : ''} ${pickMode && !used ? 'pick-mode' : ''}`}
                     onClick={() => addCardToTeam(card.id)}
                     type="button"
-                    disabled={used && !pickMode}
+                    disabled={!canEditSelectedEvent || (used && !pickMode)}
                   >
                     <div className="dla-card-item-info">
                       <strong>{card.name}</strong>
@@ -420,12 +449,14 @@ function DesktopLeaderAssignmentView({
                 <h2>팀 구성</h2>
                 <p className="dla-col-subtitle">선택 카드 {usedCardIds.length}개 · 팀 {draft?.teams.length ?? 0}개</p>
               </div>
-              <button className="dla-add-team-inline-btn" onClick={createEmptyTeam} type="button">+ 팀 추가</button>
+              {canEditSelectedEvent && (
+                <button className="dla-add-team-inline-btn" onClick={createEmptyTeam} type="button">+ 팀 추가</button>
+              )}
             </div>
 
             {/* 참가자 선택 힌트 바 */}
             {/* 카드 추가 모드 안내 — "+ 카드 추가" 클릭 시에만 표시 */}
-            {addCardToTeamId && (
+            {addCardToTeamId && canEditSelectedEvent && (
               <div className="dla-card-pick-hint">
                 왼쪽 카드 목록에서 카드를 선택하면 이 팀에 카드가 추가됩니다.
                 <button
@@ -439,7 +470,7 @@ function DesktopLeaderAssignmentView({
             )}
 
             {/* 참가자 선택 힌트 바 */}
-            {selectedParticipants.size > 0 && (
+                    {selectedParticipants.size > 0 && canEditSelectedEvent && (
               <div className="dla-hint-bar">
                 <div className="dla-hint-top">
                   <span className="dla-hint-names">
@@ -459,7 +490,7 @@ function DesktopLeaderAssignmentView({
               )}
               {(draft?.teams ?? []).map((team) => {
                 const teamCards = team.cardIds.map((id) => cards.find((c) => c.id === id)).filter(Boolean) as TerritoryCard[]
-                const canAssign = selectedParticipants.size > 0
+                const canAssign = canEditSelectedEvent && selectedParticipants.size > 0
                 return (
                   <div key={team.id} className={`dla-team-card tone-${team.color} ${canAssign ? 'assignable' : ''}`}>
 
@@ -468,7 +499,7 @@ function DesktopLeaderAssignmentView({
                       <div className="dla-team-head-left">
                         <strong
                           className="dla-team-name"
-                          contentEditable
+                          contentEditable={canEditSelectedEvent}
                           suppressContentEditableWarning
                           onBlur={(e) => {
                             const n = e.currentTarget.textContent?.trim()
@@ -480,16 +511,20 @@ function DesktopLeaderAssignmentView({
                         <span className="dla-team-subtitle">팀원 {team.members.length}명</span>
                       </div>
                       <div className="dla-team-actions">
-                        <button
-                          className={`dla-team-action-btn ${addCardToTeamId === team.id ? 'active' : ''}`}
-                          type="button"
-                          onClick={() => setAddCardToTeamId(addCardToTeamId === team.id ? null : team.id)}
-                        >
-                          {addCardToTeamId === team.id ? '취소' : '카드 변경'}
-                        </button>
-                        <button className="dla-team-action-btn danger" onClick={() => deleteTeam(team.id)} type="button">
-                          팀 삭제
-                        </button>
+                        {canEditSelectedEvent && (
+                          <>
+                            <button
+                              className={`dla-team-action-btn ${addCardToTeamId === team.id ? 'active' : ''}`}
+                              type="button"
+                              onClick={() => setAddCardToTeamId(addCardToTeamId === team.id ? null : team.id)}
+                            >
+                              {addCardToTeamId === team.id ? '취소' : '카드 변경'}
+                            </button>
+                            <button className="dla-team-action-btn danger" onClick={() => deleteTeam(team.id)} type="button">
+                              팀 삭제
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -503,16 +538,20 @@ function DesktopLeaderAssignmentView({
                               <strong>{c.name}</strong>
                               <span>세대 {c.units} · 진행률 {c.progress}%</span>
                             </div>
-                            <button className="dla-tile-remove" onClick={() => removeCardFromTeam(team.id, c.id)} type="button">×</button>
+                            {canEditSelectedEvent && (
+                              <button className="dla-tile-remove" onClick={() => removeCardFromTeam(team.id, c.id)} type="button">×</button>
+                            )}
                           </div>
                         ))}
-                        <button
-                          className={`dla-add-card-tile ${addCardToTeamId === team.id ? 'active' : ''}`}
-                          type="button"
-                          onClick={() => setAddCardToTeamId(addCardToTeamId === team.id ? null : team.id)}
-                        >
-                          {addCardToTeamId === team.id ? '← 카드 선택 중...' : '+ 카드 추가'}
-                        </button>
+                        {canEditSelectedEvent && (
+                          <button
+                            className={`dla-add-card-tile ${addCardToTeamId === team.id ? 'active' : ''}`}
+                            type="button"
+                            onClick={() => setAddCardToTeamId(addCardToTeamId === team.id ? null : team.id)}
+                          >
+                            {addCardToTeamId === team.id ? '← 카드 선택 중...' : '+ 카드 추가'}
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -521,23 +560,25 @@ function DesktopLeaderAssignmentView({
                       <span className="dla-team-section-label">팀원</span>
                       <div className="dla-team-members">
                         {team.members.map((m) => (
-                          <button key={m} className="dla-member-chip" onClick={() => toggleMember(team.id, m)} type="button">
-                            {m} <span>×</span>
+                          <button key={m} className="dla-member-chip" onClick={() => toggleMember(team.id, m)} type="button" disabled={!canEditSelectedEvent}>
+                            {m} {canEditSelectedEvent && <span>×</span>}
                           </button>
                         ))}
-                        <button
-                          className={`dla-add-member-btn ${addMemberTeamId === team.id ? 'active' : ''}`}
-                          type="button"
-                          onClick={() => {
-                            if (unassigned.length === 0 && addMemberTeamId !== team.id) {
-                              showToast('미배정 참가자가 없습니다.', 'info')
-                              return
-                            }
-                            setAddMemberTeamId((current) => current === team.id ? null : team.id)
-                          }}
-                        >
-                          {addMemberTeamId === team.id ? '선택 닫기' : '+ 팀원 추가'}
-                        </button>
+                        {canEditSelectedEvent && (
+                          <button
+                            className={`dla-add-member-btn ${addMemberTeamId === team.id ? 'active' : ''}`}
+                            type="button"
+                            onClick={() => {
+                              if (unassigned.length === 0 && addMemberTeamId !== team.id) {
+                                showToast('미배정 참가자가 없습니다.', 'info')
+                                return
+                              }
+                              setAddMemberTeamId((current) => current === team.id ? null : team.id)
+                            }}
+                          >
+                            {addMemberTeamId === team.id ? '선택 닫기' : '+ 팀원 추가'}
+                          </button>
+                        )}
                       </div>
                       {addMemberTeamId === team.id && (
                         <div className="dla-inline-member-picker">
@@ -586,33 +627,37 @@ function DesktopLeaderAssignmentView({
                                     <strong>{asset.name}</strong>
                                     <span>비공식 · {ids.length}명</span>
                                   </div>
-                                  <button
-                                    className="dla-tile-remove"
-                                    onClick={async () => {
-                                      if (!onRemoveInformalAssignment) return
-                                      for (const id of ids) await onRemoveInformalAssignment(id)
-                                    }}
-                                    type="button"
-                                  >
-                                    ×
-                                  </button>
+                                  {canEditSelectedEvent && (
+                                    <button
+                                      className="dla-tile-remove"
+                                      onClick={async () => {
+                                        if (!onRemoveInformalAssignment) return
+                                        for (const id of ids) await onRemoveInformalAssignment(id)
+                                      }}
+                                      type="button"
+                                    >
+                                      ×
+                                    </button>
+                                  )}
                                 </div>
                               )
                             })
                           })()}
-                          <button
-                            className="dla-add-card-tile"
-                            onClick={() => {
-                              if (team.members.length === 0) {
-                                showToast('먼저 팀원을 추가해 주세요.', 'info')
-                                return
-                              }
-                              setInformalPickerTeamId(team.id)
-                            }}
-                            type="button"
-                          >
-                            + 비공식 추가
-                          </button>
+                          {canEditSelectedEvent && (
+                            <button
+                              className="dla-add-card-tile"
+                              onClick={() => {
+                                if (team.members.length === 0) {
+                                  showToast('먼저 팀원을 추가해 주세요.', 'info')
+                                  return
+                                }
+                                setInformalPickerTeamId(team.id)
+                              }}
+                              type="button"
+                            >
+                              + 비공식 추가
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
@@ -638,33 +683,37 @@ function DesktopLeaderAssignmentView({
                                     <strong>{building.name || building.address}</strong>
                                     <span>식당 · {ids.length}명</span>
                                   </div>
-                                  <button
-                                    className="dla-tile-remove"
-                                    onClick={async () => {
-                                      if (!onRemoveRestaurantAssignment) return
-                                      for (const id of ids) await onRemoveRestaurantAssignment(id)
-                                    }}
-                                    type="button"
-                                  >
-                                    ×
-                                  </button>
+                                  {canEditSelectedEvent && (
+                                    <button
+                                      className="dla-tile-remove"
+                                      onClick={async () => {
+                                        if (!onRemoveRestaurantAssignment) return
+                                        for (const id of ids) await onRemoveRestaurantAssignment(id)
+                                      }}
+                                      type="button"
+                                    >
+                                      ×
+                                    </button>
+                                  )}
                                 </div>
                               )
                             })
                           })()}
-                          <button
-                            className="dla-add-card-tile"
-                            onClick={() => {
-                              if (team.members.length === 0) {
-                                showToast('먼저 팀원을 추가해 주세요.', 'info')
-                                return
-                              }
-                              setRestaurantPickerTeamId(team.id)
-                            }}
-                            type="button"
-                          >
-                            + 식당 추가
-                          </button>
+                          {canEditSelectedEvent && (
+                            <button
+                              className="dla-add-card-tile"
+                              onClick={() => {
+                                if (team.members.length === 0) {
+                                  showToast('먼저 팀원을 추가해 주세요.', 'info')
+                                  return
+                                }
+                                setRestaurantPickerTeamId(team.id)
+                              }}
+                              type="button"
+                            >
+                              + 식당 추가
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
@@ -713,7 +762,9 @@ function DesktopLeaderAssignmentView({
                   <div
                     key={`${p.tag}-${p.name}`}
                     className={`dla-participant-row ${team ? 'assigned' : ''} ${isSelected ? 'selected' : ''}`}
-                    onClick={() => toggleParticipantSelect(p.name)}
+                    onClick={() => {
+                      if (canEditSelectedEvent) toggleParticipantSelect(p.name)
+                    }}
                   >
                     <span className="dla-p-name">{p.name}</span>
                     {isSelected ? (
@@ -985,6 +1036,7 @@ export function DesktopLeaderAssignment({
   calendarEvents,
   currentVisitor,
   role,
+  actualRole,
   leaderNames = [],
   onSetCardLeaders,
   onSetMultipleCardLeaders: _onSetMultipleCardLeaders,
@@ -1004,6 +1056,7 @@ export function DesktopLeaderAssignment({
   calendarEvents: CalendarEvent[]
   currentVisitor: string
   role: Role
+  actualRole?: Role
   leaderNames?: string[]
   onSetCardLeaders: (cardId: number, leaders: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
   onSetMultipleCardLeaders: (cardIds: number[], leaders: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
@@ -1151,6 +1204,7 @@ export function DesktopLeaderAssignment({
         calendarEvents={calendarEvents}
         currentVisitor={currentVisitor}
         role={role}
+        actualRole={actualRole}
         onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
         buildings={buildings}
         informalAssets={informalAssets}

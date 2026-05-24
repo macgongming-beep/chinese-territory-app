@@ -90,12 +90,20 @@ function participantAssignedTeam(teams: DraftTeam[], participantName: string) {
   return teams.find((team) => team.members.includes(participantName))?.id ?? null
 }
 
+function canManageAssignment(event: CalendarEvent | null, currentVisitor: string, role: Role, actualRole?: Role) {
+  if (!event) return false
+  const effectiveRole = actualRole ?? role
+  if (effectiveRole === 'admin' || effectiveRole === 'developer') return true
+  return event.leader === currentVisitor
+}
+
 export function MobileLeaderAssignment({
   cards,
   buildings = [],
   calendarEvents,
   currentVisitor,
   role,
+  actualRole,
   onAssignCardsToEventParticipantsBulk,
   // v2 신 배정
   informalAssets = [],
@@ -113,6 +121,7 @@ export function MobileLeaderAssignment({
   calendarEvents: CalendarEvent[]
   currentVisitor: string
   role: Role
+  actualRole?: Role
   onAssignCardsToEventParticipantsBulk: (
     eventId: number,
     assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
@@ -130,7 +139,7 @@ export function MobileLeaderAssignment({
 }) {
   const navigate = useNavigate()
   const today = getTodayString()
-  const leaderMode = role === 'leader' || role === 'admin'
+  const leaderMode = role === 'leader' || role === 'admin' || role === 'developer'
 
   const accessibleCards = useMemo(
     () =>
@@ -149,8 +158,7 @@ export function MobileLeaderAssignment({
 
   const todayEvents = useMemo(() => {
     const allToday = calendarEvents.filter((event) => event.date === today)
-    const ownToday = allToday.filter((event) => event.leader === currentVisitor)
-    return ownToday.length > 0 ? ownToday : allToday
+    return allToday.sort((a, b) => `${a.time} ${a.title}`.localeCompare(`${b.time} ${b.title}`, 'ko'))
   }, [calendarEvents, currentVisitor, today])
 
   // 디자인 v2 28 — 다가오는 봉사 (오늘+1 ~ 오늘+14, 본인이 인도자)
@@ -194,6 +202,7 @@ export function MobileLeaderAssignment({
   }, [selectedEventId, todayEvents])
 
   const selectedEvent = todayEvents.find((event) => event.id === selectedEventId) ?? null
+  const canEditSelectedEvent = canManageAssignment(selectedEvent, currentVisitor, role, actualRole)
 
   useEffect(() => {
     if (!selectedEvent) {
@@ -306,6 +315,7 @@ export function MobileLeaderAssignment({
   }
 
   const applyCardToTeam = (cardId: number) => {
+    if (!canEditSelectedEvent) return
     if (!draft) return
     const existingTeam = draft.teams.find((team) => team.cardIds.includes(cardId))
     if (existingTeam && !cardActionTarget) {
@@ -342,6 +352,7 @@ export function MobileLeaderAssignment({
   }
 
   const createEmptyTeam = () => {
+    if (!canEditSelectedEvent) return
     if (!draft) return
     const newTeam: DraftTeam = {
       id: `team-${Date.now()}`,
@@ -357,6 +368,7 @@ export function MobileLeaderAssignment({
   }
 
   const updateTeam = (teamId: string, updater: (team: DraftTeam) => DraftTeam) => {
+    if (!canEditSelectedEvent) return
     if (!draft) return
     persistDraft({
       ...draft,
@@ -365,6 +377,7 @@ export function MobileLeaderAssignment({
   }
 
   const deleteTeam = (teamId: string) => {
+    if (!canEditSelectedEvent) return
     if (!draft) return
     const nextDraft = { ...draft, teams: draft.teams.filter((team) => team.id !== teamId) }
     persistDraft(nextDraft)
@@ -373,6 +386,7 @@ export function MobileLeaderAssignment({
 
 
   const persistSharedAssignments = async (nextDraft: AssignmentDraft) => {
+    if (!canEditSelectedEvent) return
     if (!selectedEvent) return
     const persistedParticipants = participants.filter((participant) => participant.tag !== '게스트')
     const assignments = persistedParticipants.map((participant) => {
@@ -387,6 +401,10 @@ export function MobileLeaderAssignment({
   }
 
   const saveAssignmentState = async (nextStatus: AssignmentStatus) => {
+    if (!canEditSelectedEvent) {
+      showToast('이 봉사는 보기 전용입니다.', 'info')
+      return
+    }
     if (!draft || !selectedEvent) return
     if ((nextStatus === 'confirmed' || nextStatus === 'shared') && unassignedParticipants.length > 0) {
       setPendingAction(nextStatus)
@@ -411,6 +429,7 @@ export function MobileLeaderAssignment({
   }
 
   const continuePendingAction = async () => {
+    if (!canEditSelectedEvent) return
     if (!pendingAction || !draft) return
     const action = pendingAction
     setPendingAction(null)
@@ -426,10 +445,12 @@ export function MobileLeaderAssignment({
   }
 
   const removeMemberFromTeam = (teamId: string, participantName: string) => {
+    if (!canEditSelectedEvent) return
     updateTeam(teamId, (team) => ({ ...team, members: team.members.filter((member) => member !== participantName) }))
   }
 
   const addMemberToTeam = (teamId: string, participantName: string) => {
+    if (!canEditSelectedEvent) return
     if (!draft) return
     const nextTeams = draft.teams.map((team) => {
       // remove from all teams first
@@ -494,6 +515,7 @@ export function MobileLeaderAssignment({
               <div className="ma-v2-today-list">
                 {todayEvents.map((event) => {
                   const summary = getEventSummary(event)
+                  const canEditEvent = canManageAssignment(event, currentVisitor, role, actualRole)
                   return (
                     <article className="ma-v2-today-row" key={event.id}>
                       <div className="ma-v2-today-row-main">
@@ -503,14 +525,14 @@ export function MobileLeaderAssignment({
                         </div>
                         <button
                           type="button"
-                          className="ma-v2-team-btn"
+                          className={`ma-v2-team-btn${canEditEvent ? '' : ' is-readonly'}`}
                           onClick={() => openAssignmentForEvent(event.id)}
                         >
-                          팀 구성
+                          {canEditEvent ? '팀 구성' : '구성 보기'}
                         </button>
                       </div>
                       <p className="ma-v2-today-meta">
-                        참가자 {summary.participants}명 · 팀 {summary.teams}개 · 배정 카드 {summary.cards}개 · 미배정 {summary.unassigned}명
+                        인도자 {event.leader || '미정'} · 참가자 {summary.participants}명 · 팀 {summary.teams}개 · 배정 카드 {summary.cards}개 · 미배정 {summary.unassigned}명
                       </p>
                     </article>
                   )
@@ -589,6 +611,11 @@ export function MobileLeaderAssignment({
           </nav>
 
           <div className="ma-content">
+            {!canEditSelectedEvent && (
+              <div className="ma-view-only-notice">
+                {selectedEvent.leader || '미정'} 인도 · 보기 전용
+              </div>
+            )}
 
             {/* ━━━ STEP 1: 카드 선택 — 디자인 v2 ━━━ */}
             {currentStep === 1 && (() => {
@@ -636,11 +663,12 @@ export function MobileLeaderAssignment({
 
                   {/* 미배정만 보기 토글 */}
                   <label className="ma-v2-only-unused">
-                    <input
-                      type="checkbox"
-                      checked={onlyUnusedCards}
-                      onChange={(e) => setOnlyUnusedCards(e.target.checked)}
-                    />
+                      <input
+                        type="checkbox"
+                        checked={onlyUnusedCards}
+                        onChange={(e) => setOnlyUnusedCards(e.target.checked)}
+                        disabled={!canEditSelectedEvent}
+                      />
                     미배정 카드만
                   </label>
 
@@ -686,6 +714,7 @@ export function MobileLeaderAssignment({
                                 key={card.id}
                                 className={`ma-v2-card-row${selected ? ' is-selected' : ''}`}
                                 onClick={() => applyCardToTeam(card.id)}
+                                disabled={!canEditSelectedEvent}
                               >
                                 <span className={`ma-v2-card-check${selected ? ' is-on' : ''}`}>
                                   {selected && (
@@ -717,9 +746,11 @@ export function MobileLeaderAssignment({
                     <p className="ma-v2-empty">조건에 맞는 카드가 없습니다.</p>
                   )}
 
-                  <button className="ma-v2-add-card-direct" onClick={createEmptyTeam} type="button">
-                    + 카드 직접 추가
-                  </button>
+                  {canEditSelectedEvent && (
+                    <button className="ma-v2-add-card-direct" onClick={createEmptyTeam} type="button">
+                      + 카드 직접 추가
+                    </button>
+                  )}
                 </article>
               )
             })()}
@@ -729,10 +760,12 @@ export function MobileLeaderAssignment({
               <article className="ma-v2-step2">
                 <div className="ma-v2-step-head">
                   <h2>2. 팀 구성</h2>
-                  <button className="ma-v2-add-team-btn" onClick={createEmptyTeam} type="button">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    팀 추가
-                  </button>
+                  {canEditSelectedEvent && (
+                    <button className="ma-v2-add-team-btn" onClick={createEmptyTeam} type="button">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      팀 추가
+                    </button>
+                  )}
                 </div>
                 <p className="ma-v2-step-desc">선택 카드 {usedCardIds.length}개 · 팀 {draft?.teams.length ?? 0}개</p>
                 {/* 팀 카드 목록 */}
@@ -745,15 +778,19 @@ export function MobileLeaderAssignment({
                           <div>
                             <div className="ma-team-name-row">
                               <strong>{team.name}</strong>
-                              <button className="ma-icon-btn" onClick={() => { const n = prompt('팀 이름 변경', team.name); if (n?.trim()) updateTeam(team.id, (t) => ({ ...t, name: n.trim() })) }} title="팀 이름 변경" type="button">
-                                <svg viewBox="0 0 24 24" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" fill="none" stroke="currentColor" strokeWidth="2"/></svg>
-                              </button>
+                              {canEditSelectedEvent && (
+                                <button className="ma-icon-btn" onClick={() => { const n = prompt('팀 이름 변경', team.name); if (n?.trim()) updateTeam(team.id, (t) => ({ ...t, name: n.trim() })) }} title="팀 이름 변경" type="button">
+                                  <svg viewBox="0 0 24 24" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" fill="none" stroke="currentColor" strokeWidth="2"/></svg>
+                                </button>
+                              )}
                             </div>
                           </div>
-                          <div className="ma-team-head-actions">
-                            <button className="ma-outline-btn" onClick={() => { setCardActionTarget({ teamId: team.id, mode: 'replace' }); setCurrentStep(1) }} type="button">카드 변경</button>
-                            <button className="ma-outline-btn danger" onClick={() => deleteTeam(team.id)} type="button">팀 삭제</button>
-                          </div>
+                          {canEditSelectedEvent && (
+                            <div className="ma-team-head-actions">
+                              <button className="ma-outline-btn" onClick={() => { setCardActionTarget({ teamId: team.id, mode: 'replace' }); setCurrentStep(1) }} type="button">카드 변경</button>
+                              <button className="ma-outline-btn danger" onClick={() => deleteTeam(team.id)} type="button">팀 삭제</button>
+                            </div>
+                          )}
                         </div>
 
                         {/* 카드 목록 */}
@@ -768,25 +805,29 @@ export function MobileLeaderAssignment({
                               </div>
                             </div>
                           ))}
-                          <button className="ma-team-add-card" onClick={() => { setCardActionTarget({ teamId: team.id, mode: 'append' }); setCurrentStep(1) }} type="button">+ 카드 추가</button>
+                          {canEditSelectedEvent && (
+                            <button className="ma-team-add-card" onClick={() => { setCardActionTarget({ teamId: team.id, mode: 'append' }); setCurrentStep(1) }} type="button">+ 카드 추가</button>
+                          )}
                         </div>
 
                         <p className="ma-team-sub">팀원</p>
                         <div className="ma-team-members">
                           {team.members.map((member) => (
-                            <button className="ma-team-member-chip" key={member} onClick={() => removeMemberFromTeam(team.id, member)} type="button">
+                            <button className="ma-team-member-chip" key={member} onClick={() => removeMemberFromTeam(team.id, member)} type="button" disabled={!canEditSelectedEvent}>
                               <span className="ma-team-member-avatar" aria-hidden>{member.slice(0, 1)}</span>
                               <strong>{member}</strong>
-                              <span className="ma-team-member-x" aria-hidden>×</span>
+                              {canEditSelectedEvent && <span className="ma-team-member-x" aria-hidden>×</span>}
                             </button>
                           ))}
-                          <button
-                            className={`ma-team-add-member${addMemberTeamId === team.id ? ' active' : ''}`}
-                            onClick={() => setAddMemberTeamId((current) => current === team.id ? null : team.id)}
-                            type="button"
-                          >
-                            {addMemberTeamId === team.id ? '선택 닫기' : '+ 팀원 추가'}
-                          </button>
+                          {canEditSelectedEvent && (
+                            <button
+                              className={`ma-team-add-member${addMemberTeamId === team.id ? ' active' : ''}`}
+                              onClick={() => setAddMemberTeamId((current) => current === team.id ? null : team.id)}
+                              type="button"
+                            >
+                              {addMemberTeamId === team.id ? '선택 닫기' : '+ 팀원 추가'}
+                            </button>
+                          )}
                         </div>
                         {addMemberTeamId === team.id && (
                           <div className="ma-inline-member-picker">
@@ -837,30 +878,34 @@ export function MobileLeaderAssignment({
                                         <strong>{asset.name}</strong>
                                         <span>비공식 · {items.filter((i) => i.assetId === assetId).length}명</span>
                                       </div>
-                                      <button
-                                        type="button"
-                                        className="ma-team-spot-remove"
-                                        onClick={async () => {
-                                          if (!onRemoveInformalAssignment) return
-                                          for (const id of ids) await onRemoveInformalAssignment(id)
-                                        }}
-                                        aria-label="제거"
-                                      >×</button>
+                                      {canEditSelectedEvent && (
+                                        <button
+                                          type="button"
+                                          className="ma-team-spot-remove"
+                                          onClick={async () => {
+                                            if (!onRemoveInformalAssignment) return
+                                            for (const id of ids) await onRemoveInformalAssignment(id)
+                                          }}
+                                          aria-label="제거"
+                                        >×</button>
+                                      )}
                                     </div>
                                   )
                                 })
                               })()}
-                              <button
-                                className="ma-team-add-card ma-team-add-informal"
-                                onClick={() => {
-                                  if (team.members.length === 0) {
-                                    showToast('먼저 팀원을 추가해 주세요.', 'info')
-                                    return
-                                  }
-                                  setInformalPickerTeamId(team.id)
-                                }}
-                                type="button"
-                              >+ 비공식 추가</button>
+                              {canEditSelectedEvent && (
+                                <button
+                                  className="ma-team-add-card ma-team-add-informal"
+                                  onClick={() => {
+                                    if (team.members.length === 0) {
+                                      showToast('먼저 팀원을 추가해 주세요.', 'info')
+                                      return
+                                    }
+                                    setInformalPickerTeamId(team.id)
+                                  }}
+                                  type="button"
+                                >+ 비공식 추가</button>
+                              )}
                             </div>
                           </>
                         )}
@@ -887,20 +932,22 @@ export function MobileLeaderAssignment({
                                         <strong>{b.name || b.address}</strong>
                                         <span>식당 · {items.filter((i) => i.buildingId === bId).length}명</span>
                                       </div>
-                                      <button
-                                        type="button"
-                                        className="ma-team-spot-remove"
-                                        onClick={async () => {
-                                          if (!onRemoveRestaurantAssignment) return
-                                          for (const id of ids) await onRemoveRestaurantAssignment(id)
-                                        }}
-                                        aria-label="제거"
-                                      >×</button>
+                                      {canEditSelectedEvent && (
+                                        <button
+                                          type="button"
+                                          className="ma-team-spot-remove"
+                                          onClick={async () => {
+                                            if (!onRemoveRestaurantAssignment) return
+                                            for (const id of ids) await onRemoveRestaurantAssignment(id)
+                                          }}
+                                          aria-label="제거"
+                                        >×</button>
+                                      )}
                                     </div>
                                   )
                                 })
                               })()}
-                              <button
+                              {canEditSelectedEvent && <button
                                 className="ma-team-add-card ma-team-add-restaurant"
                                 onClick={() => {
                                   if (team.members.length === 0) {
@@ -910,7 +957,7 @@ export function MobileLeaderAssignment({
                                   setRestaurantPickerTeamId(team.id)
                                 }}
                                 type="button"
-                              >+ 식당 추가</button>
+                              >+ 식당 추가</button>}
                             </div>
                           </>
                         )}
@@ -919,7 +966,7 @@ export function MobileLeaderAssignment({
                   })}
                 </div>
 
-                <button className="ma-add-team-btn" onClick={createEmptyTeam} type="button">+ 팀 추가</button>
+                {canEditSelectedEvent && <button className="ma-add-team-btn" onClick={createEmptyTeam} type="button">+ 팀 추가</button>}
               </article>
             )}
 
@@ -963,7 +1010,7 @@ export function MobileLeaderAssignment({
                             setCurrentStep(2)
                             return
                           }
-                          if (selectedTeamId) addMemberToTeam(selectedTeamId, participant.name)
+                          if (canEditSelectedEvent && selectedTeamId) addMemberToTeam(selectedTeamId, participant.name)
                         }}
                       >
                         <span className={`ma-v2-participant-avatar${assignedTeam ? '' : ' muted'}`}>
@@ -1008,10 +1055,16 @@ export function MobileLeaderAssignment({
             {currentStep === 3 && (
               <>
                 <button className="ma-v2-ghost-btn" onClick={goBack} type="button">이전</button>
-                <button className="ma-v2-ghost-btn" onClick={() => void saveAssignmentState('draft')} type="button">임시 저장</button>
-                <button className="ma-v2-next-btn" onClick={() => void saveAssignmentState('shared')} type="button">
-                  {draft?.status === 'shared' ? '배정 재공유' : '배정 공유'}
-                </button>
+                {canEditSelectedEvent ? (
+                  <>
+                    <button className="ma-v2-ghost-btn" onClick={() => void saveAssignmentState('draft')} type="button">임시 저장</button>
+                    <button className="ma-v2-next-btn" onClick={() => void saveAssignmentState('shared')} type="button">
+                      {draft?.status === 'shared' ? '배정 재공유' : '배정 공유'}
+                    </button>
+                  </>
+                ) : (
+                  <button className="ma-v2-next-btn" onClick={goBack} type="button">목록으로</button>
+                )}
               </>
             )}
           </div>

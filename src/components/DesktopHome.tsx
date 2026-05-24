@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { CalendarEvent, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot } from '../types'
+import type { CalendarEvent, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot } from '../types'
 import type { AppLanguage } from '../i18n'
 import { SpecialPeriodBanner } from './SpecialPeriodBanner'
 import { AdminMobileHome } from './admin/AdminMobileHome'
@@ -11,10 +11,7 @@ export function DesktopHome({
   calendarEvents,
   cards,
   currentVisitor,
-  notices,
   role,
-  onOpenCalendar,
-  onOpenNotices,
   specialPeriods,
   onOpenSettings,
   // Other required props by DesktopApp are ignored since we no longer use them
@@ -31,12 +28,12 @@ export function DesktopHome({
   onUncompleteReviewTask: _ourt,
   onUpdateReviewTask: _ourvt,
   onDeleteReviewTask: _odrt,
+  globalSettings = {},
 }: {
   language: AppLanguage
   calendarEvents: CalendarEvent[]
   cards: TerritoryCard[]
   currentVisitor: string
-  notices: Notice[]
   role: Role
   serviceSessions: ServiceSession[]
   returnVisits?: ReturnVisit[]
@@ -52,8 +49,6 @@ export function DesktopHome({
     memo?: string
   }) => Promise<number | null>
   onEndServiceSession: (sessionId: number) => void
-  onOpenCalendar: () => void
-  onOpenNotices: () => void
   onOpenTerritory: () => void
   reviewTasks: ReviewTask[]
   onCreateReviewTask: (title: string, content: string) => Promise<void>
@@ -63,6 +58,7 @@ export function DesktopHome({
   onDeleteReviewTask: (id: number) => Promise<void>
   specialPeriods?: SpecialPeriod[]
   onOpenSettings?: () => void
+  globalSettings?: Record<string, string>
 }) {
   const navigate = useNavigate()
   
@@ -70,7 +66,6 @@ export function DesktopHome({
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   }, [])
-  const [selectedWeekDate, setSelectedWeekDate] = useState<string | null>(null)
 
   const todayEvents = useMemo(() =>
     calendarEvents.filter((e) => e.date === today).sort((a, b) => a.time.localeCompare(b.time)),
@@ -88,23 +83,6 @@ export function DesktopHome({
       return { event, kind }
     })
   }, [todayEvents, currentVisitor])
-
-  const weekDays = useMemo(() => {
-    const todayDate = new Date(today + 'T00:00:00')
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(todayDate)
-      d.setDate(todayDate.getDate() + i)
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      return { date: d, iso, hasEvent: calendarEvents.some((e) => e.date === iso) }
-    })
-  }, [calendarEvents, today])
-
-  const selectedDateEvents = useMemo(() => {
-    const date = selectedWeekDate ?? today
-    return calendarEvents
-      .filter((e) => e.date === date)
-      .sort((a, b) => a.time.localeCompare(b.time))
-  }, [calendarEvents, selectedWeekDate, today])
 
   const leaderCards = useMemo(() => cards.filter((c) => c.assignedLeader === currentVisitor), [cards, currentVisitor])
   const inProgressCards = useMemo(() => cards.filter((c) => c.status === '진행중'), [cards])
@@ -129,39 +107,24 @@ export function DesktopHome({
         {role === 'admin' ? (
           <AdminMobileHome
             language={language}
-            notices={notices}
             todayEvents={todayEvents}
             cards={cards}
             totalUnits={totalUnits}
             completedUnits={completedUnits}
             inProgressCount={inProgressCards.length}
             unassignedCount={cards.filter((c) => c.status === '미배정').length}
-            onOpenNotices={onOpenNotices}
-            onOpenCalendar={onOpenCalendar}
-            onOpenZone={() => navigate('/zone')}
-            weekDays={weekDays}
-            today={today}
-            selectedWeekDate={selectedWeekDate}
-            selectedDateEvents={selectedDateEvents}
-            onSelectWeekDate={setSelectedWeekDate}
+                        onOpenZone={() => navigate('/zone')}
             onOpenEventDetail={(id) => navigate(`/calendar?openEvent=${id}`)}
           />
         ) : (
           <UserMobileHome
             language={language}
-            notices={notices}
             myTodayEvents={myTodayEvents}
-            today={today}
-            selectedWeekDate={selectedWeekDate}
-            weekDays={weekDays}
-            selectedDateEvents={selectedDateEvents}
             leaderCards={leaderCards}
             role={role}
-            onSelectWeekDate={setSelectedWeekDate}
-            onOpenNotices={onOpenNotices}
-            onOpenCalendar={onOpenCalendar}
             onOpenEventDetail={(id) => navigate(`/calendar?openEvent=${id}`)}
             onOpenZone={() => navigate('/zone')}
+            globalSettings={globalSettings}
           />
         )}
       </div>

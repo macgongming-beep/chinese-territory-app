@@ -6,6 +6,7 @@ export function DesktopDataManagement() {
 
   const [resetEnabled, setResetEnabled] = useState(true)
   const [resetDays, setResetDays] = useState(90)
+  const [hideParticipants, setHideParticipants] = useState(false)
   const [resetSettingsLoaded, setResetSettingsLoaded] = useState(false)
   const [resetSaving, setResetSaving] = useState(false)
   const [manualResetting, setManualResetting] = useState(false)
@@ -21,12 +22,13 @@ export function DesktopDataManagement() {
   const [purgeResult, setPurgeResult] = useState<number | null>(null)
 
   useEffect(() => {
-    supabase.from('app_settings').select('key, value').in('key', ['visit_reset_enabled', 'visit_reset_days_met'])
+    supabase.from('app_settings').select('key, value').in('key', ['visit_reset_enabled', 'visit_reset_days_met', 'hide_participants_from_users'])
       .then(({ data }) => {
         if (!data) return
         data.forEach((row) => {
           if (row.key === 'visit_reset_enabled') setResetEnabled(row.value === 'true')
           if (row.key === 'visit_reset_days_met') setResetDays(Number(row.value) || 90)
+          if (row.key === 'hide_participants_from_users') setHideParticipants(row.value === 'true')
         })
         setResetSettingsLoaded(true)
       })
@@ -37,6 +39,7 @@ export function DesktopDataManagement() {
     await supabase.from('app_settings').upsert([
       { key: 'visit_reset_enabled',  value: String(resetEnabled) },
       { key: 'visit_reset_days_met', value: String(resetDays) },
+      { key: 'hide_participants_from_users', value: String(hideParticipants) },
     ])
     setResetSaving(false)
     window.alert('설정이 저장되었습니다.')
@@ -119,6 +122,24 @@ export function DesktopDataManagement() {
             )}
           </section>
         )}
+
+
+        <section className="desk-card ds-card">
+          <h2 className="desk-card__title" style={{ marginBottom: 12 }}>봉사자 참가 권한 설정</h2>
+          <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--gray-500)', lineHeight: 1.6 }}>
+            일반 봉사자에게 일정의 참가자 목록과 참가 인원을 숨길 수 있습니다. (인도자/관리자는 항상 볼 수 있습니다)
+          </p>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer' }}>
+            <input type="checkbox" checked={hideParticipants} onChange={(e) => setHideParticipants(e.target.checked)}
+              style={{ width: 15, height: 15, accentColor: 'var(--ink)' }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-800)' }}>일반 봉사자에게 참가자 목록 및 인원 숨기기</span>
+          </label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="ds-btn ds-btn-primary" onClick={saveResetSettings} disabled={resetSaving} type="button" style={{ opacity: resetSaving ? 0.6 : 1 }}>
+              {resetSaving ? '저장 중…' : '설정 저장'}
+            </button>
+          </div>
+        </section>
 
         <section className="desk-card ds-card">
           <h2 className="desk-card__title" style={{ marginBottom: 12 }}>방문기록 영구 삭제</h2>

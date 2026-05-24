@@ -482,3 +482,16 @@ export function toNotice(raw: RawNotice): Notice {
     createdAt: raw.created_at,
   }
 }
+
+export function toServiceSuggestion(row: any): import('../types').ServiceSuggestion {
+  return {
+    id: row.id,
+    title: row.title || '',
+    show_title_on_home: row.show_title_on_home ?? false,
+    tags: row.tags || [],
+    last_used_at: row.last_used_at,
+    is_visible: row.is_visible ?? false,
+    content: row.content || [],
+    created_at: row.created_at,
+  }
+}

@@ -11,6 +11,7 @@ import { DesktopMyService } from './DesktopMyService'
 import { DesktopMap } from './DesktopMap'
 import { DesktopAdminAssignment } from './DesktopAdminAssignment'
 import { DesktopLeaderAssignment } from './DesktopLeaderAssignment'
+import { AdminSuggestions } from './admin/AdminSuggestions'
 import { MobileUsers } from './MobileUsers'
 import { MobileNotices } from './MobileNotices'
 import { MobileSignupRequests } from './MobileSignupRequests'
@@ -155,6 +156,7 @@ export function DesktopApp({
   onChangePin,
   onUpdateMyProfile,
   onFetchMyLoginLogs,
+  globalSettings = {},
 }: {
   language: AppLanguage
   buildings: Building[]
@@ -293,6 +295,7 @@ export function DesktopApp({
   onChangePin: (newPin: string) => Promise<boolean>
   onUpdateMyProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
   onFetchMyLoginLogs: (limit?: number) => Promise<LoginLogRecord[]>
+  globalSettings?: Record<string, string>
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -505,16 +508,14 @@ export function DesktopApp({
             calendarEvents={calendarEvents}
             cards={cards}
             currentVisitor={currentVisitor}
-            notices={notices}
             role={viewMode}
             serviceSessions={serviceSessions}
             returnVisits={returnVisits}
             returnVisitLogs={returnVisitLogs}
             onApplyToEvent={onApplyToEvent}
             onStartServiceSession={(input) => startServiceSessionAndOpenMap({ ...input, role: viewMode })}
+            globalSettings={globalSettings}
             onEndServiceSession={onEndServiceSession}
-            onOpenCalendar={() => navigate('/calendar')}
-            onOpenNotices={() => navigate('/notices')}
             onOpenTerritory={() => navigate('/territory')}
             reviewTasks={reviewTasks}
             onCreateReviewTask={(title, content) => onCreateReviewTask(title, content, currentVisitor)}
@@ -551,6 +552,7 @@ export function DesktopApp({
             specialPeriods={specialPeriods}
             onRemoveParticipant={onRemoveParticipantFromEvent}
             onAddParticipant={onAddParticipantToEvent}
+            globalSettings={globalSettings}
           />
         } />
         {/* /territory → 나의봉사 (개인 봉사 현황) */}
@@ -753,6 +755,7 @@ export function DesktopApp({
               calendarEvents={calendarEvents}
               currentVisitor={currentVisitor}
               role={viewMode}
+              actualRole={actualRole}
               leaderNames={leaderNames}
               onSetCardLeaders={onSetCardLeaders}
               onSetMultipleCardLeaders={onSetMultipleCardLeaders}
@@ -796,6 +799,12 @@ export function DesktopApp({
               onFetchLoginLogs={onFetchMyLoginLogs}
             />
           } />
+          
+          <Route path="suggestions" element={
+            (viewMode === 'admin' || viewMode === 'developer')
+              ? <AdminSuggestions language={language} />
+              : <Navigate to="/settings/profile" replace />
+          } />
           <Route path="notification" element={
             <DesktopNotificationSettings userId={currentUserId} role={actualRole} />
           } />
@@ -838,11 +847,11 @@ export function DesktopApp({
             <section className="la-page" style={{ alignItems: 'center' }}>
               <div style={{ maxWidth: 640, width: '100%', position: 'relative', padding: '24px 0' }}>
                 <MobileNotices
+                  notices={notices}
                   language={language}
                   currentVisitor={currentVisitor}
                   currentUserId={currentUserId}
                   role={actualRole}
-                  notices={notices}
                   mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
                   onCreateNotice={onCreateNotice}
                   onDeleteNotice={onDeleteNotice}

@@ -88,6 +88,7 @@ export function DesktopCalendar({
   onCreateSpecialPeriod,
   onDeleteSpecialPeriod,
   specialPeriods,
+  globalSettings = {},
 }: {
   currentVisitor: string
   currentUserId?: number | null
@@ -112,6 +113,7 @@ export function DesktopCalendar({
   onCreateSpecialPeriod: (input: { label: string; startDate: string; endDate: string; color: string }) => void
   onDeleteSpecialPeriod: (id: number) => void
   specialPeriods: SpecialPeriod[]
+  globalSettings?: Record<string, string>
 }) {
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
@@ -600,6 +602,7 @@ export function DesktopCalendar({
                     key={event.id}
                     event={event}
                     role={role}
+                    globalSettings={globalSettings}
                     canEdit={canEdit}
                     canManage={canManage}
                     canAccessChat={canAccessChat}
@@ -673,6 +676,7 @@ export function DesktopCalendar({
 function EventDetailCard({
   event,
   role,
+  globalSettings,
   canEdit,
   canManage,
   canAccessChat,
@@ -697,6 +701,7 @@ function EventDetailCard({
 }: {
   event: CalendarEvent
   role: import('../types').Role
+  globalSettings: Record<string, string>
   canEdit: boolean
   canManage: boolean
   canAccessChat: boolean
@@ -819,55 +824,67 @@ function EventDetailCard({
         </div>
       )}
 
-      {/* 신청자 가로 스크롤 strip */}
-      <div className="event-applicants-section">
-        <div className="cal-section-head">
-          <h3>신청자 <span style={{ fontWeight: 500, color: 'var(--gray-400)', fontSize: 12, marginLeft: 4 }}>{event.applicants.length}</span></h3>
-          {(role === 'leader' || role === 'admin' || role === 'developer') && onAddParticipant && (
-            <div className="cal-add-participant-wrap" ref={addParticipantEventId === event.id ? addParticipantRef : undefined}>
-              <button
-                className="cal-add-participant-chip-btn"
-                type="button"
-                onClick={() => {
-                  setAddParticipantEventId(addParticipantEventId === event.id ? null : event.id)
-                  setAddParticipantQuery('')
-                }}
-              >+ 추가</button>
-              {addParticipantEventId === event.id && (
-                <div className="cal-add-participant-dropdown">
-                  <input
-                    autoFocus
-                    className="cal-add-participant-input"
-                    onBlur={() => window.setTimeout(() => setAddParticipantEventId(null), 150)}
-                    onChange={(e) => setAddParticipantQuery(e.target.value)}
-                    placeholder="이름 검색..."
-                    type="text"
-                    value={addParticipantQuery}
-                  />
-                  <div className="cal-add-participant-list">
-                    {allUserNames
-                      .filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery))
-                      .map((name) => (
-                        <button
-                          className="cal-add-participant-item"
-                          key={name}
-                          onMouseDown={() => {
-                            onAddParticipant(event.id, name)
-                            setAddParticipantEventId(null)
-                            setAddParticipantQuery('')
-                          }}
-                          type="button"
-                        >{name}</button>
-                      ))}
-                    {allUserNames.filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery)).length === 0 && (
-                      <span className="cal-add-participant-empty">추가할 회원이 없습니다</span>
-                    )}
+      {!(globalSettings?.hide_participants_from_users === 'true' && role === 'user') && (
+        <div className="event-applicants-section">
+          <div className="cal-section-head">
+            <h3>신청자 <span style={{ fontWeight: 500, color: 'var(--gray-400)', fontSize: 12, marginLeft: 4 }}>{event.applicants.length}</span></h3>
+            {(role === 'leader' || role === 'admin' || role === 'developer') && onAddParticipant && (
+              <div className="cal-add-participant-wrap" ref={addParticipantEventId === event.id ? addParticipantRef : undefined}>
+                <button
+                  className="cal-add-participant-chip-btn"
+                  type="button"
+                  onClick={() => {
+                    if (addParticipantEventId === event.id) {
+                      setAddParticipantEventId(null)
+                    } else {
+                      setAddParticipantEventId(event.id)
+                      setAddParticipantQuery('')
+                    }
+                  }}
+                >
+                  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" aria-hidden>
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  추가
+                </button>
+                {addParticipantEventId === event.id && (
+                  <div className="cal-add-participant-popover">
+                    <input
+                      className="cal-add-participant-input"
+                      autoFocus
+                      placeholder="이름 검색..."
+                      value={addParticipantQuery}
+                      onChange={(e) => setAddParticipantQuery(e.target.value)}
+                    />
+                    <div className="cal-add-participant-list">
+                      {allUserNames
+                        .filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery))
+                        .map((name) => (
+                          <button
+                            key={name}
+                            type="button"
+                            className="cal-add-participant-item"
+                            onClick={() => {
+                              onAddParticipant(event.id, name)
+                              setAddParticipantEventId(null)
+                            }}
+                          >
+                            <span className="cal-avatar-small">{name.slice(0, 1)}</span>
+                            {name}
+                          </button>
+                        ))}
+                      {allUserNames.filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery)).length === 0 && (
+                        <div style={{ padding: '10px', fontSize: 12, color: 'var(--gray-400)', textAlign: 'center' }}>
+                          검색 결과가 없습니다
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                )}
+              </div>
+            )}
+          </div>
         <div className="event-applicants-strip">
           {previewApplicants.map((name) => (
             <span className="event-applicant-chip" key={name}>
@@ -889,6 +906,7 @@ function EventDetailCard({
           )}
         </div>
       </div>
+      )}
 
       {/* 댓글 + 채팅 열기 — 모바일 방식: CommentSection headerRight 로 통합 */}
       <div className="event-collab-grid">
