@@ -251,14 +251,14 @@ export function AdminMobileHome({
         const activeDate = selectedWeekDate ?? today
         const wdShort = weekdayShortLabels[language]
         return (
-          <section>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0 4px' }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em' }}>{t(language, 'home.weekSchedule')}</h2>
-              <button type="button" onClick={onOpenCalendar} style={{ border: 'none', background: 'transparent', font: 'inherit', fontSize: 13, fontWeight: 500, color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 2, cursor: 'pointer', padding: 0 }}>
-                {t(language, 'home.viewAllBtn')} <ChevR size={12} color="var(--muted)" />
+          <section className="mobile-home-section">
+            <div className="mh-sec-head">
+              <h2>{t(language, 'home.weekSchedule')}</h2>
+              <button type="button" onClick={onOpenCalendar} className="mh-all">
+                {t(language, 'home.viewAllBtn')} <ChevR size={12} color="currentColor" />
               </button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginTop: 10, padding: 10, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
+            <div className="mh-week-dots">
               {weekDays.map((d, i) => {
                 const isToday = i === 0
                 const isSelected = d.iso === activeDate
@@ -267,24 +267,19 @@ export function AdminMobileHome({
                     key={d.iso}
                     type="button"
                     onClick={() => onSelectWeekDate(d.iso)}
-                    style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                      padding: '6px 2px', border: isSelected ? '2px solid var(--brand-700)' : '2px solid transparent',
-                      background: isToday || isSelected ? 'var(--tint)' : 'transparent',
-                      cursor: 'pointer', borderRadius: 8,
-                    }}
+                    className={`mh-week-dot-cell${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`}
                   >
-                    <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>{wdShort[d.date.getDay()]}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: isToday || isSelected ? 'var(--brand-700)' : 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{d.date.getDate()}</span>
-                    <span style={{ width: 5, height: 5, borderRadius: 99, background: d.hasEvent ? '#B8862A' : 'transparent', marginTop: 1 }} />
+                    <span className="mh-week-dot-wd">{wdShort[d.date.getDay()]}</span>
+                    <span className="mh-week-dot-day">{d.date.getDate()}</span>
+                    <span className={`mh-week-dot${d.hasEvent ? ' filled' : ''}`} />
                   </button>
                 )
               })}
             </div>
             {selectedDateEvents.length === 0 ? (
-              <Card padding={14} style={{ marginTop: 10, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-                {activeDate === today ? t(language, 'home.noEventsToday') : t(language, 'home.noEventsThisDay')}
-              </Card>
+              <div className="mh-empty-line" style={{ marginTop: 10 }}>
+                <span>{activeDate === today ? t(language, 'home.noEventsToday') : t(language, 'home.noEventsThisDay')}</span>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
                 {selectedDateEvents.map((event) => {
@@ -294,17 +289,13 @@ export function AdminMobileHome({
                   const dateLabel = diff === 0 ? t(language, 'home.dateToday') : diff === 1 ? t(language, 'home.dateTomorrow') : diff === 2 ? t(language, 'home.dateDayAfter') : `${date.getMonth() + 1}/${date.getDate()}(${wdShort[date.getDay()]})`
                   const participantCount = new Set([...(event.assigned ?? []), ...(event.applicants ?? [])]).size
                   return (
-                    <button key={event.id} type="button" onClick={() => onOpenEventDetail(event.id)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
-                      <Card padding={14}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#B8862A' }}>{dateLabel} {event.time}</span>
-                          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{event.title}</span>
-                          <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                            {event.leader ? formatLeaderOf(language, event.leader) : ''}
-                            {participantCount > 0 ? ` · ${formatJoined(language, participantCount)}` : ''}
-                          </span>
-                        </div>
-                      </Card>
+                    <button key={event.id} type="button" onClick={() => onOpenEventDetail(event.id)} className="mh-upcoming-row mh-upcoming-row--featured">
+                      <span className="mh-upcoming-date">{dateLabel} {event.time}</span>
+                      <span className="mh-upcoming-title">{event.title}</span>
+                      <span className="mh-upcoming-meta">
+                        {event.leader ? formatLeaderOf(language, event.leader) : ''}
+                        {participantCount > 0 ? ` · ${formatJoined(language, participantCount)}` : ''}
+                      </span>
                     </button>
                   )
                 })}

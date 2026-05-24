@@ -112,51 +112,53 @@ export function DesktopHome({
   const completedUnits = useMemo(() => cards.reduce((sum, card) => sum + card.completed, 0), [cards])
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', width: '100%', paddingBottom: 40, paddingTop: 16 }}>
-      {specialPeriods && specialPeriods.length > 0 && (
-        <div style={{ padding: '0 16px', marginBottom: '16px' }}>
-          <SpecialPeriodBanner specialPeriods={specialPeriods} variant="compact" onClick={onOpenSettings} />
-        </div>
-      )}
-      
-      {role === 'admin' ? (
-        <AdminMobileHome
-          language={language}
-          notices={notices}
-          todayEvents={todayEvents}
-          cards={cards}
-          totalUnits={totalUnits}
-          completedUnits={completedUnits}
-          inProgressCount={inProgressCards.length}
-          unassignedCount={cards.filter((c) => c.status === '미배정').length}
-          onOpenNotices={onOpenNotices}
-          onOpenCalendar={onOpenCalendar}
-          onOpenZone={() => navigate('/zone')}
-          weekDays={weekDays}
-          today={today}
-          selectedWeekDate={selectedWeekDate}
-          selectedDateEvents={selectedDateEvents}
-          onSelectWeekDate={setSelectedWeekDate}
-          onOpenEventDetail={(id) => navigate(`/calendar?openEvent=${id}`)}
-        />
-      ) : (
-        <UserMobileHome
-          language={language}
-          notices={notices}
-          myTodayEvents={myTodayEvents}
-          today={today}
-          selectedWeekDate={selectedWeekDate}
-          weekDays={weekDays}
-          selectedDateEvents={selectedDateEvents}
-          leaderCards={leaderCards}
-          role={role}
-          onSelectWeekDate={setSelectedWeekDate}
-          onOpenNotices={onOpenNotices}
-          onOpenCalendar={onOpenCalendar}
-          onOpenEventDetail={(id) => navigate(`/calendar?openEvent=${id}`)}
-          onOpenZone={() => navigate('/zone')}
-        />
-      )}
-    </div>
+    <section className="la-page" style={{ alignItems: 'center' }}>
+      <div style={{ maxWidth: 640, width: '100%', paddingBottom: 40, paddingTop: 16 }}>
+        {specialPeriods && specialPeriods.length > 0 && (
+          <div style={{ padding: '0 16px', marginBottom: '16px' }}>
+            <SpecialPeriodBanner specialPeriods={specialPeriods} variant="compact" onClick={onOpenSettings} />
+          </div>
+        )}
+        
+        {role === 'admin' ? (
+          <AdminMobileHome
+            language={language}
+            notices={notices}
+            todayEvents={todayEvents}
+            cards={cards}
+            totalUnits={totalUnits}
+            completedUnits={completedUnits}
+            inProgressCount={inProgressCards.length}
+            unassignedCount={cards.filter((c) => c.status === '미배정').length}
+            onOpenNotices={onOpenNotices}
+            onOpenCalendar={onOpenCalendar}
+            onOpenZone={() => navigate('/zone')}
+            weekDays={weekDays}
+            today={today}
+            selectedWeekDate={selectedWeekDate}
+            selectedDateEvents={selectedDateEvents}
+            onSelectWeekDate={setSelectedWeekDate}
+            onOpenEventDetail={(id) => navigate(`/calendar?openEvent=${id}`)}
+          />
+        ) : (
+          <UserMobileHome
+            language={language}
+            notices={notices}
+            myTodayEvents={myTodayEvents}
+            today={today}
+            selectedWeekDate={selectedWeekDate}
+            weekDays={weekDays}
+            selectedDateEvents={selectedDateEvents}
+            leaderCards={leaderCards}
+            role={role}
+            onSelectWeekDate={setSelectedWeekDate}
+            onOpenNotices={onOpenNotices}
+            onOpenCalendar={onOpenCalendar}
+            onOpenEventDetail={(id) => navigate(`/calendar?openEvent=${id}`)}
+            onOpenZone={() => navigate('/zone')}
+          />
+        )}
+      </div>
+    </section>
   )
 }

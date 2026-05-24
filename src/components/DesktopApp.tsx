@@ -399,76 +399,101 @@ export function DesktopApp({
 
   return (
     <main className="desktop-shell">
-      <header className="desktop-header">
-        <div className="nav-brand">
+      <aside className="desktop-sidebar">
+        {/* Brand */}
+        <div className="nav-brand" style={{ paddingLeft: 8 }}>
           <div className="nav-mark" aria-hidden="true">
             <img src="/icons/icon-192.png" alt="" />
           </div>
           <div className="nav-brand-text">
-            <strong>Field Map</strong>
+            <strong style={{ fontSize: 18 }}>Field Map</strong>
             <span style={{ letterSpacing: '0.2em', fontSize: '10px' }}>YONGIN</span>
           </div>
         </div>
-        <nav className="desktop-nav" aria-label="관리 메뉴">
-          {visibleDesktopPages.map((item) => (
-            <button
-              className={item === activePage ? 'active' : ''}
-              key={item}
-              onClick={() => navigate(pageToPath[item])}
-              type="button"
-            >
-              {item}
-            </button>
-          ))}
+
+        {/* Navigation */}
+        <nav className="desktop-sidebar-nav" aria-label="관리 메뉴">
+          {visibleDesktopPages.map((item) => {
+            let icon = null;
+            if (item === '홈') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
+            else if (item === '공지') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>;
+            else if (item === '캘린더') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>;
+            else if (item === '구역') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>;
+            else if (item === '활동') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
+            else if (item === '배정') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
+            else if (item === '통계') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>;
+            else if (item === '설정') icon = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+
+            return (
+              <button
+                className={item === activePage ? 'active' : ''}
+                key={item}
+                onClick={() => navigate(pageToPath[item])}
+                type="button"
+              >
+                {icon}
+                {item}
+              </button>
+            )
+          })}
         </nav>
-        <div className="nav-user" ref={roleDropdownRef}>
-          <AppHeaderActionButtons
-            userId={currentUserId}
-            userName={currentVisitor}
-            role={viewMode}
-            chatUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role as Role }))}
-            onOpenMenu={() => navigate('/settings')}
-            className="desktop-header-actions"
-            buttonClassName="desktop-header-action"
-          />
-          <div className="nav-user-info">
-            <strong className="nav-user-name">{currentVisitor}</strong>
-            {actualRole === 'admin' ? (
-              <div className="nav-role-dropdown-wrap">
-                <button
-                  className="nav-role-dropdown-btn"
-                  onClick={() => setRoleDropdownOpen((o) => !o)}
-                  type="button"
-                >
-                  {viewMode === 'user' ? '봉사자' : roleLabels[viewMode]} 뷰
-                  <span className="nav-role-chevron">{roleDropdownOpen ? '▴' : '▾'}</span>
-                </button>
-                {roleDropdownOpen && (
-                  <div className="nav-role-dropdown-menu">
-                    {(['admin', 'leader', 'user'] as Role[]).map((role) => (
-                      <button
-                        className={viewMode === role ? 'active' : ''}
-                        key={role}
-                        onClick={() => handleViewModeChange(role)}
-                        type="button"
-                      >
-                        {role === 'user' ? '봉사자' : roleLabels[role]}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <span className="nav-user-role">{roleLabels[actualRole]}</span>
-            )}
+        {/* User Info & Actions (Bottom of sidebar) */}
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gray-500)' }}>알림 및 메시지</span>
+            <AppHeaderActionButtons
+              userId={currentUserId}
+              userName={currentVisitor}
+              role={viewMode}
+              chatUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role as Role }))}
+              onOpenMenu={() => navigate('/settings')}
+              className="desktop-header-actions"
+              buttonClassName="desktop-header-action"
+            />
           </div>
-          <div className={`nav-avatar${actualRole === 'admin' ? ' nav-avatar--admin' : ''}`}>
-            {currentVisitor.slice(0, 1) || '사'}
+          
+          <div className="nav-user" ref={roleDropdownRef} style={{ justifyContent: 'flex-start', padding: '12px 16px', background: 'var(--bg-wash)', borderRadius: 12 }}>
+            <div className={`nav-avatar${actualRole === 'admin' ? ' nav-avatar--admin' : ''}`}>
+              {currentVisitor.slice(0, 1) || '사'}
+            </div>
+            <div className="nav-user-info" style={{ alignItems: 'flex-start', flex: 1, minWidth: 0 }}>
+              <strong className="nav-user-name">{currentVisitor}</strong>
+              {actualRole === 'admin' ? (
+                <div className="nav-role-dropdown-wrap" style={{ width: '100%' }}>
+                  <button
+                    className="nav-role-dropdown-btn"
+                    onClick={() => setRoleDropdownOpen((o) => !o)}
+                    type="button"
+                    style={{ background: 'transparent', padding: 0, border: 'none', fontSize: 12, color: 'var(--gray-500)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    {viewMode === 'user' ? '봉사자' : roleLabels[viewMode]} 뷰
+                    <span className="nav-role-chevron">{roleDropdownOpen ? '▴' : '▾'}</span>
+                  </button>
+                  {roleDropdownOpen && (
+                    <div className="nav-role-dropdown-menu" style={{ bottom: '100%', top: 'auto', left: 0, right: 'auto', marginBottom: 8, width: '200px' }}>
+                      {(['admin', 'leader', 'user'] as Role[]).map((role) => (
+                        <button
+                          className={viewMode === role ? 'active' : ''}
+                          key={role}
+                          onClick={() => handleViewModeChange(role)}
+                          type="button"
+                        >
+                          {role === 'user' ? '봉사자' : roleLabels[role]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <span className="nav-user-role" style={{ marginTop: 2 }}>{roleLabels[actualRole]}</span>
+              )}
+            </div>
           </div>
         </div>
-      </header>
+      </aside>
 
-      <Routes>
+      <div className="desktop-main">
+        <Routes>
         <Route path="/" element={
           <DesktopHome
             language={language}
@@ -785,36 +810,39 @@ export function DesktopApp({
           } />
           <Route path="users" element={
             (viewMode === 'admin' || viewMode === 'developer')
-              ? <div style={{ maxWidth: 640, width: '100%', position: 'relative' }}><MobileUsers isEmbedded /></div>
+              ? <section className="la-page" style={{ alignItems: 'center' }}><div style={{ maxWidth: 640, width: '100%', position: 'relative', padding: '24px 0' }}><MobileUsers isEmbedded /></div></section>
               : <Navigate to="/settings/profile" replace />
           } />
           <Route path="signup-requests" element={
             (viewMode === 'admin' || viewMode === 'developer')
-              ? <div style={{ maxWidth: 640, width: '100%', position: 'relative' }}><MobileSignupRequests isEmbedded /></div>
+              ? <section className="la-page" style={{ alignItems: 'center' }}><div style={{ maxWidth: 640, width: '100%', position: 'relative', padding: '24px 0' }}><MobileSignupRequests isEmbedded /></div></section>
               : <Navigate to="/settings/profile" replace />
           } />
           <Route path="notices" element={
-            <div style={{ maxWidth: 640, width: '100%', position: 'relative' }}>
-              <MobileNotices
-                language={language}
-                currentVisitor={currentVisitor}
-                currentUserId={currentUserId}
-                role={actualRole}
-                notices={notices}
-                mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
-                onCreateNotice={onCreateNotice}
-                onDeleteNotice={onDeleteNotice}
-              />
-            </div>
+            <section className="la-page" style={{ alignItems: 'center' }}>
+              <div style={{ maxWidth: 640, width: '100%', position: 'relative', padding: '24px 0' }}>
+                <MobileNotices
+                  language={language}
+                  currentVisitor={currentVisitor}
+                  currentUserId={currentUserId}
+                  role={actualRole}
+                  notices={notices}
+                  mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
+                  onCreateNotice={onCreateNotice}
+                  onDeleteNotice={onDeleteNotice}
+                />
+              </div>
+            </section>
           } />
           <Route path="service-logs" element={
             (viewMode === 'admin' || viewMode === 'leader')
-              ? <div style={{ maxWidth: 640, width: '100%', position: 'relative' }}><ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={viewMode} isEmbedded /></div>
+              ? <section className="la-page" style={{ alignItems: 'center' }}><div style={{ maxWidth: 640, width: '100%', position: 'relative', padding: '24px 0' }}><ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={viewMode} isEmbedded /></div></section>
               : <Navigate to="/settings/profile" replace />
           } />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </div>
     </main>
   )
 }
