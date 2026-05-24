@@ -30,12 +30,19 @@ set search_path = public
 as $$
 declare
   v_role text;
+  v_token uuid;
 begin
+  begin
+    v_token := p_token::uuid;
+  exception when others then
+    raise exception 'invalid session';
+  end;
+
   select u.role
     into v_role
   from public.auth_sessions s
   join public.app_users u on u.id = s.user_id
-  where s.token = p_token
+  where s.token = v_token
     and (s.expires_at is null or s.expires_at > now())
     and coalesce(u.is_active, true) = true
   limit 1;
@@ -69,14 +76,21 @@ set search_path = public
 as $$
 declare
   v_role text;
+  v_token uuid;
   v_start time;
   v_end time;
 begin
+  begin
+    v_token := p_token::uuid;
+  exception when others then
+    raise exception 'invalid session';
+  end;
+
   select u.role
     into v_role
   from public.auth_sessions s
   join public.app_users u on u.id = s.user_id
-  where s.token = p_token
+  where s.token = v_token
     and (s.expires_at is null or s.expires_at > now())
     and coalesce(u.is_active, true) = true
   limit 1;
