@@ -830,6 +830,10 @@ function DesktopLeaderAssignmentView({
             .map((assignment) => assignment.assetId))
         })()}
         onSelect={async (assetId) => {
+          if (!canEditSelectedEvent) {
+            setInformalPickerTeamId(null)
+            return
+          }
           if (!informalPickerTeamId || !selectedEvent || !onAssignInformalToUser) return
           const team = draft?.teams.find((entry) => entry.id === informalPickerTeamId)
           if (!team) return
@@ -863,6 +867,10 @@ function DesktopLeaderAssignmentView({
             .map((assignment) => assignment.buildingId))
         })()}
         onSelect={async (buildingId) => {
+          if (!canEditSelectedEvent) {
+            setRestaurantPickerTeamId(null)
+            return
+          }
           if (!restaurantPickerTeamId || !selectedEvent || !onAssignRestaurantToUser) return
           const team = draft?.teams.find((entry) => entry.id === restaurantPickerTeamId)
           if (!team) return

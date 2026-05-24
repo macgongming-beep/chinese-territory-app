@@ -1111,6 +1111,10 @@ export function MobileLeaderAssignment({
             .map((a) => a.assetId))
         })()}
         onSelect={async (assetId) => {
+          if (!canEditSelectedEvent) {
+            setInformalPickerTeamId(null)
+            return
+          }
           if (!informalPickerTeamId || !selectedEvent || !onAssignInformalToUser) return
           const team = draft?.teams.find((t) => t.id === informalPickerTeamId)
           if (!team) return
@@ -1147,6 +1151,10 @@ export function MobileLeaderAssignment({
             .map((a) => a.buildingId))
         })()}
         onSelect={async (buildingId) => {
+          if (!canEditSelectedEvent) {
+            setRestaurantPickerTeamId(null)
+            return
+          }
           if (!restaurantPickerTeamId || !selectedEvent || !onAssignRestaurantToUser) return
           const team = draft?.teams.find((t) => t.id === restaurantPickerTeamId)
           if (!team) return

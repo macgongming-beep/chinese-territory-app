@@ -739,6 +739,7 @@ export function MobileHome({
                     
                     onOpenEventDetail={(id) => navigate(`/calendar?openEvent=${id}`)}
                     onOpenZone={() => navigate('/zone')}
+                    globalSettings={globalSettings}
                   />
                 )}
               </>

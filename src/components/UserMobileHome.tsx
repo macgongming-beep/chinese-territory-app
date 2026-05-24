@@ -48,17 +48,14 @@ export function UserMobileHome({
               const hideParticipants = globalSettings?.hide_participants_from_users === 'true' && role === 'user'
               const applicantsCountText = hideParticipants ? '' : formatApplied(language, event.applicants.length)
               const applicantsSubText = applicantsCountText ? ` · ${applicantsCountText}` : ''
-              const applicantsOnlySubText = applicantsCountText ? `${applicantsCountText}` : ''
+
+              const leaderText = event.leader ? formatLeaderOf(language, event.leader) : (t(language, 'territory.leaderTbd') || '인도자 미정')
 
               const sub = kind === 'lead'
-                ? formatLeadSub(language, hideParticipants ? 0 : event.applicants.length, event.cardAssignments.length)
+                ? (hideParticipants ? '' : formatLeadSub(language, event.applicants.length, event.cardAssignments.length))
                 : kind === 'join'
-                  ? (event.leader
-                    ? `${formatLeaderOf(language, event.leader)}${applicantsSubText}`
-                    : '')
-                  : (event.leader
-                    ? `${formatLeaderOf(language, event.leader)}${applicantsSubText}${event.allowApplications ? ` · ${t(language, 'home.signupOpen')}` : ''}`
-                    : `${applicantsOnlySubText}${event.allowApplications ? (applicantsOnlySubText ? ' · ' : '') + t(language, 'home.signupOpen') : ''}`)
+                  ? `${leaderText}${applicantsSubText}`
+                  : `${leaderText}${applicantsSubText}${event.allowApplications ? ` · ${t(language, 'home.signupOpen')}` : ''}`
               return (
                 <button
                   key={event.id}
@@ -89,7 +86,7 @@ export function UserMobileHome({
                       {event.place && sub && <span style={{ color: 'var(--muted-3)', fontSize: 12 }}>·</span>}
                       {sub && (
                         <span className="mh-today-sub" style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          {kind !== 'lead' && event.leader && (
+                          {kind !== 'lead' && (
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                           )}
                           {sub}
