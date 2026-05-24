@@ -136,8 +136,8 @@ button:focus-visible {
 }
 
 .app-header--mobile {
-  min-height: 56px;
-  padding: 0 16px 0 20px;
+  min-height: calc(56px + var(--safe-top));
+  padding: calc(10px + var(--safe-top)) 16px 10px 20px;
   background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
@@ -5073,7 +5073,7 @@ button:focus-visible {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 10px 12px;
+  padding: calc(10px + var(--safe-top)) 12px 10px;
   border-bottom: 1px solid var(--line);
   background: var(--bg);
   flex-shrink: 0;
@@ -5086,7 +5086,6 @@ button:focus-visible {
   left: 0;
   right: 0;
   z-index: 30;
-  padding-top: max(10px, env(safe-area-inset-top));
   background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
@@ -5793,7 +5792,7 @@ button:focus-visible {
 /* 디자인 23 매칭 — 압축 좌측 세로 legend */
 .mobile-map-legend-card {
   position: absolute;
-  top: calc(max(10px, env(safe-area-inset-top)) + 96px - var(--map-chips-push, 0px));
+  top: calc(var(--safe-top) + 106px - var(--map-chips-push, 0px));
   left: 12px;
   z-index: 20;
   display: flex;

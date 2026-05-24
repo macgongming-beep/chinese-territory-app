@@ -107,6 +107,10 @@
   --space-10: 40px;
   --space-12: 48px;
 
+  /* iPhone Dynamic Island / notch 대응 */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
   /* ================================================================
      하위 호환 별칭 — 기존 코드가 그대로 동작하도록
      ================================================================ */
