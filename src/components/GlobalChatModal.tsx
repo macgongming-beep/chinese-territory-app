@@ -126,12 +126,12 @@ export function GlobalChatModal({
         className="header-action-panel"
         style={{
           position: 'absolute',
-          top: 8,
+          top: 'calc(8px + var(--safe-top, env(safe-area-inset-top, 0px)))',
           left: '50%',
           transform: 'translateX(-50%)',
           width: 'calc(100% - 16px)',
           maxWidth: 480,
-          maxHeight: 'calc(100% - 16px)',
+          maxHeight: 'calc(100% - 16px - var(--safe-top, env(safe-area-inset-top, 0px)) - var(--safe-bottom, env(safe-area-inset-bottom, 0px)))',
           background: 'var(--bg)',
           border: '1px solid var(--line)',
           borderRadius: 14,
