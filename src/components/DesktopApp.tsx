@@ -796,7 +796,7 @@ export function DesktopApp({
             />
           } />
           <Route path="notification" element={
-            <DesktopNotificationSettings userId={currentUserId} />
+            <DesktopNotificationSettings userId={currentUserId} role={actualRole} />
           } />
           <Route path="data-management" element={
             (viewMode === 'admin' || viewMode === 'developer')

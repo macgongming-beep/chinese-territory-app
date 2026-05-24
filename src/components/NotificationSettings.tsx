@@ -1,7 +1,10 @@
 // 알림 설정 (종류별 on/off + 방해금지 시간)
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNotificationPrefs } from '../hooks/useNotificationPrefs'
 import type { AppLanguage } from '../i18n'
+import { getAuthToken } from '../lib/authToken'
+import { supabase } from '../lib/supabase'
+import type { Role } from '../types'
 
 type PrefKey =
   | 'pushNewNotice' | 'pushEventChange' | 'pushComment'
@@ -59,13 +62,96 @@ function id_(i: SubItem, lang: AppLanguage) {
   return lang === 'zh' ? i.descZh : lang === 'en' ? i.descEn : i.descKo
 }
 
-export function NotificationSettings({ userId, language = 'ko' }: { userId: number; language?: string }) {
+type GlobalQuietSettings = {
+  enabled: boolean
+  quiet_start: string
+  quiet_end: string
+}
+
+export function NotificationSettings({
+  userId,
+  language = 'ko',
+  role = 'user',
+}: {
+  userId: number
+  language?: string
+  role?: Role
+}) {
   const lang = (language ?? 'ko') as AppLanguage
   const { prefs, saving, update } = useNotificationPrefs(userId)
   const dndEnabled = prefs.quietHoursStart !== null && prefs.quietHoursEnd !== null
   const [localStart, setLocalStart] = useState(prefs.quietHoursStart ?? '22:00')
   const [localEnd, setLocalEnd] = useState(prefs.quietHoursEnd ?? '07:00')
   const [expandedGroup, setExpandedGroup] = useState<Group['id'] | null>(null)
+  const canManageGlobalQuiet = role === 'admin' || role === 'developer'
+  const [globalQuiet, setGlobalQuiet] = useState<GlobalQuietSettings>({
+    enabled: false,
+    quiet_start: '22:00',
+    quiet_end: '07:00',
+  })
+  const [globalQuietLoading, setGlobalQuietLoading] = useState(false)
+  const [globalQuietSaving, setGlobalQuietSaving] = useState(false)
+  const [globalQuietMessage, setGlobalQuietMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!canManageGlobalQuiet) return
+    let alive = true
+
+    async function loadGlobalQuiet() {
+      const token = getAuthToken()
+      if (!token) return
+      setGlobalQuietLoading(true)
+      const { data, error } = await supabase.rpc('get_global_push_quiet_settings' as any, { p_token: token })
+      if (!alive) return
+      setGlobalQuietLoading(false)
+      if (error) {
+        setGlobalQuietMessage(lang === 'zh' ? '无法读取全体设置' : lang === 'en' ? 'Could not load global settings' : '전체 설정을 불러오지 못했습니다')
+        return
+      }
+      const row = Array.isArray(data) ? data[0] : data
+      if (row) {
+        setGlobalQuiet({
+          enabled: !!row.enabled,
+          quiet_start: String(row.quiet_start ?? '22:00').slice(0, 5),
+          quiet_end: String(row.quiet_end ?? '07:00').slice(0, 5),
+        })
+      }
+    }
+
+    loadGlobalQuiet()
+    return () => { alive = false }
+  }, [canManageGlobalQuiet, lang])
+
+  async function saveGlobalQuiet(next: GlobalQuietSettings) {
+    const token = getAuthToken()
+    if (!token) {
+      setGlobalQuietMessage(lang === 'zh' ? '需要重新登录' : lang === 'en' ? 'Please log in again' : '다시 로그인해 주세요')
+      return
+    }
+    setGlobalQuiet(next)
+    setGlobalQuietSaving(true)
+    setGlobalQuietMessage(null)
+    const { data, error } = await supabase.rpc('update_global_push_quiet_settings' as any, {
+      p_token: token,
+      p_enabled: next.enabled,
+      p_quiet_start: next.quiet_start,
+      p_quiet_end: next.quiet_end,
+    })
+    setGlobalQuietSaving(false)
+    if (error) {
+      setGlobalQuietMessage(lang === 'zh' ? '保存失败' : lang === 'en' ? 'Save failed' : '저장하지 못했습니다')
+      return
+    }
+    const row = Array.isArray(data) ? data[0] : data
+    if (row) {
+      setGlobalQuiet({
+        enabled: !!row.enabled,
+        quiet_start: String(row.quiet_start ?? next.quiet_start).slice(0, 5),
+        quiet_end: String(row.quiet_end ?? next.quiet_end).slice(0, 5),
+      })
+    }
+    setGlobalQuietMessage(lang === 'zh' ? '已保存' : lang === 'en' ? 'Saved' : '저장되었습니다')
+  }
 
   return (
     <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 16, border: '1px solid var(--line)' }}>
@@ -99,6 +185,75 @@ export function NotificationSettings({ userId, language = 'ko' }: { userId: numb
           </span>
         )}
       </div>
+
+      {canManageGlobalQuiet && (
+        <div style={{
+          marginBottom: 16,
+          padding: '13px 14px',
+          borderRadius: 12,
+          border: '1px solid var(--line)',
+          background: 'var(--paper)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 650, color: 'var(--ink)', lineHeight: 1.35 }}>
+                {lang === 'zh' ? '全体通知静音时间' : lang === 'en' ? 'Global quiet hours' : '전체 알림 금지 시간'}
+              </p>
+              <p style={{ margin: '3px 0 0', fontSize: 12.5, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.45 }}>
+                {lang === 'zh'
+                  ? '在此时间内，所有人的推送通知都会暂停。应用内通知记录会保留。'
+                  : lang === 'en'
+                    ? 'Push notifications are paused for everyone. In-app notification history is still saved.'
+                    : '이 시간에는 모든 사용자에게 푸시 알림을 보내지 않습니다. 앱 안 알림 기록은 남습니다.'}
+              </p>
+            </div>
+            <Toggle
+              checked={globalQuiet.enabled}
+              onChange={(enabled) => saveGlobalQuiet({ ...globalQuiet, enabled })}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: 'var(--muted)', marginBottom: 5 }}>
+                {lang === 'zh' ? '开始' : lang === 'en' ? 'Start' : '시작'}
+              </label>
+              <input
+                type="time"
+                value={globalQuiet.quiet_start}
+                disabled={!globalQuiet.enabled || globalQuietLoading || globalQuietSaving}
+                onChange={(e) => saveGlobalQuiet({ ...globalQuiet, quiet_start: e.target.value })}
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: 8,
+                  border: '1px solid var(--line)', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
+                  background: globalQuiet.enabled ? 'var(--surface)' : 'var(--tint)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: 'var(--muted)', marginBottom: 5 }}>
+                {lang === 'zh' ? '结束' : lang === 'en' ? 'End' : '종료'}
+              </label>
+              <input
+                type="time"
+                value={globalQuiet.quiet_end}
+                disabled={!globalQuiet.enabled || globalQuietLoading || globalQuietSaving}
+                onChange={(e) => saveGlobalQuiet({ ...globalQuiet, quiet_end: e.target.value })}
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: 8,
+                  border: '1px solid var(--line)', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
+                  background: globalQuiet.enabled ? 'var(--surface)' : 'var(--tint)',
+                }}
+              />
+            </div>
+          </div>
+          {(globalQuietSaving || globalQuietMessage) && (
+            <p style={{ margin: '9px 0 0', fontSize: 12, fontWeight: 500, color: globalQuietMessage?.includes('못') || globalQuietMessage?.includes('fail') || globalQuietMessage?.includes('失败') ? '#dc2626' : 'var(--muted)' }}>
+              {globalQuietSaving ? (lang === 'zh' ? '保存中...' : lang === 'en' ? 'Saving...' : '저장 중...') : globalQuietMessage}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* 그룹 토글 + 세부 펼침 */}
       <div style={{ marginBottom: 16 }}>

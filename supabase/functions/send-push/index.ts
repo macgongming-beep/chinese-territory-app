@@ -37,6 +37,21 @@ interface PushSubscriptionRow {
   auth: string
 }
 
+function toMinutes(hhmm: string): number {
+  const [h, m] = hhmm.slice(0, 5).split(':').map(Number)
+  return h * 60 + m
+}
+
+function isInQuietHours(start: string | null, end: string | null): boolean {
+  if (!start || !end) return false
+  const now = new Date()
+  const kstMin = ((now.getUTCHours() + 9) % 24) * 60 + now.getUTCMinutes()
+  const s = toMinutes(start)
+  const e = toMinutes(end)
+  if (s === e) return false
+  return s < e ? (kstMin >= s && kstMin < e) : (kstMin >= s || kstMin < e)
+}
+
 // @ts-ignore Deno 환경
 Deno.serve(async (req: Request) => {
   // CORS preflight
@@ -96,8 +111,35 @@ Deno.serve(async (req: Request) => {
   // 4. VAPID 설정
   webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
 
-  // 5. push_subscriptions 조회
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+  // 5a. 전체 알림 금지 시간 — 앱 전체에 적용되는 푸시 차단 창
+  // 앱 안 알림(notifications row)은 유지하고, Web Push 발송만 건너뛴다.
+  const { data: globalQuietRows, error: globalQuietError } = await supabase
+    .from('app_private_settings')
+    .select('key, value')
+    .in('key', ['global_push_quiet_enabled', 'global_push_quiet_start', 'global_push_quiet_end'])
+  if (globalQuietError) {
+    console.warn('[send-push] global quiet-hours lookup failed:', globalQuietError.message)
+  } else {
+    const globalQuiet = new Map<string, string>()
+    for (const row of globalQuietRows ?? []) {
+      globalQuiet.set(row.key, row.value)
+    }
+    const globalQuietEnabled = globalQuiet.get('global_push_quiet_enabled') === 'true'
+    const globalQuietStart = globalQuiet.get('global_push_quiet_start') ?? '22:00'
+    const globalQuietEnd = globalQuiet.get('global_push_quiet_end') ?? '07:00'
+    if (globalQuietEnabled && isInQuietHours(globalQuietStart, globalQuietEnd)) {
+      return jsonResponse({
+        ok: true,
+        sent: 0,
+        skipped_global_quiet: payload.recipient_ids.length,
+        message: 'Global quiet hours',
+      })
+    }
+  }
+
+  // 5. push_subscriptions 조회
   const { data: subscriptions, error: dbError } = await supabase
     .from('push_subscriptions')
     .select('id, user_id, endpoint, p256dh, auth')
@@ -121,19 +163,6 @@ Deno.serve(async (req: Request) => {
   const prefsByUser = new Map<number, { start: string | null; end: string | null }>()
   for (const row of prefsRows ?? []) {
     prefsByUser.set(row.user_id, { start: row.quiet_hours_start, end: row.quiet_hours_end })
-  }
-  function toMinutes(hhmm: string): number {
-    const [h, m] = hhmm.slice(0, 5).split(':').map(Number)
-    return h * 60 + m
-  }
-  function isInQuietHours(start: string | null, end: string | null): boolean {
-    if (!start || !end) return false
-    const now = new Date()
-    const kstMin = ((now.getUTCHours() + 9) % 24) * 60 + now.getUTCMinutes()
-    const s = toMinutes(start)
-    const e = toMinutes(end)
-    if (s === e) return false
-    return s < e ? (kstMin >= s && kstMin < e) : (kstMin >= s || kstMin < e)
   }
   const subs = allSubs.filter((s) => {
     const pref = prefsByUser.get(s.user_id)
