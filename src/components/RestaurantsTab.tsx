@@ -428,6 +428,17 @@ export function RestaurantsTab({
 }: Props) {
   const canManage = isLeaderOrAdmin(role)
   const [search, setSearch] = useState('')
+  const [collapsedRegions, setCollapsedRegions] = useState<Set<string>>(new Set())
+
+  const toggleRegion = (region: string) => {
+    setCollapsedRegions(prev => {
+      const next = new Set(prev)
+      if (next.has(region)) next.delete(region)
+      else next.add(region)
+      return next
+    })
+  }
+
   const [addOpen, setAddOpen] = useState(false)
   const [openMenuId, setOpenMenuId] = useState<number | null>(null)
 
@@ -775,14 +786,23 @@ export function RestaurantsTab({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {grouped.map(([region, list]) => (
             <section key={region}>
-              <div style={{ display: 'flex', alignItems: 'center', padding: '0 4px', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div 
+                onClick={() => toggleRegion(region)}
+                style={{ display: 'flex', alignItems: 'center', padding: '8px 4px', justifyContent: 'space-between', marginBottom: 6, cursor: 'pointer', userSelect: 'none' }}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <ChevD />
+                  <span style={{ display: 'flex', transform: collapsedRegions.has(region) ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                    <ChevD />
+                  </span>
                   <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{region}</span>
                   <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>{list.length}</span>
                 </div>
+                <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+                  {collapsedRegions.has(region) ? '열기' : '접기'}
+                </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {!collapsedRegions.has(region) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {list.map((b) => {
                   const card = cards.find((c) => c.id === b.cardId)
                   return (
@@ -823,6 +843,7 @@ export function RestaurantsTab({
                   )
                 })}
               </div>
+              )}
             </section>
           ))}
           {canManage && (

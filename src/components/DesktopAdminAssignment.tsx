@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { showToast } from '../lib/toast'
 import type { TerritoryCard } from '../types'
+import { isEmptyTerritoryCard, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
 
 function getCardLeaders(card: TerritoryCard) {
   return card.assignedLeaders && card.assignedLeaders.length > 0
@@ -177,18 +178,21 @@ export function DesktopAdminAssignment({
 
   const filteredCards = useMemo(() => {
     const query = cardQuery.trim().toLowerCase()
-    return cards.filter((card) => {
-      const leadersForCard = getCardLeaders(card)
-      if (regionFilter !== '전체' && card.region !== regionFilter) return false
-      if (statusFilter === '미배정' && leadersForCard.length > 0) return false
-      if (statusFilter === '배정됨' && leadersForCard.length === 0) return false
-      if (!query) return true
-      return `${card.name} ${card.region} ${card.area}`.toLowerCase().includes(query)
-    })
+    return sortTerritoryCardsByOperationalPriority(
+      cards.filter((card) => {
+        if (isEmptyTerritoryCard(card)) return false
+        const leadersForCard = getCardLeaders(card)
+        if (regionFilter !== '전체' && card.region !== regionFilter) return false
+        if (statusFilter === '미배정' && leadersForCard.length > 0) return false
+        if (statusFilter === '배정됨' && leadersForCard.length === 0) return false
+        if (!query) return true
+        return `${card.name} ${card.region} ${card.area}`.toLowerCase().includes(query)
+      }),
+    )
   }, [cardQuery, cards, regionFilter, statusFilter])
 
   const unassignedCount = useMemo(
-    () => cards.filter((card) => getCardLeaders(card).length === 0).length,
+    () => cards.filter((card) => !isEmptyTerritoryCard(card) && getCardLeaders(card).length === 0).length,
     [cards],
   )
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, Role, TerritoryCard } from '../types'
 import { showToast } from '../lib/toast'
+import { isEmptyTerritoryCard, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
 import { InformalPickerModal } from './InformalPickerModal'
 import { RestaurantPickerModal } from './RestaurantPickerModal'
 
@@ -131,13 +132,16 @@ function DesktopLeaderAssignmentView({
 
   const filteredCards = useMemo(() => {
     const q = cardQuery.trim().toLowerCase()
-    return accessibleCards.filter((c) => {
-      if (regionFilter !== '전체' && c.region !== regionFilter) return false
-      if (areaFilter !== '전체' && c.area !== areaFilter) return false
-      if (onlyUnused && usedCardIds.includes(c.id)) return false
-      if (!q) return true
-      return `${c.name} ${c.region} ${c.area}`.toLowerCase().includes(q)
-    })
+    return sortTerritoryCardsByOperationalPriority(
+      accessibleCards.filter((c) => {
+        if (isEmptyTerritoryCard(c)) return false
+        if (regionFilter !== '전체' && c.region !== regionFilter) return false
+        if (areaFilter !== '전체' && c.area !== areaFilter) return false
+        if (onlyUnused && usedCardIds.includes(c.id)) return false
+        if (!q) return true
+        return `${c.name} ${c.region} ${c.area}`.toLowerCase().includes(q)
+      }),
+    )
   }, [accessibleCards, areaFilter, cardQuery, onlyUnused, regionFilter, usedCardIds])
 
   const unassigned = useMemo(() => participants.filter((p) => !(draft?.teams ?? []).some((t) => t.members.includes(p.name))), [draft?.teams, participants])
@@ -1139,22 +1143,26 @@ export function DesktopLeaderAssignment({
 
   const filteredCards = useMemo(() => {
     const q = cardQuery.trim().toLowerCase()
-    return cards.filter((c) => {
-      if (regionFilter !== '전체' && c.region !== regionFilter) return false
-      if (statusFilter === '미배정') {
-        const ls = c.assignedLeaders && c.assignedLeaders.length > 0 ? c.assignedLeaders : c.assignedLeader ? [c.assignedLeader] : []
-        if (ls.length > 0) return false
-      } else if (statusFilter === '배정됨') {
-        const ls = c.assignedLeaders && c.assignedLeaders.length > 0 ? c.assignedLeaders : c.assignedLeader ? [c.assignedLeader] : []
-        if (ls.length === 0) return false
-      }
-      if (!q) return true
-      return `${c.name} ${c.region} ${c.area}`.toLowerCase().includes(q)
-    })
+    return sortTerritoryCardsByOperationalPriority(
+      cards.filter((c) => {
+        if (isEmptyTerritoryCard(c)) return false
+        if (regionFilter !== '전체' && c.region !== regionFilter) return false
+        if (statusFilter === '미배정') {
+          const ls = c.assignedLeaders && c.assignedLeaders.length > 0 ? c.assignedLeaders : c.assignedLeader ? [c.assignedLeader] : []
+          if (ls.length > 0) return false
+        } else if (statusFilter === '배정됨') {
+          const ls = c.assignedLeaders && c.assignedLeaders.length > 0 ? c.assignedLeaders : c.assignedLeader ? [c.assignedLeader] : []
+          if (ls.length === 0) return false
+        }
+        if (!q) return true
+        return `${c.name} ${c.region} ${c.area}`.toLowerCase().includes(q)
+      }),
+    )
   }, [cards, regionFilter, statusFilter, cardQuery])
 
   const unassignedCount = useMemo(() =>
     cards.filter((c) => {
+      if (isEmptyTerritoryCard(c)) return false
       const ls = c.assignedLeaders && c.assignedLeaders.length > 0 ? c.assignedLeaders : c.assignedLeader ? [c.assignedLeader] : []
       return ls.length === 0
     }).length, [cards]
