@@ -18,6 +18,7 @@
 import { useMemo, useState } from 'react'
 import { showToast } from '../lib/toast'
 import type { Building, TerritoryCard } from '../types'
+import { isEmptyTerritoryCard, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
 
 function getCardLeaders(card: TerritoryCard) {
   return card.assignedLeaders && card.assignedLeaders.length > 0
@@ -173,7 +174,8 @@ export function MobileAdminAssignment({
 
   // 카드 풀: 미배정만 토글 따라 다름
   const cardPool = useMemo(() => {
-    return unassignedOnly ? cards.filter((c) => getCardLeaders(c).length === 0) : cards
+    const assignableCards = cards.filter((card) => !isEmptyTerritoryCard(card))
+    return unassignedOnly ? assignableCards.filter((c) => getCardLeaders(c).length === 0) : assignableCards
   }, [cards, unassignedOnly])
 
   const regions = useMemo(() => {
@@ -190,9 +192,11 @@ export function MobileAdminAssignment({
   // ── Step 2: 검색 + 지역 pill 필터 ────────
   const filteredCards = useMemo(() => {
     const q = cardQuery.trim()
-    return cardPool
-      .filter((c) => regionPill === '전체' || c.region === regionPill)
-      .filter((c) => !q || `${c.name} ${c.region} ${c.area}`.includes(q))
+    return sortTerritoryCardsByOperationalPriority(
+      cardPool
+        .filter((c) => regionPill === '전체' || c.region === regionPill)
+        .filter((c) => !q || `${c.name} ${c.region} ${c.area}`.includes(q)),
+    )
   }, [cardPool, cardQuery, regionPill])
 
   // ── Step 2: 그룹화 (region · area) ─────────────────
@@ -207,12 +211,12 @@ export function MobileAdminAssignment({
     return Array.from(m.entries())
       .map(([key, cs]) => ({
         key,
-        cards: cs,
-        totalInArea: cards.filter((cc) => `${cc.region} · ${cc.area}` === key).length,
-        unassignedInArea: cards.filter((cc) => `${cc.region} · ${cc.area}` === key && getCardLeaders(cc).length === 0).length,
+        cards: sortTerritoryCardsByOperationalPriority(cs),
+        totalInArea: cardPool.filter((cc) => `${cc.region} · ${cc.area}` === key).length,
+        unassignedInArea: cardPool.filter((cc) => `${cc.region} · ${cc.area}` === key && getCardLeaders(cc).length === 0).length,
       }))
       .sort((a, b) => a.key.localeCompare(b.key, 'ko'))
-  }, [filteredCards, cards])
+  }, [filteredCards, cardPool])
 
   // 선택된 인도자 목록(배열). assign 함수들은 모두 이 배열을 union 으로 합침.
   const selectedLeadersArr = useMemo(() => [...selectedLeaders], [selectedLeaders])

@@ -7,6 +7,9 @@ import { CommentSection, type MentionUser } from './CommentSection'
 import { loadPlacePresets, savePlacePresets, normalizePlacePresets } from '../lib/placePresets'
 import type { PlacePreset } from '../lib/placePresets'
 import { PlacePresetEditor } from './admin/AdminMobileCalendar'
+import { ExportEventsModal } from './calendar/ExportEventsModal'
+import { ImportEventsModal } from './calendar/ImportEventsModal'
+
 
 function getCalendarDays(year: number, month: number): (number | null)[] {
   const firstDay = new Date(year, month - 1, 1).getDay()
@@ -124,6 +127,8 @@ export function DesktopCalendar({
   const [selectedDay, setSelectedDay] = useState(today.getDate())
   const [searchParams, setSearchParams] = useSearchParams()
   const [chatEvent, setChatEvent] = useState<CalendarEvent | null>(null)
+  const [isExportOpen, setIsExportOpen] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   // openChat=<eventId> 쿼리 처리: 해당 일정 날짜로 이동 + 채팅방 열기
   useEffect(() => {
@@ -240,6 +245,9 @@ export function DesktopCalendar({
 
   return (
     <>
+      <ExportEventsModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} events={events} />
+      <ImportEventsModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} onCreateEvent={onCreateEvent} />
+
       {/* ── 단일 일정 삭제 확인 모달 ───────────────────── */}
       {deleteConfirmEvent && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.4)', display: 'grid', placeItems: 'center' }}>
@@ -494,8 +502,8 @@ export function DesktopCalendar({
               <h1 className="page-header-title">{year}년 {month}월</h1>
             </div>
             <div className="page-header-actions">
-              <button className="cal-today-btn" type="button">신청내역</button>
-              <button className="cal-today-btn" type="button">일괄 업로드</button>
+              <button className="cal-today-btn" type="button" onClick={() => setIsExportOpen(true)}>일정 내보내기</button>
+              <button className="cal-today-btn" type="button" onClick={() => setIsImportOpen(true)}>일정 가져오기</button>
               <button className="cal-nav-btn" onClick={prevMonth} type="button">‹</button>
               <button className="cal-today-btn" onClick={goToday} type="button">오늘</button>
               <button className="cal-nav-btn" onClick={nextMonth} type="button">›</button>

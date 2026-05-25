@@ -7228,6 +7228,11 @@ button:focus-visible {
   color: var(--brand-700);
 }
 
+.mobile-territory-status.status-대상없음 {
+  background: #f4f1ec;
+  color: var(--muted);
+}
+
 .mobile-territory-open-btn {
   display: inline-flex;
   align-items: center;

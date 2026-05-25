@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { Building, InformalAsset, InformalGroup, Role, TerritoryCard } from '../../types'
+import { compareTerritoryCardsByOperationalPriority, getTerritoryCardOperationalState } from '../../utils/cardSearch'
 import { InformalCardsTab } from '../InformalCardsTab'
 import { RestaurantsTab } from '../RestaurantsTab'
 import { Card } from '../ui'
@@ -296,7 +297,7 @@ export function AdminMobileZone({
         return key === selectedRegion && extractDong(c.name, selectedRegion) === selectedDong
       })
       .filter((c) => !query || c.name.includes(query))
-      .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+      .sort(compareTerritoryCardsByOperationalPriority)
   }, [baseCards, selectedRegion, selectedDong, query])
 
   // ── 네비게이션 ────────────────────────────
@@ -795,6 +796,8 @@ function CardRow({
   buildingCount: { house: number; shop: number }
   onClick: () => void
 }) {
+  const operationalState = getTerritoryCardOperationalState(card)
+  const isEmptyTarget = operationalState === '대상없음'
   return (
     <button
       type="button"
@@ -815,7 +818,7 @@ function CardRow({
               </div>
               <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
                 {card.assignedLeader ? `담당 ${card.assignedLeader} · ` : ''}
-                주택 {buildingCount.house} · 상가 {buildingCount.shop}
+                {isEmptyTarget ? '대상없음' : `주택 ${buildingCount.house} · 상가 ${buildingCount.shop}`}
               </span>
             </div>
             <span

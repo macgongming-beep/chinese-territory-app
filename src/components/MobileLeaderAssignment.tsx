@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { showToast } from '../lib/toast'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, TerritoryCard } from '../types'
+import { isEmptyTerritoryCard, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
 import { MapCanvas } from './MapCanvas'
 import { RestaurantPickerModal } from './RestaurantPickerModal'
 import { InformalPickerModal } from './InformalPickerModal'
@@ -293,13 +294,16 @@ export function MobileLeaderAssignment({
 
   const filteredCards = useMemo(() => {
     const loweredQuery = cardQuery.trim().toLowerCase()
-    return accessibleCards.filter((card) => {
-      if (regionFilter !== '전체' && card.region !== regionFilter) return false
-      if (areaFilter !== '전체' && card.area !== areaFilter) return false
-      if (onlyUnusedCards && usedCardIds.includes(card.id)) return false
-      if (!loweredQuery) return true
-      return `${card.name} ${card.region} ${card.area}`.toLowerCase().includes(loweredQuery)
-    })
+    return sortTerritoryCardsByOperationalPriority(
+      accessibleCards.filter((card) => {
+        if (isEmptyTerritoryCard(card)) return false
+        if (regionFilter !== '전체' && card.region !== regionFilter) return false
+        if (areaFilter !== '전체' && card.area !== areaFilter) return false
+        if (onlyUnusedCards && usedCardIds.includes(card.id)) return false
+        if (!loweredQuery) return true
+        return `${card.name} ${card.region} ${card.area}`.toLowerCase().includes(loweredQuery)
+      }),
+    )
   }, [accessibleCards, areaFilter, cardQuery, onlyUnusedCards, regionFilter, usedCardIds])
 
   const getEventDraft = (event: CalendarEvent) => {

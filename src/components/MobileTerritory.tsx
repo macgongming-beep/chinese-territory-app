@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ActiveRestaurantSession, Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t, translateKoreanAddress } from '../i18n'
+import { getTerritoryCardOperationalState, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
 import { getUserReturnVisits, normalizeVisitorName } from '../utils/returnVisits'
 import { RestaurantServiceSheet } from './RestaurantServiceSheet'
 
@@ -435,12 +436,15 @@ export function MobileTerritory({
   }, [cards, role, currentVisitor, activeSessionCardIds])
 
   const visibleCards = useMemo(() => {
+    let list: TerritoryCard[]
     if (role === 'admin') {
-      if (filter === '미배정') return cards.filter((c) => !c.assignedLeader)
-      if (filter === '내 카드') return myCards
-      return cards
+      if (filter === '미배정') list = cards.filter((c) => !c.assignedLeader)
+      else if (filter === '내 카드') list = myCards
+      else list = cards
+    } else {
+      list = myCards
     }
-    return myCards
+    return sortTerritoryCardsByOperationalPriority(list)
   }, [cards, role, filter, myCards])
 
   const myRegularVisits = useMemo(
@@ -1562,8 +1566,13 @@ export function MobileTerritory({
 
           {visibleCards.map((card) => {
             const isActiveSession = activeSessionCardIds.has(card.id)
-            const statusLabel = isActiveSession ? t(language, 'map.servicing') : cardStatusLabel(card.status)
-            const statusClass = isActiveSession ? '진행중' : card.status
+            const operationalState = getTerritoryCardOperationalState(card)
+            const statusLabel = isActiveSession
+              ? t(language, 'map.servicing')
+              : operationalState === '대상없음'
+                ? '대상없음'
+                : cardStatusLabel(operationalState)
+            const statusClass = isActiveSession ? '진행중' : operationalState
             const counts = cardBuildingTypeCounts.get(card.id) ?? { total: card.buildings, house: 0, shop: 0 }
             return (
               <div className="mobile-territory-card" key={card.id}>
