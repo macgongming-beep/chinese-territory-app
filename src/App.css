@@ -25722,20 +25722,28 @@ button:focus-visible {
   gap: 8px;
 }
 
-.mobile-rv-history-edit button {
+.mobile-rv-history-edit-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.mobile-rv-history-edit-actions button {
   height: 32px;
   padding: 0 12px;
   background: transparent;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-2);
   border-radius: 6px;
-  font-size: 12.5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
   cursor: pointer;
 }
 
-.mobile-rv-history-edit button:last-child {
+.mobile-rv-history-edit-actions button:last-child {
   background: var(--ink);
   color: #fff;
-  border-color: var(--ink);
+  border: none;
 }
 
 /* 편집 모달 */
@@ -26843,14 +26851,14 @@ button:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 48px;
-  padding: 0 18px;
+  height: 40px;
+  padding: 0 16px;
   background: var(--ink);
   color: #fff;
   border: 1px solid var(--ink);
   border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   letter-spacing: -0.005em;
   cursor: pointer;
 }
@@ -26859,14 +26867,14 @@ button:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 48px;
-  padding: 0 18px;
+  height: 40px;
+  padding: 0 16px;
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--line-2);
   border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   letter-spacing: -0.005em;
   cursor: pointer;
 }
@@ -27637,11 +27645,11 @@ button:focus-visible {
 .ma-team-card-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
   padding: 8px 12px;
-  background: var(--paper);
-  border: 1px solid transparent;
+  background: #fff;
+  border: 1px solid var(--line-2);
   border-radius: 8px;
   min-width: 0;
   font-size: 12.5px;
@@ -27650,7 +27658,7 @@ button:focus-visible {
   letter-spacing: -0.005em;
 }
 .ma-team-card-item.is-expanded {
-  background: var(--surface);
+  background: #fff;
   border-color: var(--line-2);
 }
 .ma-team-card-item svg {
@@ -27660,6 +27668,7 @@ button:focus-visible {
   display: grid;
   gap: 2px;
   min-width: 0;
+  flex: 1;
 }
 .ma-team-card-item strong {
   font-size: 13px;
@@ -27669,6 +27678,14 @@ button:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.ma-team-card-progress {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: var(--ink) !important;
+  line-height: 1;
+}
 .ma-team-card-item span {
   font-size: 11.5px;
   color: var(--muted);
@@ -27676,39 +27693,12 @@ button:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ma-team-card-detail {
-  display: grid;
-  gap: 6px;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--paper);
-}
-.ma-team-card-detail-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.ma-team-card-detail-row strong {
-  color: var(--ink);
-  font-weight: 600;
-}
-.ma-team-card-map-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  justify-self: start;
-  height: 30px;
-  padding: 0 12px;
+.ma-team-card-preview-map {
+  height: 180px;
+  overflow: hidden;
   border: 1px solid var(--line-2);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--paper);
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
 }
 .ma-team-add-card {
   display: inline-flex;

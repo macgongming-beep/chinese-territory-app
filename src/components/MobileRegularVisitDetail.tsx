@@ -254,7 +254,7 @@ export function MobileRegularVisitDetail({
                   <li key={log.id} className="mobile-rv-history-item">
                     <div className="mobile-rv-history-row1">
                       <span className="mobile-rv-history-date">{fmtFullDate(log.visitedAt, language)}</span>
-                      {log.result && (
+                      {!isEdit && log.result && (
                         <span className={`mobile-rv-result-chip is-${log.result === '만남' ? 'met' : 'absent'}`}>
                           {log.result === '만남' ? t(language, 'rv.meet') : t(language, 'rv.absent')}
                         </span>
@@ -284,7 +284,7 @@ export function MobileRegularVisitDetail({
                           onChange={(e) => setEditLogMemo(e.target.value)}
                           rows={2}
                         />
-                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <div className="mobile-rv-history-edit-actions">
                           <button type="button" onClick={() => setEditingLogId(null)}>{t(language, 'common.cancel')}</button>
                           <button type="button" disabled={logSaving} onClick={() => handleSaveEditLog(log.id)}>
                             {logSaving ? '…' : t(language, 'common.save')}
