@@ -409,7 +409,7 @@ export function MobileAdminAssignment({
           {(leaderFilter === 'all' || leaderFilter === 'new') && filteredNew.length > 0 && (
             <>
               <SectionDivider label="신규 인도자 (담당 없음)" count={filteredNew.length} marginTop={leaderFilter === 'all' && filteredActive.length > 0 ? 20 : 14} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 10 }}>
                 {filteredNew.map((leader) => (
                   <LeaderCard
                     key={leader}
@@ -428,7 +428,7 @@ export function MobileAdminAssignment({
           {leaderFilter === 'all' && filteredMe && (
             <>
               <SectionDivider label="나" marginTop={filteredActive.length > 0 || filteredNew.length > 0 ? 20 : 14} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 10 }}>
                 <LeaderCard
                   key={filteredMe}
                   name={filteredMe}
