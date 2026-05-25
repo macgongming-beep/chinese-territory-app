@@ -12395,7 +12395,7 @@ button:focus-visible {
 
   .building-row-actions {
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: 6px;
   }
 
