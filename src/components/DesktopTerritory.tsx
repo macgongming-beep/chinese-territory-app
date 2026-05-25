@@ -2584,7 +2584,7 @@ export function DesktopTerritory({
               <span>세대</span>
               <span>중국인</span>
               <span>다수</span>
-              <span>작업</span>
+              <span style={{ textAlign: 'center' }}>작업</span>
             </div>
             {sortedBuildings.map((building) => {
               const card = cardMap.get(building.cardId)
