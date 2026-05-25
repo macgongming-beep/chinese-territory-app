@@ -1161,7 +1161,7 @@ function EventAddSheet({ language,
           <Field label={t(language, 'calendar.location')}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
               <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, flex: 1, minWidth: 0, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                {placePresets.map((preset, idx) => (
+                {placePresets.filter(p => p.name.trim()).map((preset, idx) => (
                   <button
                     key={`${idx}-${preset.name}`}
                     type="button"
@@ -1387,7 +1387,6 @@ export function PlacePresetEditor({ language,
   }
 
   const removePreset = (index: number) => {
-    if (presets.length <= 1) return
     onChange(presets.filter((_, i) => i !== index))
   }
 
@@ -1454,7 +1453,7 @@ export function PlacePresetEditor({ language,
             />
             <button
               type="button"
-              disabled={presets.length <= 1}
+              
               onClick={() => removePreset(index)}
               style={{
                 width: 24,
@@ -1463,8 +1462,8 @@ export function PlacePresetEditor({ language,
                 border: 'none',
                 borderRadius: 6,
                 background: 'transparent',
-                color: presets.length <= 1 ? 'var(--muted-2)' : 'var(--status-danger)',
-                cursor: presets.length <= 1 ? 'not-allowed' : 'pointer',
+                color: 'var(--status-danger)',
+                cursor: 'pointer',
                 fontSize: 16,
                 lineHeight: 1,
                 padding: 0,

@@ -17,14 +17,13 @@ export function normalizePlacePresets(input: unknown): PlacePreset[] {
     .slice(0, PLACE_PRESETS_MAX)
     .map((item) => {
       const row = item as Partial<PlacePreset>
-      if (!row.name || typeof row.name !== 'string' || !row.name.trim()) return null
+      // Allow empty names so the user can clear the input field while editing
       return {
-        name: row.name.trim().slice(0, 30),
+        name: typeof row.name === 'string' ? row.name.trim().slice(0, 30) : '',
         mapLink: typeof row.mapLink === 'string' ? row.mapLink.trim() : '',
       }
     })
-    .filter((item): item is PlacePreset => Boolean(item))
-  return normalized.length > 0 ? normalized : DEFAULT_PLACE_PRESETS
+  return normalized
 }
 
 export function loadPlacePresets(): PlacePreset[] {

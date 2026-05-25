@@ -406,7 +406,7 @@ export function DesktopCalendar({
                 </div>
 
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                  {placePresets.map((preset, idx) => (
+                  {placePresets.filter(p => p.name.trim()).map((preset, idx) => (
                     <button
                       key={`${idx}-${preset.name}`}
                       type="button"
