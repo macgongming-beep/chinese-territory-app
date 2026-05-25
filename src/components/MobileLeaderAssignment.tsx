@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { showToast } from '../lib/toast'
-import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, TerritoryCard } from '../types'
+import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, TerritoryCard } from '../types'
+import { MapCanvas } from './MapCanvas'
 import { RestaurantPickerModal } from './RestaurantPickerModal'
 import { InformalPickerModal } from './InformalPickerModal'
 
@@ -100,6 +101,7 @@ function canManageAssignment(event: CalendarEvent | null, currentVisitor: string
 export function MobileLeaderAssignment({
   cards,
   buildings = [],
+  cardBoundaries = [],
   calendarEvents,
   currentVisitor,
   role,
@@ -118,6 +120,7 @@ export function MobileLeaderAssignment({
 }: {
   cards: TerritoryCard[]
   buildings?: Building[]
+  cardBoundaries?: CardBoundary[]
   calendarEvents: CalendarEvent[]
   currentVisitor: string
   role: Role
@@ -186,7 +189,7 @@ export function MobileLeaderAssignment({
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1)
   const [addMemberTeamId, setAddMemberTeamId] = useState<string | null>(null)
-  const [expandedCardId, setExpandedCardId] = useState<number | null>(null)
+  const [previewCardId, setPreviewCardId] = useState<number | null>(null)
   // v2: picker 상태
   const [informalPickerTeamId, setInformalPickerTeamId] = useState<string | null>(null)
   const [restaurantPickerTeamId, setRestaurantPickerTeamId] = useState<string | null>(null)
@@ -829,38 +832,37 @@ export function MobileLeaderAssignment({
                         <div className="ma-team-cards-grid">
                           {teamCards.map((card) => {
                             const stats = getCardBuildingStats(card)
-                            const isExpanded = expandedCardId === card.id
+                            const isPreviewOpen = previewCardId === card.id
+                            const previewBuildings = buildings.filter((building) => building.cardId === card.id)
+                            const previewBoundaries = cardBoundaries.filter((boundary) => boundary.cardId === card.id)
                             return (
                               <div className="ma-team-card-stack" key={card.id}>
                                 <button
-                                  className={`ma-team-card-item${isExpanded ? ' is-expanded' : ''}`}
+                                  className={`ma-team-card-item${isPreviewOpen ? ' is-expanded' : ''}`}
                                   type="button"
-                                  aria-expanded={isExpanded}
-                                  onClick={() => setExpandedCardId((current) => current === card.id ? null : card.id)}
+                                  aria-expanded={isPreviewOpen}
+                                  onClick={() => setPreviewCardId((current) => current === card.id ? null : card.id)}
                                 >
                                   <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="10" r="3" fill="none" stroke="currentColor" strokeWidth="2"/></svg>
                                   <div>
                                     <strong>{card.name}</strong>
                                     <span>{`전체 ${stats.total} · 상가 ${stats.shop} · 주택 ${stats.house}`}</span>
                                   </div>
+                                  <strong className="ma-team-card-progress">{card.progress}%</strong>
                                 </button>
-                                {isExpanded && (
-                                  <div className="ma-team-card-detail">
-                                    <div className="ma-team-card-detail-row">
-                                      <span>진행률</span>
-                                      <strong>{card.progress}%</strong>
-                                    </div>
-                                    <div className="ma-team-card-detail-row">
-                                      <span>구성</span>
-                                      <strong>{`전체 ${stats.total} · 상가 ${stats.shop} · 주택 ${stats.house}`}</strong>
-                                    </div>
-                                    <button
-                                      className="ma-team-card-map-btn"
-                                      type="button"
-                                      onClick={() => navigate(`/map?cardId=${card.id}&return=assignment`)}
-                                    >
-                                      지도 보기
-                                    </button>
+                                {isPreviewOpen && (
+                                  <div className="ma-team-card-preview-map">
+                                    <MapCanvas
+                                      buildings={previewBuildings}
+                                      cardBoundaries={previewBoundaries}
+                                      cards={[card]}
+                                      selectedBuildingId={0}
+                                      selectedCardId={card.id}
+                                      onSelectBuilding={() => undefined}
+                                      highlightedCardIds={new Set([card.id])}
+                                      isMobile
+                                      compact
+                                    />
                                   </div>
                                 )}
                               </div>

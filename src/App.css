@@ -9088,49 +9088,49 @@ button:focus-visible {
 
 .rv-log-sheet {
   width: 100%;
-  background: #fff;
-  border-radius: 20px 20px 0 0;
-  padding: 20px 18px 34px;
+  background: var(--surface);
+  border-radius: 16px 16px 0 0;
+  padding: 16px 16px max(32px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 /* 시트 헤더 */
-.rv-log-header { display: flex; flex-direction: column; gap: 1px; }
-.rv-log-header strong { font-size: 15px; font-weight: 800; color: var(--ink-900); }
-.rv-log-target-addr { font-size: 11px; color: var(--ink-400); }
+.rv-log-header { display: flex; flex-direction: column; gap: 2px; }
+.rv-log-header strong { font-size: 17px; font-weight: 700; color: var(--ink); }
+.rv-log-target-addr { font-size: 12px; color: var(--muted); }
 
 /* 방문 기록 목록 */
 .rv-log-history {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  background: #f8fafc;
-  border-radius: 9px;
-  padding: 6px 10px;
-  max-height: 110px;
+  gap: 4px;
+  background: var(--tint);
+  border-radius: 8px;
+  padding: 8px 12px;
+  max-height: 120px;
   overflow-y: auto;
 }
 
 .rv-log-history-item {
   font-size: 12px;
-  color: var(--ink-500);
+  color: var(--muted);
   line-height: 1;
-  height: 22px;
+  height: 24px;
   display: flex;
   align-items: center;
-  border-radius: 5px;
-  padding: 0 2px;
+  border-radius: 4px;
+  padding: 0 4px;
   user-select: none;
   -webkit-user-select: none;
 }
-.rv-log-history-item:active { background: #f1f5f9; }
+.rv-log-history-item:active { background: var(--surface); }
 
-.rv-h-date { color: var(--ink-400); }
-.rv-h-meet { color: var(--brand-700); font-weight: 700; }
-.rv-h-absent { color: #b45309; font-weight: 700; }
-.rv-h-memo { color: var(--ink-400); font-style: normal; margin-left: 5px; }
+.rv-h-date { color: var(--muted-2); }
+.rv-h-meet { color: var(--ink); font-weight: 600; }
+.rv-h-absent { color: var(--text); font-weight: 600; }
+.rv-h-memo { color: var(--muted); font-style: normal; margin-left: 6px; }
 
 /* 꾹 누르기 액션 팝업 */
 .rv-action-backdrop {
@@ -9144,51 +9144,53 @@ button:focus-visible {
 
 .rv-action-sheet {
   width: 100%;
-  background: #fff;
+  background: var(--surface);
   border-radius: 16px 16px 0 0;
-  padding: 16px 16px 32px;
+  padding: 16px 16px max(32px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .rv-action-title {
-  font-size: 12px;
-  color: var(--ink-400);
-  font-weight: 600;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 700;
   text-align: center;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .rv-action-btn {
   width: 100%;
-  padding: 14px;
-  border: none;
-  border-radius: 12px;
-  background: #f8fafc;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink-800);
+  height: 40px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
   cursor: pointer;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.rv-action-btn:active { background: #f1f5f9; }
+.rv-action-btn:active { background: var(--tint); }
 
-.rv-action-danger { color: #dc2626; }
-.rv-action-danger:active { background: #fff5f5; }
+.rv-action-danger { color: var(--status-danger); }
+.rv-action-danger:active { background: var(--status-danger-bg); }
 
 .rv-action-cancel {
   width: 100%;
-  padding: 14px;
+  height: 40px;
   border: none;
-  border-radius: 12px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink-500);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
   cursor: pointer;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 /* 날짜 + 칩 한 줄 */
@@ -9196,52 +9198,53 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 8px;
-  border-top: 1px solid #f1f5f9;
-  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
 }
 
 .rv-log-date {
-  font-size: 12px;
-  color: var(--ink-500);
-  font-weight: 500;
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 600;
   flex: 1;
 }
 
-.rv-log-result-chips { display: flex; gap: 5px; }
+.rv-log-result-chips { display: flex; gap: 8px; }
 
 .rv-chip {
-  padding: 4px 12px;
-  border: 1.5px solid #d8e0ea;
-  border-radius: 20px;
-  background: #f8fafc;
+  padding: 5px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 9999px;
+  background: var(--tint);
   font-size: 12px;
-  font-weight: 700;
-  color: var(--ink-400);
+  font-weight: 600;
+  color: var(--muted);
   cursor: pointer;
-  transition: all 0.1s;
+  transition: all 0.15s;
 }
-.rv-chip-meet {
-  border-color: var(--brand-700);
-  background: #eef4ff;
-  color: var(--brand-700);
-}
-.rv-chip-absent {
-  border-color: #d97706;
-  background: #fffbeb;
-  color: #b45309;
+.rv-chip-meet, .rv-chip-absent {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
 }
 
 /* 메모 */
 .rv-log-memo {
   width: 100%;
-  border: 1px solid #d8e0ea;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 13px;
-  color: var(--ink-900);
-  resize: none;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  resize: vertical;
   font-family: inherit;
   box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.rv-log-memo:focus {
+  border-color: var(--ink);
+  outline: none;
 }
 
 /* 하단 취소/저장 */
@@ -9249,31 +9252,31 @@ button:focus-visible {
 
 .rv-log-cancel {
   flex: 1;
-  padding: 10px;
-  border: 1px solid #d8e0ea;
-  border-radius: 10px;
-  background: #f8fafc;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-500);
+  height: 40px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
   cursor: pointer;
 }
 
 .rv-log-save {
-  flex: 2;
-  padding: 10px;
+  flex: 1;
+  height: 40px;
   border: none;
-  border-radius: 10px;
-  background: var(--brand-700);
-  font-size: 13px;
+  border-radius: 8px;
+  background: var(--ink);
+  font-size: 14px;
   font-weight: 700;
   color: #fff;
   cursor: pointer;
 }
 
 .rv-log-save:disabled {
-  background: var(--ink-200);
-  color: var(--ink-400);
+  background: var(--tint);
+  color: var(--muted-3);
   cursor: default;
 }
 

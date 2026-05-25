@@ -367,6 +367,7 @@ function NaverMapCanvas({
   onLocationPermissionBlocked,
   onMovePreviewPin,
   onMoveBuilding,
+  compact = false,
 }: {
   buildings: Building[]
   aggregateMarkers?: MapAggregateMarker[]
@@ -405,6 +406,7 @@ function NaverMapCanvas({
   onLocationPermissionBlocked?: () => void
   onMovePreviewPin?: (lat: number, lng: number) => void
   onMoveBuilding?: (id: number, lat: number, lng: number) => void
+  compact?: boolean
 }) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<any>(null)
@@ -624,6 +626,7 @@ function NaverMapCanvas({
   const rebuildMarkers = () => rebuildMarkersCallbackRef.current()
  
   const getFitMargin = () => {
+    if (compact) return [24, 24, 24, 24]
     if (!isMobile) return [80, 80, 80, 80]
     // 모바일에서는 바텀 시트 높이에 따라 하단 여백 가변 적용
     // 상단 여백은 헤더(~56) + stats sub 행 정도만 비우면 됨 — 과도하게 잡으면 경계선 짤림
@@ -1241,7 +1244,7 @@ function NaverMapCanvas({
       />
 
       {/* Map Toolbar Overlay */}
-      <div className="map-toolbar-overlay" style={{
+      {!compact && <div className="map-toolbar-overlay" style={{
         position: 'absolute',
         top: 'calc(100px - var(--map-chips-push, 0px))',
         right: '12px',
@@ -1289,7 +1292,7 @@ function NaverMapCanvas({
             <line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
-      </div>
+      </div>}
 
       <style>{`
         @keyframes userLocPulse {
@@ -1386,6 +1389,7 @@ export function MapCanvas({
   onLocationPermissionBlocked,
   onMovePreviewPin,
   onMoveBuilding,
+  compact = false,
 }: {
   buildings: Building[]
   aggregateMarkers?: MapAggregateMarker[]
@@ -1423,6 +1427,7 @@ export function MapCanvas({
   onLocationPermissionBlocked?: () => void
   onMovePreviewPin?: (lat: number, lng: number) => void
   onMoveBuilding?: (id: number, lat: number, lng: number) => void
+  compact?: boolean
 }) {
   const naverMapClientId = import.meta.env.VITE_NAVER_MAP_CLIENT_ID as string | undefined
   const validBuildings = useMemo(
@@ -1471,6 +1476,7 @@ export function MapCanvas({
           onLocationPermissionBlocked={onLocationPermissionBlocked}
           onMovePreviewPin={onMovePreviewPin}
           onMoveBuilding={onMoveBuilding}
+          compact={compact}
         />
       </div>
     )

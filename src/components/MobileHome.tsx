@@ -1033,10 +1033,11 @@ export function MobileHome({
                   }}
                 />
               ) : (
-                <MobileLeaderAssignment
-                  cards={cards}
-                  buildings={buildings}
-                  calendarEvents={calendarEvents}
+                  <MobileLeaderAssignment
+                    cards={cards}
+                    buildings={buildings}
+                    cardBoundaries={cardBoundaries}
+                    calendarEvents={calendarEvents}
                   currentVisitor={currentVisitor}
                   role={role}
                   actualRole={actualRole}
