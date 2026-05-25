@@ -812,6 +812,7 @@ export function MobileHome({
                   currentUserId={currentUser.id}
                   role={role}
                   events={calendarEvents}
+                  cards={cards}
                   leaderNames={leaderNames}
                   mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
                   /* 일정 생성/수정/삭제: admin + leader 만. user 는 신청만. */

@@ -84,6 +84,68 @@ function formatDateHeader(iso: string, language = 'ko') {
   return `${m}월 ${day}일 (${dows[d.getDay()]})`
 }
 
+function getAssignmentCardIds(assignment: CalendarEvent['cardAssignments'][number]) {
+  const ids = assignment.assignedCardIds?.length
+    ? assignment.assignedCardIds
+    : assignment.assignedCardId
+      ? [assignment.assignedCardId]
+      : []
+  return Array.from(new Set(ids.filter((id): id is number => typeof id === 'number' && id > 0))).sort((a, b) => a - b)
+}
+
+function buildSharedAssignmentTeams(event: CalendarEvent, cards: TerritoryCard[]) {
+  const cardNameById = new Map(cards.map((card) => [card.id, card.name]))
+  const grouped = new Map<string, { members: string[]; cardIds: number[] }>()
+
+  event.cardAssignments.forEach((assignment) => {
+    const cardIds = getAssignmentCardIds(assignment)
+    const key = cardIds.length ? cardIds.join(',') : `member:${assignment.userName}`
+    const existing = grouped.get(key) ?? { members: [], cardIds }
+    existing.members.push(assignment.userName)
+    grouped.set(key, existing)
+  })
+
+  return Array.from(grouped.values()).map((team, index) => ({
+    id: `${team.cardIds.join('-') || 'none'}-${index}`,
+    label: `팀 ${index + 1}`,
+    members: team.members,
+    cardNames: team.cardIds.map((id) => cardNameById.get(id)).filter((name): name is string => Boolean(name)),
+  }))
+}
+
+function SharedAssignmentTeams({ event, cards }: { event: CalendarEvent; cards: TerritoryCard[] }) {
+  if (event.assignmentStatus !== 'shared') return null
+
+  const teams = buildSharedAssignmentTeams(event, cards)
+  if (teams.length === 0) return null
+
+  return (
+    <section className="shared-assignment-section">
+      <SectionHead title="확정된 팀" />
+      <div className="shared-assignment-list">
+        {teams.map((team) => {
+          const primaryCard = team.cardNames[0] ?? '카드 미배정'
+          const extraCount = Math.max(0, team.cardNames.length - 1)
+          return (
+            <div className="shared-assignment-card" key={team.id}>
+              <div className="shared-assignment-card__top">
+                <div className="shared-assignment-card__summary">
+                  <strong>{team.label}</strong>
+                  <span>{team.members.join(', ') || '팀원 없음'}</span>
+                </div>
+                <span>{team.members.length}명</span>
+              </div>
+              <div className="shared-assignment-card__cards">
+                {primaryCard}{extraCount > 0 ? ` 외 ${extraCount}개` : ''}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 export function AdminEventDetailSheet({
   language = 'ko',
   event,
@@ -480,6 +542,8 @@ export function AdminEventDetailSheet({
         </section>
 
         )}
+
+        <SharedAssignmentTeams event={event} cards={cards} />
 
         <CommentSection
           compact

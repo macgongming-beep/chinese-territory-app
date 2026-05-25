@@ -738,10 +738,12 @@ function SharedAssignmentTeams({ event, cards }: { event: CalendarEvent; cards: 
           return (
             <div className="shared-assignment-card" key={team.id}>
               <div className="shared-assignment-card__top">
-                <strong>{team.label}</strong>
+                <div className="shared-assignment-card__summary">
+                  <strong>{team.label}</strong>
+                  <span>{team.members.join(', ') || '팀원 없음'}</span>
+                </div>
                 <span>{team.members.length}명</span>
               </div>
-              <div className="shared-assignment-card__members">{team.members.join(', ') || '팀원 없음'}</div>
               <div className="shared-assignment-card__cards">
                 {primaryCard}{extraCount > 0 ? ` 외 ${extraCount}개` : ''}
               </div>

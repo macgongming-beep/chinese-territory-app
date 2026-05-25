@@ -12,7 +12,7 @@ import { t, weekdayShortLabels } from '../../i18n'
 
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { CalendarEvent, Role, SpecialPeriod } from '../../types'
+import type { CalendarEvent, Role, SpecialPeriod, TerritoryCard } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { Card } from '../ui'
 import { AdminEventDetailSheet } from './AdminEventDetailSheet'
@@ -58,6 +58,7 @@ type Props = {
   currentUserId?: number | null
   role: Role
   events: CalendarEvent[]
+  cards?: TerritoryCard[]
   leaderNames?: string[]
   mentionUsers?: MentionUser[]
   onCreateEvent?: (input: EventInput & { date: string }) => void
@@ -189,6 +190,7 @@ function CalendarEmptyIcon() { return <svg width="24" height="24" viewBox="0 0 2
 export function AdminMobileCalendar({
   language,
   events,
+  cards = [],
   role,
   currentVisitor,
   currentUserId,
@@ -545,6 +547,7 @@ export function AdminMobileCalendar({
         <AdminEventDetailSheet
           language={language}
           event={detailEvent}
+          cards={cards}
           role={role}
           currentVisitor={currentVisitor}
           currentUserId={currentUserId}
