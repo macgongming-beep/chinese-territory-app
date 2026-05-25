@@ -30,6 +30,9 @@ export type CalendarEvent = {
   applicants: string[]
   assigned: string[]
   cardAssignments: EventCardAssignment[]
+  assignmentStatus?: 'draft' | 'confirmed' | 'shared'
+  assignmentSharedAt?: string | null
+  assignmentSharedBy?: string | null
   memo: string
   seriesId?: string  // set when created as part of a repeat series
 }

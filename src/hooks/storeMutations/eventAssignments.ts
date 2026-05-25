@@ -57,7 +57,7 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
   const assignCardsToEventParticipantsBulk = async (
     eventId: number,
     assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
-    options?: { silentSuccess?: boolean },
+    options?: { silentSuccess?: boolean; status?: 'confirmed' | 'shared' },
   ) => {
     const silentSuccess = options?.silentSuccess === true
     const normalizedAssignments = Array.from(
@@ -125,6 +125,22 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
       if (multiCardResult.error) {
         console.warn('여러 카드 배정 저장에 실패했습니다. event_card_assignment_cards SQL이 필요할 수 있습니다.', multiCardResult.error)
         showToast('대표 카드 배정은 저장됐지만, 여러 카드 동기화는 SQL 실행 후 완전하게 사용됩니다.')
+      }
+    }
+
+    if (options?.status) {
+      const statusResult = await supabase
+        .from('calendar_events')
+        .update({
+          assignment_status: options.status,
+          assignment_shared_at: options.status === 'shared' ? new Date().toISOString() : null,
+          assignment_shared_by: options.status === 'shared' ? getCurrentVisitor() : null,
+        })
+        .eq('id', eventId)
+
+      if (statusResult.error) {
+        reportMutationError('배정 공유 상태를 저장하지 못했습니다. event_assignment_status SQL을 먼저 실행해 주세요.', statusResult.error)
+        return
       }
     }
 

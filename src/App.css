@@ -10064,7 +10064,7 @@ button:focus-visible {
   /* 날짜 숫자 아래 특봉 기간 표시 — 셀 가로 전체 연결 */
   .period-full-bar {
     position: absolute;
-    top: 30px;
+    top: 34px;
     left: 0;
     right: 0;
     height: 2px;
@@ -10138,7 +10138,7 @@ button:focus-visible {
     flex-direction: column;
     gap: 2px;
     max-height: 88px;
-    margin-top: 14px;
+    margin-top: 8px;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;

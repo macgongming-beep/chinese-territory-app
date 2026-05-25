@@ -125,7 +125,7 @@ export function MobileLeaderAssignment({
   onAssignCardsToEventParticipantsBulk: (
     eventId: number,
     assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
-    options?: { silentSuccess?: boolean },
+    options?: { silentSuccess?: boolean; status?: 'confirmed' | 'shared' },
   ) => Promise<void> | void
   informalAssets?: InformalAsset[]
   informalGroups?: InformalGroup[]
@@ -385,7 +385,7 @@ export function MobileLeaderAssignment({
   }
 
 
-  const persistSharedAssignments = async (nextDraft: AssignmentDraft) => {
+  const persistSharedAssignments = async (nextDraft: AssignmentDraft, status: 'confirmed' | 'shared') => {
     if (!canEditSelectedEvent) return
     if (!selectedEvent) return
     const persistedParticipants = participants.filter((participant) => participant.tag !== '게스트')
@@ -397,7 +397,7 @@ export function MobileLeaderAssignment({
         cardIds: team?.cardIds ?? [],
       }
     })
-    await Promise.resolve(onAssignCardsToEventParticipantsBulk(selectedEvent.id, assignments, { silentSuccess: true }))
+    await Promise.resolve(onAssignCardsToEventParticipantsBulk(selectedEvent.id, assignments, { silentSuccess: true, status }))
   }
 
   const saveAssignmentState = async (nextStatus: AssignmentStatus) => {
@@ -417,12 +417,12 @@ export function MobileLeaderAssignment({
       return
     }
     if (nextStatus === 'confirmed') {
-      await persistSharedAssignments(nextDraft)
+      await persistSharedAssignments(nextDraft, 'confirmed')
       showToast('배정이 확정되었습니다')
       return
     }
     if (nextStatus === 'shared') {
-      await persistSharedAssignments(nextDraft)
+      await persistSharedAssignments(nextDraft, 'shared')
       showToast('배정이 공유되었습니다')
       return
     }
@@ -436,11 +436,11 @@ export function MobileLeaderAssignment({
     const nextDraft = persistDraft(draft, action)
     if (!nextDraft) return
     if (action === 'shared') {
-      await persistSharedAssignments(nextDraft)
+      await persistSharedAssignments(nextDraft, 'shared')
       showToast('미배정 인원이 있는 상태로 배정을 공유했습니다')
       return
     }
-    await persistSharedAssignments(nextDraft)
+    await persistSharedAssignments(nextDraft, 'confirmed')
     showToast('미배정 인원이 있는 상태로 배정을 확정했습니다')
   }
 

@@ -72,22 +72,22 @@ export function SpecialPeriodBanner({
         className="special-period-banner-compact"
         onClick={onClick}
         style={{
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
-          gap: '8px',
-          padding: '7px 12px',
-          background: 'var(--surface)',
-          border: '1px solid var(--line)',
-          borderRadius: '8px',
-          fontSize: '12px',
+          gap: '6px',
+          padding: '4px 10px',
+          background: `color-mix(in srgb, ${color} 10%, transparent)`,
+          border: `1px solid color-mix(in srgb, ${color} 20%, transparent)`,
+          borderRadius: '9999px',
+          fontSize: '11px',
           fontWeight: 600,
-          color: 'var(--ink)',
+          color: color,
           cursor: onClick ? 'pointer' : 'default',
         }}
       >
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
-        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{active.label}</span>
-        <span style={{ flexShrink: 0, padding: '2px 7px', borderRadius: '10px', background: color, color: '#fff', fontSize: '11px', fontWeight: 700 }}>
+        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{active.label}</span>
+        <span style={{ flexShrink: 0, padding: '2px 6px', borderRadius: '10px', background: `color-mix(in srgb, ${color} 15%, transparent)`, color: color, fontSize: '10px', fontWeight: 700, marginLeft: 2 }}>
           {dDayLabel}
         </span>
       </div>

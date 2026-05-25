@@ -89,6 +89,9 @@ export type RawCalendarEvent = {
   card_name: string
   has_meeting: boolean
   allow_applications?: boolean | null
+  assignment_status?: 'draft' | 'confirmed' | 'shared' | null
+  assignment_shared_at?: string | null
+  assignment_shared_by?: string | null
   memo: string
   series_id: string | null
   event_participants: { user_name: string; role: string }[]
@@ -315,6 +318,9 @@ export function toCalendarEvent(
     applicants: participants.map((p) => p.user_name),
     assigned: participants.filter((p) => p.role === '입명').map((p) => p.user_name),
     cardAssignments,
+    assignmentStatus: raw.assignment_status ?? 'draft',
+    assignmentSharedAt: raw.assignment_shared_at ?? null,
+    assignmentSharedBy: raw.assignment_shared_by ?? null,
     memo: raw.memo,
     seriesId: raw.series_id ?? undefined,
   }

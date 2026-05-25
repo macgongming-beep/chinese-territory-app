@@ -61,7 +61,7 @@ function DesktopLeaderAssignmentView({
   currentVisitor: string
   role: Role
   actualRole?: Role
-  onAssignCardsToEventParticipantsBulk: (eventId: number, assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>, options?: { silentSuccess?: boolean }) => Promise<void> | void
+  onAssignCardsToEventParticipantsBulk: (eventId: number, assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>, options?: { silentSuccess?: boolean; status?: 'confirmed' | 'shared' }) => Promise<void> | void
   informalAssets?: InformalAsset[]
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
@@ -245,7 +245,7 @@ function DesktopLeaderAssignmentView({
     setSelectedParticipants(new Set())
   }
 
-  const persistShared = async (d: AssignmentDraft) => {
+  const persistShared = async (d: AssignmentDraft, status: 'confirmed' | 'shared') => {
     if (!canEditSelectedEvent) return
     if (!selectedEvent) return
     const realParticipants = participants.filter((p) => p.tag !== '게스트')
@@ -253,7 +253,7 @@ function DesktopLeaderAssignmentView({
       const team = d.teams.find((t) => t.members.includes(p.name))
       return { userName: p.name, cardId: team?.cardIds[0] ?? null, cardIds: team?.cardIds ?? [] }
     })
-    await Promise.resolve(onAssignCardsToEventParticipantsBulk(selectedEvent.id, assignments, { silentSuccess: true }))
+    await Promise.resolve(onAssignCardsToEventParticipantsBulk(selectedEvent.id, assignments, { silentSuccess: true, status }))
   }
 
   const saveStatus = async (status: AssignmentStatus) => {
@@ -266,8 +266,8 @@ function DesktopLeaderAssignmentView({
     setSaving(true)
     const next = persistDraft(draft, status)
     if (!next) { setSaving(false); return }
-    if (status === 'shared') { await persistShared(next); showToast('배정이 공유되었습니다.', 'success') }
-    else if (status === 'confirmed') { await persistShared(next); showToast('배정이 확정되었습니다.', 'success') }
+    if (status === 'shared') { await persistShared(next, 'shared'); showToast('배정이 공유되었습니다.', 'success') }
+    else if (status === 'confirmed') { await persistShared(next, 'confirmed'); showToast('배정이 확정되었습니다.', 'success') }
     else showToast('임시 저장되었습니다.')
     setSaving(false)
   }
@@ -278,8 +278,8 @@ function DesktopLeaderAssignmentView({
     const action = pendingAction; setPendingAction(null); setSaving(true)
     const next = persistDraft(draft, action)
     if (!next) { setSaving(false); return }
-    if (action === 'shared') { await persistShared(next); showToast('배정이 공유되었습니다.', 'success') }
-    else { await persistShared(next); showToast('배정이 확정되었습니다.', 'success') }
+    if (action === 'shared') { await persistShared(next, 'shared'); showToast('배정이 공유되었습니다.', 'success') }
+    else { await persistShared(next, 'confirmed'); showToast('배정이 확정되었습니다.', 'success') }
     setSaving(false)
   }
 
