@@ -392,7 +392,7 @@ export function MobileAdminAssignment({
 
           {/* 활성 인도자 */}
           {(leaderFilter === 'all' || leaderFilter === 'active') && filteredActive.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 14 }}>
               {filteredActive.map((leader) => (
                 <LeaderCard
                   key={leader}
