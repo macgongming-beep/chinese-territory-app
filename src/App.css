@@ -26893,10 +26893,10 @@ button:focus-visible {
 }
 .rv-sheet {
   width: 100%;
-  background: var(--bg);
-  border-top-left-radius: 24px;
-  border-top-right-radius: 24px;
-  padding: 12px 20px max(24px, env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  padding: 16px 16px max(32px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -26920,19 +26920,19 @@ button:focus-visible {
 .rv-sheet-title-col {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
   flex: 1;
 }
 .rv-sheet-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--ink-900);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
   letter-spacing: -0.01em;
 }
 .rv-sheet-sub {
-  font-size: 14px;
-  color: var(--ink-500);
+  font-size: 12px;
+  color: var(--muted);
   letter-spacing: -0.005em;
 }
 .rv-sheet-close {
@@ -26951,7 +26951,7 @@ button:focus-visible {
 .rv-sheet-divider {
   height: 1px;
   background: var(--line);
-  margin: 0 -20px;
+  margin: 0 -16px;
 }
 .rv-sheet-meta-row {
   display: flex;
@@ -26960,8 +26960,8 @@ button:focus-visible {
   gap: 12px;
 }
 .rv-sheet-date {
-  font-size: 15px;
-  color: var(--ink-900);
+  font-size: 14px;
+  color: var(--text);
   font-weight: 600;
 }
 .rv-sheet-chips {
@@ -26971,16 +26971,16 @@ button:focus-visible {
 .rv-sheet-chip {
   display: inline-flex;
   align-items: center;
-  padding: 8px 18px;
-  background: var(--surface);
-  border: 1.5px solid var(--line-muted);
-  border-radius: 20px;
-  font-size: 14px;
+  padding: 5px 12px;
+  background: var(--tint);
+  border: 1px solid var(--line-2);
+  border-radius: 9999px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--ink-500);
+  color: var(--muted);
   cursor: pointer;
   letter-spacing: -0.005em;
-  transition: all .2s;
+  transition: all .15s;
 }
 .rv-sheet-chip.is-active {
   background: var(--ink);
@@ -26990,13 +26990,13 @@ button:focus-visible {
 .rv-sheet-memo {
   width: 100%;
   min-height: 80px;
-  padding: 14px;
+  padding: 10px 12px;
   background: var(--surface);
-  border: 1.5px solid var(--line-muted);
-  border-radius: 12px;
-  font-size: 15px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
   font-family: inherit;
-  color: var(--ink);
+  color: var(--text);
   resize: vertical;
   box-sizing: border-box;
   letter-spacing: -0.005em;
@@ -27008,33 +27008,35 @@ button:focus-visible {
 }
 .rv-sheet-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-top: 4px;
 }
 .rv-sheet-btn {
   flex: 1;
-  height: 52px;
-  border-radius: 16px;
-  font-size: 16px;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   letter-spacing: -0.005em;
-  transition: all .2s;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .rv-sheet-btn-ghost {
   background: var(--surface);
-  border: 1.5px solid var(--line-muted);
-  color: var(--ink-600);
+  border: 1px solid var(--line-2);
+  color: var(--text);
 }
 .rv-sheet-btn-solid {
   background: var(--ink);
-  border: 1.5px solid var(--ink);
+  border: none;
   color: #fff;
 }
 .rv-sheet-btn-solid:disabled {
-  background: var(--surface-100);
-  border-color: var(--surface-100);
-  color: var(--ink-400);
+  background: var(--tint);
+  color: var(--muted-3);
   cursor: not-allowed;
 }
 
