@@ -264,7 +264,9 @@ export function normalizeCardType(): CardType {
 
 export function toCard(raw: RawCard, buildings: Building[]): TerritoryCard {
   const cardBuildings = buildings.filter((b) => b.cardId === raw.id)
-  const allUnits = cardBuildings.flatMap((b) => b.units)
+  // 식당봉사 건물은 진행률에서 제외 (식당봉사는 별도 통계)
+  const progressBuildings = cardBuildings.filter((b) => !b.isRestaurant)
+  const allUnits = progressBuildings.flatMap((b) => b.units)
   const completed = allUnits.filter((u) => u.status !== '미방문').length
   const total = allUnits.length
   const progress = total > 0 ? Math.round((completed / total) * 100) : 100

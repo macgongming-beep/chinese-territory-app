@@ -348,6 +348,50 @@ export function DesktopStats({
     }
   }, [buildings, visitHistories])
 
+  // ── 11-b. 식당봉사 통계 ──
+  const restaurantStats = useMemo(() => {
+    const rh = visitHistories.filter((h) => h.visitType === 'restaurant')
+    const total = rh.length
+
+    // 봉사자별
+    const byVisitor = new Map<string, number>()
+    for (const h of rh) byVisitor.set(h.visitor, (byVisitor.get(h.visitor) ?? 0) + 1)
+    const topVisitors = Array.from(byVisitor.entries())
+      .map(([visitor, count]) => ({ visitor, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+
+    // 식당별 (unit_id → building name)
+    const unitToBuilding = new Map<number, string>()
+    for (const b of buildings) {
+      if (!b.isRestaurant) continue
+      for (const u of b.units) unitToBuilding.set(u.id, b.name || b.address)
+    }
+    const byRestaurant = new Map<string, number>()
+    for (const h of rh) {
+      const name = unitToBuilding.get(h.unitId) ?? '알 수 없음'
+      byRestaurant.set(name, (byRestaurant.get(name) ?? 0) + 1)
+    }
+    const topRestaurants = Array.from(byRestaurant.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+
+    // 월별
+    const now = new Date()
+    const monthly = Array.from({ length: 6 }, (_, idx) => {
+      const i = 5 - idx
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      return { label: `${d.getMonth() + 1}월`, count: rh.filter((h) => h.visitedAt.startsWith(key)).length }
+    })
+
+    // 고유 식당 수
+    const uniqueRestaurants = new Set(rh.map((h) => h.unitId)).size
+
+    return { total, topVisitors, topRestaurants, monthly, uniqueRestaurants }
+  }, [visitHistories, buildings])
+
   // ── 12. 봉사자별 (개발자 전용) ──
   const visitorStats = useMemo(() => {
     if (!isDeveloper) return []
@@ -777,6 +821,75 @@ export function DesktopStats({
           </>
         )}
       </div>
+
+      {/* ── 식당봉사 통계 ── */}
+      {restaurantStats.total > 0 && (
+        <div style={cardStyle}>
+          <h2 style={titleStyle}>🍜 식당봉사</h2>
+          {/* 요약 */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
+            {[
+              { label: '총 방문', value: restaurantStats.total.toLocaleString(), color: C.ink },
+              { label: '방문 식당 수', value: `${restaurantStats.uniqueRestaurants}곳`, color: C.ink },
+              { label: '이번 달', value: `${restaurantStats.monthly[restaurantStats.monthly.length - 1].count}건`, color: C.ink },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{ background: C.bg, borderRadius: 10, padding: '14px 16px', border: `1px solid ${C.line}` }}>
+                <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6 }}>{label}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color }}>{value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* 월별 추이 */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 10 }}>최근 6개월</div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 60 }}>
+              {restaurantStats.monthly.map(({ label, count }) => {
+                const maxCount = Math.max(1, ...restaurantStats.monthly.map((m) => m.count))
+                const h = Math.max(4, (count / maxCount) * 52)
+                return (
+                  <div key={label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <div style={{ fontSize: 10, color: C.muted }}>{count > 0 ? count : ''}</div>
+                    <div style={{ width: '100%', height: h, background: C.ink, borderRadius: 3, opacity: count === 0 ? 0.15 : 1 }} />
+                    <div style={{ fontSize: 10, color: C.muted }}>{label}</div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            {/* 자주 간 식당 */}
+            {restaurantStats.topRestaurants.length > 0 && (
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 8 }}>자주 방문한 식당</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {restaurantStats.topRestaurants.slice(0, 5).map(({ name, count }) => (
+                    <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${C.line}` }}>
+                      <span style={{ fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '75%' }}>{name}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{count}회</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* 봉사자별 */}
+            {restaurantStats.topVisitors.length > 0 && (
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 8 }}>봉사자별 식당봉사</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {restaurantStats.topVisitors.slice(0, 5).map(({ visitor, count }) => (
+                    <div key={visitor} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${C.line}` }}>
+                      <span style={{ fontSize: 13, color: C.text }}>{visitor}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{count}건</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── 봉사자별 (개발자 전용) ── */}
       {isDeveloper && visitorStats.length > 0 && (
