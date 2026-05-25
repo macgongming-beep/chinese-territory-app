@@ -19336,15 +19336,19 @@ button:focus-visible {
   justify-content: space-between;
   gap: 16px;
   min-width: 260px;
-  padding: 12px 20px;
-  border-radius: var(--r-lg);
+  padding: 14px 20px;
+  border-radius: 16px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.4;
   color: #ffffff;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  pointer-events: auto; /* 버튼 클릭을 위해 활성화 */
-  animation: toast-slide-in 0.22s ease;
+  background: rgba(28, 28, 26, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+  animation: toast-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .toast-message {
@@ -19352,15 +19356,17 @@ button:focus-visible {
 }
 
 .toast-action-btn {
-  min-height: 28px;
-  padding: 0 10px;
+  min-height: 32px;
+  padding: 0 12px;
   margin: -4px 0;
-  border-radius: 6px;
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .toast-action-btn:hover {
@@ -19369,15 +19375,16 @@ button:focus-visible {
 }
 
 .toast-success {
-  background: var(--accent-700);
+  /* Use default sleek dark background defined in .toast */
 }
 
 .toast-error {
-  background: #c0392b;
+  background: rgba(45, 20, 20, 0.95);
+  border-color: rgba(255, 100, 100, 0.2);
 }
 
 .toast-info {
-  background: var(--brand-700);
+  /* Use default sleek dark background defined in .toast */
 }
 
 @keyframes toast-slide-in {
