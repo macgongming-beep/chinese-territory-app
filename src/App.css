@@ -7149,6 +7149,22 @@ button:focus-visible {
   box-shadow: var(--elev-1);
 }
 
+.mobile-done-excluded-toggle {
+  width: 100%;
+  min-height: 42px;
+  margin: 0 0 10px;
+  border: 1px dashed var(--line-2);
+  border-radius: 14px;
+  background: #ffffff;
+  color: var(--ink-500);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mobile-done-excluded-toggle:active {
+  transform: translateY(1px);
+}
+
 .mobile-territory-info {
   display: grid;
   align-content: center;
@@ -12254,7 +12270,7 @@ button:focus-visible {
   .building-management-head,
   .building-management-row {
     display: grid;
-    grid-template-columns: 34px minmax(130px, 1fr) minmax(200px, 1.35fr) minmax(150px, 0.9fr) 56px 58px 62px 54px 56px minmax(100px, 0.8fr) 102px;
+    grid-template-columns: 34px minmax(130px, 1fr) minmax(200px, 1.35fr) minmax(150px, 0.9fr) 56px 58px 62px 54px 110px;
     gap: 12px;
     align-items: center;
   }

@@ -137,6 +137,7 @@ export function AdminMobileZone({
   const [selectedRegion, setSelectedRegion] = useState(urlRegion)
   const [selectedDong, setSelectedDong] = useState(urlDong)
   const [query, setQuery] = useState('')
+  const [showDoneExcludedCards, setShowDoneExcludedCards] = useState(false)
 
   // 드릴 상태 + scope URL 동기화 (replace — 히스토리 오염 방지)
   useEffect(() => {
@@ -212,18 +213,19 @@ export function AdminMobileZone({
     return { total: cardsInScope.length, house, shop }
   }, [baseCards, cardBuildingCounts, level, selectedRegion, selectedDong])
 
-  // ── 담당 view 의 state totals (미사용 / 사용중 / 사용완료) ─────
+  // ── 담당 view 의 state totals (미사용 / 사용중 / 완료·제외) ─────
   // 본인 담당 카드를 status 별 집계 — 어휘 매핑:
   //   미배정/진행 X → 미사용 (danger)
   //   진행중       → 사용중 (info)
-  //   완료         → 사용완료 (ok)
+  //   완료/대상없음 → 완료·제외 (ok)
   const mineStateTotals = useMemo(() => {
     let unused = 0
     let inUse = 0
     let done = 0
     for (const c of baseCards) {
-      if (c.status === '완료') done += 1
-      else if (c.status === '진행중') inUse += 1
+      const operationalState = getTerritoryCardOperationalState(c)
+      if (operationalState === '완료' || operationalState === '대상없음') done += 1
+      else if (operationalState === '진행중') inUse += 1
       else unused += 1
     }
     return { unused, inUse, done }
@@ -245,7 +247,8 @@ export function AdminMobileZone({
         const bc = cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }
         house += bc.house
         shop += bc.shop
-        if (c.status === '완료') done += 1
+        const operationalState = getTerritoryCardOperationalState(c)
+        if (operationalState === '완료' || operationalState === '대상없음') done += 1
       }
       return { name, cards: cs, house, shop, total: cs.length, done }
     }
@@ -276,7 +279,8 @@ export function AdminMobileZone({
         const bc = cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }
         house += bc.house
         shop += bc.shop
-        if (c.status === '완료') done += 1
+        const operationalState = getTerritoryCardOperationalState(c)
+        if (operationalState === '완료' || operationalState === '대상없음') done += 1
       }
       out.push({ name: dong, cards: cs, house, shop, total: cs.length, done })
     }
@@ -299,6 +303,15 @@ export function AdminMobileZone({
       .filter((c) => !query || c.name.includes(query))
       .sort(compareTerritoryCardsByOperationalPriority)
   }, [baseCards, selectedRegion, selectedDong, query])
+
+  const isDoneExcludedCard = (card: TerritoryCard) => {
+    const state = getTerritoryCardOperationalState(card)
+    return state === '완료' || state === '대상없음'
+  }
+  const doneExcludedCards = cardList.filter(isDoneExcludedCard)
+  const renderedCardList = showDoneExcludedCards
+    ? cardList
+    : cardList.filter((card) => !isDoneExcludedCard(card))
 
   // ── 네비게이션 ────────────────────────────
   const goToRegion = (region: string) => {
@@ -442,7 +455,7 @@ export function AdminMobileZone({
       {/* Stats inline
           - 전체 view: 전체 / 배정 / 미배정 (디자인 04 의 기본 카운터)
           - 담당 view + drill-down: 디자인 20/21 의 압축 stats (전체 · 주택 · 상가)
-            대신 디자인 22 의 미사용/사용중/사용완료 totals 행은 별도 카드로 아래 */}
+            대신 디자인 22 의 미사용/사용중/완료·제외 totals 행은 별도 카드로 아래 */}
       {scope === 'all' && level === 'regions' ? (
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px', fontSize: 13, color: 'var(--muted)' }}>
           <span><span style={{ color: 'var(--muted)' }}>전체</span> <b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.total}</b></span>
@@ -471,7 +484,7 @@ export function AdminMobileZone({
           {[
             { label: '미사용', count: mineStateTotals.unused, color: 'var(--status-danger)' },
             { label: '사용중', count: mineStateTotals.inUse, color: 'var(--status-info)' },
-            { label: '사용완료', count: mineStateTotals.done, color: 'var(--status-ok)' },
+            { label: '완료·제외', count: mineStateTotals.done, color: 'var(--status-ok)' },
           ].map((s) => (
             <span key={s.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
               <span style={{ width: 7, height: 7, borderRadius: 99, background: s.color, flexShrink: 0 }} />
@@ -545,9 +558,30 @@ export function AdminMobileZone({
               카드가 없습니다
             </Card>
           ) : (
-            cardList.map((c) => (
-              <CardRow key={c.id} card={c} buildingCount={cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }} onClick={() => onOpenMap(c.id)} />
-            ))
+            <>
+              {renderedCardList.map((c) => (
+                <CardRow key={c.id} card={c} buildingCount={cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }} onClick={() => onOpenMap(c.id)} />
+              ))}
+              {doneExcludedCards.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDoneExcludedCards((open) => !open)}
+                  style={{
+                    width: '100%',
+                    minHeight: 42,
+                    border: '1px dashed var(--line-2)',
+                    borderRadius: 14,
+                    background: 'var(--surface)',
+                    color: 'var(--muted)',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  완료·제외 {doneExcludedCards.length}개 {showDoneExcludedCards ? '접기' : '펼치기'}
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
@@ -818,7 +852,7 @@ function CardRow({
               </div>
               <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
                 {card.assignedLeader ? `담당 ${card.assignedLeader} · ` : ''}
-                {isEmptyTarget ? '대상없음' : `주택 ${buildingCount.house} · 상가 ${buildingCount.shop}`}
+                {isEmptyTarget ? '완료·제외' : `주택 ${buildingCount.house} · 상가 ${buildingCount.shop}`}
               </span>
             </div>
             <span

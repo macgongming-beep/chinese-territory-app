@@ -60,6 +60,8 @@ function getTodayDateInputValue() {
   return `${y}-${m}-${d}`
 }
 
+type CardStatusFilter = TerritoryCard['status'] | '전체' | '완료·제외'
+
 export function DesktopTerritory({
   buildings,
   cardBoundaries,
@@ -199,7 +201,8 @@ export function DesktopTerritory({
   const [leaderFilter, setLeaderFilter] = useState('전체')
   const [regularVisitFilter, setRegularVisitFilter] = useState<'전체' | '있음' | '없음'>('전체')
   const [cardChineseHeavyFilter, setCardChineseHeavyFilter] = useState<'전체' | '있음' | '없음'>('전체')
-  const [cardStatusFilter, setCardStatusFilter] = useState<TerritoryCard['status'] | '전체'>('전체')
+  const [cardStatusFilter, setCardStatusFilter] = useState<CardStatusFilter>('전체')
+  const [doneExcludedOpen, setDoneExcludedOpen] = useState(false)
   const [cardFilterPanelOpen, setCardFilterPanelOpen] = useState(false)
   const [buildingFilterPanelOpen, setBuildingFilterPanelOpen] = useState(false)
   const [pointFilterPanelOpen, setPointFilterPanelOpen] = useState(false)
@@ -419,11 +422,25 @@ export function DesktopTerritory({
     if (cardChineseHeavyFilter === '있음' && !hasChineseHeavy) return false
     if (cardChineseHeavyFilter === '없음' && hasChineseHeavy) return false
     if (cardStatusFilter !== '전체') {
-      if (operationalState === '대상없음') return false
-      if (card.status !== cardStatusFilter) return false
+      if (cardStatusFilter === '완료·제외') {
+        if (operationalState !== '완료' && operationalState !== '대상없음') return false
+      } else {
+        if (operationalState === '대상없음') return false
+        if (card.status !== cardStatusFilter) return false
+      }
     }
     return true
   }).sort(compareTerritoryCardsByOperationalPriority)
+  const isDoneExcludedCard = (card: TerritoryCard) => {
+    const state = getTerritoryCardOperationalState(card)
+    return state === '완료' || state === '대상없음'
+  }
+  const doneExcludedCards = cardStatusFilter === '완료·제외'
+    ? []
+    : filteredCards.filter(isDoneExcludedCard)
+  const renderedCards = cardStatusFilter === '완료·제외' || doneExcludedOpen
+    ? filteredCards
+    : filteredCards.filter((card) => !isDoneExcludedCard(card))
   const selectedMergeCards = cards.filter((card) => checkedCardIds.has(card.id))
 
   const activeAdvancedCardFilterCount =
@@ -2218,7 +2235,7 @@ export function DesktopTerritory({
                   <div className="tbl-filter-group">
                     <span className="tbl-filter-label">상태</span>
                     <div className="tbl-mini-seg">
-                      {(['전체', '미배정', '진행중', '완료', '보류'] as Array<TerritoryCard['status'] | '전체'>).map((f) => (
+                      {(['전체', '미배정', '완료·제외', '보류'] as CardStatusFilter[]).map((f) => (
                         <button key={f} className={cardStatusFilter === f ? 'active' : ''} onClick={() => setCardStatusFilter(f)} type="button">{f}</button>
                       ))}
                     </div>
@@ -2409,7 +2426,7 @@ export function DesktopTerritory({
               </tr>
             </thead>
             <tbody>
-              {filteredCards.map((card) => {
+              {renderedCards.map((card) => {
                 const cardBuildings = buildingsByCardId.get(card.id) ?? []
                 const operationalState = getTerritoryCardOperationalState(card)
                 const chinesePointCount = cardBuildings.reduce((sum, b) => sum + b.units.filter((u) => u.isChinese).length, 0)
@@ -2483,7 +2500,7 @@ export function DesktopTerritory({
                         background: operationalState === '대상없음' ? 'var(--gray-100)' : card.status === '진행중' ? 'var(--primary-100)' : card.status === '미배정' ? 'var(--warning-100)' : 'var(--success-100)',
                         color: operationalState === '대상없음' ? 'var(--gray-500)' : card.status === '진행중' ? 'var(--primary-700)' : card.status === '미배정' ? 'var(--warning-700)' : 'var(--success-700)',
                       }}>
-                        {operationalState === '대상없음' ? '대상없음' : card.status}
+                        {operationalState === '대상없음' ? '완료·제외' : card.status === '완료' ? '완료' : card.status}
                       </span>
                     </td>
                     <td style={{ width: 160, textAlign: 'right', paddingRight: 18 }} onClick={(e) => e.stopPropagation()}>
@@ -2497,6 +2514,20 @@ export function DesktopTerritory({
                   </tr>
                 )
               })}
+              {doneExcludedCards.length > 0 && (
+                <tr>
+                  <td colSpan={isAdmin ? 10 : 9} style={{ padding: '10px 18px', background: 'var(--bg-subtle)', borderTop: '1px solid var(--border-subtle)' }}>
+                    <button
+                      className="tbl-ghost-btn sm"
+                      onClick={() => setDoneExcludedOpen((open) => !open)}
+                      type="button"
+                      style={{ width: '100%', justifyContent: 'center', minHeight: 36 }}
+                    >
+                      완료·제외 {doneExcludedCards.length}개 {doneExcludedOpen ? '접기' : '펼치기'}
+                    </button>
+                  </td>
+                </tr>
+              )}
               {filteredCards.length === 0 && (
                 <tr><td colSpan={isAdmin ? 10 : 9} style={{ textAlign: 'center', padding: '32px 18px', color: 'var(--gray-400)', fontSize: 13 }}>
                   {cards.length === 0 ? '카드가 없습니다. 위의 + 카드 추가 버튼으로 첫 카드를 만들어보세요.' : '조건에 맞는 카드가 없습니다.'}

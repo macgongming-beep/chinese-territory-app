@@ -128,6 +128,7 @@ export function MobileTerritory({
   const [sessionMemo, setSessionMemo] = useState('')
   const [sessionSaving, setSessionSaving] = useState(false)
   const [showSessionMenu, setShowSessionMenu] = useState(false)
+  const [showDoneExcludedCards, setShowDoneExcludedCards] = useState(false)
 
   const saveSession = (s: ActiveRestaurantSession | null) => {
     setActiveRestaurantSession(s)
@@ -220,6 +221,7 @@ export function MobileTerritory({
     if (status === '방문필요') return t(language, 'zone.summaryNeed')
     if (status === '진행중') return t(language, 'zone.summaryProgress')
     if (status === '완료') return t(language, 'zone.summaryDone')
+    if (status === '대상없음') return t(language, 'zone.summaryDoneExcluded')
     return status
   }
 
@@ -446,6 +448,18 @@ export function MobileTerritory({
     }
     return sortTerritoryCardsByOperationalPriority(list)
   }, [cards, role, filter, myCards])
+
+  const isDoneExcludedCard = (card: TerritoryCard) => {
+    const state = getTerritoryCardOperationalState(card)
+    return state === '완료' || state === '대상없음'
+  }
+  const doneExcludedCards = useMemo(
+    () => visibleCards.filter(isDoneExcludedCard),
+    [visibleCards]
+  )
+  const renderedVisibleCards = showDoneExcludedCards
+    ? visibleCards
+    : visibleCards.filter((card) => !isDoneExcludedCard(card))
 
   const myRegularVisits = useMemo(
     () =>
@@ -1564,14 +1578,12 @@ export function MobileTerritory({
             </div>
           )}
 
-          {visibleCards.map((card) => {
+          {renderedVisibleCards.map((card) => {
             const isActiveSession = activeSessionCardIds.has(card.id)
             const operationalState = getTerritoryCardOperationalState(card)
             const statusLabel = isActiveSession
               ? t(language, 'map.servicing')
-              : operationalState === '대상없음'
-                ? '대상없음'
-                : cardStatusLabel(operationalState)
+              : cardStatusLabel(operationalState)
             const statusClass = isActiveSession ? '진행중' : operationalState
             const counts = cardBuildingTypeCounts.get(card.id) ?? { total: card.buildings, house: 0, shop: 0 }
             return (
@@ -1603,6 +1615,15 @@ export function MobileTerritory({
               </div>
             )
           })}
+          {doneExcludedCards.length > 0 && (
+            <button
+              className="mobile-done-excluded-toggle"
+              onClick={() => setShowDoneExcludedCards((open) => !open)}
+              type="button"
+            >
+              완료·제외 {doneExcludedCards.length}개 {showDoneExcludedCards ? '접기' : '펼치기'}
+            </button>
+          )}
         </>
       )}
 
