@@ -11234,21 +11234,27 @@ button:focus-visible {
     margin-bottom: 8px;
   }
   .cal-time-presets {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
     gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    min-width: 0;
   }
   .cal-time-preset-btn {
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    padding: 10px 14px;
+    justify-content: center;
+    padding: 8px 12px;
     border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     background: var(--bg-card);
     cursor: pointer;
     transition: background 0.12s, border-color 0.12s;
-    min-height: unset;
+    min-width: 90px;
     text-align: left;
   }
   .cal-time-preset-btn:hover {

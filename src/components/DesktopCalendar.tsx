@@ -368,7 +368,7 @@ export function DesktopCalendar({
                           }}
                         >
                           <span className="cal-preset-name">{p.label}</span>
-                          <span className="cal-preset-time">{p.time}</span>
+                          <span className="cal-preset-time">{p.time} - {addMinutesToTime(p.time, p.durationMinutes)}</span>
                         </button>
                       ))}
                     </div>
@@ -1158,7 +1158,7 @@ function EditCard({
                 onClick={() => setDraft({ ...draft, time: p.time, title: p.title, endTime: addMinutesToTime(p.time, p.durationMinutes) })}
               >
                 <span className="cal-preset-name">{p.label}</span>
-                <span className="cal-preset-time">{p.time}</span>
+                <span className="cal-preset-time">{p.time} - {addMinutesToTime(p.time, p.durationMinutes)}</span>
               </button>
             ))}
           </div>
