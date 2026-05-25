@@ -15150,21 +15150,30 @@ button:focus-visible {
 
 /* ── 팀 카드 ── */
 .dla-team-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 14px;
   padding: 16px 18px;
-  border: 1px solid var(--line-muted);
-  border-left-width: 5px;
-  border-radius: var(--r-xl);
-  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface, #ffffff);
 }
-
-.dla-team-card.tone-blue   { border-left-color: #3b82f6; }
-.dla-team-card.tone-green  { border-left-color: #22c55e; }
-.dla-team-card.tone-orange { border-left-color: #f59e0b; }
-.dla-team-card.tone-purple { border-left-color: #8b5cf6; }
-.dla-team-card.tone-slate  { border-left-color: #64748b; }
+.dla-team-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 16px;
+  bottom: 16px;
+  width: 3px;
+  border-radius: 99px;
+  background: var(--ink);
+}
+.dla-team-card.tone-blue::before   { background: var(--ink); }
+.dla-team-card.tone-green::before  { background: var(--status-info, #5B6B7C); }
+.dla-team-card.tone-orange::before { background: var(--status-ok, #4F7A4B); }
+.dla-team-card.tone-purple::before { background: var(--status-warn, #B8862A); }
+.dla-team-card.tone-slate::before  { background: var(--muted); }
 
 .dla-team-head {
   display: flex;
@@ -15197,27 +15206,26 @@ button:focus-visible {
   align-items: center;
   height: 34px;
   padding: 0 14px;
-  border: 1px solid var(--line-muted);
+  border: 1px solid var(--ink);
   border-radius: var(--r-md);
   background: #ffffff;
-  color: var(--ink-600);
+  color: var(--ink-900);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
   transition: border-color .1s, background .1s;
 }
 
 .dla-team-action-btn:hover {
-  border-color: var(--ink-300, #94a3b8);
   background: var(--surface-50, #f8fafc);
 }
 
 .dla-team-action-btn.danger {
   color: var(--danger-600, #dc2626);
+  border-color: var(--danger-300, #fca5a5);
 }
 
 .dla-team-action-btn.danger:hover {
-  border-color: var(--danger-300, #fca5a5);
   background: var(--danger-50, #fef2f2);
 }
 
@@ -15245,14 +15253,14 @@ button:focus-visible {
 }
 
 .dla-team-card-tile {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--line-muted);
-  border-radius: var(--r-lg);
-  background: #ffffff;
-  min-width: 140px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--surface-100, #f1f5f9);
+  min-width: 0;
 }
 
 .dla-team-card-tile-info {
@@ -15307,11 +15315,12 @@ button:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px;
+  height: 38px;
+  padding: 0 14px;
   border: 1px dashed var(--line-muted);
-  border-radius: var(--r-lg);
+  border-radius: 10px;
   background: transparent;
-  color: var(--ink-600);
+  color: var(--ink-500);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -15328,38 +15337,43 @@ button:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
-  padding: 0 8px 0 10px;
-  border: 1px solid var(--brand-200, #bfdbfe);
-  border-radius: var(--r-md);
-  background: var(--brand-50, #eff6ff);
-  color: var(--brand-700);
+  height: 34px;
+  padding: 0 12px 0 6px;
+  border: 1px solid var(--ink);
+  border-radius: 20px;
+  background: #ffffff;
+  color: var(--ink-900);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.dla-member-chip span {
-  display: inline-grid;
-  width: 16px;
-  height: 16px;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
-  background: var(--brand-100, #dbeafe);
-  color: var(--brand-600);
+.dla-member-chip .dla-member-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
   font-size: 12px;
-  line-height: 1;
+}
+
+.dla-member-chip .dla-member-x {
+  color: var(--ink-500);
+  font-size: 14px;
+  font-weight: 400;
 }
 
 /* "+ 팀원 추가" 단일 버튼 */
 .dla-add-member-btn {
   display: inline-flex;
   align-items: center;
-  height: 30px;
-  padding: 0 12px;
+  height: 34px;
+  padding: 0 14px;
   border: 1px dashed var(--line-muted);
-  border-radius: var(--r-md);
+  border-radius: 12px;
   background: transparent;
   color: var(--ink-500);
   font-size: 13px;
@@ -15370,9 +15384,9 @@ button:focus-visible {
 
 .dla-add-member-btn:hover,
 .dla-add-member-btn.active {
-  border-color: var(--brand-400, #60a5fa);
-  background: var(--brand-50, #eff6ff);
-  color: var(--brand-700);
+  border-color: var(--ink-400);
+  background: var(--surface-50);
+  color: var(--ink-700);
 }
 
 .dla-add-member-sel {
@@ -15508,20 +15522,39 @@ button:focus-visible {
 .dla-participant-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 54px;
+  gap: 12px;
   padding: 12px 16px;
-  border: 1px solid var(--line-muted);
-  border-radius: var(--r-lg);
+  border: 1px solid var(--ink);
+  border-radius: 12px;
   background: #ffffff;
+  color: var(--ink);
   cursor: pointer;
   transition: border-color .1s, background .1s;
 }
 
 .dla-participant-row.assigned {
   border-color: var(--line-muted);
-  background: var(--tint);
+  background: var(--surface-50, #f8fafc);
+  color: var(--ink-400);
+}
+
+.dla-participant-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.dla-participant-row.assigned .dla-participant-avatar {
+  background: var(--ink-200, #e2e8f0);
+  color: var(--ink-500, #64748b);
 }
 
 /* 참가자 이름 */
@@ -15863,11 +15896,10 @@ button:focus-visible {
 }
 
 .dla-team-section-label {
-  color: var(--ink-400);
-  font-size: 11px;
+  color: var(--ink-500);
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  display: block;
 }
 
 /* ── 빈 팀 카드 없음 텍스트 ── */
@@ -28843,4 +28875,11 @@ button:focus-visible {
   color: var(--muted);
   text-align: center;
   padding: 16px 0;
+}
+
+.dla-team-spot-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }

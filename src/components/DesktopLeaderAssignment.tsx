@@ -561,7 +561,9 @@ function DesktopLeaderAssignmentView({
                       <div className="dla-team-members">
                         {team.members.map((m) => (
                           <button key={m} className="dla-member-chip" onClick={() => toggleMember(team.id, m)} type="button" disabled={!canEditSelectedEvent}>
-                            {m} {canEditSelectedEvent && <span>×</span>}
+                            <span className="dla-member-avatar" aria-hidden>{m.slice(0, 1)}</span>
+                            <strong>{m}</strong>
+                            {canEditSelectedEvent && <span className="dla-member-x" aria-hidden>×</span>}
                           </button>
                         ))}
                         {canEditSelectedEvent && (
@@ -623,6 +625,7 @@ function DesktopLeaderAssignmentView({
                               const ids = items.filter((item) => item.assetId === assetId).map((item) => item.id)
                               return (
                                 <div key={`informal-${assetId}`} className="dla-team-card-tile">
+                                  <span className="dla-team-spot-dot" style={{ background: '#8e6acb' }} />
                                   <div className="dla-team-card-tile-info">
                                     <strong>{asset.name}</strong>
                                     <span>비공식 · {ids.length}명</span>
@@ -679,6 +682,7 @@ function DesktopLeaderAssignmentView({
                               const ids = items.filter((item) => item.buildingId === buildingId).map((item) => item.id)
                               return (
                                 <div key={`restaurant-${buildingId}`} className="dla-team-card-tile">
+                                  <span className="dla-team-spot-dot" style={{ background: '#d88a3e' }} />
                                   <div className="dla-team-card-tile-info">
                                     <strong>{building.name || building.address}</strong>
                                     <span>식당 · {ids.length}명</span>
@@ -766,6 +770,7 @@ function DesktopLeaderAssignmentView({
                       if (canEditSelectedEvent) toggleParticipantSelect(p.name)
                     }}
                   >
+                    <span className="dla-participant-avatar" aria-hidden>{p.name.slice(0, 1)}</span>
                     <span className="dla-p-name">{p.name}</span>
                     {isSelected ? (
                       <span className="dla-p-check">✓</span>
