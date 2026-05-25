@@ -189,6 +189,20 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     else await fetchAll()
   }
 
+  // ── CSV 일괄 식당 마킹 ───────────────────────────────────────
+  const bulkSetRestaurantFlag = async (buildingIds: number[]): Promise<void> => {
+    if (buildingIds.length === 0) return
+    const { error } = await supabase
+      .from('buildings')
+      .update({ is_restaurant: true })
+      .in('id', buildingIds)
+    if (error) {
+      showToast(`일괄 식당 등록 실패: ${error.message}`, 'error')
+      throw error
+    }
+    await fetchAll()
+  }
+
   return {
     uploadInformalAsset,
     deleteInformalAsset,
@@ -201,5 +215,6 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     assignRestaurantToUser,
     removeRestaurantAssignment,
     toggleBuildingRestaurant,
+    bulkSetRestaurantFlag,
   }
 }

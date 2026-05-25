@@ -4,6 +4,7 @@ import { territoryAreasByRegion, territoryRegions } from '../data/territoryStruc
 import { showToast } from '../lib/toast'
 import { findCardForCoordinates, formatDisplayAddress, isValidMapCoordinate, normalizeMapCoordinates, parseCoordinate } from '../utils/mapUtils'
 import { downloadCardBoundaryBackup, mergeCardBoundaryPoints, parseCardBoundaryBackup } from '../utils/boundaryMerge'
+import { compareTerritoryCardsByOperationalPriority, getTerritoryCardOperationalState } from '../utils/cardSearch'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 import { compareUnitNumbers } from '../hooks/storeTransforms'
 import type { Building, CardBoundary, GeoPoint, InformalAsset, InformalGroup, Role, TerritoryCard, TerritoryRegion, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
@@ -103,6 +104,7 @@ export function DesktopTerritory({
   onDeleteInformalGroup,
   onMoveAssetToGroup,
   onToggleBuildingRestaurant,
+  onBulkSetRestaurant,
   restaurantRequests = [],
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
@@ -166,6 +168,7 @@ export function DesktopTerritory({
   onDeleteInformalGroup?: (groupId: number) => Promise<void>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
+  onBulkSetRestaurant?: (buildingIds: number[]) => Promise<void>
   restaurantRequests?: import('../types').RestaurantRequest[]
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
@@ -402,6 +405,7 @@ export function DesktopTerritory({
   ).sort((a, b) => a.localeCompare(b, 'ko'))
 
   const filteredCards = cards.filter((card) => {
+    const operationalState = getTerritoryCardOperationalState(card)
     if (regionFilter !== '전체' && card.region !== regionFilter) return false
     if (areaFilter !== '전체' && card.area !== areaFilter) return false
     const leaders = getCardLeaderList(card)
@@ -414,9 +418,12 @@ export function DesktopTerritory({
     const hasChineseHeavy = cardChineseHeavyCount(card.id) > 0
     if (cardChineseHeavyFilter === '있음' && !hasChineseHeavy) return false
     if (cardChineseHeavyFilter === '없음' && hasChineseHeavy) return false
-    if (cardStatusFilter !== '전체' && card.status !== cardStatusFilter) return false
+    if (cardStatusFilter !== '전체') {
+      if (operationalState === '대상없음') return false
+      if (card.status !== cardStatusFilter) return false
+    }
     return true
-  })
+  }).sort(compareTerritoryCardsByOperationalPriority)
   const selectedMergeCards = cards.filter((card) => checkedCardIds.has(card.id))
 
   const activeAdvancedCardFilterCount =
@@ -1965,6 +1972,7 @@ export function DesktopTerritory({
               currentVisitor={currentVisitor}
               restaurantRequests={restaurantRequests}
               onToggleRestaurantFlag={onToggleBuildingRestaurant}
+              onBulkSetRestaurant={onBulkSetRestaurant}
               onApproveRestaurantRequest={onApproveRestaurantRequest}
               onRejectRestaurantRequest={onRejectRestaurantRequest}
               onOpenMap={(cardId) => onOpenCardMap(cardId)}
@@ -2403,6 +2411,7 @@ export function DesktopTerritory({
             <tbody>
               {filteredCards.map((card) => {
                 const cardBuildings = buildingsByCardId.get(card.id) ?? []
+                const operationalState = getTerritoryCardOperationalState(card)
                 const chinesePointCount = cardBuildings.reduce((sum, b) => sum + b.units.filter((u) => u.isChinese).length, 0)
                 const storeCount = cardBuildings.filter((building) => building.type === '상가').length
                 const houseCount = cardBuildings.filter((building) => building.type === '주택').length
@@ -2471,10 +2480,10 @@ export function DesktopTerritory({
                     </td>
                     <td style={{ width: 80 }}>
                       <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600,
-                        background: card.status === '진행중' ? 'var(--primary-100)' : card.status === '미배정' ? 'var(--warning-100)' : 'var(--success-100)',
-                        color: card.status === '진행중' ? 'var(--primary-700)' : card.status === '미배정' ? 'var(--warning-700)' : 'var(--success-700)',
+                        background: operationalState === '대상없음' ? 'var(--gray-100)' : card.status === '진행중' ? 'var(--primary-100)' : card.status === '미배정' ? 'var(--warning-100)' : 'var(--success-100)',
+                        color: operationalState === '대상없음' ? 'var(--gray-500)' : card.status === '진행중' ? 'var(--primary-700)' : card.status === '미배정' ? 'var(--warning-700)' : 'var(--success-700)',
                       }}>
-                        {card.status}
+                        {operationalState === '대상없음' ? '대상없음' : card.status}
                       </span>
                     </td>
                     <td style={{ width: 160, textAlign: 'right', paddingRight: 18 }} onClick={(e) => e.stopPropagation()}>

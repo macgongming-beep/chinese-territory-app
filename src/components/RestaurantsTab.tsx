@@ -1,9 +1,15 @@
 // 식당 탭 — design_handoff 06 화면
 // 식당 표시된 상가 목록 (지역별 그룹) + 추가 모달 + 식당봉사 신청 승인
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Building, RestaurantRequest, Role, TerritoryCard } from '../types'
 import { RestaurantPickerModal } from './RestaurantPickerModal'
 import { normalizeCardSearch } from '../utils/cardSearch'
+import {
+  SAMPLE_CSV_CONTENT,
+  matchRestaurantsToBuildings,
+  parseCsvRestaurants,
+} from '../utils/csvRestaurantImport'
+import type { MatchResult } from '../utils/csvRestaurantImport'
 
 function isLeaderOrAdmin(role: Role): boolean {
   return role === 'leader' || role === 'admin' || role === 'developer'
@@ -87,6 +93,27 @@ function SearchIconLg({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  )
+}
+function UploadIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  )
+}
+function DownloadIcon({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  )
+}
+function XIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   )
 }
@@ -389,6 +416,7 @@ type Props = {
   currentVisitor?: string
   restaurantRequests?: RestaurantRequest[]
   onToggleRestaurantFlag?: (buildingId: number, isRestaurant: boolean) => Promise<void>
+  onBulkSetRestaurant?: (buildingIds: number[]) => Promise<void>
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
   onOpenMap: (cardId: number) => void
@@ -396,12 +424,97 @@ type Props = {
 
 export function RestaurantsTab({
   role, buildings, cards, currentVisitor = '', restaurantRequests = [],
-  onToggleRestaurantFlag, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap,
+  onToggleRestaurantFlag, onBulkSetRestaurant, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap,
 }: Props) {
   const canManage = isLeaderOrAdmin(role)
   const [search, setSearch] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [openMenuId, setOpenMenuId] = useState<number | null>(null)
+
+  // ── CSV 일괄등록 상태 ─────────────────────────────────────────
+  const [csvPanelOpen, setCsvPanelOpen] = useState(false)
+  const [csvResults, setCsvResults] = useState<MatchResult[] | null>(null)
+  const [csvFileName, setCsvFileName] = useState('')
+  const [csvApplying, setCsvApplying] = useState(false)
+  const [csvDone, setCsvDone] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const csvMatched = useMemo(
+    () => csvResults?.filter((r) => r.matched && !r.alreadyRestaurant) ?? [],
+    [csvResults],
+  )
+  const csvAlready = useMemo(
+    () => csvResults?.filter((r) => r.alreadyRestaurant) ?? [],
+    [csvResults],
+  )
+  const csvUnmatched = useMemo(
+    () => csvResults?.filter((r) => !r.matched) ?? [],
+    [csvResults],
+  )
+
+  function handleSampleDownload() {
+    const blob = new Blob(['﻿' + SAMPLE_CSV_CONTENT], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = '식당_CSV_예시.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCsvFileName(file.name)
+    setCsvDone(false)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string
+      const rows = parseCsvRestaurants(text)
+      const results = matchRestaurantsToBuildings(rows, buildings)
+      setCsvResults(results)
+    }
+    reader.readAsText(file, 'UTF-8')
+    // 같은 파일 재선택 가능하도록 초기화
+    e.target.value = ''
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+    setCsvFileName(file.name)
+    setCsvDone(false)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string
+      const rows = parseCsvRestaurants(text)
+      const results = matchRestaurantsToBuildings(rows, buildings)
+      setCsvResults(results)
+    }
+    reader.readAsText(file, 'UTF-8')
+  }
+
+  async function handleApplyBulk() {
+    if (!onBulkSetRestaurant || csvMatched.length === 0) return
+    setCsvApplying(true)
+    try {
+      const ids = csvMatched.map((r) => r.matched!.id)
+      await onBulkSetRestaurant(ids)
+      setCsvDone(true)
+      setCsvResults(null)
+      setCsvFileName('')
+    } finally {
+      setCsvApplying(false)
+    }
+  }
+
+  function handleCloseCsv() {
+    setCsvPanelOpen(false)
+    setCsvResults(null)
+    setCsvFileName('')
+    setCsvDone(false)
+  }
 
   const pendingRequests = useMemo(
     () => restaurantRequests.filter((r) => r.status === 'pending'),
@@ -480,16 +593,164 @@ export function RestaurantsTab({
         </div>
       )}
 
-      {/* 상단 카운트 + 추가 */}
+      {/* 상단 카운트 + 추가 + CSV */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
         <span style={{ fontSize: 13, color: 'var(--muted)' }}>전체 {restaurants.length}개</span>
         {canManage && (
-          <button type="button" onClick={() => setAddOpen(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, minHeight: 32, padding: '0 12px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', letterSpacing: '-0.005em' }}>
-            <PlusIcon /> 식당 추가
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {onBulkSetRestaurant && (
+              <button type="button" onClick={() => { setCsvPanelOpen((o) => !o); setCsvDone(false) }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, minHeight: 32, padding: '0 12px', border: '1px solid var(--line-2)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <UploadIcon /> CSV 일괄등록
+              </button>
+            )}
+            <button type="button" onClick={() => setAddOpen(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, minHeight: 32, padding: '0 12px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', letterSpacing: '-0.005em' }}>
+              <PlusIcon /> 식당 추가
+            </button>
+          </div>
         )}
       </div>
+
+      {/* ── CSV 일괄등록 패널 ─────────────────────────────────── */}
+      {csvPanelOpen && (
+        <div style={{ background: 'var(--tint)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
+
+          {/* 패널 헤더 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <UploadIcon size={16} />
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>CSV 일괄등록</span>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>식당 건물에 식당 표시를 한꺼번에 적용합니다</span>
+            </div>
+            <button type="button" onClick={handleCloseCsv}
+              style={{ width: 28, height: 28, minHeight: 0, display: 'grid', placeItems: 'center', background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', borderRadius: 6 }}>
+              <XIcon size={14} />
+            </button>
+          </div>
+
+          <div style={{ padding: '16px' }}>
+
+            {/* 샘플 다운로드 + 파일 선택 */}
+            {!csvResults && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10 }}>
+                  <span style={{ fontSize: 13, color: 'var(--text)', flex: 1 }}>
+                    CSV 형식: <code style={{ fontSize: 12, background: 'var(--tint)', padding: '2px 6px', borderRadius: 4, color: 'var(--ink)' }}>시구, 동, 상세주소, 식당명</code>
+                  </span>
+                  <button type="button" onClick={handleSampleDownload}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, padding: '0 10px', border: '1px solid var(--line-2)', borderRadius: 7, background: 'var(--surface)', color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    <DownloadIcon /> 예시 파일
+                  </button>
+                </div>
+
+                {/* 파일 드롭 존 */}
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    border: '1.5px dashed var(--line-2)', borderRadius: 12, padding: '32px 16px',
+                    textAlign: 'center', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                    background: 'var(--surface)',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <UploadIcon size={24} />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>CSV 파일 선택 또는 드래그</span>
+                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>Excel에서 내보낸 .csv 파일을 올려주세요</span>
+                  {csvFileName && <span style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 600 }}>📎 {csvFileName}</span>}
+                </div>
+                <input ref={fileInputRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleFileChange} />
+              </div>
+            )}
+
+            {/* CSV 완료 메시지 */}
+            {csvDone && (
+              <div style={{ padding: '20px', textAlign: 'center', fontSize: 14, color: '#16a34a', fontWeight: 600 }}>
+                ✓ 식당 등록이 완료됐습니다
+              </div>
+            )}
+
+            {/* 미리보기 결과 */}
+            {csvResults && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                {/* 집계 요약 */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  <div style={{ padding: '12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, textAlign: 'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#16a34a' }}>{csvMatched.length}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>매칭됨 (신규)</div>
+                  </div>
+                  <div style={{ padding: '12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, textAlign: 'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--muted)' }}>{csvAlready.length}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>이미 식당</div>
+                  </div>
+                  <div style={{ padding: '12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, textAlign: 'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#c44536' }}>{csvUnmatched.length}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>미매칭</div>
+                  </div>
+                </div>
+
+                {/* 매칭된 항목 목록 */}
+                {csvMatched.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      식당 표시 적용 예정 ({csvMatched.length}개)
+                    </div>
+                    <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, padding: '2px 0' }}>
+                      {csvMatched.map((r, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, fontSize: 13 }}>
+                          <span style={{ color: '#16a34a', fontWeight: 700, flexShrink: 0 }}>✓</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{r.row.name || r.row.address}</span>
+                            <span style={{ color: 'var(--muted)', marginLeft: 6, fontSize: 12 }}>→ {r.matched!.name || r.matched!.address}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 미매칭 항목 */}
+                {csvUnmatched.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      주소 미매칭 ({csvUnmatched.length}개) — 건너뜀
+                    </div>
+                    <div style={{ maxHeight: 140, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {csvUnmatched.map((r, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, fontSize: 12, color: 'var(--muted)' }}>
+                          <span style={{ color: '#c44536', fontWeight: 700, flexShrink: 0 }}>✗</span>
+                          <span>{r.row.name}</span>
+                          <span style={{ color: 'var(--line-2)', margin: '0 2px' }}>·</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.row.sigu} {r.row.address}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 파일 재선택 + 적용 버튼 */}
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="button"
+                    onClick={() => { setCsvResults(null); setCsvFileName('') }}
+                    style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: '1px solid var(--line-2)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 0 }}>
+                    다시 선택
+                  </button>
+                  <button type="button"
+                    disabled={csvMatched.length === 0 || csvApplying}
+                    onClick={handleApplyBulk}
+                    style={{ flex: 2, padding: '9px 0', borderRadius: 9, border: 'none', background: csvMatched.length === 0 ? 'var(--muted)' : 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: csvMatched.length === 0 ? 'default' : 'pointer', minHeight: 0 }}>
+                    {csvApplying ? '적용 중...' : csvMatched.length === 0 ? '적용 대상 없음' : `${csvMatched.length}개 식당 표시 적용`}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 검색 */}
       <label style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, padding: '11px 14px', fontSize: 14, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8, cursor: 'text' }}>
