@@ -92,11 +92,6 @@ export function DesktopHome({
   return (
     <section className="la-page">
       <div style={{ margin: '0 auto', maxWidth: 640, width: '100%', paddingBottom: 40, paddingTop: 16 }}>
-        <header className="page-header" style={{ padding: '0 16px 24px' }}>
-          <div className="page-header-text" style={{ width: '100%', textAlign: 'center' }}>
-            <h1 className="page-header-title" style={{ textAlign: 'center' }}>홈</h1>
-          </div>
-        </header>
 
         {specialPeriods && specialPeriods.length > 0 && (
           <div style={{ padding: '0 16px', marginBottom: '16px' }}>

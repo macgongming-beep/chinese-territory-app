@@ -30,7 +30,7 @@ export function ServiceSuggestionsSection() {
 
   return (
     <section className="mobile-home-section" style={{ marginTop: 24 }}>
-      <div className="mh-sec-head" style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+      <div className="mh-sec-head" style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: 12 }}>
         <h2>대화 방법 제안</h2>
         {currentSuggestion.show_title_on_home && currentSuggestion.title && (
           <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>{currentSuggestion.title}</span>
