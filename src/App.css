@@ -26883,22 +26883,22 @@ button:focus-visible {
 .rv-sheet {
   width: 100%;
   background: var(--bg);
-  border-top-left-radius: 18px;
-  border-top-right-radius: 18px;
-  padding: 8px 16px max(20px, env(safe-area-inset-bottom));
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  padding: 12px 20px max(24px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   max-height: 70vh;
   overflow-y: auto;
 }
 .rv-sheet-grabber {
-  width: 36px;
-  height: 4px;
+  width: 40px;
+  height: 5px;
   background: var(--line-2);
   border-radius: 99px;
   align-self: center;
-  margin: 4px 0 10px;
+  margin: 4px 0 12px;
 }
 .rv-sheet-title-row {
   display: flex;
@@ -26909,19 +26909,19 @@ button:focus-visible {
 .rv-sheet-title-col {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
   flex: 1;
 }
 .rv-sheet-title {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--ink);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ink-900);
   letter-spacing: -0.01em;
 }
 .rv-sheet-sub {
-  font-size: 12px;
-  color: var(--muted);
+  font-size: 14px;
+  color: var(--ink-500);
   letter-spacing: -0.005em;
 }
 .rv-sheet-close {
@@ -26940,7 +26940,7 @@ button:focus-visible {
 .rv-sheet-divider {
   height: 1px;
   background: var(--line);
-  margin: 0 -16px;
+  margin: 0 -20px;
 }
 .rv-sheet-meta-row {
   display: flex;
@@ -26949,9 +26949,9 @@ button:focus-visible {
   gap: 12px;
 }
 .rv-sheet-date {
-  font-size: 13px;
-  color: var(--muted);
-  font-weight: 500;
+  font-size: 15px;
+  color: var(--ink-900);
+  font-weight: 600;
 }
 .rv-sheet-chips {
   display: inline-flex;
@@ -26960,15 +26960,16 @@ button:focus-visible {
 .rv-sheet-chip {
   display: inline-flex;
   align-items: center;
-  padding: 6px 16px;
+  padding: 8px 18px;
   background: var(--surface);
-  border: 1px solid var(--line-2);
-  border-radius: 99px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
+  border: 1.5px solid var(--line-muted);
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-500);
   cursor: pointer;
   letter-spacing: -0.005em;
+  transition: all .2s;
 }
 .rv-sheet-chip.is-active {
   background: var(--ink);
@@ -26977,46 +26978,52 @@ button:focus-visible {
 }
 .rv-sheet-memo {
   width: 100%;
-  min-height: 72px;
-  padding: 12px;
+  min-height: 80px;
+  padding: 14px;
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  font-size: 14px;
+  border: 1.5px solid var(--line-muted);
+  border-radius: 12px;
+  font-size: 15px;
   font-family: inherit;
   color: var(--ink);
   resize: vertical;
   box-sizing: border-box;
   letter-spacing: -0.005em;
+  transition: border-color .2s;
+}
+.rv-sheet-memo:focus {
+  border-color: var(--ink);
+  outline: none;
 }
 .rv-sheet-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 2px;
+  gap: 10px;
+  margin-top: 4px;
 }
 .rv-sheet-btn {
   flex: 1;
-  height: 48px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  height: 52px;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 700;
   cursor: pointer;
   letter-spacing: -0.005em;
+  transition: all .2s;
 }
 .rv-sheet-btn-ghost {
   background: var(--surface);
-  border: 1px solid var(--line-2);
-  color: var(--text);
+  border: 1.5px solid var(--line-muted);
+  color: var(--ink-600);
 }
 .rv-sheet-btn-solid {
   background: var(--ink);
-  border: 1px solid var(--ink);
+  border: 1.5px solid var(--ink);
   color: #fff;
 }
 .rv-sheet-btn-solid:disabled {
-  background: var(--tint);
-  border-color: var(--tint);
-  color: var(--muted-2);
+  background: var(--surface-100);
+  border-color: var(--surface-100);
+  color: var(--ink-400);
   cursor: not-allowed;
 }
 
@@ -27616,28 +27623,89 @@ button:focus-visible {
 }
 
 .ma-team-cards-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 8px;
 }
+.ma-team-card-stack {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
 .ma-team-card-item {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
   padding: 8px 12px;
   background: var(--paper);
+  border: 1px solid transparent;
   border-radius: 8px;
   min-width: 0;
   font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+.ma-team-card-item.is-expanded {
+  background: var(--surface);
+  border-color: var(--line-2);
+}
+.ma-team-card-item svg {
+  flex: 0 0 auto;
+}
+.ma-team-card-item > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 .ma-team-card-item strong {
   font-size: 13px;
   font-weight: 600;
   color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ma-team-card-item span {
   font-size: 11.5px;
   color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ma-team-card-detail {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.ma-team-card-detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.ma-team-card-detail-row strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.ma-team-card-map-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 .ma-team-add-card {
   display: inline-flex;
