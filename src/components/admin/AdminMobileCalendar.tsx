@@ -1428,7 +1428,7 @@ export function PlacePresetEditor({ language,
 
       {presets.map((preset, index) => (
         <div
-          key={`${index}-${preset.name}`}
+          key={index}
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -1558,7 +1558,7 @@ function TimePresetEditor({ language,
 
       {presets.map((preset, index) => (
         <div
-          key={`${index}-${preset.time}`}
+          key={index}
           style={{
             display: 'flex',
             flexDirection: 'column',
