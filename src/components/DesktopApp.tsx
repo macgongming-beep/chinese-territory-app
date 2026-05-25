@@ -703,6 +703,7 @@ export function DesktopApp({
                 onDeleteInformalGroup={onDeleteInformalGroup}
                 onMoveAssetToGroup={onMoveAssetToGroup}
                 onToggleBuildingRestaurant={onToggleBuildingRestaurant}
+                onBulkSetRestaurant={onBulkSetRestaurant}
                 restaurantRequests={restaurantRequests}
                 onApproveRestaurantRequest={onApproveRestaurantRequest}
                 onRejectRestaurantRequest={onRejectRestaurantRequest}
