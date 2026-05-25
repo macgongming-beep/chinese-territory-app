@@ -428,10 +428,10 @@ export function RestaurantsTab({
 }: Props) {
   const canManage = isLeaderOrAdmin(role)
   const [search, setSearch] = useState('')
-  const [collapsedRegions, setCollapsedRegions] = useState<Set<string>>(new Set())
+  const [expandedRegions, setExpandedRegions] = useState<Set<string>>(new Set())
 
   const toggleRegion = (region: string) => {
-    setCollapsedRegions(prev => {
+    setExpandedRegions(prev => {
       const next = new Set(prev)
       if (next.has(region)) next.delete(region)
       else next.add(region)
@@ -791,17 +791,17 @@ export function RestaurantsTab({
                 style={{ display: 'flex', alignItems: 'center', padding: '8px 4px', justifyContent: 'space-between', marginBottom: 6, cursor: 'pointer', userSelect: 'none' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ display: 'flex', transform: collapsedRegions.has(region) ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                  <span style={{ display: 'flex', transform: expandedRegions.has(region) ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}>
                     <ChevD />
                   </span>
                   <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{region}</span>
                   <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>{list.length}</span>
                 </div>
                 <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                  {collapsedRegions.has(region) ? '열기' : '접기'}
+                  {expandedRegions.has(region) ? '접기' : '열기'}
                 </span>
               </div>
-              {!collapsedRegions.has(region) && (
+              {expandedRegions.has(region) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {list.map((b) => {
                   const card = cards.find((c) => c.id === b.cardId)
