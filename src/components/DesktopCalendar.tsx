@@ -4,6 +4,9 @@ import type { CalendarEvent, SpecialPeriod, TerritoryCard } from '../types'
 import { PERIOD_COLORS } from '../types'
 import { ChatRoom } from './ChatRoom'
 import { CommentSection, type MentionUser } from './CommentSection'
+import { loadPlacePresets, savePlacePresets, normalizePlacePresets } from '../lib/placePresets'
+import type { PlacePreset } from '../lib/placePresets'
+import { PlacePresetEditor } from './admin/AdminMobileCalendar'
 
 function getCalendarDays(year: number, month: number): (number | null)[] {
   const firstDay = new Date(year, month - 1, 1).getDay()
@@ -149,6 +152,8 @@ export function DesktopCalendar({
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newDate, setNewDate] = useState(() => toDateStr(today.getFullYear(), today.getMonth() + 1, today.getDate()))
   const [newTitle, setNewTitle] = useState('传道')
+  const [placePresets, setPlacePresets] = useState<PlacePreset[]>(loadPlacePresets)
+  const [placeSettingsOpen, setPlaceSettingsOpen] = useState(false)
   const [newTime, setNewTime] = useState('10:00')
   const [newEndTime, setNewEndTime] = useState('12:00')
   const [newPlace, setNewPlace] = useState('')
@@ -196,6 +201,17 @@ export function DesktopCalendar({
   const goToday = () => {
     setYear(today.getFullYear()); setMonth(today.getMonth() + 1); setSelectedDay(today.getDate())
     setShowCreateForm(false)
+  }
+
+  const updatePlacePresets = (next: PlacePreset[]) => {
+    const normalized = normalizePlacePresets(next)
+    setPlacePresets(normalized)
+    savePlacePresets(normalized)
+  }
+
+  const applyPlacePreset = (preset: PlacePreset) => {
+    setNewPlace(preset.name)
+    setNewMapLink(preset.mapLink)
   }
 
   const resetCreateForm = () => {
@@ -371,12 +387,47 @@ export function DesktopCalendar({
                 </div>
               </div>
 
+
               {/* 장소 + 지도 링크 */}
               <div className="cal-field">
-                <label>모임 장소</label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <label style={{ marginBottom: 0 }}>모임 장소</label>
+                  <button
+                    type="button"
+                    onClick={() => setPlaceSettingsOpen(v => !v)}
+                    style={{
+                      border: 'none', background: 'transparent',
+                      color: 'var(--ink)', fontSize: 13, fontWeight: 600,
+                      cursor: 'pointer', padding: 0
+                    }}
+                  >
+                    {placeSettingsOpen ? '설정 닫기' : '장소 설정'}
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                  {placePresets.map((preset, idx) => (
+                    <button
+                      key={`${idx}-${preset.name}`}
+                      type="button"
+                      onClick={() => applyPlacePreset(preset)}
+                      className={`cal-time-preset-btn${newPlace === preset.name ? ' active' : ''}`}
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
+
+                {placeSettingsOpen && (
+                  <div style={{ marginBottom: 12 }}>
+                    <PlacePresetEditor language={'ko'} presets={placePresets} onChange={updatePlacePresets} />
+                  </div>
+                )}
+
                 <input className="cal-input" placeholder="장소 입력" value={newPlace} onChange={(e) => setNewPlace(e.target.value)} style={{ marginBottom: 8 }} />
                 <input className="cal-input" inputMode="url" placeholder="네이버 지도 링크 (선택)" value={newMapLink} onChange={(e) => setNewMapLink(e.target.value)} />
               </div>
+
 
               {/* 인도자 */}
               <div className="cal-field">

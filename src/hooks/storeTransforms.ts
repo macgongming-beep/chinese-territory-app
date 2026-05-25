@@ -267,7 +267,7 @@ export function toCard(raw: RawCard, buildings: Building[]): TerritoryCard {
   const allUnits = cardBuildings.flatMap((b) => b.units)
   const completed = allUnits.filter((u) => u.status !== '미방문').length
   const total = allUnits.length
-  const progress = total > 0 ? Math.round((completed / total) * 100) : 0
+  const progress = total > 0 ? Math.round((completed / total) * 100) : 100
   const regularVisitPoints = cardBuildings.flatMap((b) =>
     b.units
       .filter((u) => u.isRegularVisit)

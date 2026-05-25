@@ -14,6 +14,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { CalendarEvent, Role, SpecialPeriod, TerritoryCard } from '../../types'
 import type { AppLanguage } from '../../i18n'
+import { loadPlacePresets, savePlacePresets, normalizePlacePresets, PLACE_PRESETS_MAX } from '../../lib/placePresets'
+import type { PlacePreset } from '../../lib/placePresets'
 import { Card } from '../ui'
 import { AdminEventDetailSheet } from './AdminEventDetailSheet'
 import type { MentionUser } from '../CommentSection'
@@ -140,6 +142,7 @@ function saveTimePresets(presets: TimePreset[]) {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(TIME_PRESET_STORAGE_KEY, JSON.stringify(normalizeTimePresets(presets)))
 }
+
 
 function buildCalendarDays(year: number, month: number): (number | null)[] {
   const firstDow = new Date(year, month - 1, 1).getDay()
@@ -929,6 +932,8 @@ function EventAddSheet({ language,
   const [repeatEnd, setRepeatEnd] = useState('')
   const [timePresets, setTimePresets] = useState<TimePreset[]>(loadTimePresets)
   const [timeSettingsOpen, setTimeSettingsOpen] = useState(false)
+  const [placePresets, setPlacePresets] = useState<PlacePreset[]>(loadPlacePresets)
+  const [placeSettingsOpen, setPlaceSettingsOpen] = useState(false)
   const canSubmit = title.trim().length > 0
   const isEditing = !!editingEvent
   const repeatCount = repeat && repeatEnd ? getWeeklyDates(date, repeatEnd).length : 0
@@ -938,6 +943,17 @@ function EventAddSheet({ language,
     const normalized = normalizeTimePresets(next)
     setTimePresets(normalized)
     saveTimePresets(normalized)
+  }
+
+  const updatePlacePresets = (next: PlacePreset[]) => {
+    const normalized = normalizePlacePresets(next)
+    setPlacePresets(normalized)
+    savePlacePresets(normalized)
+  }
+
+  const applyPlacePreset = (preset: PlacePreset) => {
+    setPlace(preset.name)
+    setMapLink(preset.mapLink)
   }
 
   const applyTimePreset = (preset: TimePreset) => {
@@ -1139,10 +1155,59 @@ function EventAddSheet({ language,
             </div>
           </Field>
 
+
           <Field label={t(language, 'calendar.location')}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
+              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, flex: 1, minWidth: 0, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                {placePresets.map((preset, idx) => (
+                  <button
+                    key={`${idx}-${preset.name}`}
+                    type="button"
+                    onClick={() => applyPlacePreset(preset)}
+                    style={{
+                      flex: '0 0 auto',
+                      padding: '5px 12px',
+                      background: place === preset.name ? 'var(--ink)' : 'var(--tint)',
+                      color: place === preset.name ? '#fff' : 'var(--text)',
+                      border: place === preset.name ? '1px solid var(--ink)' : '1px solid var(--line-2)',
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: 650,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {preset.name}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPlaceSettingsOpen((v) => !v)}
+                style={{
+                  minHeight: 0,
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--text)',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: '4px 2px',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                {placeSettingsOpen ? t(language, 'calendar.closeSettings') : t(language, 'calendar.editPlaceSettings')}
+              </button>
+            </div>
+            
+            {placeSettingsOpen && (
+              <PlacePresetEditor language={language} presets={placePresets} onChange={updatePlacePresets} />
+            )}
+
             <TextInput value={place} onChange={setPlace} placeholder={t(language, 'calendar.location')} />
-            <TextInput value={mapLink} onChange={setMapLink} placeholder={t(language, 'calendar.mapLinkPlaceholder')} />
+            <TextInput value={mapLink} onChange={setMapLink} placeholder={t(language, 'calendar.mapLinkPlaceholder')} type="url" />
           </Field>
+
 
           <Field label={t(language, 'calendar.leader')}>
             <Select value={leader} onChange={setLeader} options={['', ...leaderNames]} placeholder={t(language, 'common.selectNone')} />
@@ -1296,6 +1361,132 @@ function TimeBox({
     </label>
   )
 }
+
+export function PlacePresetEditor({ language, 
+  presets,
+  onChange,
+}: {
+  presets: PlacePreset[]
+  onChange: (presets: PlacePreset[]) => void
+; language: AppLanguage }) {
+  const updatePreset = (index: number, patch: Partial<PlacePreset>) => {
+    onChange(presets.map((preset, i) => i === index ? { ...preset, ...patch } : preset))
+  }
+
+  const addPreset = () => {
+    if (presets.length >= PLACE_PRESETS_MAX) return
+    onChange([
+      ...presets,
+      {
+        name: t(language, 'calendar.placePresetLabel', { count: presets.length + 1 }),
+        mapLink: '',
+      },
+    ])
+  }
+
+  const removePreset = (index: number) => {
+    if (presets.length <= 1) return
+    onChange(presets.filter((_, i) => i !== index))
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        padding: 8,
+        border: '1px solid var(--line)',
+        borderRadius: 12,
+        background: 'var(--bg)',
+        minWidth: 0,
+        boxSizing: 'border-box',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ fontSize: 12, fontWeight: 750, color: 'var(--ink)' }}>{t(language, 'calendar.editPlaceSettings')}</span>
+        <button
+          type="button"
+          disabled={presets.length >= PLACE_PRESETS_MAX}
+          onClick={addPreset}
+          style={{
+            minHeight: 0,
+            border: '1px solid var(--line)',
+            borderRadius: 8,
+            background: presets.length >= PLACE_PRESETS_MAX ? 'var(--surface)' : '#fff',
+            color: presets.length >= PLACE_PRESETS_MAX ? 'var(--muted-2)' : 'var(--text)',
+            cursor: presets.length >= PLACE_PRESETS_MAX ? 'not-allowed' : 'pointer',
+            fontSize: 12,
+            fontWeight: 750,
+            padding: '6px 9px',
+          }}
+        >
+          {t(language, 'common.add')}
+        </button>
+      </div>
+
+      {presets.map((preset, index) => (
+        <div
+          key={`${index}-${preset.name}`}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+            minWidth: 0,
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) 24px',
+              gap: 5,
+              alignItems: 'center',
+              minWidth: 0,
+            }}
+          >
+            <MiniInput
+              ariaLabel={t(language, 'calendar.location')}
+              value={preset.name}
+              onChange={(value) => updatePreset(index, { name: value })}
+              placeholder={t(language, 'calendar.location')}
+            />
+            <button
+              type="button"
+              disabled={presets.length <= 1}
+              onClick={() => removePreset(index)}
+              style={{
+                width: 24,
+                height: 24,
+                minHeight: 24,
+                border: 'none',
+                borderRadius: 6,
+                background: 'transparent',
+                color: presets.length <= 1 ? 'var(--muted-2)' : 'var(--status-danger)',
+                cursor: presets.length <= 1 ? 'not-allowed' : 'pointer',
+                fontSize: 16,
+                lineHeight: 1,
+                padding: 0,
+                display: 'grid',
+                placeItems: 'center',
+              }}
+              aria-label={t(language, 'common.delete')}
+            >
+              ×
+            </button>
+          </div>
+          <MiniInput
+            ariaLabel={t(language, 'calendar.mapLinkPlaceholder')}
+            value={preset.mapLink}
+            onChange={(value) => updatePreset(index, { mapLink: value })}
+            placeholder={t(language, 'calendar.mapLinkPlaceholder')}
+            type="url"
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 
 function TimePresetEditor({ language, 
   presets,
