@@ -965,8 +965,8 @@ function LeaderCard({
       type="button"
       onClick={onClick}
       style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: 14, width: '100%', minHeight: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+        padding: '16px 12px', width: '100%', minHeight: 0,
         background: 'var(--surface)',
         border: isSelected
           ? '1.5px solid var(--ink)'
