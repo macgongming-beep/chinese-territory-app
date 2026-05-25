@@ -1113,7 +1113,7 @@ function EventAddSheet({ language,
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6, minWidth: 0 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
                 {timePresets.map((preset) => {
                   const active = selectedPreset === preset.label
                   return (
@@ -1122,22 +1122,19 @@ function EventAddSheet({ language,
                       type="button"
                       onClick={() => applyTimePreset(preset)}
                       style={{
-                        minHeight: 42,
-                        border: active ? '1px solid var(--ink)' : '1px solid var(--line)',
-                        borderRadius: 10,
-                        background: active ? 'var(--ink)' : 'var(--bg)',
+                        flex: '0 0 auto',
+                        padding: '5px 12px',
+                        background: active ? 'var(--ink)' : 'var(--tint)',
                         color: active ? '#fff' : 'var(--text)',
+                        border: active ? '1px solid var(--ink)' : '1px solid var(--line-2)',
+                        borderRadius: 999,
+                        fontSize: 12,
+                        fontWeight: 650,
                         cursor: 'pointer',
-                        padding: '6px 8px',
-                        textAlign: 'left',
-                        minWidth: 0,
-                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: 750, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{preset.label}</span>
-                      <span style={{ display: 'block', marginTop: 2, fontSize: 11, fontWeight: 650, opacity: active ? 0.85 : 0.68, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {preset.time} - {addMinutesToTime(preset.time, preset.durationMinutes)}
-                      </span>
+                      {preset.label} <span style={{ opacity: 0.7, fontWeight: 500, marginLeft: 2 }}>{preset.time}</span>
                     </button>
                   )
                 })}
