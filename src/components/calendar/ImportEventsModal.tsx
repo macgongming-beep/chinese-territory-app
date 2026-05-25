@@ -156,10 +156,31 @@ export function ImportEventsModal({ isOpen, onClose, onCreateEvent }: ImportEven
 
         {!isPreview ? (
           <>
-            <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.5 }}>
-              엑셀이나 구글 스프레드시트에서 표 영역을 선택하여 복사(Ctrl+C)한 뒤, 아래 창에 붙여넣기(Ctrl+V) 해주세요.<br/>
-              <b>필수 컬럼 순서</b>: 날짜, 시작시간, 종료시간, 제목, 장소, 인도자
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 16 }}>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--muted)', lineHeight: 1.5 }}>
+                엑셀이나 구글 스프레드시트에서 표 영역을 선택하여 복사(Ctrl+C)한 뒤, 아래 창에 붙여넣기(Ctrl+V) 해주세요.<br/>
+                <b>필수 컬럼 순서</b>: 날짜, 시작시간, 종료시간, 제목, 장소, 인도자
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  const headers = ['날짜', '시작시간', '종료시간', '제목', '장소', '인도자']
+                  const sampleRow = ['2026-05-25', '10:00', '12:00', '传道', '스타벅스', '관리자']
+                  const csvContent = '\uFEFF' + headers.join(',') + '\n' + sampleRow.join(',')
+                  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+                  const url = URL.createObjectURL(blob)
+                  const link = document.createElement('a')
+                  link.href = url
+                  link.setAttribute('download', '일정_가져오기_양식.csv')
+                  document.body.appendChild(link)
+                  link.click()
+                  document.body.removeChild(link)
+                }}
+                style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border-default)', fontSize: 13, fontWeight: 650, cursor: 'pointer', color: 'var(--ink)' }}
+              >
+                📥 엑셀 양식 다운로드
+              </button>
+            </div>
             <textarea
               value={pasteData}
               onChange={(e) => setPasteData(e.target.value)}
