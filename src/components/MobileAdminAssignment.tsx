@@ -61,6 +61,7 @@ function SearchIcon({ size = 16 }: { size?: number }) {
   )
 }
 
+// @ts-ignore
 function Avatar({ name, muted, size = 36 }: { name: string; muted?: boolean; size?: number }) {
   return (
     <span
@@ -951,7 +952,12 @@ function SheetButton({ label, sub, onClick, danger }: { label: string; sub?: str
 
 // ── 인도자 카드 ───────────────────────────
 function LeaderCard({
-  name, stats, isSelected, onClick, muted, isMe,
+  name,
+  stats,
+  isSelected,
+  onClick,
+  muted,
+  isMe,
 }: {
   name: string
   stats: { assigned: number; inProgress: number; done: number }
@@ -965,50 +971,44 @@ function LeaderCard({
       type="button"
       onClick={onClick}
       style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        padding: '16px 12px', width: '100%', minHeight: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        padding: '14px 10px', width: '100%', minHeight: 0,
         background: 'var(--surface)',
         border: isSelected
           ? '1.5px solid var(--ink)'
           : isMe
             ? '1.5px solid var(--ink)'
-            : '1px solid var(--line)',
+            : '1px solid var(--line-2)',
         borderRadius: 12,
-        cursor: 'pointer', textAlign: 'left',
-        transition: 'border-color 0.15s',
+        cursor: 'pointer', textAlign: 'center',
+        transition: 'all 0.15s ease',
+        position: 'relative'
       }}
     >
-      <Avatar name={name} muted={muted} />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{name}</span>
-          {isMe && (
-            <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500 }}>(나)</span>
-          )}
-        </div>
-        {!muted && (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 12.5, color: 'var(--muted)' }}>
-            <span><span style={{ color: 'var(--muted)' }}>담당</span> <b style={{ color: 'var(--ink)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', marginLeft: 3 }}>{stats.assigned}</b></span>
-            <span style={{ color: 'var(--muted-3)' }}>·</span>
-            <span><span style={{ color: 'var(--muted)' }}>진행</span> <b style={{ color: 'var(--ink)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', marginLeft: 3 }}>{stats.inProgress}</b></span>
-            <span style={{ color: 'var(--muted-3)' }}>·</span>
-            <span><span style={{ color: 'var(--muted)' }}>완료</span> <b style={{ color: 'var(--ink)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', marginLeft: 3 }}>{stats.done}</b></span>
-          </div>
-        )}
-        {muted && (
-          <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>담당 없음</span>
-        )}
-      </div>
       {isSelected && (
         <span style={{
-          width: 22, height: 22, borderRadius: '50%',
+          position: 'absolute', top: 10, right: 10,
+          width: 20, height: 20, borderRadius: '50%',
           background: 'var(--ink)', display: 'grid', placeItems: 'center',
-          color: '#fff', flexShrink: 0,
+          flexShrink: 0
         }}>
-          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
             <polyline points="5 13 10 18 19 8" />
           </svg>
         </span>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>{name}</span>
+        {isMe && <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>(나)</span>}
+      </div>
+      {!muted ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '2px 8px', fontSize: 11.5, color: 'var(--muted)' }}>
+           <span style={{ whiteSpace: 'nowrap' }}>담당 <b style={{ color: 'var(--ink)', fontWeight: 650 }}>{stats.assigned}</b></span>
+           <span style={{ whiteSpace: 'nowrap' }}>진행 <b style={{ color: 'var(--ink)', fontWeight: 650 }}>{stats.inProgress}</b></span>
+           <span style={{ whiteSpace: 'nowrap' }}>완료 <b style={{ color: 'var(--ink)', fontWeight: 650 }}>{stats.done}</b></span>
+        </div>
+      ) : (
+        <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>담당 없음</span>
       )}
     </button>
   )
