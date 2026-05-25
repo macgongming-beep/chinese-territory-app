@@ -170,14 +170,20 @@ export function DesktopCalendar({
   const [periodColor, setPeriodColor] = useState(PERIOD_COLORS[0].value)
   const [addParticipantEventId, setAddParticipantEventId] = useState<number | null>(null)
   const [addParticipantQuery, setAddParticipantQuery] = useState('')
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
   const addParticipantRef = useRef<HTMLDivElement>(null)
 
   const calendarDays = getCalendarDays(year, month)
   const selectedDateStr = toDateStr(year, month, selectedDay)
-  const selectedEvents = events.filter((e) => e.date === selectedDateStr)
-  const applicationEvents = selectedEvents.filter((event) => event.allowApplications)
-  const allApplicants = applicationEvents.reduce((t, e) => t + e.applicants.length, 0)
-  const allAssigned = applicationEvents.reduce((t, e) => t + e.assigned.length, 0)
+  const allEventsForDay = events.filter((e) => e.date === selectedDateStr)
+  const explicitSelected = selectedEventId ? allEventsForDay.find(e => e.id === selectedEventId) : null
+  const activeEvent = explicitSelected || (allEventsForDay.length > 0 ? allEventsForDay[0] : null)
+  const selectedEvents = activeEvent ? [activeEvent] : []
+
+  // Compute daily stats from all events of the day
+  const dailyApplicationEvents = allEventsForDay.filter((event) => event.allowApplications)
+  const allApplicants = dailyApplicationEvents.reduce((t, e) => t + e.applicants.length, 0)
+  const allAssigned = dailyApplicationEvents.reduce((t, e) => t + e.assigned.length, 0)
 
   const prevMonth = () => {
     if (month === 1) { setYear((y) => y - 1); setMonth(12) } else setMonth((m) => m - 1)
@@ -496,7 +502,14 @@ export function DesktopCalendar({
                   className={['day-cell', day === selectedDay ? 'selected' : '', !day ? 'muted' : '', activePeriod ? 'in-period' : ''].join(' ')}
                   disabled={!day}
                   key={`${day ?? 'blank'}-${index}`}
-                  onClick={() => { if (day) { setSelectedDay(day); setShowCreateForm(false) } }}
+                  onClick={() => {
+                    if (day) {
+                      setSelectedDay(day)
+                      setSelectedEventId(null)
+                      setShowCreateForm(false)
+                      setEditingEventId(null)
+                    }
+                  }}
                   style={activePeriod && day !== selectedDay ? { background: activePeriod.color + '14' } : undefined}
                   type="button"
                 >
@@ -514,12 +527,23 @@ export function DesktopCalendar({
                     />
                   )}
                   <div className="day-events">
-                    {dayEvents.slice(0, 3).map((event) => (
-                      <small className={`event-pill ${eventTimeClass(event.time)}${event.hasMeeting ? ' has-meeting' : ''}`} key={event.id}>
+                    {dayEvents.map((event) => (
+                      <small 
+                        className={`event-pill ${eventTimeClass(event.time)}${event.hasMeeting ? ' has-meeting' : ''} ${selectedEventId === event.id ? 'active' : ''}`} 
+                        key={event.id}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (day) {
+                            setSelectedDay(day)
+                            setSelectedEventId(event.id)
+                            setShowCreateForm(false)
+                          }
+                        }}
+                        style={selectedEventId === event.id ? { outline: '2px solid var(--ink)', outlineOffset: -1 } : undefined}
+                      >
                         {event.time} {event.title}
                       </small>
                     ))}
-                    {dayEvents.length > 3 && <em>+{dayEvents.length - 3}개 더</em>}
                   </div>
                 </button>
               )
@@ -530,7 +554,7 @@ export function DesktopCalendar({
         <aside className="detail-pane" aria-label={`${selectedDay}일 일정 상세`}>
           <div className="detail-header">
             <p>{month}월 {selectedDay}일 일정</p>
-            {applicationEvents.length > 0 && <strong>신청 {allApplicants}명 · 배정 {allAssigned}명</strong>}
+            {dailyApplicationEvents.length > 0 && <strong>신청 {allApplicants}명 · 배정 {allAssigned}명</strong>}
           </div>
 
           <div className="detail-body">
