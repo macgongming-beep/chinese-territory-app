@@ -12,13 +12,14 @@
 // 단순화: 댓글/지도 썸네일은 기본 placeholder 만, 본격 기능은 다음 라운드.
 
 import { useMemo, useState } from 'react'
-import type { CalendarEvent, Role } from '../../types'
+import type { CalendarEvent, Role, TerritoryCard } from '../../types'
 import { t, type AppLanguage } from '../../i18n'
 import { CommentSection, type MentionUser } from '../CommentSection'
 
 type Props = {
   language?: AppLanguage
   event: CalendarEvent
+  cards?: TerritoryCard[]
   role: Role
   currentVisitor: string
   currentUserId?: number | null
@@ -86,6 +87,7 @@ function formatDateHeader(iso: string, language = 'ko') {
 export function AdminEventDetailSheet({
   language = 'ko',
   event,
+  cards = [],
   role,
   currentVisitor,
   currentUserId,

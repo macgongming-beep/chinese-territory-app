@@ -10138,7 +10138,7 @@ button:focus-visible {
     flex-direction: column;
     gap: 2px;
     max-height: 88px;
-    margin-top: 8px;
+    margin-top: 2px;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;

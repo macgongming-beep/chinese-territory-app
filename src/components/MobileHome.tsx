@@ -331,7 +331,7 @@ export function MobileHome({
   onAssignCardsToEventParticipantsBulk: (
     eventId: number,
     assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
-    options?: { silentSuccess?: boolean },
+    options?: { silentSuccess?: boolean; status?: 'confirmed' | 'shared' },
   ) => Promise<void> | void
   onCreateBuilding: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => void
   onDeleteBuilding: (buildingId: number) => void

@@ -1071,7 +1071,7 @@ export function DesktopLeaderAssignment({
   onAssignCardsToEventParticipantsBulk: (
     eventId: number,
     assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
-    options?: { silentSuccess?: boolean },
+    options?: { silentSuccess?: boolean; status?: 'confirmed' | 'shared' },
   ) => Promise<void> | void
   informalAssets?: InformalAsset[]
   eventInformalAssignments?: EventInformalAssignment[]

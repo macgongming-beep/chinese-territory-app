@@ -68,7 +68,7 @@ export function DesktopCalendar({
   currentVisitor,
   currentUserId,
   leaderNames = [],
-  cards: _cards,
+  cards,
   events,
   role = 'user',
   allUserNames = [],
@@ -496,7 +496,6 @@ export function DesktopCalendar({
               const dayEvents = dayStr ? events.filter((e) => e.date === dayStr) : []
               const activePeriod = dayStr ? specialPeriods.find((p) => dayStr >= p.startDate && dayStr <= p.endDate) : null
               const isPeriodStart = activePeriod && dayStr === activePeriod.startDate
-              const isPeriodEnd = activePeriod && dayStr === activePeriod.endDate
               return (
                 <button
                   className={['day-cell', day === selectedDay ? 'selected' : '', !day ? 'muted' : '', activePeriod ? 'in-period' : ''].join(' ')}
@@ -517,15 +516,6 @@ export function DesktopCalendar({
                     <span className="day-number">{day ?? ''}</span>
                     {isPeriodStart && <small className="period-start-label" style={{ background: activePeriod.color + '22', color: activePeriod.color }}>{activePeriod.label}</small>}
                   </div>
-                  {activePeriod && (
-                    <div
-                      className="period-full-bar"
-                      style={{
-                        background: activePeriod.color,
-                        borderRadius: `${isPeriodStart ? '2px' : '0'} ${isPeriodEnd ? '2px' : '0'} ${isPeriodEnd ? '2px' : '0'} ${isPeriodStart ? '2px' : '0'}`,
-                      }}
-                    />
-                  )}
                   <div className="day-events">
                     {dayEvents.map((event) => (
                       <small 
@@ -625,6 +615,7 @@ export function DesktopCalendar({
                   <EventDetailCard
                     key={event.id}
                     event={event}
+                    cards={cards}
                     role={role}
                     globalSettings={globalSettings}
                     canEdit={canEdit}
@@ -697,8 +688,74 @@ export function DesktopCalendar({
   )
 }
 
+function getAssignmentCardIds(assignment: CalendarEvent['cardAssignments'][number]) {
+  const ids = assignment.assignedCardIds?.length
+    ? assignment.assignedCardIds
+    : assignment.assignedCardId
+      ? [assignment.assignedCardId]
+      : []
+  return Array.from(new Set(ids.filter((id): id is number => typeof id === 'number' && id > 0))).sort((a, b) => a - b)
+}
+
+function buildSharedAssignmentTeams(event: CalendarEvent, cards: TerritoryCard[]) {
+  const cardNameById = new Map(cards.map((card) => [card.id, card.name]))
+  const grouped = new Map<string, { members: string[]; cardIds: number[] }>()
+
+  event.cardAssignments.forEach((assignment) => {
+    const cardIds = getAssignmentCardIds(assignment)
+    const key = cardIds.length ? cardIds.join(',') : `member:${assignment.userName}`
+    const existing = grouped.get(key) ?? { members: [], cardIds }
+    existing.members.push(assignment.userName)
+    grouped.set(key, existing)
+  })
+
+  return Array.from(grouped.values()).map((team, index) => {
+    const cardNames = team.cardIds.map((id) => cardNameById.get(id)).filter((name): name is string => Boolean(name))
+    return {
+      id: `${team.cardIds.join('-') || 'none'}-${index}`,
+      label: `팀 ${index + 1}`,
+      members: team.members,
+      cardNames,
+    }
+  })
+}
+
+function SharedAssignmentTeams({ event, cards }: { event: CalendarEvent; cards: TerritoryCard[] }) {
+  if (event.assignmentStatus !== 'shared') return null
+
+  const teams = buildSharedAssignmentTeams(event, cards)
+  if (teams.length === 0) return null
+
+  return (
+    <section className="shared-assignment-section">
+      <div className="cal-section-head">
+        <h3>확정된 팀</h3>
+      </div>
+      <div className="shared-assignment-list">
+        {teams.map((team) => {
+          const primaryCard = team.cardNames[0] ?? '카드 미배정'
+          const extraCount = Math.max(0, team.cardNames.length - 1)
+          return (
+            <div className="shared-assignment-card" key={team.id}>
+              <div className="shared-assignment-card__top">
+                <strong>{team.label}</strong>
+                <span>{team.members.length}명</span>
+              </div>
+              <div className="shared-assignment-card__members">{team.members.join(', ') || '팀원 없음'}</div>
+              <div className="shared-assignment-card__cards">
+                {primaryCard}{extraCount > 0 ? ` 외 ${extraCount}개` : ''}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 function EventDetailCard({
   event,
+  cards,
   role,
   globalSettings,
   canEdit,
@@ -724,6 +781,7 @@ function EventDetailCard({
   setAddParticipantQuery,
 }: {
   event: CalendarEvent
+  cards: TerritoryCard[]
   role: import('../types').Role
   globalSettings: Record<string, string>
   canEdit: boolean
@@ -931,6 +989,8 @@ function EventDetailCard({
         </div>
       </div>
       )}
+
+      <SharedAssignmentTeams event={event} cards={cards} />
 
       {/* 댓글 + 채팅 열기 — 모바일 방식: CommentSection headerRight 로 통합 */}
       <div className="event-collab-grid">
