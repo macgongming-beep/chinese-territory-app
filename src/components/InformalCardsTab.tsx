@@ -51,7 +51,7 @@ export function InformalCardsTab({
   const [preview, setPreview] = useState<InformalAsset | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<InformalAsset | null>(null)
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<InformalGroup | null>(null)
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<number | 'null'>>(new Set())
+  const [expandedGroups, setExpandedGroups] = useState<Set<number | 'null'>>(new Set())
   const [moveTargetAsset, setMoveTargetAsset] = useState<InformalAsset | null>(null)
   // ⋮ 메뉴 / 선택 모드
   const [openGroupMenu, setOpenGroupMenu] = useState<number | 'null' | null>(null)
@@ -200,7 +200,7 @@ export function InformalCardsTab({
   }
 
   const toggleGroup = (key: number | 'null') => {
-    setCollapsedGroups((prev) => {
+    setExpandedGroups((prev) => {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
       else next.add(key)
@@ -211,7 +211,7 @@ export function InformalCardsTab({
   // ── 렌더 ────────────────────────────────────────────
   const renderGroupSection = (group: InformalGroup | null, assets: InformalAsset[]) => {
     const key: number | 'null' = group?.id ?? 'null'
-    const isCollapsed = collapsedGroups.has(key)
+    const isCollapsed = !expandedGroups.has(key)
     const title = group?.name ?? '미분류'
     const sorted = [...assets].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return (
