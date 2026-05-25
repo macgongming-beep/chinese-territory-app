@@ -158,8 +158,8 @@ export function MobileAdminAssignment({
     return m
   }, [buildings, cards])
 
-  const activeLeaders = leaders.filter((l) => l !== currentVisitor && (leaderStats.get(l)?.assigned ?? 0) > 0)
-  const newLeaders = leaders.filter((l) => l !== currentVisitor && (leaderStats.get(l)?.assigned ?? 0) === 0)
+  const activeLeaders = leaders.filter((l) => l !== currentVisitor && (leaderStats.get(l)?.assigned ?? 0) > 0).sort((a, b) => a.localeCompare(b, 'ko'))
+  const newLeaders = leaders.filter((l) => l !== currentVisitor && (leaderStats.get(l)?.assigned ?? 0) === 0).sort((a, b) => a.localeCompare(b, 'ko'))
   const meLeader = leaders.includes(currentVisitor) ? currentVisitor : null
 
   // 검색 필터 적용
