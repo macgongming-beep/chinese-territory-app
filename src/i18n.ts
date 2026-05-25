@@ -444,8 +444,8 @@ const dictionary = {
     'calendar.dateHeader': '{month}월 {day}일 ({dow})',
     'calendar.label': '레이블',
     'calendar.startTime': '시작 시간',
-    'calendar.defaultEventTitle': '오전 방문',
-    'calendar.defaultTitle': '방문',
+    'calendar.defaultEventTitle': '传道',
+    'calendar.defaultTitle': '传道',
     'calendar.duration': '길이 (분)',
 
     'common.optional': '선택',
@@ -954,8 +954,8 @@ const dictionary = {
     'calendar.dateHeader': '{month}月{day}日（{dow}）',
     'calendar.label': '标签',
     'calendar.startTime': '开始时间',
-    'calendar.defaultEventTitle': '上午访问',
-    'calendar.defaultTitle': '访问',
+    'calendar.defaultEventTitle': '传道',
+    'calendar.defaultTitle': '传道',
     'calendar.duration': '时长（分钟）',
 
     'common.optional': '可选',
@@ -1463,8 +1463,8 @@ const dictionary = {
     'calendar.dateHeader': '{month}/{day} ({dow})',
     'calendar.label': 'Label',
     'calendar.startTime': 'Start time',
-    'calendar.defaultEventTitle': 'Morning visit',
-    'calendar.defaultTitle': 'Visit',
+    'calendar.defaultEventTitle': '传道',
+    'calendar.defaultTitle': '传道',
     'calendar.duration': 'Duration (min)',
 
     'common.optional': 'Optional',

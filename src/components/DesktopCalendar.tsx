@@ -50,10 +50,10 @@ function addMinutesToTime(time: string, minutes: number): string {
 type TimePreset = { label: string; time: string; durationMinutes: number; title: string }
 
 const DEFAULT_TIME_PRESETS: TimePreset[] = [
-  { label: '오전', time: '10:00', durationMinutes: 120, title: '오전 방문' },
-  { label: '오후', time: '13:00', durationMinutes: 120, title: '오후 방문' },
-  { label: '늦은 오후', time: '15:00', durationMinutes: 120, title: '오후 방문' },
-  { label: '저녁', time: '19:00', durationMinutes: 120, title: '저녁 방문' },
+  { label: '오전', time: '10:00', durationMinutes: 120, title: '传道' },
+  { label: '오후', time: '13:00', durationMinutes: 120, title: '传道' },
+  { label: '늦은 오후', time: '15:00', durationMinutes: 120, title: '传道' },
+  { label: '저녁', time: '19:00', durationMinutes: 120, title: '传道' },
 ]
 
 
@@ -148,7 +148,7 @@ export function DesktopCalendar({
   }, [events, searchParams, setSearchParams])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newDate, setNewDate] = useState(() => toDateStr(today.getFullYear(), today.getMonth() + 1, today.getDate()))
-  const [newTitle, setNewTitle] = useState('오전 방문')
+  const [newTitle, setNewTitle] = useState('传道')
   const [newTime, setNewTime] = useState('10:00')
   const [newEndTime, setNewEndTime] = useState('12:00')
   const [newPlace, setNewPlace] = useState('')
@@ -199,7 +199,7 @@ export function DesktopCalendar({
   }
 
   const resetCreateForm = () => {
-    setNewDate(selectedDateStr); setNewTitle('오전 방문'); setNewTime('10:00'); setNewEndTime('12:00'); setNewPlace('')
+    setNewDate(selectedDateStr); setNewTitle('传道'); setNewTime('10:00'); setNewEndTime('12:00'); setNewPlace('')
     setNewMapLink(''); setNewLeader(''); setNewMemo(''); setNewHasMeeting(false); setNewAllowApplications(true)
     setIsRepeat(false); setRepeatEnd('')
   }
@@ -307,7 +307,7 @@ export function DesktopCalendar({
               {/* 제목 */}
               <div className="cal-field">
                 <label>제목 *</label>
-                <input className="cal-input" placeholder="오전 방문" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
+                <input className="cal-input" placeholder="传道" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
               </div>
 
               {/* 날짜 + 매주 반복 토글 */}

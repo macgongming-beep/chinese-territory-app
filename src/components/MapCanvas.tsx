@@ -1109,6 +1109,8 @@ function NaverMapCanvas({
     if (document.getElementById(scriptId)) {
       if ((window as any).naver?.maps) {
         initMap()
+      } else {
+        document.getElementById(scriptId)?.addEventListener('load', initMap, { once: true })
       }
       return
     }
@@ -1237,7 +1239,7 @@ function NaverMapCanvas({
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div
-        className="naver-map-canvas"
+        className={`naver-map-canvas${compact ? ' compact-map-canvas' : ''}`}
         ref={mapRef}
         onContextMenu={(e) => e.preventDefault()}
         style={addingBuilding ? { cursor: 'crosshair' } : editingBuildingLocation ? { cursor: 'grab' } : undefined}

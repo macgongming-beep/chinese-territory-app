@@ -28,10 +28,10 @@ type TimePreset = {
   title: string
 }
 const DEFAULT_TIME_PRESETS: TimePreset[] = [
-  { label: '오전', time: '10:00', durationMinutes: 120, title: '오전 방문' },
-  { label: '오후', time: '13:00', durationMinutes: 120, title: '오후 방문' },
-  { label: '늦은 오후', time: '15:00', durationMinutes: 120, title: '오후 방문' },
-  { label: '저녁', time: '19:00', durationMinutes: 120, title: '저녁 방문' },
+  { label: '오전', time: '10:00', durationMinutes: 120, title: '传道' },
+  { label: '오후', time: '13:00', durationMinutes: 120, title: '传道' },
+  { label: '늦은 오후', time: '15:00', durationMinutes: 120, title: '传道' },
+  { label: '저녁', time: '19:00', durationMinutes: 120, title: '传道' },
 ]
 
 type EventInput = {
@@ -918,7 +918,7 @@ function EventAddSheet({ language,
   const [date, setDate] = useState(editingEvent?.date ?? defaultDate)
   const [time, setTime] = useState(editingEvent?.time ?? '')
   const [endTime, setEndTime] = useState(editingEvent?.endTime ?? '')
-  const [title, setTitle] = useState(editingEvent?.title ?? '')
+  const [title, setTitle] = useState(editingEvent?.title ?? '传道')
   const [memo, setMemo] = useState(editingEvent?.memo ?? '')
   const [place, setPlace] = useState(editingEvent?.place ?? '')
   const [mapLink, setMapLink] = useState(editingEvent?.mapLink ?? '')
