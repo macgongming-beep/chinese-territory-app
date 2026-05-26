@@ -32,6 +32,7 @@ type ChatRoomProps = {
   canAccess?: boolean
   role?: Role
   language?: AppLanguage
+  onRead?: (eventId: number) => void
 }
 
 function getMentionQuery(value: string) {
@@ -86,6 +87,7 @@ export function ChatRoom({
   canAccess = true,
   role = 'user',
   language = 'ko',
+  onRead,
 }: ChatRoomProps) {
   const lang = language
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -192,7 +194,8 @@ export function ChatRoom({
 
     syncActiveChat()
     void fetchMessages()
-    void markChatRead() // 진입 시 즉시 읽음 처리
+    void markChatRead() // 진입 시 즉시 읽음 처리 (DB)
+    onRead?.(eventId)    // 부모 뱃지 낙관적 즉시 반영
 
     const refreshActiveChat = () => {
       if (document.hidden) return

@@ -302,6 +302,13 @@ export function useUserChats(
   const activeChats = useMemo(() => chats.filter((c) => !c.isLocked), [chats])
   const lockedChats = useMemo(() => chats.filter((c) => c.isLocked), [chats])
 
+  // 채팅방 입장 시 낙관적으로 해당 채팅 안 읽음 → 0 (DB 재조회 전에 즉시 반영)
+  const markChatReadLocally = useCallback((eventId: number) => {
+    setChats((prev) =>
+      prev.map((c) => (c.eventId === eventId ? { ...c, unreadCount: 0 } : c))
+    )
+  }, [])
+
   return {
     chats,
     activeChats,
@@ -309,5 +316,6 @@ export function useUserChats(
     totalUnread,
     loading,
     refetch: fetchAll,
+    markChatReadLocally,
   }
 }

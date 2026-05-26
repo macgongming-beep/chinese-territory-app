@@ -157,19 +157,20 @@ export function useNotifications(userId: number | null | undefined) {
   // 단일 알림 읽음 처리
   const markRead = useCallback(
     async (notificationId: number) => {
-      const token = getAuthToken()
-      if (!token) return
-      // 낙관적 갱신
+      // 낙관적 갱신 먼저 — 토큰 여부와 무관하게 UI 즉시 반영
       setNotifications((prev) =>
         prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
       )
+      const token = getAuthToken()
+      if (!token) return
       const { error } = await supabase.rpc('mark_notification_read', {
         p_token: token,
         p_notification_id: notificationId,
       })
       if (error) {
+        // RPC 실패 시 즉각 되돌리지 않고 3초 후 DB 재동기화
         console.warn('[notifications] markRead failed:', error)
-        await fetchAll()
+        setTimeout(() => { void fetchAll() }, 3000)
       }
     },
     [fetchAll]
@@ -178,16 +179,16 @@ export function useNotifications(userId: number | null | undefined) {
   // 모두 읽음
   const markAllRead = useCallback(async () => {
     if (!userId || notifications.every((n) => n.isRead)) return
+    // 낙관적 갱신 먼저
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
     const token = getAuthToken()
     if (!token) return
-    // 낙관적 갱신
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
     const { error } = await supabase.rpc('mark_all_notifications_read', {
       p_token: token,
     })
     if (error) {
       console.warn('[notifications] markAllRead failed:', error)
-      await fetchAll()
+      setTimeout(() => { void fetchAll() }, 3000)
     }
   }, [userId, notifications, fetchAll])
 

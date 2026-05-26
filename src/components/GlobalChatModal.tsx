@@ -71,7 +71,7 @@ export function GlobalChatModal({
   onSelectChat,
   onBackToList,
   onClose,
-  
+  onChatRead,
 }: {
   language?: string
   userId: number | null
@@ -82,7 +82,7 @@ export function GlobalChatModal({
   onSelectChat?: (chat: Pick<UserChat, 'eventId' | 'eventTitle' | 'eventDate' | 'eventTime'>) => void
   onBackToList?: () => void
   onClose: () => void
-
+  onChatRead?: (eventId: number) => void
 }) {
   const lang = (language ?? 'ko') as AppLanguage
   const [localSelectedChat, setLocalSelectedChat] = useState<UserChat | null>(null)
@@ -217,6 +217,7 @@ export function GlobalChatModal({
               language={lang}
               role={role}
               users={mentionUsers}
+              onRead={onChatRead}
             />
           ) : !userId ? (
             <div className="header-action-panel__empty" style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>

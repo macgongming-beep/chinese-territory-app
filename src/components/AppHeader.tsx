@@ -173,7 +173,7 @@ export function AppHeaderActionButtons({
   const [openChat, setOpenChat] = useState(false)
   const [headerChatTarget, setHeaderChatTarget] = useState<HeaderChatTarget>(null)
   const { unreadCount, notifications: notifList, markRead: notifMarkRead, markAllRead: notifMarkAllRead, clearReadNotifications: notifClearRead } = useNotifications(userId ?? null)
-  const { totalUnread } = useUserChats(userId ?? null, userName)
+  const { totalUnread, markChatReadLocally } = useUserChats(userId ?? null, userName)
   const resolvedNotificationCount = notificationCount ?? unreadCount
   const resolvedChatCount = chatCount ?? totalUnread
 
@@ -297,6 +297,7 @@ export function AppHeaderActionButtons({
               onSelectChat={handleOpenChatRoom}
               onBackToList={() => setHeaderChatTarget(null)}
               onClose={handleCloseChat}
+              onChatRead={markChatReadLocally}
             />
           </HeaderOverlayErrorBoundary>
         </HeaderOverlayPortal>
