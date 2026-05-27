@@ -512,11 +512,7 @@ export function RestaurantsTab({
     setCsvApplying(true)
     try {
       const ids = csvMatched.map((r) => r.matched!.id)
-      // 식당명이 건물명과 다른 경우 이름도 같이 업데이트
-      const nameUpdates = csvMatched
-        .filter((r) => r.nameWillUpdate && r.row.name)
-        .map((r) => ({ id: r.matched!.id, name: r.row.name }))
-      await onBulkSetRestaurant(ids, nameUpdates.length > 0 ? nameUpdates : undefined)
+      await onBulkSetRestaurant(ids)
       setCsvDone(true)
       setCsvResults(null)
       setCsvFileName('')
@@ -542,12 +538,17 @@ export function RestaurantsTab({
     [buildings],
   )
 
+  // 식당명: 건물 내 첫 번째 중국인 세대의 번호 (없으면 건물명 → 주소 순)
+  const getRestaurantName = (b: Building): string =>
+    b.units.find((u) => u.isChinese)?.number || b.name || b.address
+
   const filtered = useMemo(() => {
     const q = normalizeCardSearch(search)
     if (!q) return restaurants
-    return restaurants.filter((b) =>
-      normalizeCardSearch(`${b.name}${b.address}`).includes(q),
-    )
+    return restaurants.filter((b) => {
+      const restaurantName = getRestaurantName(b)
+      return normalizeCardSearch(`${restaurantName}${b.address}`).includes(q)
+    })
   }, [restaurants, search])
 
   const grouped = useMemo(() => {
@@ -812,6 +813,7 @@ export function RestaurantsTab({
               {expandedRegions.has(region) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {list.map((b) => {
+                  const restaurantName = getRestaurantName(b)
                   return (
                     <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
                       <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--tint)', display: 'grid', placeItems: 'center', color: 'var(--muted)', flexShrink: 0 }}>
@@ -819,7 +821,7 @@ export function RestaurantsTab({
                       </div>
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {b.name || b.address}
+                          {restaurantName}
                         </span>
                         <span style={{ fontSize: 12.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {b.address}
