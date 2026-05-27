@@ -763,6 +763,7 @@ export function DesktopMap({
     setSelectedBuildingId(focusedBuilding.id)
     setExpandedBuildingIds(new Set([focusedBuilding.id]))
     setExpandedUnitId(null)
+    setDetailOpen(true)  // 하단 패널 자동 열기
 
     window.setTimeout(() => {
       document.getElementById(`bld-row-${focusedBuilding.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })

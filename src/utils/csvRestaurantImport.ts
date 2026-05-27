@@ -17,6 +17,8 @@ export type MatchResult = {
   row: CsvRow
   matched: Building | null
   alreadyRestaurant: boolean
+  /** CSV 식당명이 현재 건물명과 다를 때 true → 이름도 같이 업데이트 */
+  nameWillUpdate: boolean
 }
 
 // ── CSV 파서 (따옴표 처리 포함) ───────────────────────────────
@@ -109,10 +111,16 @@ export function matchRestaurantsToBuildings(rows: CsvRow[], buildings: Building[
     }
 
     const finalMatch = bestScore > 0 ? best : null
+    const nameWillUpdate = !!(
+      finalMatch &&
+      row.name &&
+      row.name !== finalMatch.name
+    )
     return {
       row,
       matched: finalMatch,
       alreadyRestaurant: !!(finalMatch?.isRestaurant),
+      nameWillUpdate,
     }
   })
 }

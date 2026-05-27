@@ -170,7 +170,7 @@ export function DesktopTerritory({
   onDeleteInformalGroup?: (groupId: number) => Promise<void>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
-  onBulkSetRestaurant?: (buildingIds: number[]) => Promise<void>
+  onBulkSetRestaurant?: (buildingIds: number[], nameUpdates?: { id: number; name: string }[]) => Promise<void>
   restaurantRequests?: import('../types').RestaurantRequest[]
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
@@ -1993,6 +1993,7 @@ export function DesktopTerritory({
               onApproveRestaurantRequest={onApproveRestaurantRequest}
               onRejectRestaurantRequest={onRejectRestaurantRequest}
               onOpenMap={(cardId) => onOpenCardMap(cardId)}
+              onOpenBuildingMap={onOpenBuildingMap}
             />
           </div>
         )}

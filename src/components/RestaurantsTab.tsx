@@ -416,15 +416,16 @@ type Props = {
   currentVisitor?: string
   restaurantRequests?: RestaurantRequest[]
   onToggleRestaurantFlag?: (buildingId: number, isRestaurant: boolean) => Promise<void>
-  onBulkSetRestaurant?: (buildingIds: number[]) => Promise<void>
+  onBulkSetRestaurant?: (buildingIds: number[], nameUpdates?: { id: number; name: string }[]) => Promise<void>
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
   onOpenMap: (cardId: number) => void
+  onOpenBuildingMap?: (buildingId: number) => void
 }
 
 export function RestaurantsTab({
   role, buildings, cards, currentVisitor = '', restaurantRequests = [],
-  onToggleRestaurantFlag, onBulkSetRestaurant, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap,
+  onToggleRestaurantFlag, onBulkSetRestaurant, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap, onOpenBuildingMap,
 }: Props) {
   const canManage = isLeaderOrAdmin(role)
   const [search, setSearch] = useState('')
@@ -511,7 +512,11 @@ export function RestaurantsTab({
     setCsvApplying(true)
     try {
       const ids = csvMatched.map((r) => r.matched!.id)
-      await onBulkSetRestaurant(ids)
+      // 식당명이 건물명과 다른 경우 이름도 같이 업데이트
+      const nameUpdates = csvMatched
+        .filter((r) => r.nameWillUpdate && r.row.name)
+        .map((r) => ({ id: r.matched!.id, name: r.row.name }))
+      await onBulkSetRestaurant(ids, nameUpdates.length > 0 ? nameUpdates : undefined)
       setCsvDone(true)
       setCsvResults(null)
       setCsvFileName('')
@@ -716,7 +721,10 @@ export function RestaurantsTab({
                           <span style={{ color: '#16a34a', fontWeight: 700, flexShrink: 0 }}>✓</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{r.row.name || r.row.address}</span>
-                            <span style={{ color: 'var(--muted)', marginLeft: 6, fontSize: 12 }}>→ {r.matched!.name || r.matched!.address}</span>
+                            {r.nameWillUpdate && (
+                              <span style={{ marginLeft: 6, fontSize: 11, color: '#0891b2', background: '#ecfeff', padding: '1px 5px', borderRadius: 4 }}>이름 업데이트</span>
+                            )}
+                            <span style={{ color: 'var(--muted)', marginLeft: 6, fontSize: 12 }}>→ {r.matched!.address}</span>
                           </div>
                         </div>
                       ))}
@@ -804,17 +812,21 @@ export function RestaurantsTab({
               {expandedRegions.has(region) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {list.map((b) => {
-                  const card = cards.find((c) => c.id === b.cardId)
                   return (
                     <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
                       <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--tint)', display: 'grid', placeItems: 'center', color: 'var(--muted)', flexShrink: 0 }}>
                         <ForkIcon />
                       </div>
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name || b.address}</span>
-                        <span style={{ fontSize: 12.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card?.name ? `${card.name} · ` : ''}{b.address}</span>
+                        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {b.name || b.address}
+                        </span>
+                        <span style={{ fontSize: 12.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {b.address}
+                        </span>
                       </div>
-                      <button type="button" onClick={() => onOpenMap(b.cardId)}
+                      <button type="button"
+                        onClick={() => onOpenBuildingMap ? onOpenBuildingMap(b.id) : onOpenMap(b.cardId)}
                         style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 34, minHeight: 34, padding: '0 12px', fontSize: 13, fontWeight: 600, border: '1px solid var(--line-2)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }}>
                         <MapIcon /> 지도
                       </button>
