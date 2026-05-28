@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import type { AppLanguage } from '../../i18n'
 import type { SuggestionBlock, ServiceSuggestion } from '../../types'
 import { saveServiceSuggestion, deleteServiceSuggestion } from '../../hooks/storeMutations/serviceSuggestions'
@@ -6,6 +6,134 @@ import { useServiceSuggestions } from '../../hooks/useServiceSuggestions'
 
 type Props = {
   language?: AppLanguage
+}
+
+// ── CSV 내보내기 ──────────────────────────────────────────────
+const CSV_HEADERS = ['id', '제목', '태그', '홈노출', '노출여부', '블록번호', '블록유형명', '포맷', '질문', '성구', '다음방문기초', '자유내용']
+
+function escapeCSV(v: string) {
+  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
+}
+
+function suggestionsToCSV(suggestions: ServiceSuggestion[]): string {
+  const rows: string[][] = []
+  for (const s of suggestions) {
+    const base = [String(s.id), s.title, s.tags.join('|'), s.show_title_on_home ? '1' : '0', s.is_visible ? '1' : '0']
+    if (s.content.length === 0) {
+      rows.push([...base, '0', '', '', '', '', '', ''])
+    } else {
+      s.content.forEach((block, idx) => {
+        rows.push([
+          ...base,
+          String(idx),
+          block.type,
+          block.format,
+          block.format === 'structured' ? block.question : '',
+          block.format === 'structured' ? block.scripture : '',
+          block.format === 'structured' ? block.next_visit : '',
+          block.format === 'free_text' ? block.body : '',
+        ])
+      })
+    }
+  }
+  const lines = [CSV_HEADERS.map(escapeCSV).join(','), ...rows.map((r) => r.map(escapeCSV).join(','))]
+  return lines.join('\n')
+}
+
+function downloadSuggestionsCSV(suggestions: ServiceSuggestion[]) {
+  const content = suggestionsToCSV(suggestions)
+  const blob = new Blob(['﻿' + content], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `suggestions_${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// ── CSV 파싱 → ServiceSuggestion 배열 ────────────────────────
+type ParsedSuggestion = Omit<ServiceSuggestion, 'created_at'> & { id: number }
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inQuote = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (inQuote) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++ }
+      else if (ch === '"') inQuote = false
+      else current += ch
+    } else {
+      if (ch === '"') inQuote = true
+      else if (ch === ',') { result.push(current); current = '' }
+      else current += ch
+    }
+  }
+  result.push(current)
+  return result
+}
+
+function csvToSuggestions(csv: string): { suggestions: ParsedSuggestion[]; errors: string[] } {
+  const lines = csv.split('\n').map((l) => l.replace(/\r$/, ''))
+  if (lines.length < 2) return { suggestions: [], errors: ['내용이 비어있습니다'] }
+
+  // 헤더 확인
+  const header = parseCSVLine(lines[0])
+  const expectedCols = CSV_HEADERS.length
+  if (header.length < expectedCols) {
+    return { suggestions: [], errors: [`헤더 열 수 불일치 (예상 ${expectedCols}, 실제 ${header.length})`] }
+  }
+
+  const errors: string[] = []
+  // id(또는 제목) 기준으로 그룹화
+  const groups = new Map<string, { meta: string[]; blocks: string[][] }>()
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
+    const cols = parseCSVLine(line)
+    if (cols.length < expectedCols) { errors.push(`${i + 1}번 행: 열 수 부족`); continue }
+    const id = cols[0].trim()
+    const title = cols[1].trim()
+    const key = id || title
+    if (!key) { errors.push(`${i + 1}번 행: id와 제목 모두 비어있음`); continue }
+    if (!groups.has(key)) {
+      groups.set(key, { meta: cols, blocks: [] })
+    }
+    const fmt = cols[7].trim()
+    // 블록 데이터가 있을 때만 추가 (빈 블록 행 제외)
+    if (fmt === 'structured' || fmt === 'free_text') {
+      groups.get(key)!.blocks.push(cols)
+    }
+  }
+
+  const suggestions: ParsedSuggestion[] = []
+  for (const [, { meta, blocks }] of groups) {
+    const id = Number(meta[0]) || 0
+    const title = meta[1].trim()
+    if (!title) { errors.push(`제목 없음 스킵`); continue }
+    const tags = meta[2] ? meta[2].split('|').map((t) => t.trim()).filter(Boolean) : []
+    const showTitle = meta[3] === '1'
+    const isVisible = meta[4] === '1'
+
+    // 블록 번호 기준 정렬
+    const sortedBlocks = [...blocks].sort((a, b) => Number(a[5]) - Number(b[5]))
+    const content: SuggestionBlock[] = sortedBlocks.map((cols) => {
+      const fmt = cols[7].trim() as 'structured' | 'free_text'
+      const type = cols[6].trim() || '기타'
+      if (fmt === 'structured') {
+        return { type, format: 'structured', question: cols[8], scripture: cols[9], next_visit: cols[10] }
+      }
+      return { type, format: 'free_text', body: cols[11] }
+    })
+
+    suggestions.push({ id, title, show_title_on_home: showTitle, tags, is_visible: isVisible, last_used_at: null, content })
+  }
+
+  return { suggestions, errors }
 }
 
 function formatDate(isoStr?: string | null) {
@@ -18,7 +146,7 @@ export function AdminSuggestions({}: Props) {
   const { suggestions, loading, fetchSuggestions } = useServiceSuggestions()
   const [editingSuggestion, setEditingSuggestion] = useState<Partial<ServiceSuggestion> | null>(null)
   const [saving, setSaving] = useState(false)
-  
+
   // Search & Pagination state
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -27,6 +155,12 @@ export function AdminSuggestions({}: Props) {
 
   // Tag Input State
   const [tagInput, setTagInput] = useState('')
+
+  // CSV import state
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [importPreview, setImportPreview] = useState<ParsedSuggestion[] | null>(null)
+  const [importErrors, setImportErrors] = useState<string[]>([])
+  const [importing, setImporting] = useState(false)
 
   const filteredSuggestions = useMemo(() => {
     return suggestions.filter(s => {
@@ -159,6 +293,49 @@ export function AdminSuggestions({}: Props) {
       ...editingSuggestion,
       tags: (editingSuggestion.tags || []).filter(t => t !== tagToRemove)
     })
+  }
+
+  // CSV 파일 선택 → 파싱 → 미리보기
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = (ev.target?.result as string) ?? ''
+      const { suggestions: parsed, errors } = csvToSuggestions(text)
+      setImportPreview(parsed)
+      setImportErrors(errors)
+    }
+    reader.readAsText(file, 'utf-8')
+    e.target.value = ''
+  }
+
+  // 미리보기 확인 → DB 저장
+  const handleImportConfirm = async () => {
+    if (!importPreview || importPreview.length === 0) return
+    setImporting(true)
+    let ok = 0
+    let fail = 0
+    for (const s of importPreview) {
+      try {
+        await saveServiceSuggestion({
+          id: s.id || undefined,
+          title: s.title,
+          show_title_on_home: s.show_title_on_home,
+          tags: s.tags,
+          is_visible: s.is_visible,
+          content: s.content,
+        })
+        ok++
+      } catch {
+        fail++
+      }
+    }
+    await fetchSuggestions()
+    setImporting(false)
+    setImportPreview(null)
+    setImportErrors([])
+    alert(`가져오기 완료: ${ok}건 저장${fail ? `, ${fail}건 실패` : ''}`)
   }
 
   const rowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between' as const, gap: '10px', padding: '16px', borderRadius: '10px', background: 'var(--surface)', marginBottom: '10px', border: '1px solid var(--line-muted)' }
@@ -347,13 +524,58 @@ export function AdminSuggestions({}: Props) {
   // --- List View ---
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', paddingBottom: 60 }}>
+      {/* CSV 가져오기 미리보기 패널 */}
+      {importPreview && (
+        <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: 16, marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <strong style={{ color: '#15803d', fontSize: 14 }}>가져오기 미리보기 — {importPreview.length}건</strong>
+            <button onClick={() => { setImportPreview(null); setImportErrors([]) }} type="button"
+              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13 }}>취소</button>
+          </div>
+          {importErrors.length > 0 && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '8px 12px', marginBottom: 10, fontSize: 12, color: '#dc2626' }}>
+              경고: {importErrors.join(' / ')}
+            </div>
+          )}
+          <div style={{ maxHeight: 220, overflowY: 'auto', marginBottom: 12 }}>
+            {importPreview.map((s, i) => (
+              <div key={i} style={{ padding: '8px 10px', background: '#fff', borderRadius: 6, marginBottom: 6, border: '1px solid #d1fae5', fontSize: 13 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {s.id ? <span style={{ fontSize: 11, color: '#64748b', background: '#f1f5f9', padding: '1px 6px', borderRadius: 4 }}>ID {s.id} 덮어쓰기</span>
+                    : <span style={{ fontSize: 11, color: '#15803d', background: '#dcfce7', padding: '1px 6px', borderRadius: 4 }}>신규</span>}
+                  <strong style={{ color: '#1e293b' }}>{s.title}</strong>
+                  {s.is_visible && <span style={{ fontSize: 10, color: '#2563eb', background: '#dbeafe', padding: '1px 6px', borderRadius: 4 }}>노출 ON</span>}
+                </div>
+                <div style={{ color: '#64748b', marginTop: 3 }}>블록 {s.content.length}개 · 태그: {s.tags.join(', ') || '없음'}</div>
+              </div>
+            ))}
+          </div>
+          <button onClick={handleImportConfirm} disabled={importing} type="button"
+            style={{ width: '100%', padding: '10px', background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: importing ? 'not-allowed' : 'pointer', opacity: importing ? 0.6 : 1 }}>
+            {importing ? '저장 중...' : `${importPreview.length}건 저장하기`}
+          </button>
+        </div>
+      )}
+
       <div className="detail-card" style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>대화 방법 제안 관리</h2>
-          <button onClick={handleCreateNew} type="button"
-            style={{ padding: '8px 14px', border: 0, borderRadius: '8px', background: 'var(--ink)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            + 새 제안 작성
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {/* 숨김 파일 인풋 */}
+            <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileChange} style={{ display: 'none' }} />
+            <button onClick={() => fileInputRef.current?.click()} type="button"
+              style={{ padding: '7px 12px', border: '1px solid var(--line-muted)', borderRadius: '8px', background: 'var(--bg)', color: 'var(--ink)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              CSV 가져오기
+            </button>
+            <button onClick={() => downloadSuggestionsCSV(suggestions)} disabled={suggestions.length === 0} type="button"
+              style={{ padding: '7px 12px', border: '1px solid var(--line-muted)', borderRadius: '8px', background: 'var(--bg)', color: 'var(--ink)', fontSize: '12px', fontWeight: 700, cursor: suggestions.length === 0 ? 'not-allowed' : 'pointer', opacity: suggestions.length === 0 ? 0.5 : 1, whiteSpace: 'nowrap' }}>
+              CSV 내보내기
+            </button>
+            <button onClick={handleCreateNew} type="button"
+              style={{ padding: '7px 12px', border: 0, borderRadius: '8px', background: 'var(--ink)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              + 새 제안 작성
+            </button>
+          </div>
         </div>
 
         <div style={{ marginBottom: 16 }}>
