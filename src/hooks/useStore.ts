@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { trackFetch } from '../lib/perfTracker'
 import type {
   Building,
   CalendarEvent,
@@ -98,189 +99,313 @@ export function useStore() {
   const [globalSettings, setGlobalSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [missingCardLeaderAssignmentsTable, setMissingCardLeaderAssignmentsTable] = useState(false)
+  const [, setMissingCardLeaderAssignmentsTable] = useState(false)
   // 마지막 auto_close 호출 시각 (5분 디바운스)
   const lastAutoCloseAtRef = useRef(0)
 
+  // ─── Phase 1: Slice 기반 fetch 아키텍처 ─────────────────────────
+  // 각 slice는 도메인 단위로 묶인 테이블 + transform + setter를 캡슐화.
+  // fetchSlices(['visits']) 같이 부분 호출 가능. fetchAll = 전체 slice 호출.
+  //
+  // Slice 의존성:
+  //   territory   → buildings, cards, card_boundaries (cards transform은 buildings 필요 → 같이 fetch)
+  //   visits      → visit_histories, service_sessions
+  //   calendar    → calendar_events, event_card_assignments, event_card_assignment_cards (transform 의존성으로 묶음)
+  //   resources   → informal_assets, informal_groups, event_informal_assignments, event_restaurant_assignments
+  //   communication → notices
+  //   returnVisits → return_visits, return_visit_logs
+  //   specialPeriods → special_periods
+  //   reviewTasks → review_tasks
+  //   restaurantRequests → restaurant_requests
+  //   system      → app_settings
+
+  type Slice =
+    | 'territory'
+    | 'visits'
+    | 'calendar'
+    | 'resources'
+    | 'communication'
+    | 'returnVisits'
+    | 'specialPeriods'
+    | 'reviewTasks'
+    | 'restaurantRequests'
+    | 'system'
+
+  const ALL_SLICES: Slice[] = [
+    'territory', 'visits', 'calendar', 'resources', 'communication',
+    'returnVisits', 'specialPeriods', 'reviewTasks', 'restaurantRequests', 'system',
+  ]
+
+  // 각 slice를 독립적으로 fetch. 페이로드 크기 누적 반환.
+  const fetchSlice = useCallback(async (slice: Slice): Promise<number> => {
+    let approxBytes = 0
+    const measure = (data: unknown) => {
+      try { approxBytes += JSON.stringify(data ?? null).length } catch { /* ignore */ }
+    }
+
+    switch (slice) {
+      case 'territory': {
+        // cards에 card_leader_assignments 컬럼이 없으면 폴백
+        const cardsQueryPromise = (async () => {
+          const withLeader = await supabase
+            .from('cards')
+            .select('*, card_assignments(user_name), card_leader_assignments(user_name)')
+            .order('id')
+          if (!withLeader.error) {
+            setMissingCardLeaderAssignmentsTable(false)
+            return withLeader
+          }
+          if (withLeader.error.message.includes('card_leader_assignments')) {
+            setMissingCardLeaderAssignmentsTable(true)
+            return supabase.from('cards').select('*, card_assignments(user_name)').order('id')
+          }
+          return withLeader
+        })()
+
+        const [buildingsRes, cardsRes, boundariesRes] = await Promise.all([
+          supabase.from('buildings').select('*, units(*, regular_visits(*))').order('id'),
+          cardsQueryPromise,
+          supabase.from('card_boundaries').select('*'),
+        ])
+
+        if (buildingsRes.error || cardsRes.error) {
+          setError('영역 데이터를 불러오지 못했습니다.')
+          return 0
+        }
+
+        measure(buildingsRes.data)
+        measure(cardsRes.data)
+        measure(boundariesRes.data)
+
+        const transformedBuildings = (buildingsRes.data as RawBuilding[]).map(toBuilding)
+        const transformedCards = (cardsRes.data as RawCard[]).map((raw) => toCard(raw, transformedBuildings))
+        const transformedBoundaries = boundariesRes.error
+          ? []
+          : ((boundariesRes.data as RawCardBoundary[]).map(toCardBoundary).filter(Boolean) as CardBoundary[])
+
+        if (boundariesRes.error) {
+          console.warn('카드별 구역선 로드 실패 (card_boundaries 스키마 미적용 가능).', boundariesRes.error)
+        }
+
+        setBuildings(transformedBuildings)
+        setCards(transformedCards)
+        setCardBoundaries(transformedBoundaries)
+        return approxBytes
+      }
+
+      case 'visits': {
+        const [visitsRes, sessionsRes] = await Promise.all([
+          supabase.from('visit_histories').select('*').order('created_at', { ascending: false }),
+          supabase.from('service_sessions').select('*').order('started_at', { ascending: false }).limit(100),
+        ])
+
+        if (visitsRes.error) {
+          setError('방문 기록을 불러오지 못했습니다.')
+          return 0
+        }
+
+        measure(visitsRes.data)
+        measure(sessionsRes.data)
+
+        setVisitHistories((visitsRes.data as RawVisitHistory[]).map(toVisitHistory))
+        setServiceSessions(sessionsRes.error
+          ? []
+          : (sessionsRes.data as RawServiceSession[]).map(toServiceSession))
+
+        if (sessionsRes.error) {
+          console.warn('봉사 세션 로드 실패.', sessionsRes.error)
+        }
+        return approxBytes
+      }
+
+      case 'calendar': {
+        const [eventsRes, eventCardAssignmentsRes, eventAssignmentCardsRes] = await Promise.all([
+          supabase.from('calendar_events').select('*, event_participants(*)').order('event_date').order('time'),
+          supabase.from('event_card_assignments').select('*'),
+          supabase.from('event_card_assignment_cards').select('*'),
+        ])
+
+        if (eventsRes.error) {
+          setError('일정을 불러오지 못했습니다.')
+          return 0
+        }
+
+        measure(eventsRes.data)
+        measure(eventCardAssignmentsRes.data)
+        measure(eventAssignmentCardsRes.data)
+
+        const base = eventCardAssignmentsRes.error
+          ? []
+          : (eventCardAssignmentsRes.data as RawEventCardAssignment[]).map(toEventCardAssignment)
+        const merged = eventAssignmentCardsRes.error
+          ? base
+          : mergeEventCardAssignments(base, eventAssignmentCardsRes.data as RawEventCardAssignmentCard[])
+        const transformedEvents = (eventsRes.data as RawCalendarEvent[]).map((event) =>
+          toCalendarEvent(event, merged.filter((a) => a.eventId === event.id)),
+        )
+        setCalendarEvents(transformedEvents)
+
+        if (eventCardAssignmentsRes.error) {
+          console.warn('일정별 카드 배정 로드 실패.', eventCardAssignmentsRes.error)
+        }
+        if (eventAssignmentCardsRes.error) {
+          console.warn('다중 카드 배정 로드 실패.', eventAssignmentCardsRes.error)
+        }
+        return approxBytes
+      }
+
+      case 'resources': {
+        const [informalAssetsRes, eventInformalRes, eventRestaurantRes, informalGroupsRes] = await Promise.all([
+          supabase.from('informal_assets').select('*').eq('archived', false).order('created_at', { ascending: false }),
+          supabase.from('event_informal_assignments').select('*'),
+          supabase.from('event_restaurant_assignments').select('*'),
+          supabase.from('informal_groups').select('*').order('position').order('created_at'),
+        ])
+
+        measure(informalAssetsRes.data)
+        measure(eventInformalRes.data)
+        measure(eventRestaurantRes.data)
+        measure(informalGroupsRes.data)
+
+        setInformalAssets(informalAssetsRes.error ? [] : (informalAssetsRes.data as RawInformalAsset[]).map(toInformalAsset))
+        setEventInformalAssignments(eventInformalRes.error ? [] : (eventInformalRes.data as RawEventInformalAssignment[]).map(toEventInformalAssignment))
+        setEventRestaurantAssignments(eventRestaurantRes.error ? [] : (eventRestaurantRes.data as RawEventRestaurantAssignment[]).map(toEventRestaurantAssignment))
+        setInformalGroups(informalGroupsRes.error ? [] : (informalGroupsRes.data as RawInformalGroup[]).map(toInformalGroup))
+
+        if (informalAssetsRes.error || eventInformalRes.error || eventRestaurantRes.error || informalGroupsRes.error) {
+          console.warn('v2 신 배정 모델 일부 미적용 — supabase/v2_assignment_model.sql 실행 필요')
+        }
+        return approxBytes
+      }
+
+      case 'communication': {
+        const noticesRes = await supabase.from('notices').select('*').order('created_at', { ascending: false }).limit(50)
+        measure(noticesRes.data)
+        setNotices(noticesRes.error ? [] : (noticesRes.data as RawNotice[]).map(toNotice))
+        return approxBytes
+      }
+
+      case 'returnVisits': {
+        const [returnVisitsRes, returnVisitLogsRes] = await Promise.all([
+          supabase.from('return_visits').select('*').order('created_at', { ascending: false }),
+          supabase.from('return_visit_logs').select('*').order('visited_at', { ascending: false }),
+        ])
+
+        measure(returnVisitsRes.data)
+        measure(returnVisitLogsRes.data)
+
+        setReturnVisits(returnVisitsRes.error ? [] : (returnVisitsRes.data as {
+          id: number; unit_id: number; building_id: number; display_name: string;
+          nickname: string | null; address: string; unit_number: string; assigned_user_name: string;
+          created_by: string; last_visited_at: string | null; last_result: string | null; created_at: string;
+        }[]).map((r) => ({
+          id: r.id,
+          unitId: r.unit_id,
+          buildingId: r.building_id,
+          displayName: r.display_name,
+          nickname: r.nickname ?? '',
+          address: r.address ?? '',
+          unitNumber: r.unit_number ?? '',
+          assignedUserName: r.assigned_user_name ?? '',
+          createdBy: r.created_by ?? '',
+          lastVisitedAt: r.last_visited_at ?? null,
+          lastResult: (r.last_result as '만남' | '부재' | null) ?? null,
+          createdAt: r.created_at,
+        })))
+        setReturnVisitLogs(returnVisitLogsRes.error ? [] : (returnVisitLogsRes.data as {
+          id: number; return_visit_id: number; visited_at: string;
+          result: string | null; memo: string | null; created_by: string;
+        }[]).map((r) => ({
+          id: r.id,
+          returnVisitId: r.return_visit_id,
+          visitedAt: r.visited_at,
+          result: (r.result as '만남' | '부재' | null) ?? null,
+          memo: r.memo ?? '',
+          createdBy: r.created_by ?? '',
+        })))
+        return approxBytes
+      }
+
+      case 'specialPeriods': {
+        const periodsRes = await supabase.from('special_periods').select('*').order('start_date')
+        measure(periodsRes.data)
+        setSpecialPeriods(periodsRes.error ? [] : (periodsRes.data as { id: number; label: string; start_date: string; end_date: string; color: string; has_invitation?: boolean }[]).map((r) => ({
+          id: r.id, label: r.label, startDate: r.start_date, endDate: r.end_date, color: r.color, hasInvitation: r.has_invitation ?? false,
+        })))
+        return approxBytes
+      }
+
+      case 'reviewTasks': {
+        const reviewTasksRes = await supabase.from('review_tasks').select('*').neq('status', 'deleted').order('created_at', { ascending: false })
+        measure(reviewTasksRes.data)
+        setReviewTasks(reviewTasksRes.error ? [] : (reviewTasksRes.data as {
+          id: number; title: string; content: string | null; status: ReviewTaskStatus;
+          created_by: string; created_at: string; completed_at: string | null; updated_at: string;
+        }[]).map((r) => ({
+          id: r.id, title: r.title, content: r.content ?? '', status: r.status,
+          createdBy: r.created_by, createdAt: r.created_at,
+          completedAt: r.completed_at, updatedAt: r.updated_at,
+        })))
+        if (reviewTasksRes.error) {
+          console.warn('검토 항목 로드 실패 (review_tasks 미적용 가능).', reviewTasksRes.error)
+        }
+        return approxBytes
+      }
+
+      case 'restaurantRequests': {
+        const res = await supabase.from('restaurant_requests').select('*').order('requested_at', { ascending: false })
+        measure(res.data)
+        setRestaurantRequests(res.error ? [] : (res.data as RawRestaurantRequest[]).map(toRestaurantRequest))
+        if (res.error) {
+          console.warn('식당봉사 신청 로드 실패 (v3_restaurant_service.sql 미적용 가능).', res.error)
+        }
+        return approxBytes
+      }
+
+      case 'system': {
+        const settingsRes = await supabase.from('app_settings').select('*')
+        measure(settingsRes.data)
+        setGlobalSettings(settingsRes.error ? {} : Object.fromEntries((settingsRes.data as { key: string; value: string }[]).map((r) => [r.key, r.value])))
+        return approxBytes
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 공개 API: 특정 slice만 fetch. 측정 자동 기록.
+  const fetchSlices = useCallback(async (
+    slices: Slice[],
+    options?: { triggeredBy?: string },
+  ): Promise<void> => {
+    const start = performance.now()
+    const bytesArr = await Promise.all(slices.map((s) => fetchSlice(s)))
+    const duration = Math.round(performance.now() - start)
+    const totalBytes = bytesArr.reduce((a, b) => a + b, 0)
+    trackFetch({
+      triggeredBy: options?.triggeredBy ?? 'fetchSlices',
+      slices,
+      approxBytes: totalBytes,
+      durationMs: duration,
+      timestamp: Date.now(),
+    })
+  }, [fetchSlice])
+
+  // 기존 fetchAll: 모든 slice + auto_close 부수효과 유지 (100% 후방호환)
   const fetchAll = useCallback(async () => {
     // 자동 종료 함수 호출 (5분 디바운스, 백그라운드 fire-and-forget)
     if (Date.now() - lastAutoCloseAtRef.current > 5 * 60 * 1000) {
       lastAutoCloseAtRef.current = Date.now()
       void supabase.rpc('auto_close_stale_sessions').then((res) => {
-        if (res.error) {
-          // 함수 없으면 (SQL 적용 전) 조용히 무시
-          if (!res.error.message?.includes('Could not find the function')) {
-            console.warn('[auto_close_stale_sessions] failed:', res.error)
-          }
+        if (res.error && !res.error.message?.includes('Could not find the function')) {
+          console.warn('[auto_close_stale_sessions] failed:', res.error)
         }
       })
     }
-    const cardsQueryPromise = (async () => {
-      const withLeaderAssignments = await supabase
-        .from('cards')
-        .select('*, card_assignments(user_name), card_leader_assignments(user_name)')
-        .order('id')
-
-      if (!withLeaderAssignments.error) {
-        setMissingCardLeaderAssignmentsTable(false)
-        return withLeaderAssignments
-      }
-
-      if (withLeaderAssignments.error.message.includes('card_leader_assignments')) {
-        setMissingCardLeaderAssignmentsTable(true)
-        return supabase.from('cards').select('*, card_assignments(user_name)').order('id')
-      }
-
-      return withLeaderAssignments
-    })()
-
-    const [
-      buildingsRes, cardsRes, visitsRes, sessionsRes, eventsRes,
-      eventCardAssignmentsRes, eventAssignmentCardsRes, boundariesRes,
-      noticesRes, periodsRes, returnVisitsRes, returnVisitLogsRes, reviewTasksRes,
-      informalAssetsRes, eventInformalAssignmentsRes, eventRestaurantAssignmentsRes,
-      informalGroupsRes, restaurantRequestsRes, settingsRes,
-    ] = await Promise.all([
-      supabase.from('buildings').select('*, units(*, regular_visits(*))').order('id'),
-      cardsQueryPromise,
-      supabase.from('visit_histories').select('*').order('created_at', { ascending: false }),
-      supabase.from('service_sessions').select('*').order('started_at', { ascending: false }).limit(100),
-      supabase.from('calendar_events').select('*, event_participants(*)').order('event_date').order('time'),
-      supabase.from('event_card_assignments').select('*'),
-      supabase.from('event_card_assignment_cards').select('*'),
-      supabase.from('card_boundaries').select('*'),
-      supabase.from('notices').select('*').order('created_at', { ascending: false }).limit(50),
-      supabase.from('special_periods').select('*').order('start_date'),
-      supabase.from('return_visits').select('*').order('created_at', { ascending: false }),
-      supabase.from('return_visit_logs').select('*').order('visited_at', { ascending: false }),
-      supabase.from('review_tasks').select('*').neq('status', 'deleted').order('created_at', { ascending: false }),
-      supabase.from('informal_assets').select('*').eq('archived', false).order('created_at', { ascending: false }),
-      supabase.from('event_informal_assignments').select('*'),
-      supabase.from('event_restaurant_assignments').select('*'),
-      supabase.from('informal_groups').select('*').order('position').order('created_at'),
-      supabase.from('restaurant_requests').select('*').order('requested_at', { ascending: false }),
-      supabase.from('app_settings').select('*'),
-    ])
-
-    if (buildingsRes.error || cardsRes.error || visitsRes.error || eventsRes.error) {
-      setError('데이터를 불러오지 못했습니다.')
-      setLoading(false)
-      return
-    }
-
-    const transformedBuildings = (buildingsRes.data as RawBuilding[]).map(toBuilding)
-    const transformedCards = (cardsRes.data as RawCard[]).map((raw) =>
-      toCard(raw, transformedBuildings),
-    )
-    const transformedVisits = (visitsRes.data as RawVisitHistory[]).map(toVisitHistory)
-    const transformedSessions = sessionsRes.error
-      ? []
-      : (sessionsRes.data as RawServiceSession[]).map(toServiceSession)
-    const transformedEventCardAssignmentsBase = eventCardAssignmentsRes.error
-      ? []
-      : (eventCardAssignmentsRes.data as RawEventCardAssignment[]).map(toEventCardAssignment)
-    const transformedEventCardAssignments = eventAssignmentCardsRes.error
-      ? transformedEventCardAssignmentsBase
-      : mergeEventCardAssignments(
-          transformedEventCardAssignmentsBase,
-          eventAssignmentCardsRes.data as RawEventCardAssignmentCard[],
-        )
-    const transformedEvents = (eventsRes.data as RawCalendarEvent[]).map((event) =>
-      toCalendarEvent(event, transformedEventCardAssignments.filter((assignment) => assignment.eventId === event.id)),
-    )
-    const transformedBoundaries = boundariesRes.error
-      ? []
-      : ((boundariesRes.data as RawCardBoundary[]).map(toCardBoundary).filter(Boolean) as CardBoundary[])
-
-    if (boundariesRes.error) {
-      console.warn('카드별 구역선을 불러오지 못했습니다. card_boundaries 스키마가 아직 없을 수 있습니다.', boundariesRes.error)
-    }
-    if (sessionsRes.error) {
-      console.warn('봉사 세션을 불러오지 못했습니다. service_sessions 스키마가 아직 없을 수 있습니다.', sessionsRes.error)
-    }
-    if (eventCardAssignmentsRes.error) {
-      console.warn('일정별 카드 배정을 불러오지 못했습니다. event_card_assignments 스키마가 아직 없을 수 있습니다.', eventCardAssignmentsRes.error)
-    }
-    if (eventAssignmentCardsRes.error) {
-      console.warn('여러 카드 배정을 불러오지 못했습니다. event_card_assignment_cards SQL을 실행하면 팀별 다중 카드가 동기화됩니다.', eventAssignmentCardsRes.error)
-    }
-    if (missingCardLeaderAssignmentsTable) {
-      console.warn('다수 인도자 배정을 불러오지 못했습니다. card_leader_assignments SQL을 실행해 주세요.')
-    }
-
-    setBuildings(transformedBuildings)
-    setCards(transformedCards)
-    setVisitHistories(transformedVisits)
-    setServiceSessions(transformedSessions)
-    setCalendarEvents(transformedEvents)
-    setCardBoundaries(transformedBoundaries)
-    setNotices(noticesRes.error ? [] : (noticesRes.data as RawNotice[]).map(toNotice))
-    setSpecialPeriods(periodsRes.error ? [] : (periodsRes.data as { id: number; label: string; start_date: string; end_date: string; color: string; has_invitation?: boolean }[]).map((r) => ({
-      id: r.id, label: r.label, startDate: r.start_date, endDate: r.end_date, color: r.color, hasInvitation: r.has_invitation ?? false,
-    })))
-    setReturnVisits(returnVisitsRes.error ? [] : (returnVisitsRes.data as {
-      id: number; unit_id: number; building_id: number; display_name: string;
-      nickname: string | null; address: string; unit_number: string; assigned_user_name: string;
-      created_by: string; last_visited_at: string | null; last_result: string | null; created_at: string;
-    }[]).map((r) => ({
-      id: r.id,
-      unitId: r.unit_id,
-      buildingId: r.building_id,
-      displayName: r.display_name,
-      nickname: r.nickname ?? '',
-      address: r.address ?? '',
-      unitNumber: r.unit_number ?? '',
-      assignedUserName: r.assigned_user_name ?? '',
-      createdBy: r.created_by ?? '',
-      lastVisitedAt: r.last_visited_at ?? null,
-      lastResult: (r.last_result as '만남' | '부재' | null) ?? null,
-      createdAt: r.created_at,
-    })))
-    setReturnVisitLogs(returnVisitLogsRes.error ? [] : (returnVisitLogsRes.data as {
-      id: number; return_visit_id: number; visited_at: string;
-      result: string | null; memo: string | null; created_by: string;
-    }[]).map((r) => ({
-      id: r.id,
-      returnVisitId: r.return_visit_id,
-      visitedAt: r.visited_at,
-      result: (r.result as '만남' | '부재' | null) ?? null,
-      memo: r.memo ?? '',
-      createdBy: r.created_by ?? '',
-    })))
-    setReviewTasks(reviewTasksRes.error ? [] : (reviewTasksRes.data as {
-      id: number; title: string; content: string | null; status: ReviewTaskStatus;
-      created_by: string; created_at: string; completed_at: string | null; updated_at: string;
-    }[]).map((r) => ({
-      id: r.id,
-      title: r.title,
-      content: r.content ?? '',
-      status: r.status,
-      createdBy: r.created_by,
-      createdAt: r.created_at,
-      completedAt: r.completed_at,
-      updatedAt: r.updated_at,
-    })))
-    if (reviewTasksRes.error) {
-      console.warn('검토 항목을 불러오지 못했습니다. review_tasks 테이블이 없을 수 있습니다.', reviewTasksRes.error)
-    }
-
-    // v2 신 배정 모델 데이터 (v2_assignment_model.sql 적용 전이면 모두 빈 배열)
-    setInformalAssets(informalAssetsRes.error ? [] : (informalAssetsRes.data as RawInformalAsset[]).map(toInformalAsset))
-    setEventInformalAssignments(eventInformalAssignmentsRes.error ? [] : (eventInformalAssignmentsRes.data as RawEventInformalAssignment[]).map(toEventInformalAssignment))
-    setEventRestaurantAssignments(eventRestaurantAssignmentsRes.error ? [] : (eventRestaurantAssignmentsRes.data as RawEventRestaurantAssignment[]).map(toEventRestaurantAssignment))
-    setInformalGroups(informalGroupsRes.error ? [] : (informalGroupsRes.data as RawInformalGroup[]).map(toInformalGroup))
-    setRestaurantRequests(restaurantRequestsRes.error ? [] : (restaurantRequestsRes.data as RawRestaurantRequest[]).map(toRestaurantRequest))
-    setGlobalSettings(settingsRes.error ? {} : Object.fromEntries((settingsRes.data as { key: string; value: string }[]).map(r => [r.key, r.value])))
-    if (informalAssetsRes.error || eventInformalAssignmentsRes.error || eventRestaurantAssignmentsRes.error || informalGroupsRes.error) {
-      console.warn('v2 신 배정 모델 테이블 일부 미적용 — supabase/v2_assignment_model.sql 실행 필요')
-    }
-    if (restaurantRequestsRes.error) {
-      console.warn('식당봉사 신청 테이블 미적용 — supabase/v3_restaurant_service.sql 실행 필요')
-    }
-
+    await fetchSlices(ALL_SLICES, { triggeredBy: 'fetchAll' })
     setError(null)
     setLoading(false)
-  }, [missingCardLeaderAssignmentsTable])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchSlices])
 
   useEffect(() => {
     fetchAll().then(async () => {
@@ -436,6 +561,7 @@ export function useStore() {
 
   return {
     refetchAll: fetchAll,
+    refetchSlices: fetchSlices,
     cards,
     buildings,
     visitHistories,
