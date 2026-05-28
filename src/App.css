@@ -8387,31 +8387,30 @@ button:focus-visible {
   font-weight: 700;
 }
 
-/* ── 현재 봉사 중 카드 (Brand Blue Callout 스타일) ── */
+/* ── 현재 봉사 중 카드 (Black Accent 스타일) ── */
 .mobile-active-session-card {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  border: 1px solid var(--brand-200);
-  border-left: 4px solid var(--brand-600);
-  border-radius: 12px;
-  background: var(--brand-50);
-  box-shadow: var(--shadow-sm);
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+  background: var(--bg-card, #ffffff);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 .mas-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--brand-600);
-  box-shadow: 0 0 0 3px var(--brand-200);
+  background: var(--ink);
+  box-shadow: 0 0 0 3px var(--gray-200);
   flex-shrink: 0;
-  animation: pulse-dot 2s infinite ease-in-out;
+  animation: pulse-dot-ink 2s infinite ease-in-out;
 }
-@keyframes pulse-dot {
-  0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
-  70% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+@keyframes pulse-dot-ink {
+  0% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0.2); }
+  70% { box-shadow: 0 0 0 6px rgba(26, 26, 26, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0); }
 }
 .mas-body {
   flex: 1;
@@ -8429,7 +8428,7 @@ button:focus-visible {
 }
 .mas-body span {
   font-size: 13px;
-  color: var(--brand-700);
+  color: var(--gray-600);
   font-weight: 600;
 }
 .mas-actions {
@@ -8440,7 +8439,7 @@ button:focus-visible {
 .mas-map-btn {
   padding: 8px 14px;
   border-radius: 8px;
-  background: var(--brand-600);
+  background: var(--ink);
   color: #ffffff;
   font-size: 13px;
   font-weight: 700;
@@ -8454,16 +8453,16 @@ button:focus-visible {
 .mas-end-btn {
   padding: 8px 14px;
   border-radius: 8px;
-  background: #ffffff;
-  border: 1px solid var(--danger-300);
-  color: var(--danger-600);
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  color: var(--ink);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;
 }
 .mas-end-btn:active {
-  background: var(--danger-50);
+  background: var(--bg-muted);
 }
 
 .mobile-new-service-card {
