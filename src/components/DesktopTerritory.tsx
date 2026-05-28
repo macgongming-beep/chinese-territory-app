@@ -191,7 +191,11 @@ export function DesktopTerritory({
   type ZoneKind = 'territory' | 'informal' | 'restaurant'
   const [zoneKind, setZoneKind] = useState<ZoneKind>('territory')
   const informalCount = informalAssets.length
-  const restaurantCount = buildings.filter((b) => b.type === '상가' && b.isRestaurant).length
+  const restaurantCount = buildings.reduce((acc, b) => {
+    if (b.type !== '상가' || !b.isRestaurant) return acc
+    const chineseUnits = b.units.filter((u) => u.isChinese)
+    return acc + (chineseUnits.length === 0 ? 1 : chineseUnits.length)
+  }, 0)
   const [buildingSubTab, setBuildingSubTab] = useState<'건물 목록' | '중국인 포인트'>('건물 목록')
   const [showCardModal, setShowCardModal] = useState(false)
   const [pendingBoundaryCard, setPendingBoundaryCard] = useState<{ id: number; name: string } | null>(null)
