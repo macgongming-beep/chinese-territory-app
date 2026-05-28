@@ -1426,12 +1426,12 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                     ;(unit.status === '부재' && latestHistory?.visitedAt === getLocalDateString()) ? onUndoLatestVisit(building.id, unit.id) : onQuickLogVisit(building.id, unit.id, '부재')
                                   }}
                                   type="button">{(unit.status === '부재' && latestHistory?.visitedAt === getLocalDateString()) ? '✓' : ''}</button>
-                                <button className={`unit-check-btn${unit.status === '한국인' ? ' ucb-korean' : ''}${!canRecordVisits ? ' locked' : ''}`}
+                                <button className={`unit-check-btn${unit.status === '대상외' ? ' ucb-korean' : ''}${!canRecordVisits ? ' locked' : ''}`}
                                   onClick={() => {
                                     if (!requireRecordAccess()) return
-                                    unit.status === '한국인' ? onUndoLatestVisit(building.id, unit.id) : onQuickLogVisit(building.id, unit.id, '한국인')
+                                    unit.status === '대상외' ? onUndoLatestVisit(building.id, unit.id) : onQuickLogVisit(building.id, unit.id, '대상외')
                                   }}
-                                  type="button">{unit.status === '한국인' ? '✓' : ''}</button>
+                                  type="button">{unit.status === '대상외' ? '✓' : ''}</button>
                               </div>
 
                             </div>
@@ -1567,7 +1567,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               <option value="미방문">미방문</option>
               <option value="만남">만남</option>
               <option value="부재">부재</option>
-              <option value="한국인">한국인</option>
+              <option value="대상외">대상외</option>
             </select>
 
             {/* 시간대 + 날짜 나란히 */}
@@ -2009,7 +2009,7 @@ function UnitDetailScreen({
             {/* 방문금지 */}
             {[
               { label: '방문금지', active: unit.isForbidden ?? false, onToggle: () => onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden }) },
-              { label: '중국인', active: unit.isChinese ?? false, onToggle: () => onToggleChinese(building.id, unit.id) },
+              { label: '중국어', active: unit.isChinese ?? false, onToggle: () => onToggleChinese(building.id, unit.id) },
             ].map(flag => (
               <button
                 key={flag.label}
@@ -2389,7 +2389,7 @@ function UnitDetail({
               onClick={() => { if (!requireRecordAccess()) return; onToggleChinese(buildingId, unit.id) }}
               type="button"
             >{unit.isChinese ? '✓' : ''}</button>
-            중국인
+            중국어
           </label>
         </div>
 

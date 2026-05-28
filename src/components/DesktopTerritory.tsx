@@ -978,10 +978,10 @@ export function DesktopTerritory({
       const buildingType: CsvBuildingImport['type'] = typeValue.includes('상가') ? '상가' : '주택'
       const buildingKey = `${card.id}|${address}|${buildingName}`
 
-      // 구분 컬럼: 한국인 → false, 중국인 → true, 없으면 heuristic
+      // 구분 컬럼: 대상외(구: 한국인) → false, 중국인 → true, 없으면 heuristic
       const status = normalizeUnitStatus(statusValue)
       let isChinese: boolean
-      if (divisionValue === '한국인') {
+      if (divisionValue === '대상외' || divisionValue === '한국인') {
         isChinese = false
       } else if (divisionValue === '중국인') {
         isChinese = true
@@ -1576,7 +1576,7 @@ export function DesktopTerritory({
                     <option value="미방문">미방문</option>
                     <option value="만남">만남</option>
                     <option value="부재">부재</option>
-                    <option value="한국인">한국인</option>
+                    <option value="대상외">대상외</option>
                   </select>
                 </label>
                 <label className="wide">
@@ -1822,7 +1822,7 @@ export function DesktopTerritory({
                   </button>
                 </div>
                 <p style={{ fontWeight: 600, marginBottom: 2 }}>건물 정보</p>
-                <p style={{ marginTop: 0 }}>카드명, 지역, 동, 주소, 건물명, 유형, 호수, 상태, <b>구분</b>(중국인/한국인), <b>방문금지</b>, 정기방문자, <b>정기방문시작일</b>, 메모</p>
+                <p style={{ marginTop: 0 }}>카드명, 지역, 동, 주소, 건물명, 유형, 호수, 상태, <b>구분</b>(중국인/대상외), <b>방문금지</b>, 정기방문자, <b>정기방문시작일</b>, 메모</p>
                 <p style={{ fontWeight: 600, marginBottom: 2 }}>방문기록 (선택 — 있으면 과거 기록도 함께 삽입)</p>
                 <p style={{ marginTop: 0 }}>방문일자(YYYY-MM-DD), 방문결과, 방문자, 시간대(오전/오후/저녁), 방문메모</p>
                 <small>한 세대에 방문기록이 여러 건이면 같은 주소+호수로 여러 행을 작성하세요. 카드 정보가 비어 있으면 구역선 기준으로 자동 배정합니다.</small>
@@ -2353,7 +2353,7 @@ export function DesktopTerritory({
                 <option value="미방문">미방문</option>
                 <option value="만남">만남</option>
                 <option value="부재">부재</option>
-                <option value="한국인">한국인</option>
+                <option value="대상외">대상외</option>
               </select>
               <button
                 className={`tbl-filter-toggle${pointFilterPanelOpen ? ' active' : ''}`}
@@ -2728,7 +2728,7 @@ export function DesktopTerritory({
                                       value={unitEditDraft.status}
                                       onChange={(e) => setUnitEditDraft((d) => ({ ...d, status: e.target.value as UnitStatus }))}
                                     >
-                                      {(['미방문', '만남', '부재', '한국인'] as UnitStatus[]).map((s) => (
+                                      {(['미방문', '만남', '부재', '대상외'] as UnitStatus[]).map((s) => (
                                         <option key={s} value={s}>{s}</option>
                                       ))}
                                     </select>
@@ -3103,7 +3103,7 @@ export function DesktopTerritory({
                 { label: '건물', value: `${selectedCard.buildings}개` },
                 { label: '세대', value: `${selectedCard.units}개` },
                 { label: '완료', value: `${selectedCard.completed}개` },
-                { label: '중국인', value: `${selectedChinesePointCount}건`, highlight: selectedChinesePointCount > 0 },
+                { label: '중국어', value: `${selectedChinesePointCount}건`, highlight: selectedChinesePointCount > 0 },
                 { label: '정기방문', value: `${selectedCard.regularVisits}건` },
                 { label: '구역선', value: selectedHasBoundary ? '있음' : '없음' },
               ].map(({ label, value, highlight }) => (

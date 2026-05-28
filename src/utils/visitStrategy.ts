@@ -87,7 +87,7 @@ export function getVisitStrategyChips(unit: Unit, histories: VisitHistory[]): Vi
   if (unit.isChinese) {
     chips.push({
       label: '발견됨',
-      detail: '중국인',
+      detail: '중국어',
       tone: 'chinese',
     })
   }

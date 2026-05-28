@@ -111,7 +111,7 @@ export function normalizeUnitStatus(value: string): UnitStatus {
   if (text.includes('만남')) return '만남'
   if (text.includes('초대장') || text.includes('초대')) return '만남'   // 초대장 → 만남 (invitation_left는 별도)
   if (text.includes('부재')) return '부재'
-  if (text.includes('한국')) return '한국인'
+  if (text.includes('한국')) return '대상외'
   // 정기방문은 result값 아님 → 만남으로 처리 (regular_visits로 별도 등록)
   if (text.includes('정기') || text.includes('재방')) return '만남'
   return '미방문'
@@ -192,7 +192,7 @@ export function downloadCsvExample(): void {
       '중국인', '', '박진호', '2024-01-15', '',
       '2024-04-05', '부재', '홍길동', '오전', ''],
     ['처인구 고림동 1', '처인구', '고림동', '경기도 용인시 처인구 경안천로 232', '감자탕형제들', '상가', '1층', '부재',
-      '한국인', '', '', '', '',
+      '대상외', '', '', '', '',
       '', '', '', '', ''],
     ['', '처인구', '김량장동', '경기도 용인시 처인구 금령로 108-1', '신나는가게', '상가', '1층', '미방문',
       '중국인', '방문거절 이력있음', '', '', '',

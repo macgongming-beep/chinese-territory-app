@@ -63,7 +63,7 @@ function SlotPopover({
   const RESULTS: { result: UnitStatus; label: string; color: string; bg: string }[] = [
     { result: '부재', label: '부재', color: '#dc2626', bg: '#fef2f2' },
     { result: '만남', label: '만남', color: '#16a34a', bg: '#f0fdf4' },
-    { result: '한국인', label: '한국인', color: '#6366f1', bg: '#f5f3ff' },
+    { result: '대상외', label: '대상외', color: '#6366f1', bg: '#f5f3ff' },
   ]
 
   return (

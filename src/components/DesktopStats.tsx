@@ -142,7 +142,7 @@ export function DesktopStats({
     const total     = filteredHistories.length
     const meetings  = filteredHistories.filter(h => h.result === '만남').length
     const absences  = filteredHistories.filter(h => h.result === '부재').length
-    const koreans   = filteredHistories.filter(h => h.result === '한국인').length
+    const koreans   = filteredHistories.filter(h => h.result === '대상외').length
     const invitations = filteredHistories.filter(h => h.invitationLeft).length
     const meetingRate = total > 0 ? (meetings / total) * 100 : 0
     return { total, meetings, absences, koreans, invitations, meetingRate }
@@ -190,7 +190,7 @@ export function DesktopStats({
 
   // ── 5. 결과 분포 ──
   const resultDistribution = useMemo(() => (
-    ['만남', '부재', '한국인'] as const
+    ['만남', '부재', '대상외'] as const
   ).map(result => {
     const count = filteredHistories.filter(h => h.result === result).length
     const pct = filteredHistories.length > 0 ? count / filteredHistories.length * 100 : 0
@@ -481,7 +481,7 @@ export function DesktopStats({
             { label: '총 방문', value: summary.total, color: C.ink },
             { label: '만남',   value: summary.meetings, color: C.green, pct: summary.meetingRate },
             { label: '부재',   value: summary.absences, color: C.amber, pct: summary.total > 0 ? summary.absences / summary.total * 100 : 0 },
-            { label: '한국인', value: summary.koreans,  color: C.brand, pct: summary.total > 0 ? summary.koreans / summary.total * 100 : 0 },
+            { label: '대상외', value: summary.koreans,  color: C.brand, pct: summary.total > 0 ? summary.koreans / summary.total * 100 : 0 },
             { label: '만남률', value: `${summary.meetingRate.toFixed(1)}%`, color: C.green, pct: summary.meetingRate },
             ...(scope !== 'regular' && scope !== 'all' ? [{ label: '초대장', value: summary.invitations, color: C.amber, pct: summary.total > 0 ? summary.invitations / summary.total * 100 : 0 }] : []),
           ].map(s => (

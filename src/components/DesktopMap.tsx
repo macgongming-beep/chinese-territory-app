@@ -1233,7 +1233,7 @@ export function DesktopMap({
             <div className="map-toolbar-seg">
               {([
                 { key: '전체', label: '전체' },
-                { key: '중국인', label: '중국인' },
+                { key: '중국인', label: '중국어' },
                 { key: '부재', label: '부재' },
                 { key: '만남', label: '만남' },
               ] as const).map(({ key, label }) => (
@@ -1894,13 +1894,13 @@ export function DesktopMap({
                               type="button"
                             >{(unit.status === '부재' && latestHistory?.visitedAt === getLocalDateString()) ? '✓' : ''}</button>
                             <button
-                              className={`unit-check-btn${unit.status === '한국인' ? ' ucb-korean' : ''}${!canRecordVisits ? ' locked' : ''}`}
+                              className={`unit-check-btn${unit.status === '대상외' ? ' ucb-korean' : ''}${!canRecordVisits ? ' locked' : ''}`}
                               onClick={() => {
                                 if (!requireRecordAccess()) return
-                                unit.status === '한국인' ? onUndoLatestVisit(building.id, unit.id) : onQuickLogVisit(building.id, unit.id, '한국인')
+                                unit.status === '대상외' ? onUndoLatestVisit(building.id, unit.id) : onQuickLogVisit(building.id, unit.id, '대상외')
                               }}
                               type="button"
-                            >{unit.status === '한국인' ? '✓' : ''}</button>
+                            >{unit.status === '대상외' ? '✓' : ''}</button>
                           </div>
 
                           {isUnitExpanded && (
@@ -1988,7 +1988,7 @@ export function DesktopMap({
                                       onClick={() => { if (!requireRecordAccess()) return; onToggleChinese(building.id, unit.id) }}
                                       type="button"
                                     >{unit.isChinese ? '✓' : ''}</button>
-                                    중국인
+                                    중국어
                                   </label>
                                 </div>
                                 <div style={{ position: 'relative' }}>
@@ -2408,9 +2408,9 @@ export function DesktopMap({
                 <option value="미방문">미방문</option>
                 <option value="만남">만남</option>
                 <option value="부재">부재</option>
-                <option value="한국인">한국인</option>
+                <option value="대상외">대상외</option>
               </select>
-              
+
               <label>시간대</label>
               <select 
                 value={historyEditor.timeSlot}

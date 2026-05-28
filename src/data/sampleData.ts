@@ -238,7 +238,7 @@ export const sampleBuildings: Building[] = [
       { id: 1001, number: '201호', status: '만남' },
       { id: 1002, number: '302호', status: '부재' },
       { id: 1003, number: '401호', status: '미방문' },
-      { id: 1004, number: '502호', status: '한국인' },
+      { id: 1004, number: '502호', status: '대상외' },
     ],
   },
   {
