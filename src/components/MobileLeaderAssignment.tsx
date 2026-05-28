@@ -482,6 +482,11 @@ export function MobileLeaderAssignment({
     showToast('미배정 인원이 있는 상태로 배정을 확정했습니다')
   }
 
+  const removeCardFromTeam = (teamId: string, cardId: number) => {
+    if (!canEditSelectedEvent) return
+    updateTeam(teamId, (team) => ({ ...team, cardIds: team.cardIds.filter((id) => id !== cardId) }))
+  }
+
   const removeMemberFromTeam = (teamId: string, participantName: string) => {
     if (!canEditSelectedEvent) return
     updateTeam(teamId, (team) => ({ ...team, members: team.members.filter((member) => member !== participantName) }))
@@ -840,7 +845,32 @@ export function MobileLeaderAssignment({
                             const previewBuildings = buildings.filter((building) => building.cardId === card.id)
                             const previewBoundaries = cardBoundaries.filter((boundary) => boundary.cardId === card.id)
                             return (
-                              <div className="ma-team-card-stack" key={card.id}>
+                              <div className="ma-team-card-stack" key={card.id} style={{ position: 'relative' }}>
+                                {canEditSelectedEvent && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); removeCardFromTeam(team.id, card.id); }}
+                                    style={{
+                                      position: 'absolute',
+                                      top: -6,
+                                      right: -6,
+                                      width: 22,
+                                      height: 22,
+                                      borderRadius: '50%',
+                                      background: 'var(--status-danger)',
+                                      color: 'white',
+                                      border: '2px solid var(--surface)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      zIndex: 2,
+                                      cursor: 'pointer',
+                                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                    }}
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                  </button>
+                                )}
                                 <button
                                   className={`ma-team-card-item${isPreviewOpen ? ' is-expanded' : ''}`}
                                   type="button"
