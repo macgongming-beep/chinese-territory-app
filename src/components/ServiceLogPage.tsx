@@ -63,11 +63,11 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
     downloadCSV(`service-logs_${today}${filterPart}.csv`, logsToCSV(logs))
   }
 
-  // 권한 안내
-  if (role !== 'leader' && role !== 'admin') {
+  // 권한 안내 — developer 전용
+  if (role !== 'developer') {
     return (
       <section style={{ padding: 24, width: '100%' }}>
-        <p style={{ color: '#94a3b8' }}>봉사 로그는 인도자/관리자만 볼 수 있습니다.</p>
+        <p style={{ color: '#94a3b8' }}>봉사 로그는 개발자만 볼 수 있습니다.</p>
       </section>
     )
   }
@@ -83,7 +83,7 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
             봉사 로그
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: 13, color: '#64748b' }}>
-            {role === 'leader' ? '담당 카드의 봉사 활동만 표시됩니다.' : '회중 전체 봉사 활동을 시간순으로 확인합니다.'}
+            회중 전체 봉사 활동을 시간순으로 확인합니다. (90일 보관)
           </p>
         </header>
       )}
@@ -91,7 +91,7 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
         <div style={{ paddingBottom: 16 }}>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gray-900)' }}>봉사 로그</h2>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
-            {role === 'leader' ? '담당 카드의 봉사 활동만 표시됩니다.' : '회중 전체 봉사 활동을 시간순으로 확인합니다.'}
+            회중 전체 봉사 활동을 시간순으로 확인합니다. (90일 보관)
           </p>
         </div>
       )}

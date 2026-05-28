@@ -1,7 +1,7 @@
 import type { Building, Role, ServiceSession, ServiceSessionStatus, TimeSlot } from '../../types'
 import { supabase, showToast, reportMutationError, getLocalDateString, getCurrentVisitor } from './shared'
 import { createSystemChatMessage } from './chatSystem'
-import { getAuthToken } from '../../lib/authToken'
+import { logServiceAction } from './serviceLog'
 
 export function makeServiceSessionMutations(deps: {
   fetchAll: () => Promise<void>

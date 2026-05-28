@@ -22,6 +22,7 @@ export function AdminSuggestions({}: Props) {
   // Search & Pagination state
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null)
   const itemsPerPage = 10
 
   // Tag Input State
@@ -225,10 +226,9 @@ export function AdminSuggestions({}: Props) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, borderTop: '1px solid var(--line-muted)' }}>
-            <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--line-muted)', marginBottom: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>홈 화면 노출 활성화</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>저장 시 즉시 홈 화면에 뜹니다</div>
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
               <span style={{ fontSize: 13, color: isVisible ? 'var(--brand)' : 'var(--text-muted)', fontWeight: 600 }}>{isVisible ? 'ON' : 'OFF'}</span>
@@ -260,26 +260,25 @@ export function AdminSuggestions({}: Props) {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {blocks.map((block, idx) => (
-                <div key={idx} style={{ background: 'var(--bg)', borderRadius: 12, border: '1px solid var(--line-muted)', padding: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, borderBottom: '1px dashed var(--line-muted)' }}>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)' }}>#{idx + 1}</span>
-                      <input 
-                        type="text" 
-                        value={block.type} 
-                        onChange={(e) => handleUpdateBlock(idx, { type: e.target.value })}
-                        style={{ width: 120, padding: '6px 10px', fontSize: 13, border: '1px solid var(--line-muted)', borderRadius: 6, fontWeight: 700, background: 'var(--surface)' }}
-                        placeholder="유형명 (예: 첫 방문)"
-                      />
-                    </div>
-                    <button onClick={() => handleRemoveBlock(idx)} style={{ background: 'none', border: 'none', color: 'var(--status-danger)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 8px' }}>
-                      삭제
-                    </button>
-                  </div>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {block.format === 'structured' ? (
-                      <>
+                <div key={idx}>
+                  {block.format === 'structured' ? (
+                    <div style={{ background: 'var(--bg)', borderRadius: 12, border: '1px solid var(--line-muted)', padding: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, borderBottom: '1px dashed var(--line-muted)' }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)' }}>#{idx + 1} 구조 폼</span>
+                          <input 
+                            type="text" 
+                            value={block.type} 
+                            onChange={(e) => handleUpdateBlock(idx, { type: e.target.value })}
+                            style={{ width: 120, padding: '6px 10px', fontSize: 13, border: '1px solid var(--line-muted)', borderRadius: 6, fontWeight: 700, background: 'var(--surface)' }}
+                            placeholder="유형명 (예: 첫 방문)"
+                          />
+                        </div>
+                        <button onClick={() => handleRemoveBlock(idx)} style={{ background: 'none', border: 'none', color: 'var(--status-danger)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 8px' }}>
+                          삭제
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div>
                           <label style={labelStyle}>질문</label>
                           <input 
@@ -310,25 +309,29 @@ export function AdminSuggestions({}: Props) {
                             placeholder="예: 성경에는 어떤 내용이 들어 있을까요?"
                           />
                         </div>
-                      </>
-                    ) : (
-                      <div>
-                        <label style={labelStyle}>자유 양식 본문</label>
-                        <textarea 
-                          value={block.body} 
-                          onChange={(e) => handleUpdateBlock(idx, { body: e.target.value })}
-                          style={{ ...inputStyle, height: 80, resize: 'none' }}
-                          placeholder="본문을 자유롭게 입력하세요."
-                        />
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '0 4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <label style={{ ...labelStyle, fontSize: 14, color: 'var(--ink)' }}>자유 양식 본문 (#{idx + 1})</label>
+                        <button onClick={() => handleRemoveBlock(idx)} style={{ background: 'none', border: 'none', color: 'var(--status-danger)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>
+                          블록 삭제
+                        </button>
+                      </div>
+                      <textarea 
+                        value={block.body} 
+                        onChange={(e) => handleUpdateBlock(idx, { body: e.target.value })}
+                        style={{ ...inputStyle, height: 200, resize: 'vertical', fontSize: 15, lineHeight: 1.5, borderColor: 'var(--brand)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}
+                        placeholder="대화 방법 본문을 자유롭게 작성해 주세요."
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
-
         <button 
           onClick={handleSave}
           disabled={saving}
@@ -393,20 +396,27 @@ export function AdminSuggestions({}: Props) {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: sugg.is_visible ? 'var(--brand)' : 'var(--text-muted)' }}>{sugg.is_visible ? '노출중' : '숨김'}</span>
-                    <input 
-                      type="checkbox" 
-                      checked={sugg.is_visible} 
-                      onChange={(e) => handleToggleVisible(sugg, e.target.checked)} 
-                      style={{ width: 18, height: 18, accentColor: 'var(--brand)', cursor: 'pointer' }} 
-                    />
-                  </label>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={() => handleEdit(sugg)} type="button" style={{ ...actionBtnStyle(), padding: '3px 8px', fontSize: 11 }}>수정</button>
-                    <button onClick={() => handleDelete(sugg.id)} type="button" style={{ ...actionBtnStyle(true), padding: '3px 8px', fontSize: 11 }}>삭제</button>
-                  </div>
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === sugg.id ? null : sugg.id) }} 
+                    type="button" 
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 18, fontWeight: 800, cursor: 'pointer', padding: '4px 8px', borderRadius: 6 }}
+                  >
+                    ⋮
+                  </button>
+                  {activeMenuId === sugg.id && (
+                    <>
+                      <div onClick={() => setActiveMenuId(null)} style={{ position: 'fixed', inset: 0, zIndex: 9 }} />
+                      <div style={{ position: 'absolute', right: 0, top: '100%', background: 'var(--surface)', border: '1px solid var(--line-muted)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, minWidth: 120, padding: 4, display: 'flex', flexDirection: 'column' }}>
+                        <button onClick={() => { handleToggleVisible(sugg, !sugg.is_visible); setActiveMenuId(null); }} type="button" style={{ padding: '10px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', borderRadius: 4, color: sugg.is_visible ? 'var(--text-muted)' : 'var(--brand)' }}>
+                          {sugg.is_visible ? '홈 노출 끄기' : '홈 노출 켜기'}
+                        </button>
+                        <div style={{ height: 1, background: 'var(--bg-muted)', margin: '2px 0' }} />
+                        <button onClick={() => { handleEdit(sugg); setActiveMenuId(null); }} type="button" style={{ padding: '10px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', borderRadius: 4, color: 'var(--ink)' }}>수정</button>
+                        <button onClick={() => { handleDelete(sugg.id); setActiveMenuId(null); }} type="button" style={{ padding: '10px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', borderRadius: 4, color: 'var(--status-danger)' }}>삭제</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
