@@ -818,8 +818,8 @@ function DesktopLeaderAssignmentView({
               </div>
             </div>
             <div className="cal-modal-foot" style={{ display: 'flex', gap: '8px', padding: '16px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
-              <button className="cal-cancel-btn" style={{ flex: 1, minHeight: '48px', borderRadius: '14px', fontSize: '15px', fontWeight: 600 }} onClick={() => setPendingAction(null)} type="button">돌아가기</button>
-              <button className="cal-save-btn" style={{ flex: 1, minHeight: '48px', borderRadius: '14px', fontSize: '15px', fontWeight: 600 }} onClick={() => void continuePending()} type="button">
+              <button className="cal-cancel-btn" style={{ flex: 1, minHeight: '48px', borderRadius: '14px', fontSize: '15px', fontWeight: 600, background: '#f1f5f9', color: '#334155', border: 'none' }} onClick={() => setPendingAction(null)} type="button">돌아가기</button>
+              <button className="cal-save-btn" style={{ flex: 1, minHeight: '48px', borderRadius: '14px', fontSize: '15px', fontWeight: 600, background: 'var(--brand-600, #2563eb)', color: '#ffffff', border: 'none' }} onClick={() => void continuePending()} type="button">
                 그래도 공유
               </button>
             </div>
