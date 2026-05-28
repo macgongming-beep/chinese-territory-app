@@ -257,14 +257,23 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
                         </span>
                       </div>
 
-                      {/* 카드 / 일정 컨텍스트 */}
-                      {(cardName || eventLabel) && (
+                      {/* 카드 / 일정 / 건물 컨텍스트 */}
+                      {(() => {
+                        const detailBuilding = log.details.building_name != null ? String(log.details.building_name) : null
+                        if (!cardName && !eventLabel && !detailBuilding) return null
+                        return (
                         <div style={{ marginTop: 3, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           {cardName && (
                             <span style={{
                               fontSize: 12, color: '#0369a1',
                               background: '#e0f2fe', padding: '1px 7px', borderRadius: 4,
                             }}>카드 {cardName}</span>
+                          )}
+                          {detailBuilding && (
+                            <span style={{
+                              fontSize: 12, color: '#0f766e',
+                              background: '#ccfbf1', padding: '1px 7px', borderRadius: 4,
+                            }}>건물 {detailBuilding}</span>
                           )}
                           {eventLabel && (
                             <span style={{
@@ -273,7 +282,8 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
                             }}>일정 {eventLabel}</span>
                           )}
                         </div>
-                      )}
+                        )
+                      })()}
 
                       {/* 상세 */}
                       {Object.keys(log.details).length > 0 && (

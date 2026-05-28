@@ -355,7 +355,7 @@ export function useStore() {
     updateVisitHistory,
     addVisitHistory,
     deleteVisitHistory,
-  } = makeVisitMutations({ fetchAll, visitHistories, getRecordServiceSession, getActiveSpecialPeriodIdForDate })
+  } = makeVisitMutations({ fetchAll, visitHistories, buildings, cards, getRecordServiceSession, getActiveSpecialPeriodIdForDate })
 
   const {
     createBuilding,

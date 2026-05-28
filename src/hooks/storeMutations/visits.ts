@@ -1,4 +1,4 @@
-import type { ServiceSession, TimeSlot, Unit, UnitStatus, VisitHistory } from '../../types'
+import type { Building, ServiceSession, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../../types'
 import { getCurrentTimeSlot } from '../../utils/timeUtils'
 import { supabase, showToast, reportMutationError, getLocalDateString } from './shared'
 import { logServiceAction } from './serviceLog'
@@ -6,12 +6,25 @@ import { logServiceAction } from './serviceLog'
 export function makeVisitMutations(deps: {
   fetchAll: () => Promise<void>
   visitHistories: VisitHistory[]
+  buildings: Building[]
+  cards: TerritoryCard[]
   /** 봉사 세션 기록을 위한 헬퍼 (useStore 내부에서 주입) */
   getRecordServiceSession: (buildingId?: number, visitedAt?: string) => ServiceSession | undefined
   /** 활성 특별봉사 시즌 ID 반환 */
   getActiveSpecialPeriodIdForDate: (dateStr: string) => number | null
 }) {
-  const { fetchAll, visitHistories, getRecordServiceSession, getActiveSpecialPeriodIdForDate } = deps
+  const { fetchAll, visitHistories, buildings, cards, getRecordServiceSession, getActiveSpecialPeriodIdForDate } = deps
+
+  /** buildingId 로 카드·건물 컨텍스트 반환 */
+  function getBuildingContext(buildingId: number) {
+    const building = buildings.find((b) => b.id === buildingId)
+    const card = building ? cards.find((c) => c.id === building.cardId) : undefined
+    return {
+      cardId: card?.id ?? null,
+      cardName: card?.name ?? null,
+      buildingName: building?.name ?? null,
+    }
+  }
 
   const updateUnitStatus = async (
     buildingId: number,
@@ -214,6 +227,23 @@ export function makeVisitMutations(deps: {
       historyStatus = '기록됨'
     }
 
+    // 봉사 로그: 퀵 방문 기록
+    const ctx = getBuildingContext(buildingId)
+    await logServiceAction({
+      sessionId: recordSession?.id ?? null,
+      cardId: ctx.cardId,
+      action: 'visit_recorded',
+      targetType: 'unit',
+      targetId: unitId,
+      details: {
+        building_name: ctx.buildingName,
+        card_name: ctx.cardName,
+        result,
+        time_slot: slot,
+        visited_at: todayStr,
+      },
+    })
+
     await fetchAll()
     showToast(`${slot} ${result} ${historyStatus}`, 'success')
   }
@@ -298,12 +328,20 @@ export function makeVisitMutations(deps: {
       }
     }
 
-    // 봉사 로그: 방문 기록 수정
+    // 봉사 로그: 방문 기록 수정 (건물은 units 테이블 경유 → 기존 로그에서 building_id 역추적)
+    const prevLog = visitHistories.find((h) => h.id === historyId)
+    const buildingForUpdate = prevLog
+      ? buildings.find((b) => b.id === prevLog.buildingId)
+      : undefined
+    const cardForUpdate = buildingForUpdate ? cards.find((c) => c.id === buildingForUpdate.cardId) : undefined
     await logServiceAction({
+      cardId: cardForUpdate?.id ?? null,
       action: 'visit_updated',
       targetType: 'visit_history',
       targetId: historyId,
       details: {
+        building_name: buildingForUpdate?.name ?? null,
+        card_name: cardForUpdate?.name ?? null,
         unit_id: unitId,
         result: input.result,
         time_slot: input.timeSlot,
@@ -352,13 +390,16 @@ export function makeVisitMutations(deps: {
     }
 
     // 봉사 로그: 방문 기록 추가
+    const ctx = getBuildingContext(buildingId)
     await logServiceAction({
       sessionId: recordSession?.id ?? null,
+      cardId: ctx.cardId,
       action: 'visit_recorded',
       targetType: 'unit',
       targetId: unitId,
       details: {
-        building_id: buildingId,
+        building_name: ctx.buildingName,
+        card_name: ctx.cardName,
         result: input.result,
         time_slot: recordSession?.timeSlot ?? input.timeSlot,
         visited_at: input.visitedAt,
