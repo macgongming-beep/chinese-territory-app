@@ -8387,24 +8387,29 @@ button:focus-visible {
   font-weight: 700;
 }
 
-/* ── 현재 봉사 중 카드 ── */
+/* ── 현재 봉사 중 카드 (Live Activity 스타일) ── */
 .mobile-active-session-card {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  border: 1px solid var(--success-500);
-  border-radius: 14px;
-  background: var(--success-50);
-  box-shadow: var(--shadow-sm);
+  border-radius: 18px;
+  background: var(--ink);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 .mas-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--success-600);
-  box-shadow: 0 0 0 3px var(--success-100);
+  background: var(--primary-400, #60a5fa);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
   flex-shrink: 0;
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+@keyframes pulse-dot {
+  0% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(96, 165, 250, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0); }
 }
 .mas-body {
   flex: 1;
@@ -8414,16 +8419,16 @@ button:focus-visible {
   display: block;
   font-size: 15px;
   font-weight: 700;
-  color: var(--ink-900);
+  color: #ffffff;
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .mas-body span {
-  font-size: 12px;
-  color: var(--success-700);
-  font-weight: 600;
+  font-size: 13px;
+  color: var(--gray-400);
+  font-weight: 500;
 }
 .mas-actions {
   display: flex;
@@ -8431,24 +8436,32 @@ button:focus-visible {
   flex-shrink: 0;
 }
 .mas-map-btn {
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: var(--success-600);
-  color: #fff;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
   font-size: 13px;
-  font-weight: 600;
-  border: none;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   cursor: pointer;
+  transition: background 0.15s;
+}
+.mas-map-btn:active {
+  background: rgba(255, 255, 255, 0.2);
 }
 .mas-end-btn {
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--danger-200);
-  color: var(--danger-600);
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
+  transition: background 0.15s;
+}
+.mas-end-btn:active {
+  background: rgba(239, 68, 68, 0.25);
 }
 
 .mobile-new-service-card {
