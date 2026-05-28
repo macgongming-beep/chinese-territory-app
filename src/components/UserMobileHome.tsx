@@ -3,6 +3,7 @@ import type { TerritoryCard, CalendarEvent, Role } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t, formatPeriod, formatLeadSub, formatLeaderOf, formatApplied } from '../i18n'
 
+import { compareTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
 import { ServiceSuggestionsSection } from './ServiceSuggestionsSection'
 
 export function UserMobileHome({
@@ -123,7 +124,7 @@ export function UserMobileHome({
             )}
           </div>
           <div className="mh-card-grid">
-            {leaderCards.slice(0, 8).map((card) => {
+            {[...leaderCards].sort(compareTerritoryCardsByOperationalPriority).slice(0, 8).map((card) => {
               const pct = Math.min(100, Math.max(0, card.progress ?? 0))
               const colorClass = pct >= 70 ? 'high' : pct >= 30 ? 'mid' : 'low'
               return (
