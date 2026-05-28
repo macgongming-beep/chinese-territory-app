@@ -314,7 +314,16 @@ export function AdminSuggestions({}: Props) {
                   ) : (
                     <div style={{ padding: '0 4px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <label style={{ ...labelStyle, fontSize: 14, color: 'var(--ink)' }}>자유 양식 본문 (#{idx + 1})</label>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)' }}>#{idx + 1} 자유 양식</span>
+                          <input 
+                            type="text" 
+                            value={block.type} 
+                            onChange={(e) => handleUpdateBlock(idx, { type: e.target.value })}
+                            style={{ width: 150, padding: '4px 8px', fontSize: 13, border: '1px solid var(--line-muted)', borderRadius: 6, fontWeight: 700, background: 'var(--surface)', color: 'var(--ink)' }}
+                            placeholder="유형명 (예: 성서 연구)"
+                          />
+                        </div>
                         <button onClick={() => handleRemoveBlock(idx)} style={{ background: 'none', border: 'none', color: 'var(--status-danger)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>
                           블록 삭제
                         </button>
