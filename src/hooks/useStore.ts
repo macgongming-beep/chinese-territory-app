@@ -447,12 +447,49 @@ export function useStore() {
     }
   }, [fetchAll])
 
+  // ── Phase 3: Mutation별 slice-scoped refetcher ─────────────
+  // mutation 파일은 fetchAll: () => Promise<void> 를 기대하므로,
+  // 도메인별로 적절한 slice만 refetch하는 함수를 만들어서 주입.
+  // 결과: mutation 파일 손대지 않고 부분 refetch 적용.
+  const refetchVisits = useCallback(
+    () => fetchSlices(['visits', 'territory'], { triggeredBy: 'mutation:visits' }),
+    [fetchSlices],
+  )
+  const refetchTerritory = useCallback(
+    () => fetchSlices(['territory'], { triggeredBy: 'mutation:territory' }),
+    [fetchSlices],
+  )
+  const refetchCalendar = useCallback(
+    () => fetchSlices(['calendar'], { triggeredBy: 'mutation:calendar' }),
+    [fetchSlices],
+  )
+  const refetchCommunication = useCallback(
+    () => fetchSlices(['communication'], { triggeredBy: 'mutation:communication' }),
+    [fetchSlices],
+  )
+  const refetchReturnVisits = useCallback(
+    () => fetchSlices(['territory', 'returnVisits'], { triggeredBy: 'mutation:returnVisits' }),
+    [fetchSlices],
+  )
+  const refetchSpecialPeriods = useCallback(
+    () => fetchSlices(['specialPeriods'], { triggeredBy: 'mutation:specialPeriods' }),
+    [fetchSlices],
+  )
+  const refetchResources = useCallback(
+    () => fetchSlices(['resources'], { triggeredBy: 'mutation:resources' }),
+    [fetchSlices],
+  )
+  const refetchRestaurantRequests = useCallback(
+    () => fetchSlices(['restaurantRequests', 'territory', 'visits'], { triggeredBy: 'mutation:restaurantRequests' }),
+    [fetchSlices],
+  )
+
   // ── Mutations ─────────────────────────────────────────────
   const { getRecordServiceSession, startServiceSession, endServiceSession } =
-    makeServiceSessionMutations({ fetchAll, serviceSessions, buildings })
+    makeServiceSessionMutations({ fetchAll: refetchVisits, serviceSessions, buildings })
 
   const { assignCardToEventParticipant, assignCardsToEventParticipantsBulk } =
-    makeEventAssignmentMutations({ fetchAll })
+    makeEventAssignmentMutations({ fetchAll: refetchCalendar })
 
   const {
     assignLeaderToCard,
@@ -461,7 +498,7 @@ export function useStore() {
     toggleUserOnCard,
     createCard,
     deleteCards,
-  } = makeCardMutations({ fetchAll, cards })
+  } = makeCardMutations({ fetchAll: refetchTerritory, cards })
 
   // 특정 날짜에 활성화된 특별봉사 시즌 id 반환 (없으면 null)
   const getActiveSpecialPeriodIdForDate = (dateStr: string): number | null => {
@@ -480,7 +517,7 @@ export function useStore() {
     updateVisitHistory,
     addVisitHistory,
     deleteVisitHistory,
-  } = makeVisitMutations({ fetchAll, visitHistories, buildings, cards, getRecordServiceSession, getActiveSpecialPeriodIdForDate })
+  } = makeVisitMutations({ fetchAll: refetchVisits, visitHistories, buildings, cards, getRecordServiceSession, getActiveSpecialPeriodIdForDate })
 
   const {
     createBuilding,
@@ -493,9 +530,9 @@ export function useStore() {
     updateBuilding,
     moveBuildingToCard,
     reassignBuildingsToCards,
-  } = makeBuildingMutations({ fetchAll, buildings, cards })
+  } = makeBuildingMutations({ fetchAll: refetchTerritory, buildings, cards })
 
-  const { saveCardBoundary, deleteCardBoundary, restoreCardBoundaries, mergeCardBoundaries, undoMergeCardBoundaries } = makeCardBoundaryMutations({ fetchAll, cardBoundaries, buildings })
+  const { saveCardBoundary, deleteCardBoundary, restoreCardBoundaries, mergeCardBoundaries, undoMergeCardBoundaries } = makeCardBoundaryMutations({ fetchAll: refetchTerritory, cardBoundaries, buildings })
 
   const {
     createCalendarEvent,
@@ -509,7 +546,7 @@ export function useStore() {
     assignToEvent,
     removeParticipantFromEvent,
     addParticipantToEvent,
-  } = makeCalendarMutations({ fetchAll, calendarEvents })
+  } = makeCalendarMutations({ fetchAll: refetchCalendar, calendarEvents })
 
   const {
     toggleRegularVisit,
@@ -522,18 +559,18 @@ export function useStore() {
     deleteReturnVisit,
     updateReturnVisitNickname,
     updateReturnVisitAddress,
-  } = makeRegularVisitMutations({ fetchAll, buildings, cards, returnVisits })
+  } = makeRegularVisitMutations({ fetchAll: refetchReturnVisits, buildings, cards, returnVisits })
 
   // ── 도메인별 mutation 분리 (storeMutations.ts) ──────────────
-  const { createNotice, deleteNotice } = makeNoticeMutations({ fetchAll })
-  const { createSpecialPeriod, updateSpecialPeriod, deleteSpecialPeriod } = makeSpecialPeriodMutations({ fetchAll })
+  const { createNotice, deleteNotice } = makeNoticeMutations({ fetchAll: refetchCommunication })
+  const { createSpecialPeriod, updateSpecialPeriod, deleteSpecialPeriod } = makeSpecialPeriodMutations({ fetchAll: refetchSpecialPeriods })
   const {
     createReviewTask,
     completeReviewTask,
     uncompleteReviewTask,
     updateReviewTask,
     deleteReviewTask,
-  } = makeReviewTaskMutations({ fetchAll, setReviewTasks })
+  } = makeReviewTaskMutations({ fetchAll, setReviewTasks })  // reviewTasks는 setter 직접 사용 (fetchAll 호출 거의 없음)
 
   const {
     uploadInformalAsset,
@@ -549,7 +586,7 @@ export function useStore() {
     toggleBuildingRestaurant,
     removeRestaurantUnit,
     bulkSetRestaurantFlag,
-  } = makeV2AssignmentMutations({ fetchAll })
+  } = makeV2AssignmentMutations({ fetchAll: refetchResources })
 
   const {
     addRestaurantVisit,
@@ -557,7 +594,7 @@ export function useStore() {
     updateRestaurantRequestMemo,
     approveRestaurantRequest,
     rejectRestaurantRequest,
-  } = makeRestaurantServiceMutations({ fetchAll, buildings })
+  } = makeRestaurantServiceMutations({ fetchAll: refetchRestaurantRequests, buildings })
 
   return {
     refetchAll: fetchAll,
