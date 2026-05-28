@@ -193,15 +193,7 @@ export function AdminSuggestions({}: Props) {
             />
           </div>
           
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 24 }}>
-            <input 
-              type="checkbox" 
-              checked={editingSuggestion.show_title_on_home} 
-              onChange={(e) => setEditingSuggestion({ ...editingSuggestion, show_title_on_home: e.target.checked })} 
-              style={{ width: 16, height: 16, accentColor: 'var(--brand)', cursor: 'pointer' }} 
-            />
-            <span style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 600 }}>홈 화면에 이 제목을 노출합니다</span>
-          </label>
+
 
           <div style={{ marginBottom: 24 }}>
             <label style={labelStyle}>검색용 태그 (선택)</label>

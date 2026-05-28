@@ -55,9 +55,7 @@ export function ServiceSuggestionsSection({ language = 'ko' }: { language?: AppL
     <section className="mobile-home-section" style={{ marginTop: 24 }}>
       <div className="mh-sec-head" style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: 12 }}>
         <h2>{t(language, 'suggestion.sectionTitle')}</h2>
-        {currentSuggestion.show_title_on_home && currentSuggestion.title && (
-          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>{currentSuggestion.title}</span>
-        )}
+
       </div>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
