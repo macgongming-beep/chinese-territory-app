@@ -852,10 +852,13 @@ export function MobileLeaderAssignment({
                                     onClick={(e) => { e.stopPropagation(); removeCardFromTeam(team.id, card.id); }}
                                     style={{
                                       position: 'absolute',
-                                      top: -6,
+                                      top: '50%',
                                       right: -6,
-                                      width: 22,
-                                      height: 22,
+                                      transform: 'translateY(-50%)',
+                                      width: 20,
+                                      height: 20,
+                                      minWidth: 20,
+                                      padding: 0,
                                       borderRadius: '50%',
                                       background: 'var(--status-danger)',
                                       color: 'white',
