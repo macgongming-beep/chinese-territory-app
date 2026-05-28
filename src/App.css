@@ -8513,11 +8513,12 @@ button:focus-visible {
   gap: 10px;
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid #c9d8f2;
+  border: 1px solid var(--border-strong);
   border-radius: 14px;
-  background: #f7faff;
+  background: var(--bg-card);
   color: var(--ink-900);
   text-align: left;
+  box-shadow: var(--shadow-sm);
 }
 
 .mobile-new-service-card > span {
@@ -8526,7 +8527,7 @@ button:focus-visible {
   height: 32px;
   place-items: center;
   border-radius: 9px;
-  background: var(--brand-700);
+  background: var(--ink);
   color: #ffffff;
   font-size: 22px;
   font-weight: 400;
@@ -8605,8 +8606,8 @@ button:focus-visible {
   padding: 5px 10px;
   border: 0;
   border-radius: var(--r-pill);
-  background: var(--brand-50);
-  color: var(--brand-800);
+  background: var(--tint);
+  color: var(--ink-700);
   font-size: 12px;
   font-weight: 700;
 }
@@ -16716,13 +16717,13 @@ button:focus-visible {
 }
 
 .mobile-assignment-action.ghost {
-  border: 1px solid #d8e0ea;
-  background: #ffffff;
-  color: var(--brand-700);
+  border: 1px solid var(--border-default, #d8e0ea);
+  background: var(--bg-card, #ffffff);
+  color: var(--ink-700);
 }
 
 .mobile-assignment-action.primary {
-  background: var(--brand-700);
+  background: var(--ink);
   color: #ffffff;
 }
 
@@ -24786,14 +24787,14 @@ button:focus-visible {
 
 .mobile-assignment-page .ma-prev-btn,
 .mobile-assignment-page .ma-save-btn {
-  border: 1px solid #d8e0ea;
-  background: #ffffff;
-  color: var(--brand-700);
+  border: 1px solid var(--border-default, #d8e0ea);
+  background: var(--bg-card, #ffffff);
+  color: var(--ink-800);
 }
 
 .mobile-assignment-page .ma-next-btn {
-  border: 1px solid var(--brand-700);
-  background: var(--brand-700);
+  border: 1px solid var(--ink);
+  background: var(--ink);
   color: #ffffff;
 }
 
@@ -24804,15 +24805,15 @@ button:focus-visible {
 
 .mobile-assignment-page .cal-modal {
   overflow: hidden;
-  border: 1px solid #d8e0ea;
+  border: 1px solid var(--border-default, #d8e0ea);
   border-radius: 22px;
-  background: #ffffff;
+  background: var(--bg-card, #ffffff);
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
 }
 
 .mobile-assignment-page .cal-modal-head,
 .mobile-assignment-page .cal-modal-foot {
-  border-color: #e5ebf3;
+  border-color: var(--border-muted, #e5ebf3);
 }
 
 .mobile-assignment-page .cal-modal-title h2 {
@@ -24823,15 +24824,15 @@ button:focus-visible {
 
 .mobile-assignment-page .cal-modal-close,
 .mobile-assignment-page .cal-cancel-btn {
-  border: 1px solid #d8e0ea;
-  background: #ffffff;
+  border: 1px solid var(--border-default, #d8e0ea);
+  background: var(--bg-card, #ffffff);
   color: var(--ink-700);
 }
 
 .mobile-assignment-page .cal-save-btn {
-  border: 1px solid var(--brand-700);
+  border: 1px solid var(--ink);
   border-radius: 14px;
-  background: var(--brand-700);
+  background: var(--ink);
   color: #ffffff;
 }
 
