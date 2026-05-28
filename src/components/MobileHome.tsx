@@ -14,6 +14,7 @@ import { AdminMobileZone } from './admin/AdminMobileZone'
 import { MobileUsers } from './MobileUsers'
 import { MobileSignupRequests } from './MobileSignupRequests'
 import { AdminSuggestions } from './admin/AdminSuggestions'
+import { ServiceLogPage } from './ServiceLogPage'
 import { MobileProfileSettings } from './MobileProfileSettings'
 import { UserMobileHome } from './UserMobileHome'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
@@ -1065,6 +1066,29 @@ export function MobileHome({
               role === 'admin' ? <MobileSignupRequests /> : <Navigate to="/settings" replace />
             } />
 
+
+            {/* 봉사 로그 조회 */}
+            <Route path="/service-logs" element={
+              role === 'admin' ? (
+                <div className="mobile-settings-page" style={{ paddingBottom: 60 }}>
+                  <AppHeader
+                    pageTitle={t(language, 'settings.serviceLogs')}
+                    language={language}
+                    showBack
+                    onBack={() => navigate('/settings')}
+                    userId={currentUser.id}
+                    userName={currentVisitor}
+                    role={role}
+                    chatUsers={headerChatUsers}
+                    onOpenMenu={() => navigate('/settings')}
+                  />
+                  <div style={{ padding: '0 16px', marginTop: 16 }}>
+                    <ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={role} isEmbedded />
+                  </div>
+                </div>
+              ) : <Navigate to="/settings" replace />
+            } />
+
             {/* 특별 봉사 시즌 관리 */}
             <Route path="/special-periods" element={
               role === 'admin' ? (
@@ -1232,7 +1256,10 @@ export function MobileHome({
                   )}
                 </section>
 
-                <section className="mobile-settings-menu" aria-label="관리 메뉴">
+                
+                {/* [소식 & 알림] 섹션 */}
+                <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>소식 & 알림</div>
+                <section className="mobile-settings-menu" aria-label="소식 및 알림 메뉴">
                   {role === 'admin' && (
                     <button onClick={() => navigate('/notices')} type="button">
                       <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
@@ -1265,8 +1292,13 @@ export function MobileHome({
                     </span>
                     <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                   </button>
-                  {role === 'admin' && (
-                    <>
+                </section>
+
+                {role === 'admin' && (
+                  <>
+                    {/* [관리 (Admin)] 섹션 */}
+                    <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>관리 (Admin)</div>
+                    <section className="mobile-settings-menu" aria-label="관리 메뉴">
                       <button onClick={() => navigate('/users')} type="button">
                         <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
                           <SettingsIcon name="users" />
@@ -1292,6 +1324,16 @@ export function MobileHome({
                         )}
                         <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                       </button>
+                      <button onClick={() => navigate('/service-logs')} type="button">
+                        <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 8h10M7 12h10M7 16h6" /></svg>
+                        </span>
+                        <span className="mobile-settings-row-text">
+                          <strong>{t(language, 'settings.serviceLogs')}</strong>
+                          <small>{t(language, 'settings.serviceLogsDesc')}</small>
+                        </span>
+                        <span className="mobile-settings-chevron" aria-hidden="true">›</span>
+                      </button>
                       <button onClick={() => navigate('/special-periods')} type="button">
                         <span className="mobile-settings-icon mobile-settings-icon-season" aria-hidden="true">
                           <SettingsIcon name="season" />
@@ -1302,9 +1344,19 @@ export function MobileHome({
                         </span>
                         <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                       </button>
-                    </>
-                  )}
-                </section>
+                      <button onClick={() => navigate('/suggestions')} type="button">
+                        <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        </span>
+                        <span className="mobile-settings-row-text">
+                          <strong>{t(language, 'settings.suggestions')}</strong>
+                          <small>{t(language, 'settings.suggestionsDesc')}</small>
+                        </span>
+                        <span className="mobile-settings-chevron" aria-hidden="true">›</span>
+                      </button>
+                    </section>
+                  </>
+                )}
 
                 <div style={{ padding: '0 16px', marginBottom: 16 }}>
                   <PwaInstallSection language={language} />
