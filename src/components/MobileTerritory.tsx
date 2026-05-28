@@ -561,6 +561,30 @@ export function MobileTerritory({
     <div className="mobile-territory-page">
       {role !== 'admin' && (
         <>
+          {activeSession && (
+            <section className="mobile-territory-section">
+              <div className="mobile-active-session-card">
+                <span className="mas-dot" />
+                <div className="mas-body">
+                  <strong>{activeCard?.name ?? t(language, 'territory.noCard')}</strong>
+                  <span>
+                    {(() => {
+                      const evt = activeSession.calendarEventId ? calendarEvents.find((e) => e.id === activeSession.calendarEventId) : null
+                      if (evt) return `${evt.time} ${evt.title} · ${t(language, 'map.servicing')}`
+                      return `${timeSlotLabel(activeSession.timeSlot)} · ${t(language, 'map.servicing')}`
+                    })()}
+                  </span>
+                </div>
+                <div className="mas-actions">
+                  {activeCard && (
+                    <button className="mas-map-btn" onClick={() => onOpenMap(activeCard.id)} type="button">{t(language, 'zone.map')}</button>
+                  )}
+                  <button className="mas-end-btn" onClick={() => onEndServiceSession(activeSession.id)} type="button">{t(language, 'territory.end')}</button>
+                </div>
+              </div>
+            </section>
+          )}
+
           <section className="mobile-territory-section mobile-today-service-section">
             <div className="mt-mini-section-head">
               <h2>{t(language, 'territory.todayAssignment')}</h2>
@@ -657,23 +681,7 @@ export function MobileTerritory({
             )}
           </section>
 
-          {activeSession && (
-            <section className="mobile-territory-section">
-              <div className="mobile-active-session-card">
-                <span className="mas-dot" />
-                <div className="mas-body">
-                  <strong>{activeCard?.name ?? t(language, 'territory.noCard')}</strong>
-                  <span>{timeSlotLabel(activeSession.timeSlot)} · {t(language, 'map.servicing')}</span>
-                </div>
-                <div className="mas-actions">
-                  {activeCard && (
-                    <button className="mas-map-btn" onClick={() => onOpenMap(activeCard.id)} type="button">{t(language, 'zone.map')}</button>
-                  )}
-                  <button className="mas-end-btn" onClick={() => onEndServiceSession(activeSession.id)} type="button">{t(language, 'territory.end')}</button>
-                </div>
-              </div>
-            </section>
-          )}
+          
 
           {/* 식당봉사 섹션 */}
           {(role === 'leader' || role === 'user') && (onAddRestaurantVisit || onSubmitRestaurantRequest) && (
