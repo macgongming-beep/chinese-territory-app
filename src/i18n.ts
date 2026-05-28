@@ -728,7 +728,7 @@ const dictionary = {
     'suggestion.sectionTitle': '对话建议',
     'suggestion.question': '问题',
     'suggestion.scripture': '经文',
-    'suggestion.nextVisit': '下次回访基础',
+    'suggestion.nextVisit': '为续访铺路',
     'territory.noAssignedCards': '没有安排的卡片。',
     'territory.newService': '新传道',
     'territory.newServiceDesc': '从未安排的卡片开始传道',
