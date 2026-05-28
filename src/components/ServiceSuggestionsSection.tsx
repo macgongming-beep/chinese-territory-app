@@ -80,7 +80,7 @@ function SuggestionCard({ block, language = 'ko' }: { block: any; language?: App
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
               {t(language, 'suggestion.question')}
             </div>
-            <div style={{ fontWeight: 700, color: 'var(--ink)', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.6 }}>
               {block.question}
             </div>
           </div>
@@ -89,7 +89,7 @@ function SuggestionCard({ block, language = 'ko' }: { block: any; language?: App
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
               {t(language, 'suggestion.scripture')}
             </div>
-            <div style={{ fontWeight: 700, color: 'var(--brand)', fontStyle: 'italic' }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--brand)', lineHeight: 1.6 }}>
               {block.scripture}
             </div>
           </div>
@@ -98,13 +98,13 @@ function SuggestionCard({ block, language = 'ko' }: { block: any; language?: App
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
               {t(language, 'suggestion.nextVisit')}
             </div>
-            <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.5, fontWeight: 500 }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.6 }}>
               {block.next_visit}
             </div>
           </div>
         </div>
       ) : (
-        <div style={{ flex: 1, whiteSpace: 'pre-wrap', color: 'var(--text)', lineHeight: 1.6, fontSize: 14 }}>
+        <div style={{ flex: 1, whiteSpace: 'pre-wrap', color: 'var(--ink)', lineHeight: 1.6, fontSize: 15, fontWeight: 500 }}>
           {block.body}
         </div>
       )}
