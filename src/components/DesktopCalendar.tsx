@@ -992,7 +992,7 @@ function EventDetailCard({
                   추가
                 </button>
                 {addParticipantEventId === event.id && (
-                  <div className="cal-add-participant-popover">
+                  <div className="cal-add-participant-dropdown">
                     <input
                       className="cal-add-participant-input"
                       autoFocus
@@ -1013,7 +1013,6 @@ function EventDetailCard({
                               setAddParticipantEventId(null)
                             }}
                           >
-                            <span className="cal-avatar-small">{name.slice(0, 1)}</span>
                             {name}
                           </button>
                         ))}
