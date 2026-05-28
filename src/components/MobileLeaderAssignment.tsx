@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { showToast } from '../lib/toast'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, TerritoryCard } from '../types'
@@ -1170,28 +1171,26 @@ export function MobileLeaderAssignment({
           </div>
 
           {/* ── 미배정 확인 모달 ── */}
-          {pendingAction && (
-            <div className="cal-modal-backdrop" onClick={() => setPendingAction(null)}>
-              <div className="cal-modal" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
-                <div className="cal-modal-head">
-                  <div className="cal-modal-title"><h2>배정 공유 확인</h2></div>
-                  <button className="cal-modal-close" onClick={() => setPendingAction(null)} type="button">✕</button>
-                </div>
-                <div className="cal-modal-body">
-                  <div className="leader-confirm-copy">
+          {pendingAction && typeof document !== 'undefined' && createPortal(
+            <div className="confirm-modal-backdrop" onClick={() => setPendingAction(null)}>
+              <div className="cal-modal" style={{ maxWidth: '320px', borderRadius: '20px', padding: 0 }} onClick={(e) => e.stopPropagation()}>
+                <div className="cal-modal-body" style={{ textAlign: 'center', padding: '32px 20px 24px' }}>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-900)', marginBottom: '12px' }}>배정 공유 확인</div>
+                  <div style={{ fontSize: '15px', color: 'var(--ink-600)', lineHeight: 1.5 }}>
                     <strong>미배정 인원이 남아 있습니다.</strong>
-                    <p>{unassignedParticipants.map((p) => p.name).join(', ')}</p>
-                    <span>공유하면 배정된 참가자 카드만 공개됩니다.</span>
+                    <p style={{ margin: '8px 0', fontSize: '14px', wordBreak: 'keep-all' }}>{unassignedParticipants.map((p) => p.name).join(', ')}</p>
+                    <span style={{ fontSize: '13px', color: 'var(--ink-400)' }}>공유하면 배정된 참가자 카드만 공개됩니다.</span>
                   </div>
                 </div>
-                <div className="cal-modal-foot">
-                  <button className="cal-cancel-btn" onClick={() => setPendingAction(null)} type="button">돌아가기</button>
-                  <button className="cal-save-btn" onClick={() => void continuePendingAction()} type="button">
+                <div className="cal-modal-foot" style={{ display: 'flex', gap: '8px', padding: '16px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
+                  <button className="cal-cancel-btn" style={{ flex: 1, minHeight: '48px', borderRadius: '14px', fontSize: '15px', fontWeight: 600, background: '#f1f5f9', color: '#334155', border: 'none' }} onClick={() => setPendingAction(null)} type="button">돌아가기</button>
+                  <button className="cal-save-btn" style={{ flex: 1, minHeight: '48px', borderRadius: '14px', fontSize: '15px', fontWeight: 600, background: 'var(--ink, #1A1A18)', color: '#ffffff', border: 'none' }} onClick={() => void continuePendingAction()} type="button">
                     그래도 공유
                   </button>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </>
       )}

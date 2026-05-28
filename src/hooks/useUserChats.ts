@@ -260,37 +260,43 @@ export function useUserChats(
     fetchAll()
   }, [fetchAll])
 
-  // Realtime: 참여/일정/읽음/채팅 신호 변경 시 재조회.
-  // chat_messages 본문은 민감 정보라 직접 SELECT/Realtime을 열지 않고,
-  // chat_message_signals 신호를 받은 뒤 RPC로 다시 읽는다.
+  // Phase 2: 채팅 도메인만 구독 (캘린더/배정은 useCalendarRealtime이 별도 처리)
+  //
+  // 채팅에 직접 관련된 신호만 구독:
+  //   - chat_read_status: 본인 읽음 상태 변경
+  //   - event_participants: 채팅방 참여 여부 변경 (가입·탈퇴·일정 삭제 cascade)
+  //   - chat_message_signals: 새 메시지 신호
+  //
+  // calendar_events / event_card_assignments / event_card_assignment_cards는
+  // 채팅과 무관 → useCalendarRealtime이 useStore의 calendar slice만 갱신.
+  // 이벤트 제목/날짜 변경은 다음 fetchAll에서 자연스럽게 반영됨 (UX 약간의 지연 허용).
   useEffect(() => {
     if (!userId || !realtimeEnabled) return
     let pending: ReturnType<typeof setTimeout> | null = null
     const trigger = () => {
       if (pending) clearTimeout(pending)
-      pending = setTimeout(() => fetchAll({ force: true }), 800)
+      pending = setTimeout(() => fetchAll({ force: true }), 1500)  // 800→1500ms 디바운스 강화
     }
 
     const channel = supabase
       .channel(`user_chats:user:${userId}:${channelIdRef.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_read_status', filter: `user_id=eq.${userId}` }, trigger)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_participants' }, trigger)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, trigger)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_card_assignments' }, trigger)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_card_assignment_cards' }, trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_participants', filter: `user_name=eq.${userName}` }, trigger)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_message_signals' }, trigger)
       .subscribe()
 
+    // 백그라운드 폴링: 30초 → 2분으로 완화 (Phase 4)
+    // Realtime이 살아있으므로 폴링은 fallback 역할만. 채팅 신호는 즉시 받음.
     const interval = window.setInterval(() => {
       if (!document.hidden) fetchAll({ force: true })
-    }, 30_000)
+    }, 120_000)
 
     return () => {
       if (pending) clearTimeout(pending)
       window.clearInterval(interval)
       supabase.removeChannel(channel)
     }
-  }, [userId, realtimeEnabled, fetchAll])
+  }, [userId, userName, realtimeEnabled, fetchAll])
 
   // 총 안 읽음 수
   const totalUnread = useMemo(

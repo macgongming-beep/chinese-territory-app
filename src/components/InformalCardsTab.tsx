@@ -6,7 +6,7 @@ import { showToast } from '../lib/toast'
 import { compressImage } from '../lib/imageCompress'
 
 const MAX_ORIGINAL_SIZE_MB = 30
-const TARGET_SIZE_MB = 1.5
+const TARGET_SIZE_MB = 0.5  // Phase 5: 1.5MB → 0.5MB (대역폭 절감, 폰 화면에 충분)
 
 type QueueStatus = 'pending' | 'compressing' | 'uploading' | 'done' | 'error'
 type QueueItem = {
@@ -150,11 +150,11 @@ export function InformalCardsTab({
       let compressed
       try {
         compressed = await compressImage(item.originalFile, {
-          maxWidth: 1600,
-          maxHeight: 1600,
-          quality: 0.85,
+          maxWidth: 1200,       // 1600→1200 (Phase 5)
+          maxHeight: 1200,
+          quality: 0.82,         // 0.85→0.82 (시각적 차이 거의 없음)
           maxSizeMB: TARGET_SIZE_MB,
-          outputType: 'image/jpeg',
+          outputType: 'image/webp',  // JPEG→WebP (30~40% 더 작음)
         })
       } catch (e) {
         updateQueueItem(item.id, { status: 'error', error: e instanceof Error ? e.message : '압축 실패' })

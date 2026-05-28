@@ -8387,23 +8387,30 @@ button:focus-visible {
   font-weight: 700;
 }
 
-/* ── 현재 봉사 중 카드 ── */
+/* ── 현재 봉사 중 카드 (Black Accent 스타일) ── */
 .mobile-active-session-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
-  border: 1.5px solid #86efac;
+  padding: 14px 16px;
+  border: 1.5px solid var(--ink);
   border-radius: 14px;
-  background: #f0fdf4;
+  background: var(--bg-card, #ffffff);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 .mas-dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #16a34a;
-  box-shadow: 0 0 0 3px #bbf7d0;
+  background: var(--ink);
+  box-shadow: 0 0 0 3px var(--gray-200);
   flex-shrink: 0;
+  animation: pulse-dot-ink 2s infinite ease-in-out;
+}
+@keyframes pulse-dot-ink {
+  0% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0.2); }
+  70% { box-shadow: 0 0 0 6px rgba(26, 26, 26, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0); }
 }
 .mas-body {
   flex: 1;
@@ -8412,15 +8419,16 @@ button:focus-visible {
 .mas-body strong {
   display: block;
   font-size: 15px;
-  font-weight: 800;
-  color: #14532d;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .mas-body span {
-  font-size: 12px;
-  color: #16a34a;
+  font-size: 13px;
+  color: var(--gray-600);
   font-weight: 600;
 }
 .mas-actions {
@@ -8429,24 +8437,32 @@ button:focus-visible {
   flex-shrink: 0;
 }
 .mas-map-btn {
-  padding: 6px 11px;
+  padding: 8px 14px;
   border-radius: 8px;
-  background: #16a34a;
-  color: #fff;
-  font-size: 12px;
+  background: var(--ink);
+  color: #ffffff;
+  font-size: 13px;
   font-weight: 700;
   border: none;
   cursor: pointer;
+  transition: opacity 0.15s;
+}
+.mas-map-btn:active {
+  opacity: 0.8;
 }
 .mas-end-btn {
-  padding: 6px 11px;
+  padding: 8px 14px;
   border-radius: 8px;
-  background: #fee2e2;
-  color: #dc2626;
-  font-size: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  color: var(--ink);
+  font-size: 13px;
   font-weight: 700;
-  border: none;
   cursor: pointer;
+  transition: background 0.15s;
+}
+.mas-end-btn:active {
+  background: var(--bg-muted);
 }
 
 .mobile-new-service-card {
@@ -9301,7 +9317,7 @@ button:focus-visible {
   cursor: default;
 }
 
-@media (min-width: 760px) {
+@media (min-width: 600px) {
   .app-shell {
     max-width: 460px;
     margin: 0 auto;
@@ -28990,4 +29006,21 @@ button:focus-visible {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+/* ── Confirm Modal (Global) ── */
+.confirm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(15, 23, 42, 0.4);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.confirm-modal-backdrop .cal-modal {
+  width: 100%;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
 }

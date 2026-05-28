@@ -3,6 +3,7 @@ import { Toast } from './components/Toast'
 import { PwaInstallBanner } from './components/PwaInstall'
 import { PullToRefresh } from './components/PullToRefresh'
 import { useStore } from './hooks/useStore'
+import { useCalendarRealtime } from './hooks/useCalendarRealtime'
 import { useAuth } from './hooks/useAuth'
 import type { Role } from './types'
 import type { AppLanguage } from './i18n'
@@ -135,6 +136,7 @@ function App() {
     updateReviewTask,
     deleteReviewTask,
     refetchAll,
+    refetchSlices,
     // v2 신 배정 모델
     informalAssets,
     eventInformalAssignments,
@@ -161,6 +163,12 @@ function App() {
     approveRestaurantRequest,
     rejectRestaurantRequest,
   } = useStore()
+
+  // Phase 2: 캘린더/배정 Realtime → calendar slice만 refetch
+  // (useUserChats가 이 책임을 갖고 있었으나 전체 fetchAll 호출하던 증폭점 제거)
+  useCalendarRealtime(() => {
+    void refetchSlices(['calendar'], { triggeredBy: 'realtime:calendar' })
+  })
 
   // role이 leader 또는 admin인 유저만 인도자 목록으로
   const leaderNames = allUsers
