@@ -148,6 +148,7 @@ export function DesktopApp({
   onAssignRestaurantToUser,
   onRemoveRestaurantAssignment,
   onToggleBuildingRestaurant,
+  onRemoveRestaurantUnit,
   onBulkSetRestaurant,
   restaurantRequests = [],
   onApproveRestaurantRequest,
@@ -289,6 +290,7 @@ export function DesktopApp({
   onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
   onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
+  onRemoveRestaurantUnit?: (unitId: number, buildingId: number) => Promise<void>
   onBulkSetRestaurant?: (buildingIds: number[], nameUpdates?: { id: number; name: string }[]) => Promise<void>
   restaurantRequests?: import('../types').RestaurantRequest[]
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
@@ -602,6 +604,7 @@ export function DesktopApp({
               onDeleteInformalGroup={onDeleteInformalGroup}
               onMoveAssetToGroup={onMoveAssetToGroup}
               onToggleBuildingRestaurant={onToggleBuildingRestaurant}
+              onRemoveRestaurantUnit={onRemoveRestaurantUnit}
               onBulkSetRestaurant={onBulkSetRestaurant}
               restaurantRequests={restaurantRequests}
               onApproveRestaurantRequest={onApproveRestaurantRequest}
@@ -703,6 +706,7 @@ export function DesktopApp({
                 onDeleteInformalGroup={onDeleteInformalGroup}
                 onMoveAssetToGroup={onMoveAssetToGroup}
                 onToggleBuildingRestaurant={onToggleBuildingRestaurant}
+                onRemoveRestaurantUnit={onRemoveRestaurantUnit}
                 onBulkSetRestaurant={onBulkSetRestaurant}
                 restaurantRequests={restaurantRequests}
                 onApproveRestaurantRequest={onApproveRestaurantRequest}

@@ -106,6 +106,7 @@ export function DesktopTerritory({
   onDeleteInformalGroup,
   onMoveAssetToGroup,
   onToggleBuildingRestaurant,
+  onRemoveRestaurantUnit,
   onBulkSetRestaurant,
   restaurantRequests = [],
   onApproveRestaurantRequest,
@@ -170,6 +171,7 @@ export function DesktopTerritory({
   onDeleteInformalGroup?: (groupId: number) => Promise<void>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
+  onRemoveRestaurantUnit?: (unitId: number, buildingId: number) => Promise<void>
   onBulkSetRestaurant?: (buildingIds: number[], nameUpdates?: { id: number; name: string }[]) => Promise<void>
   restaurantRequests?: import('../types').RestaurantRequest[]
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
@@ -1989,6 +1991,7 @@ export function DesktopTerritory({
               currentVisitor={currentVisitor}
               restaurantRequests={restaurantRequests}
               onToggleRestaurantFlag={onToggleBuildingRestaurant}
+              onRemoveRestaurantUnit={onRemoveRestaurantUnit}
               onBulkSetRestaurant={onBulkSetRestaurant}
               onApproveRestaurantRequest={onApproveRestaurantRequest}
               onRejectRestaurantRequest={onRejectRestaurantRequest}

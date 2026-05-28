@@ -416,6 +416,7 @@ type Props = {
   currentVisitor?: string
   restaurantRequests?: RestaurantRequest[]
   onToggleRestaurantFlag?: (buildingId: number, isRestaurant: boolean) => Promise<void>
+  onRemoveRestaurantUnit?: (unitId: number, buildingId: number) => Promise<void>
   onBulkSetRestaurant?: (buildingIds: number[], nameUpdates?: { id: number; name: string }[]) => Promise<void>
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
@@ -425,7 +426,7 @@ type Props = {
 
 export function RestaurantsTab({
   role, buildings, cards, currentVisitor = '', restaurantRequests = [],
-  onToggleRestaurantFlag, onBulkSetRestaurant, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap, onOpenBuildingMap,
+  onToggleRestaurantFlag, onRemoveRestaurantUnit, onBulkSetRestaurant, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap, onOpenBuildingMap,
 }: Props) {
   const canManage = isLeaderOrAdmin(role)
   const [search, setSearch] = useState('')
@@ -828,7 +829,7 @@ export function RestaurantsTab({
               {expandedRegions.has(region) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {list.map((row) => {
-                  const { building: b, key } = row
+                  const { building: b, unit: rowUnit, key } = row
                   const restaurantName = getRestaurantName(row)
                   return (
                     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
@@ -848,7 +849,7 @@ export function RestaurantsTab({
                         style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 34, minHeight: 34, padding: '0 12px', fontSize: 13, fontWeight: 600, border: '1px solid var(--line-2)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }}>
                         <MapIcon /> 지도
                       </button>
-                      {canManage && onToggleRestaurantFlag && (
+                      {canManage && (onToggleRestaurantFlag || onRemoveRestaurantUnit) && (
                         <div style={{ position: 'relative' }}>
                           <button type="button" onClick={() => setOpenMenuId(openMenuId === key ? null : key)}
                             style={{ width: 28, height: 28, minHeight: 28, display: 'grid', placeItems: 'center', background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', borderRadius: 6 }}
@@ -860,9 +861,20 @@ export function RestaurantsTab({
                               <div onClick={() => setOpenMenuId(null)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
                               <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 31, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', minWidth: 140, padding: 4 }}>
                                 <button type="button"
-                                  onClick={async () => { setOpenMenuId(null); if (confirm(`"${restaurantName}" 식당 표시를 해제할까요?`)) { await onToggleRestaurantFlag(b.id, false) } }}
+                                  onClick={async () => {
+                                    setOpenMenuId(null)
+                                    if (!confirm(`"${restaurantName}" 식당 목록에서 제거할까요?`)) return
+                                    if (rowUnit && onRemoveRestaurantUnit) {
+                                      const u = rowUnit
+                                      // 세대 단위 해제 (마지막이면 건물도 자동 해제)
+                                      await onRemoveRestaurantUnit(u.id, b.id)
+                                    } else if (onToggleRestaurantFlag) {
+                                      // 세대 없는 fallback → 건물 전체 해제
+                                      await onToggleRestaurantFlag(b.id, false)
+                                    }
+                                  }}
                                   style={{ width: '100%', textAlign: 'left', padding: '8px 10px', minHeight: 0, background: 'transparent', border: 'none', fontSize: 13, color: 'var(--status-danger)', cursor: 'pointer', borderRadius: 6 }}>
-                                  식당 표시 해제
+                                  식당 목록 제거
                                 </button>
                               </div>
                             </>

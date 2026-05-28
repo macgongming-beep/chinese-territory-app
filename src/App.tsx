@@ -152,6 +152,7 @@ function App() {
     assignRestaurantToUser,
     removeRestaurantAssignment,
     toggleBuildingRestaurant,
+    removeRestaurantUnit,
     bulkSetRestaurantFlag,
     restaurantRequests,
     addRestaurantVisit,
@@ -367,6 +368,7 @@ function App() {
             onAssignRestaurantToUser={assignRestaurantToUser}
             onRemoveRestaurantAssignment={removeRestaurantAssignment}
             onToggleBuildingRestaurant={toggleBuildingRestaurant}
+            onRemoveRestaurantUnit={removeRestaurantUnit}
             onBulkSetRestaurant={bulkSetRestaurantFlag}
             restaurantRequests={restaurantRequests}
             globalSettings={globalSettings}

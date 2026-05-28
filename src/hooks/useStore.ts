@@ -422,6 +422,7 @@ export function useStore() {
     assignRestaurantToUser,
     removeRestaurantAssignment,
     toggleBuildingRestaurant,
+    removeRestaurantUnit,
     bulkSetRestaurantFlag,
   } = makeV2AssignmentMutations({ fetchAll })
 
@@ -529,6 +530,7 @@ export function useStore() {
     assignRestaurantToUser,
     removeRestaurantAssignment,
     toggleBuildingRestaurant,
+    removeRestaurantUnit,
     bulkSetRestaurantFlag,
     globalSettings,
     // 식당봉사

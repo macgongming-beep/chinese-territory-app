@@ -179,6 +179,33 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     else await fetchAll()
   }
 
+  // ── 식당 개별 세대 해제 (unit.is_chinese → false, 마지막이면 is_restaurant 도 해제) ──
+  const removeRestaurantUnit = async (unitId: number, buildingId: number) => {
+    // 1) 해당 세대 중국인 플래그 해제
+    const { error: unitError } = await supabase
+      .from('units')
+      .update({ is_chinese: false })
+      .eq('id', unitId)
+    if (unitError) {
+      showToast(`세대 해제 실패: ${unitError.message}`, 'error')
+      return
+    }
+
+    // 2) 이 건물에 남은 중국인 세대 수 확인
+    const { count } = await supabase
+      .from('units')
+      .select('id', { count: 'exact', head: true })
+      .eq('building_id', buildingId)
+      .eq('is_chinese', true)
+
+    // 3) 0개 남으면 건물 식당 표시도 해제
+    if ((count ?? 0) === 0) {
+      await supabase.from('buildings').update({ is_restaurant: false }).eq('id', buildingId)
+    }
+
+    await fetchAll()
+  }
+
   // ── 식당 마킹 (buildings.is_restaurant) ────────────
   const toggleBuildingRestaurant = async (buildingId: number, isRestaurant: boolean) => {
     const { error } = await supabase
@@ -230,6 +257,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     assignRestaurantToUser,
     removeRestaurantAssignment,
     toggleBuildingRestaurant,
+    removeRestaurantUnit,
     bulkSetRestaurantFlag,
   }
 }
