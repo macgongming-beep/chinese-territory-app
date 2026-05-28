@@ -107,10 +107,13 @@ export function useStore() {
   // 각 slice는 도메인 단위로 묶인 테이블 + transform + setter를 캡슐화.
   // fetchSlices(['visits']) 같이 부분 호출 가능. fetchAll = 전체 slice 호출.
   //
-  // Slice 의존성:
-  //   territory   → buildings, cards, card_boundaries (cards transform은 buildings 필요 → 같이 fetch)
+  // Phase 5 hotfix: 거대 territory를 3개로 분할
+  //   buildings   → buildings(units nested) — 무거움 (1MB+)
+  //   cards       → cards(+assignments+leader_assignments) — 가벼움 (50KB)
+  //   cardBoundaries → card_boundaries — 가벼움
+  //
   //   visits      → visit_histories, service_sessions
-  //   calendar    → calendar_events, event_card_assignments, event_card_assignment_cards (transform 의존성으로 묶음)
+  //   calendar    → calendar_events, event_card_assignments, event_card_assignment_cards
   //   resources   → informal_assets, informal_groups, event_informal_assignments, event_restaurant_assignments
   //   communication → notices
   //   returnVisits → return_visits, return_visit_logs
@@ -120,7 +123,9 @@ export function useStore() {
   //   system      → app_settings
 
   type Slice =
-    | 'territory'
+    | 'buildings'
+    | 'cards'
+    | 'cardBoundaries'
     | 'visits'
     | 'calendar'
     | 'resources'
@@ -132,8 +137,8 @@ export function useStore() {
     | 'system'
 
   const ALL_SLICES: Slice[] = [
-    'territory', 'visits', 'calendar', 'resources', 'communication',
-    'returnVisits', 'specialPeriods', 'reviewTasks', 'restaurantRequests', 'system',
+    'buildings', 'cards', 'cardBoundaries', 'visits', 'calendar', 'resources',
+    'communication', 'returnVisits', 'specialPeriods', 'reviewTasks', 'restaurantRequests', 'system',
   ]
 
   // 각 slice를 독립적으로 fetch. 페이로드 크기 누적 반환.
@@ -144,7 +149,30 @@ export function useStore() {
     }
 
     switch (slice) {
-      case 'territory': {
+      case 'buildings': {
+        // Phase 5 projection: 필요한 컬럼만 명시. created_at 등 메타 제외.
+        // (is_forbidden은 DB 컬럼 미존재, 타입상 optional이라 제외 안전)
+        const buildingsRes = await supabase
+          .from('buildings')
+          .select('id, card_id, name, address, type, lat, lng, warning, memo, is_chinese_heavy, is_restaurant, units(id, building_id, number, status, is_chinese, memo, regular_visits(visitor_name, registered_at))')
+          .order('id')
+
+        if (buildingsRes.error) {
+          setError('건물 데이터를 불러오지 못했습니다.')
+          return 0
+        }
+        measure(buildingsRes.data)
+        const transformedBuildings = (buildingsRes.data as RawBuilding[]).map(toBuilding)
+        setBuildings(transformedBuildings)
+
+        // 주의: cards transform이 buildings 의존. cards가 stale 상태라면
+        // 새 buildings로 cards를 재변환해야 일관성 유지.
+        // 단, 비용 절감을 위해 cards refetch는 별도 'cards' slice 호출 시에만 수행.
+        // 대부분 buildings 변경 시 cards 데이터는 그대로지만 transform 결과는 약간 stale 가능.
+        return approxBytes
+      }
+
+      case 'cards': {
         // cards에 card_leader_assignments 컬럼이 없으면 폴백
         const cardsQueryPromise = (async () => {
           const withLeader = await supabase
@@ -162,38 +190,30 @@ export function useStore() {
           return withLeader
         })()
 
-        // Phase 5 projection: 필요한 컬럼만 명시. created_at 등 메타 제외.
-        // (is_forbidden은 DB 컬럼 미존재, 타입상 optional이라 제외 안전)
-        const [buildingsRes, cardsRes, boundariesRes] = await Promise.all([
-          supabase
-            .from('buildings')
-            .select('id, card_id, name, address, type, lat, lng, warning, memo, is_chinese_heavy, is_restaurant, units(id, building_id, number, status, is_chinese, memo, regular_visits(visitor_name, registered_at))')
-            .order('id'),
-          cardsQueryPromise,
-          supabase.from('card_boundaries').select('card_id, points, updated_at'),
-        ])
-
-        if (buildingsRes.error || cardsRes.error) {
-          setError('영역 데이터를 불러오지 못했습니다.')
+        const cardsRes = await cardsQueryPromise
+        if (cardsRes.error) {
+          setError('카드 데이터를 불러오지 못했습니다.')
           return 0
         }
-
-        measure(buildingsRes.data)
         measure(cardsRes.data)
-        measure(boundariesRes.data)
+        // cards transform은 buildings 의존 — buildings state 함수형 setter로 최신값 사용
+        setBuildings((currentBuildings) => {
+          const transformedCards = (cardsRes.data as RawCard[]).map((raw) => toCard(raw, currentBuildings))
+          setCards(transformedCards)
+          return currentBuildings
+        })
+        return approxBytes
+      }
 
-        const transformedBuildings = (buildingsRes.data as RawBuilding[]).map(toBuilding)
-        const transformedCards = (cardsRes.data as RawCard[]).map((raw) => toCard(raw, transformedBuildings))
+      case 'cardBoundaries': {
+        const boundariesRes = await supabase.from('card_boundaries').select('card_id, points, updated_at')
+        measure(boundariesRes.data)
         const transformedBoundaries = boundariesRes.error
           ? []
           : ((boundariesRes.data as RawCardBoundary[]).map(toCardBoundary).filter(Boolean) as CardBoundary[])
-
         if (boundariesRes.error) {
           console.warn('카드별 구역선 로드 실패 (card_boundaries 스키마 미적용 가능).', boundariesRes.error)
         }
-
-        setBuildings(transformedBuildings)
-        setCards(transformedCards)
         setCardBoundaries(transformedBoundaries)
         return approxBytes
       }
@@ -472,12 +492,25 @@ export function useStore() {
   // mutation 파일은 fetchAll: () => Promise<void> 를 기대하므로,
   // 도메인별로 적절한 slice만 refetch하는 함수를 만들어서 주입.
   // 결과: mutation 파일 손대지 않고 부분 refetch 적용.
+  // Phase 5 hotfix: territory 분할에 따라 mutation별로 정밀 매핑
   const refetchVisits = useCallback(
-    () => fetchSlices(['visits', 'territory'], { triggeredBy: 'mutation:visits' }),
+    // 방문 기록은 units.status 갱신되므로 buildings도 함께
+    () => fetchSlices(['visits', 'buildings'], { triggeredBy: 'mutation:visits' }),
     [fetchSlices],
   )
-  const refetchTerritory = useCallback(
-    () => fetchSlices(['territory'], { triggeredBy: 'mutation:territory' }),
+  const refetchCards = useCallback(
+    // 카드 추가·수정·인도자 배정 — buildings 안 건드림 (가벼움)
+    () => fetchSlices(['cards'], { triggeredBy: 'mutation:cards' }),
+    [fetchSlices],
+  )
+  const refetchBuildings = useCallback(
+    // 건물 추가·수정·삭제, 호수 추가·삭제 — units 변동 가능
+    () => fetchSlices(['buildings', 'cards'], { triggeredBy: 'mutation:buildings' }),
+    [fetchSlices],
+  )
+  const refetchCardBoundaries = useCallback(
+    // 구역선 그리기·저장 — boundaries만 (가장 가벼움)
+    () => fetchSlices(['cardBoundaries'], { triggeredBy: 'mutation:cardBoundaries' }),
     [fetchSlices],
   )
   const refetchCalendar = useCallback(
@@ -489,7 +522,8 @@ export function useStore() {
     [fetchSlices],
   )
   const refetchReturnVisits = useCallback(
-    () => fetchSlices(['territory', 'returnVisits'], { triggeredBy: 'mutation:returnVisits' }),
+    // 정기방문은 regular_visits가 buildings.units에 nested → buildings도
+    () => fetchSlices(['buildings', 'returnVisits'], { triggeredBy: 'mutation:returnVisits' }),
     [fetchSlices],
   )
   const refetchSpecialPeriods = useCallback(
@@ -501,7 +535,7 @@ export function useStore() {
     [fetchSlices],
   )
   const refetchRestaurantRequests = useCallback(
-    () => fetchSlices(['restaurantRequests', 'territory', 'visits'], { triggeredBy: 'mutation:restaurantRequests' }),
+    () => fetchSlices(['restaurantRequests', 'buildings', 'visits'], { triggeredBy: 'mutation:restaurantRequests' }),
     [fetchSlices],
   )
 
@@ -519,7 +553,7 @@ export function useStore() {
     toggleUserOnCard,
     createCard,
     deleteCards,
-  } = makeCardMutations({ fetchAll: refetchTerritory, cards })
+  } = makeCardMutations({ fetchAll: refetchCards, cards })
 
   // 특정 날짜에 활성화된 특별봉사 시즌 id 반환 (없으면 null)
   const getActiveSpecialPeriodIdForDate = (dateStr: string): number | null => {
@@ -551,9 +585,9 @@ export function useStore() {
     updateBuilding,
     moveBuildingToCard,
     reassignBuildingsToCards,
-  } = makeBuildingMutations({ fetchAll: refetchTerritory, buildings, cards })
+  } = makeBuildingMutations({ fetchAll: refetchBuildings, buildings, cards })
 
-  const { saveCardBoundary, deleteCardBoundary, restoreCardBoundaries, mergeCardBoundaries, undoMergeCardBoundaries } = makeCardBoundaryMutations({ fetchAll: refetchTerritory, cardBoundaries, buildings })
+  const { saveCardBoundary, deleteCardBoundary, restoreCardBoundaries, mergeCardBoundaries, undoMergeCardBoundaries } = makeCardBoundaryMutations({ fetchAll: refetchCardBoundaries, cardBoundaries, buildings })
 
   const {
     createCalendarEvent,
