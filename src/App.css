@@ -8392,17 +8392,18 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
-  border: 1.5px solid #86efac;
+  padding: 14px 16px;
+  border: 1px solid var(--success-500);
   border-radius: 14px;
-  background: #f0fdf4;
+  background: var(--success-50);
+  box-shadow: var(--shadow-sm);
 }
 .mas-dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #16a34a;
-  box-shadow: 0 0 0 3px #bbf7d0;
+  background: var(--success-600);
+  box-shadow: 0 0 0 3px var(--success-100);
   flex-shrink: 0;
 }
 .mas-body {
@@ -8412,15 +8413,16 @@ button:focus-visible {
 .mas-body strong {
   display: block;
   font-size: 15px;
-  font-weight: 800;
-  color: #14532d;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .mas-body span {
   font-size: 12px;
-  color: #16a34a;
+  color: var(--success-700);
   font-weight: 600;
 }
 .mas-actions {
@@ -8429,23 +8431,23 @@ button:focus-visible {
   flex-shrink: 0;
 }
 .mas-map-btn {
-  padding: 6px 11px;
+  padding: 8px 12px;
   border-radius: 8px;
-  background: #16a34a;
+  background: var(--success-600);
   color: #fff;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   border: none;
   cursor: pointer;
 }
 .mas-end-btn {
-  padding: 6px 11px;
+  padding: 8px 12px;
   border-radius: 8px;
-  background: #fee2e2;
-  color: #dc2626;
-  font-size: 12px;
-  font-weight: 700;
-  border: none;
+  background: var(--bg-card);
+  border: 1px solid var(--danger-200);
+  color: var(--danger-600);
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
 }
 
