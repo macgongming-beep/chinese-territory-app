@@ -162,10 +162,14 @@ export function useStore() {
           return withLeader
         })()
 
+        // Phase 5 projection: 필요한 컬럼만 명시. created_at 등 메타 제외.
         const [buildingsRes, cardsRes, boundariesRes] = await Promise.all([
-          supabase.from('buildings').select('*, units(*, regular_visits(*))').order('id'),
+          supabase
+            .from('buildings')
+            .select('id, card_id, name, address, type, lat, lng, warning, memo, is_chinese_heavy, is_restaurant, units(id, building_id, number, status, is_chinese, is_forbidden, memo, regular_visits(visitor_name, registered_at))')
+            .order('id'),
           cardsQueryPromise,
-          supabase.from('card_boundaries').select('*'),
+          supabase.from('card_boundaries').select('card_id, points, updated_at'),
         ])
 
         if (buildingsRes.error || cardsRes.error) {
@@ -194,9 +198,19 @@ export function useStore() {
       }
 
       case 'visits': {
+        // Phase 5 projection + 기간 필터
+        // visit_histories: 최근 6개월만 (그 이전은 통계용으로 별도 RPC 필요 시)
+        const sixMonthsAgo = new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString()
         const [visitsRes, sessionsRes] = await Promise.all([
-          supabase.from('visit_histories').select('*').order('created_at', { ascending: false }),
-          supabase.from('service_sessions').select('*').order('started_at', { ascending: false }).limit(100),
+          supabase
+            .from('visit_histories')
+            .select('id, unit_id, visitor_name, result, time_slot, memo, visited_at, service_session_id, special_period_id, invitation_left, created_at')
+            .gte('created_at', sixMonthsAgo)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('service_sessions')
+            .select('id, user_name, role, calendar_event_id, started_at, ended_at, service_date, time_slot, status, primary_card_id, assigned_card_id, assignment_id, source, memo, created_at')
+            .order('started_at', { ascending: false }).limit(100),
         ])
 
         if (visitsRes.error) {
