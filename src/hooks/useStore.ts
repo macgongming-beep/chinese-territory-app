@@ -82,6 +82,9 @@ export function getLocalDateString() {
 export function useStore() {
   const [cards, setCards] = useState<TerritoryCard[]>([])
   const [buildings, setBuildings] = useState<Building[]>([])
+  // buildings는 cards transform에서 참조됨. fetchSlice가 useCallback([])이라
+  // 클로저가 stale 가능 → ref로 항상 최신값 보장.
+  const buildingsRef = useRef<Building[]>([])
   const [visitHistories, setVisitHistories] = useState<VisitHistory[]>([])
   const [serviceSessions, setServiceSessions] = useState<ServiceSession[]>([])
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
@@ -164,6 +167,7 @@ export function useStore() {
         measure(buildingsRes.data)
         const transformedBuildings = (buildingsRes.data as RawBuilding[]).map(toBuilding)
         setBuildings(transformedBuildings)
+        buildingsRef.current = transformedBuildings  // ref 동기 갱신 (cards transform용)
 
         // 주의: cards transform이 buildings 의존. cards가 stale 상태라면
         // 새 buildings로 cards를 재변환해야 일관성 유지.
@@ -196,12 +200,9 @@ export function useStore() {
           return 0
         }
         measure(cardsRes.data)
-        // cards transform은 buildings 의존 — buildings state 함수형 setter로 최신값 사용
-        setBuildings((currentBuildings) => {
-          const transformedCards = (cardsRes.data as RawCard[]).map((raw) => toCard(raw, currentBuildings))
-          setCards(transformedCards)
-          return currentBuildings
-        })
+        // cards transform은 buildings 의존 — buildingsRef로 항상 최신 buildings 사용
+        const transformedCards = (cardsRes.data as RawCard[]).map((raw) => toCard(raw, buildingsRef.current))
+        setCards(transformedCards)
         return approxBytes
       }
 
@@ -220,13 +221,13 @@ export function useStore() {
 
       case 'visits': {
         // Phase 5 projection + 기간 필터
-        // visit_histories: 최근 6개월만 (그 이전은 통계용으로 별도 RPC 필요 시)
-        const sixMonthsAgo = new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString()
+        // visit_histories: 최근 12개월만 (이전 데이터는 별도 통계 RPC 필요 시)
+        const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
         const [visitsRes, sessionsRes] = await Promise.all([
           supabase
             .from('visit_histories')
             .select('id, unit_id, visitor_name, result, time_slot, memo, visited_at, service_session_id, special_period_id, invitation_left, created_at')
-            .gte('created_at', sixMonthsAgo)
+            .gte('created_at', oneYearAgo)
             .order('created_at', { ascending: false }),
           supabase
             .from('service_sessions')
@@ -404,18 +405,30 @@ export function useStore() {
         return approxBytes
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // 공개 API: 특정 slice만 fetch. 측정 자동 기록.
+  // Slice 의존성: cards transform이 buildings 의존 → buildings 먼저 완료해야 함.
   const fetchSlices = useCallback(async (
     slices: Slice[],
     options?: { triggeredBy?: string },
   ): Promise<void> => {
     const start = performance.now()
-    const bytesArr = await Promise.all(slices.map((s) => fetchSlice(s)))
+    let totalBytes = 0
+
+    // buildings와 cards가 둘 다 요청되면 buildings 먼저 fetch (의존성)
+    if (slices.includes('buildings') && slices.includes('cards')) {
+      const buildingsBytes = await fetchSlice('buildings')
+      totalBytes += buildingsBytes
+      const remaining = slices.filter((s) => s !== 'buildings')
+      const bytesArr = await Promise.all(remaining.map((s) => fetchSlice(s)))
+      totalBytes += bytesArr.reduce((a, b) => a + b, 0)
+    } else {
+      const bytesArr = await Promise.all(slices.map((s) => fetchSlice(s)))
+      totalBytes = bytesArr.reduce((a, b) => a + b, 0)
+    }
+
     const duration = Math.round(performance.now() - start)
-    const totalBytes = bytesArr.reduce((a, b) => a + b, 0)
     trackFetch({
       triggeredBy: options?.triggeredBy ?? 'fetchSlices',
       slices,
@@ -423,6 +436,7 @@ export function useStore() {
       durationMs: duration,
       timestamp: Date.now(),
     })
+    // 에러 클리어는 fetchAll에서만 (부분 fetch는 다른 slice의 실패 상태를 가리지 않음)
   }, [fetchSlice])
 
   // 기존 fetchAll: 모든 slice + auto_close 부수효과 유지 (100% 후방호환)
