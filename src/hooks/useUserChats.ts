@@ -285,10 +285,11 @@ export function useUserChats(
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_message_signals' }, trigger)
       .subscribe()
 
-    // 백그라운드 폴링: 30초 → 60초로 완화
+    // 백그라운드 폴링: 30초 → 2분으로 완화 (Phase 4)
+    // Realtime이 살아있으므로 폴링은 fallback 역할만. 채팅 신호는 즉시 받음.
     const interval = window.setInterval(() => {
       if (!document.hidden) fetchAll({ force: true })
-    }, 60_000)
+    }, 120_000)
 
     return () => {
       if (pending) clearTimeout(pending)

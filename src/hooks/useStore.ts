@@ -430,12 +430,18 @@ export function useStore() {
 
   // PWA 백그라운드 → 포어그라운드 복귀 시 자동 갱신
   // (브라우저 새로고침이 없는 PWA에서 최신 데이터 확보)
+  //
+  // Phase 4: 디바운스 10초 → 2분 완화.
+  // 근거: Realtime 채널이 백그라운드에서도 살아있으므로 visibility 자체로
+  //       추가 fetch할 이유가 약함. 진짜 새 데이터는 PullToRefresh로.
+  // 효과: 빠르게 탭 전환·앱 전환 시 불필요한 전체 fetchAll 방지.
+  //       (자주 화면 켰다 끄는 모바일 환경에서 큰 절감)
   useEffect(() => {
     let lastFetchAt = Date.now()
+    const VISIBILITY_DEBOUNCE_MS = 2 * 60 * 1000  // 2분
     const onVisible = () => {
       if (document.hidden) return
-      // 10초 이내 중복 호출 방지
-      if (Date.now() - lastFetchAt < 10_000) return
+      if (Date.now() - lastFetchAt < VISIBILITY_DEBOUNCE_MS) return
       lastFetchAt = Date.now()
       void fetchAll()
     }
