@@ -163,7 +163,11 @@ export function AdminMobileZone({
   }, [urlLevel, urlRegion, urlDong, urlScope])
 
   const informalCount = informalAssets.length
-  const restaurantCount = buildings.filter((b) => b.type === '상가' && b.isRestaurant).length
+  const restaurantCount = buildings.reduce((acc, b) => {
+    if (b.type !== '상가' || !b.isRestaurant) return acc
+    const chineseUnits = b.units.filter(u => u.isChinese).length
+    return acc + (chineseUnits === 0 ? 1 : chineseUnits)
+  }, 0)
 
   // ── 카드 필터: 담당/전체 ─────────────────────
   const baseCards = useMemo(() => {
