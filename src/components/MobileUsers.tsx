@@ -25,7 +25,7 @@ function formatLastLogin(value?: string | null) {
   if (!value) return '로그인 기록 없음'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '로그인 기록 없음'
-  return `마지막 로그인 ${date.getMonth() + 1}/${date.getDate()}`
+  return `마지막 접속 ${date.getMonth() + 1}/${date.getDate()}`
 }
 
 function formatLoginDateTime(value?: string | null) {

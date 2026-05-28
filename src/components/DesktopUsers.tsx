@@ -329,9 +329,9 @@ export function DesktopUsers({
                   </div>
                   <p style={{ fontSize: '12px', color: 'var(--gray-500)', margin: '2px 0 0' }}>
                     {isDev && user.lastLoginAt
-                      ? `최근 로그인 ${formatLoginAt(user.lastLoginAt).slice(0, 10)}`
+                      ? `최근 접속 ${formatLoginAt(user.lastLoginAt).slice(0, 10)}`
                       : user.lastLoginAt
-                        ? `최근 로그인 ${formatLoginAt(user.lastLoginAt).slice(0, 10)}`
+                        ? `최근 접속 ${formatLoginAt(user.lastLoginAt).slice(0, 10)}`
                         : '로그인 기록 없음'}
                   </p>
                 </div>
