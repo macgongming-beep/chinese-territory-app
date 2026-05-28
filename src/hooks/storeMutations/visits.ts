@@ -1,6 +1,7 @@
 import type { ServiceSession, TimeSlot, Unit, UnitStatus, VisitHistory } from '../../types'
 import { getCurrentTimeSlot } from '../../utils/timeUtils'
 import { supabase, showToast, reportMutationError, getLocalDateString } from './shared'
+import { logServiceAction } from './serviceLog'
 
 export function makeVisitMutations(deps: {
   fetchAll: () => Promise<void>
@@ -296,6 +297,21 @@ export function makeVisitMutations(deps: {
         return
       }
     }
+
+    // 봉사 로그: 방문 기록 수정
+    await logServiceAction({
+      action: 'visit_updated',
+      targetType: 'visit_history',
+      targetId: historyId,
+      details: {
+        unit_id: unitId,
+        result: input.result,
+        time_slot: input.timeSlot,
+        visited_at: input.visitedAt,
+        memo: input.memo?.trim() || null,
+      },
+    })
+
     await fetchAll()
   }
 
@@ -334,6 +350,23 @@ export function makeVisitMutations(deps: {
         return
       }
     }
+
+    // 봉사 로그: 방문 기록 추가
+    await logServiceAction({
+      sessionId: recordSession?.id ?? null,
+      action: 'visit_recorded',
+      targetType: 'unit',
+      targetId: unitId,
+      details: {
+        building_id: buildingId,
+        result: input.result,
+        time_slot: recordSession?.timeSlot ?? input.timeSlot,
+        visited_at: input.visitedAt,
+        memo: input.memo?.trim() || null,
+        invitation_left: input.invitationLeft ?? false,
+      },
+    })
+
     await fetchAll()
     showToast('방문 기록이 추가됐습니다')
   }

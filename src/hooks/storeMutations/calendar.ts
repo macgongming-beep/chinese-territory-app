@@ -1,6 +1,7 @@
 import type { CalendarEvent } from '../../types'
 import { supabase, showToast, reportMutationError, getCurrentVisitor } from './shared'
 import { createSystemChatMessage } from './chatSystem'
+import { logServiceAction } from './serviceLog'
 
 /** 일정 입력 공통 타입 */
 export type CalendarEventInput = {
@@ -146,6 +147,12 @@ export function makeCalendarMutations(deps: {
         reportMutationError('봉사 신청을 취소하지 못했습니다.', result.error)
         return
       }
+      await logServiceAction({
+        eventId,
+        action: 'left',
+        targetType: 'event_participant',
+        details: { user_name: currentVisitor, source: 'self_cancel' },
+      })
     } else {
       const result = await supabase.from('event_participants').upsert(
         { event_id: eventId, user_name: currentVisitor, role: '신청' },
@@ -156,6 +163,12 @@ export function makeCalendarMutations(deps: {
         return
       }
       await createSystemChatMessage(eventId, `${currentVisitor}님이 합류했습니다.`)
+      await logServiceAction({
+        eventId,
+        action: 'joined',
+        targetType: 'event_participant',
+        details: { user_name: currentVisitor, source: 'self_apply' },
+      })
     }
     await fetchAll()
     showToast(isApplied ? '신청이 취소됐습니다' : '일정에 신청됐습니다')
@@ -175,6 +188,12 @@ export function makeCalendarMutations(deps: {
       .delete()
       .eq('event_id', eventId)
       .eq('user_name', userName)
+    await logServiceAction({
+      eventId,
+      action: 'left',
+      targetType: 'event_participant',
+      details: { user_name: userName, source: 'admin_remove' },
+    })
     await fetchAll()
   }
 
@@ -191,6 +210,12 @@ export function makeCalendarMutations(deps: {
       return
     }
     await createSystemChatMessage(eventId, `${userName}님이 합류했습니다.`)
+    await logServiceAction({
+      eventId,
+      action: 'joined',
+      targetType: 'event_participant',
+      details: { user_name: userName, source: 'admin_add' },
+    })
     await fetchAll()
     showToast(`${userName}님을 신청자로 추가했습니다`)
   }

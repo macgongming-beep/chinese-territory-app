@@ -171,30 +171,3 @@ export function makeServiceSessionMutations(deps: {
 
   return { getRecordServiceSession, startServiceSession, endServiceSession }
 }
-
-// log_service_action RPC 호출 헬퍼
-async function logServiceAction(input: {
-  sessionId: number | null
-  eventId: number | null
-  cardId: number | null
-  action: string
-  targetType?: string | null
-  targetId?: number | null
-  details?: Record<string, unknown>
-}) {
-  const token = getAuthToken()
-  if (!token) return // 토큰 없으면 조용히 스킵
-  const { error } = await supabase.rpc('log_service_action', {
-    p_token: token,
-    p_session_id: input.sessionId,
-    p_event_id: input.eventId,
-    p_card_id: input.cardId,
-    p_action: input.action,
-    p_target_type: input.targetType ?? null,
-    p_target_id: input.targetId ?? null,
-    p_details: input.details ?? {},
-  })
-  if (error) {
-    console.warn('[service_log] failed:', error)
-  }
-}
