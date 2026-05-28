@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ActiveRestaurantSession, Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
-import { t, translateKoreanAddress } from '../i18n'
+import { t, translateKoreanAddress, weekdayShortLabels } from '../i18n'
 import { getTerritoryCardOperationalState, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
 import { getUserReturnVisits, normalizeVisitorName } from '../utils/returnVisits'
 import { RestaurantServiceSheet } from './RestaurantServiceSheet'
@@ -1081,10 +1081,10 @@ export function MobileTerritory({
               >
                 <span className="mt-past-toggle-left">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden style={{ transform: showPastAssignments ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}><polyline points="9 6 15 12 9 18"/></svg>
-                  <span className="mt-past-title">지난 봉사</span>
+                  <span className="mt-past-title">{t(language, 'territory.pastService')}</span>
                   <span className="mt-past-count">{myPastAssignments.length}{t(language, 'calendar.countSuffix')}</span>
                 </span>
-                <span className="mt-past-summary">{pastMonthLabel} · {pastMonthCount}{t(language, 'calendar.countSuffix')} 참여</span>
+                <span className="mt-past-summary">{pastMonthLabel} · {pastMonthCount}{t(language, 'calendar.countSuffix')} {t(language, 'home.joinedLabel')}</span>
               </button>
               {showPastAssignments && (
                 <div className="mobile-past-mini">
@@ -1107,7 +1107,7 @@ export function MobileTerritory({
 
                   {/* 요일 헤더 */}
                   <div className="mobile-past-mini-dow">
-                    {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
+                    {weekdayShortLabels[language].map((d) => (
                       <span key={d}>{d}</span>
                     ))}
                   </div>
@@ -1139,7 +1139,7 @@ export function MobileTerritory({
 
                   {/* 월별 요약 */}
                   <p className="mobile-past-mini-summary">
-                    {pastMonthLabel} · {pastMonthCount}{t(language, 'calendar.countSuffix')} 참여
+                    {pastMonthLabel} · {pastMonthCount}{t(language, 'calendar.countSuffix')} {t(language, 'home.joinedLabel')}
                   </p>
 
                   {/* 선택된 날짜의 인라인 상세 */}
@@ -1147,11 +1147,11 @@ export function MobileTerritory({
                     const items = assignmentsByDate.get(selectedPastDate) ?? []
                     if (items.length === 0) return null
                     const d = new Date(selectedPastDate)
-                    const dow = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()]
+                    const dow = weekdayShortLabels[language][d.getDay()]
                     return (
                       <div className="mobile-past-mini-detail">
                         <header className="mobile-past-mini-detail-head">
-                          <strong>{d.getMonth() + 1}월 {d.getDate()}일 ({dow})</strong>
+                          <strong>{t(language, 'calendar.dateHeader', { month: String(d.getMonth() + 1), day: String(d.getDate()), dow })}</strong>
                           <button
                             type="button"
                             onClick={() => setSelectedPastDate(null)}
@@ -1164,7 +1164,7 @@ export function MobileTerritory({
                             return (
                               <li key={event.id}>
                                 <div className="mobile-past-mini-detail-row1">
-                                  <span className="mobile-past-mini-slot">{slot}</span>
+                                  <span className="mobile-past-mini-slot">{timeSlotLabel(slot)}</span>
                                   <span className="mobile-past-mini-time">{event.time}</span>
                                 </div>
                                 <p className="mobile-past-mini-detail-row2">

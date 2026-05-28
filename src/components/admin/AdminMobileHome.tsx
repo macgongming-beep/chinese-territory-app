@@ -132,7 +132,7 @@ export function AdminMobileHome({
         )}
       </section>
 
-      <ServiceSuggestionsSection />
+      <ServiceSuggestionsSection language={language} />
 
       {/* ── 운영 현황 ────────────────────── */}
       <section className="mobile-home-section">

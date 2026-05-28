@@ -103,7 +103,7 @@ export function UserMobileHome({
         )}
       </section>
 
-      <ServiceSuggestionsSection />
+      <ServiceSuggestionsSection language={language} />
 
       {/* ─── 인도자 전용 — 담당 카드 진행 (미니 카드 그리드) ─── */}
       {role === 'leader' && leaderCards.length > 0 && (
