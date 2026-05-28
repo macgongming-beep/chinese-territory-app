@@ -368,7 +368,7 @@ export function useStore() {
     updateBuilding,
     moveBuildingToCard,
     reassignBuildingsToCards,
-  } = makeBuildingMutations({ fetchAll, buildings })
+  } = makeBuildingMutations({ fetchAll, buildings, cards })
 
   const { saveCardBoundary, deleteCardBoundary, restoreCardBoundaries, mergeCardBoundaries, undoMergeCardBoundaries } = makeCardBoundaryMutations({ fetchAll, cardBoundaries, buildings })
 

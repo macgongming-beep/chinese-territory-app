@@ -86,6 +86,22 @@ export function makeVisitMutations(deps: {
       reportMutationError('방문 이력을 저장하지 못했습니다. 호수 상태는 변경됐을 수 있습니다.', historyResult.error)
       return
     }
+    // 봉사 로그: 상태 직접 변경
+    const ctxUs = getBuildingContext(buildingId)
+    await logServiceAction({
+      sessionId: recordSession?.id ?? null,
+      cardId: ctxUs.cardId,
+      action: 'visit_recorded',
+      targetType: 'unit',
+      targetId: unitId,
+      details: {
+        building_name: ctxUs.buildingName,
+        card_name: ctxUs.cardName,
+        result: status,
+        time_slot: effectiveTimeSlot,
+      },
+    })
+
     await fetchAll()
   }
 
@@ -273,10 +289,26 @@ export function makeVisitMutations(deps: {
         return
       }
     }
+
+    // 봉사 로그: 호수 플래그 변경
+    const buildingForFlag = buildings.find((b) => b.units.some((u) => u.id === unitId))
+    const ctxFlag = buildingForFlag ? getBuildingContext(buildingForFlag.id) : { cardId: null, cardName: null, buildingName: null }
+    await logServiceAction({
+      cardId: ctxFlag.cardId,
+      action: 'unit_flag_changed',
+      targetType: 'unit',
+      targetId: unitId,
+      details: {
+        building_name: ctxFlag.buildingName,
+        card_name: ctxFlag.cardName,
+        ...Object.fromEntries(Object.entries(flags).map(([k, v]) => [k, v])),
+      },
+    })
+
     await fetchAll()
   }
 
-  const undoLatestVisit = async (_buildingId: number, unitId: number) => {
+  const undoLatestVisit = async (buildingId: number, unitId: number) => {
     const unitHistories = visitHistories.filter((h) => h.unitId === unitId)
     const latestHistory = unitHistories[0]
     const previousHistory = unitHistories[1]
@@ -294,6 +326,23 @@ export function makeVisitMutations(deps: {
       reportMutationError('방문 이력은 취소됐지만 호수 상태를 되돌리지 못했습니다.', statusResult.error)
       return
     }
+
+    // 봉사 로그: 최근 방문 취소
+    const ctx = getBuildingContext(buildingId)
+    await logServiceAction({
+      cardId: ctx.cardId,
+      action: 'visit_deleted',
+      targetType: 'visit_history',
+      targetId: latestHistory.id,
+      details: {
+        building_name: ctx.buildingName,
+        card_name: ctx.cardName,
+        unit_id: unitId,
+        result: latestHistory.result,
+        visited_at: latestHistory.visitedAt,
+        undo: true,
+      },
+    })
 
     await fetchAll()
     showToast('최근 입력이 취소됐습니다')
@@ -413,6 +462,7 @@ export function makeVisitMutations(deps: {
   }
 
   const deleteVisitHistory = async (historyId: number, unitId: number) => {
+    const prevLog = visitHistories.find((h) => h.id === historyId)
     const result = await supabase.from('visit_histories').delete().eq('id', historyId)
     if (result.error) {
       reportMutationError('방문 히스토리 삭제를 실패했습니다.', result.error)
@@ -426,6 +476,24 @@ export function makeVisitMutations(deps: {
     const statusUpdate = await supabase.from('units').update({ status: newStatus }).eq('id', unitId)
     if (statusUpdate.error) {
       reportMutationError('호수 상태 동기화에 실패했습니다.', statusUpdate.error)
+    }
+
+    // 봉사 로그: 방문 기록 삭제
+    if (prevLog) {
+      const ctx = getBuildingContext(prevLog.buildingId)
+      await logServiceAction({
+        cardId: ctx.cardId,
+        action: 'visit_deleted',
+        targetType: 'visit_history',
+        targetId: historyId,
+        details: {
+          building_name: ctx.buildingName,
+          card_name: ctx.cardName,
+          unit_id: unitId,
+          result: prevLog.result,
+          visited_at: prevLog.visitedAt,
+        },
+      })
     }
 
     await fetchAll()

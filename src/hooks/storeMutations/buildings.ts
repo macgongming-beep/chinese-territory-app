@@ -1,13 +1,15 @@
-import type { Building, UnitStatus } from '../../types'
+import type { Building, TerritoryCard, UnitStatus } from '../../types'
 import type { CsvBuildingImport } from '../../utils/csvBuildingImport'
 import { isValidMapCoordinate } from '../../utils/mapUtils'
 import { supabase, showToast, reportMutationError } from './shared'
+import { logServiceAction } from './serviceLog'
 
 export function makeBuildingMutations(deps: {
   fetchAll: () => Promise<void>
   buildings: Building[]
+  cards: TerritoryCard[]
 }) {
-  const { fetchAll, buildings } = deps
+  const { fetchAll, buildings, cards } = deps
 
   const createBuilding = async (input: {
     cardId: number
@@ -41,6 +43,13 @@ export function makeBuildingMutations(deps: {
       reportMutationError('건물을 추가하지 못했습니다.', result.error)
       return
     }
+    const card = cards.find((c) => c.id === input.cardId)
+    await logServiceAction({
+      cardId: input.cardId,
+      action: 'building_added',
+      targetType: 'building',
+      details: { building_name: autoName, card_name: card?.name ?? null },
+    })
     await fetchAll()
     showToast(`"${autoName}" 건물이 추가됐습니다`)
   }
@@ -326,6 +335,15 @@ export function makeBuildingMutations(deps: {
       reportMutationError('건물 정보를 수정하지 못했습니다.', result.error)
       return
     }
+    const building = buildings.find((b) => b.id === buildingId)
+    const card = building ? cards.find((c) => c.id === building.cardId) : undefined
+    await logServiceAction({
+      cardId: card?.id ?? null,
+      action: 'building_updated',
+      targetType: 'building',
+      targetId: buildingId,
+      details: { building_name: name, card_name: card?.name ?? null },
+    })
     await fetchAll()
     if (lat === undefined) {
       showToast('건물 정보가 수정됐습니다')
