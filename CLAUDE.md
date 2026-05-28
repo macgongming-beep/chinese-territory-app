@@ -54,9 +54,9 @@
 ### 알려진 운영 메모
 - 배정 푸시 알림 정상 동작 확인됨 (사용자가 알림 권한 켜면 옴).
 - 채팅 실시간/배정 알림/일정 즉시 반영 — 위 SQL 두 개가 적용돼 있어야 동작.
-- `chinese-territory-app-rwb7` Vercel 프로젝트는 삭제됨.
-  현재 배포: https://chinese-territory-app-rwb7.vercel.app/ (기존 도메인 유지)
-  실제 프로젝트는 `chinese-territory-app`.
+- Vercel 프로젝트: `chinese-territory-app`
+  현재 배포: https://chinese-territory-app.vercel.app/
+  (이전 `-rwb7` 도메인은 사용 안 함)
 
 ---
 
@@ -66,7 +66,7 @@
 
 - **목적**: 80명 규모 한 회중의 중국인 봉사 구역 관리 (PC + 모바일)
 - **사용자**: 단일 회중 내부 사용 (외부 배포 X)
-- **배포 주소**: https://chinese-territory-app-rwb7.vercel.app/
+- **배포 주소**: https://chinese-territory-app.vercel.app/
 - **GitHub**: https://github.com/macgongming-beep/chinese-territory-app
 
 ---
