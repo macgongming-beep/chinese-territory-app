@@ -847,38 +847,38 @@ export function MobileLeaderAssignment({
                             return (
                               <div className="ma-team-card-stack" key={card.id} style={{ position: 'relative' }}>
                                 {canEditSelectedEvent && (
-                                  <button
-                                    type="button"
+                                  <div
+                                    role="button"
                                     onClick={(e) => { e.stopPropagation(); removeCardFromTeam(team.id, card.id); }}
                                     style={{
                                       position: 'absolute',
                                       top: '50%',
-                                      right: -6,
+                                      right: 10,
                                       transform: 'translateY(-50%)',
                                       width: 20,
                                       height: 20,
                                       minWidth: 20,
+                                      minHeight: 20,
                                       padding: 0,
                                       borderRadius: '50%',
                                       background: 'var(--status-danger)',
                                       color: 'white',
-                                      border: '2px solid var(--surface)',
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
                                       zIndex: 2,
                                       cursor: 'pointer',
-                                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                                     }}
                                   >
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                                  </button>
+                                  </div>
                                 )}
                                 <button
                                   className={`ma-team-card-item${isPreviewOpen ? ' is-expanded' : ''}`}
                                   type="button"
                                   aria-expanded={isPreviewOpen}
                                   onClick={() => setPreviewCardId((current) => current === card.id ? null : card.id)}
+                                  style={{ paddingRight: canEditSelectedEvent ? 38 : undefined }}
                                 >
                                   <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="10" r="3" fill="none" stroke="currentColor" strokeWidth="2"/></svg>
                                   <div>
