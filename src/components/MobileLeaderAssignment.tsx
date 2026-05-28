@@ -1172,7 +1172,7 @@ export function MobileLeaderAssignment({
 
           {/* ── 미배정 확인 모달 ── */}
           {pendingAction && typeof document !== 'undefined' && createPortal(
-            <div className="cal-modal-backdrop" onClick={() => setPendingAction(null)}>
+            <div className="confirm-modal-backdrop" onClick={() => setPendingAction(null)}>
               <div className="cal-modal" style={{ maxWidth: '320px', borderRadius: '20px', padding: 0 }} onClick={(e) => e.stopPropagation()}>
                 <div className="cal-modal-body" style={{ textAlign: 'center', padding: '32px 20px 24px' }}>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-900)', marginBottom: '12px' }}>배정 공유 확인</div>

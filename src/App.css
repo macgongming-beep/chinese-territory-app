@@ -28991,3 +28991,20 @@ button:focus-visible {
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+/* ── Confirm Modal (Global) ── */
+.confirm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(15, 23, 42, 0.4);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.confirm-modal-backdrop .cal-modal {
+  width: 100%;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
