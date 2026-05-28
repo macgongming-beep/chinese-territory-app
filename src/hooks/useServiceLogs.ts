@@ -106,25 +106,25 @@ export function useServiceLogs(filter: ServiceLogFilter = {}) {
 }
 
 // 액션 한글 라벨
-export const ACTION_LABEL: Record<string, { label: string; icon: string; color: string }> = {
-  session_started: { label: '봉사 시작', icon: '▶️', color: '#16a34a' },
-  session_ended: { label: '봉사 종료', icon: '⏹', color: '#64748b' },
-  joined: { label: '참여', icon: '➕', color: '#2563eb' },
-  left: { label: '이탈', icon: '➖', color: '#94a3b8' },
-  visit_recorded: { label: '방문 기록', icon: '📝', color: '#0891b2' },
-  visit_updated: { label: '방문 수정', icon: '✏️', color: '#0891b2' },
-  visit_deleted: { label: '방문 삭제', icon: '🗑', color: '#dc2626' },
-  memo_added: { label: '메모 추가', icon: '💬', color: '#7c3aed' },
-  unit_flag_changed: { label: '호수 플래그', icon: '🏷', color: '#d97706' },
-  building_added: { label: '건물 추가', icon: '🏠', color: '#16a34a' },
-  building_updated: { label: '건물 수정', icon: '✏️', color: '#0891b2' },
-  chat_message: { label: '채팅', icon: '💭', color: '#0891b2' },
-  chat_image: { label: '사진', icon: '📷', color: '#0891b2' },
-  message_deleted: { label: '메시지 삭제', icon: '🗑', color: '#dc2626' },
+export const ACTION_LABEL: Record<string, { label: string; color: string; bg: string }> = {
+  session_started: { label: '봉사 시작', color: '#15803d', bg: '#dcfce7' },
+  session_ended:   { label: '봉사 종료', color: '#475569', bg: '#f1f5f9' },
+  joined:          { label: '참여',      color: '#1d4ed8', bg: '#dbeafe' },
+  left:            { label: '이탈',      color: '#64748b', bg: '#f1f5f9' },
+  visit_recorded:  { label: '방문 기록', color: '#0369a1', bg: '#e0f2fe' },
+  visit_updated:   { label: '방문 수정', color: '#0369a1', bg: '#e0f2fe' },
+  visit_deleted:   { label: '방문 삭제', color: '#b91c1c', bg: '#fee2e2' },
+  memo_added:      { label: '메모 추가', color: '#6d28d9', bg: '#ede9fe' },
+  unit_flag_changed: { label: '플래그',  color: '#b45309', bg: '#fef3c7' },
+  building_added:  { label: '건물 추가', color: '#15803d', bg: '#dcfce7' },
+  building_updated: { label: '건물 수정', color: '#0369a1', bg: '#e0f2fe' },
+  chat_message:    { label: '채팅',      color: '#0369a1', bg: '#e0f2fe' },
+  chat_image:      { label: '사진 전송', color: '#0369a1', bg: '#e0f2fe' },
+  message_deleted: { label: '메시지 삭제', color: '#b91c1c', bg: '#fee2e2' },
 }
 
 export function getActionMeta(action: string) {
-  return ACTION_LABEL[action] ?? { label: action, icon: '•', color: '#64748b' }
+  return ACTION_LABEL[action] ?? { label: action, color: '#64748b', bg: '#f1f5f9' }
 }
 
 // CSV 변환

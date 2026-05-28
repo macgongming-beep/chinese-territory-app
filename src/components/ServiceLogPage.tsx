@@ -36,6 +36,17 @@ function groupByDay(logs: ServiceLog[]): Map<string, ServiceLog[]> {
   return groups
 }
 
+// 카드·일정 이름 폴백 조회용 맵
+function useContextMaps(cards: TerritoryCard[], calendarEvents: CalendarEvent[]) {
+  return useMemo(() => {
+    const cardMap = new Map(cards.map((c) => [c.id, c.name]))
+    const eventMap = new Map(
+      calendarEvents.map((e) => [e.id, `${e.date.slice(5)} ${e.title || e.time}`])
+    )
+    return { cardMap, eventMap }
+  }, [cards, calendarEvents])
+}
+
 export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: ServiceLogPageProps) {
   const [selectedCardId, setSelectedCardId] = useState<number | null>(null)
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
@@ -45,6 +56,8 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
     eventId: selectedEventId,
     limit: 500,
   })
+
+  const { cardMap, eventMap } = useContextMaps(cards, calendarEvents)
 
   const grouped = useMemo(() => groupByDay(logs), [logs])
   const sortedDays = useMemo(
@@ -171,7 +184,7 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
             opacity: logs.length === 0 ? 0.5 : 1,
           }}
           type="button"
-        >📥 CSV 다운로드</button>
+        >CSV 다운로드</button>
       </div>
 
       {/* 결과 카운트 */}
@@ -193,7 +206,6 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
           padding: '60px 20px', textAlign: 'center', color: '#94a3b8',
           background: '#f8fafc', borderRadius: 10,
         }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
           <p style={{ margin: 0, fontSize: 14 }}>표시할 로그가 없습니다</p>
         </div>
       )}
@@ -203,56 +215,72 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
         return (
           <div key={day} style={{ marginBottom: 24 }}>
             <h3 style={{
-              margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#475569',
-              padding: '6px 12px', background: '#f1f5f9', borderRadius: 6,
+              margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: '#475569',
+              padding: '5px 12px', background: '#f1f5f9', borderRadius: 6,
               display: 'inline-block',
-            }}>📅 {formatDate(day + 'T00:00:00')}</h3>
+            }}>{formatDate(day + 'T00:00:00')}</h3>
 
             <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
               {dayLogs.map((log, idx) => {
                 const meta = getActionMeta(log.action)
+                // RPC가 join 데이터를 안 줄 경우 props로 폴백
+                const cardName = log.cardName ?? (log.cardId ? (cardMap.get(log.cardId) ?? null) : null)
+                const eventLabel = log.eventTitle
+                  ?? (log.eventId ? (eventMap.get(log.eventId) ?? null) : null)
                 return (
                   <div
                     key={log.id}
                     style={{
                       display: 'flex', gap: 10, padding: '10px 14px',
                       borderBottom: idx < dayLogs.length - 1 ? '1px solid #f1f5f9' : 'none',
-                      fontSize: 13,
+                      fontSize: 13, alignItems: 'flex-start',
                     }}
                   >
+                    {/* 시각 */}
                     <span style={{
                       flexShrink: 0, color: '#94a3b8', fontVariantNumeric: 'tabular-nums',
-                      fontSize: 12, paddingTop: 1,
+                      fontSize: 11, paddingTop: 3, width: 56,
                     }}>{formatDateTime(log.createdAt)}</span>
 
-                    <span style={{
-                      flexShrink: 0, fontSize: 14, lineHeight: 1.2,
-                    }}>{meta.icon}</span>
-
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ color: meta.color, fontWeight: 700 }}>
-                        {meta.label}
-                      </span>
-                      <span style={{ color: '#64748b', marginLeft: 6 }}>
-                        {log.actorName}
-                      </span>
-                      {log.cardName && (
-                        <span style={{ color: '#94a3b8', marginLeft: 6, fontSize: 12 }}>
-                          · {log.cardName}
+                      {/* 액션 배지 + 행위자 */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 8px', borderRadius: 4,
+                          fontSize: 12, fontWeight: 700,
+                          color: meta.color, background: meta.bg,
+                          lineHeight: 1.6,
+                        }}>{meta.label}</span>
+                        <span style={{ color: '#1e293b', fontWeight: 600, fontSize: 13 }}>
+                          {log.actorName}
                         </span>
-                      )}
-                      {log.eventTitle && (
-                        <span style={{ color: '#94a3b8', marginLeft: 6, fontSize: 12 }}>
-                          · {log.eventTitle}
-                        </span>
+                      </div>
+
+                      {/* 카드 / 일정 컨텍스트 */}
+                      {(cardName || eventLabel) && (
+                        <div style={{ marginTop: 3, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {cardName && (
+                            <span style={{
+                              fontSize: 12, color: '#0369a1',
+                              background: '#e0f2fe', padding: '1px 7px', borderRadius: 4,
+                            }}>카드 {cardName}</span>
+                          )}
+                          {eventLabel && (
+                            <span style={{
+                              fontSize: 12, color: '#6d28d9',
+                              background: '#ede9fe', padding: '1px 7px', borderRadius: 4,
+                            }}>일정 {eventLabel}</span>
+                          )}
+                        </div>
                       )}
 
                       {/* 상세 */}
                       {Object.keys(log.details).length > 0 && (
                         <p style={{
-                          margin: '4px 0 0', fontSize: 12, color: '#64748b',
+                          margin: '4px 0 0', fontSize: 11, color: '#64748b',
                           fontFamily: 'ui-monospace, monospace',
-                          background: '#f8fafc', padding: '4px 8px', borderRadius: 4,
+                          background: '#f8fafc', padding: '3px 8px', borderRadius: 4,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>
                           {Object.entries(log.details)
