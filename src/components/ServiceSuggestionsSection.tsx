@@ -89,7 +89,7 @@ function SuggestionCard({ block, language = 'ko' }: { block: any; language?: App
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
               {t(language, 'suggestion.scripture')}
             </div>
-            <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--brand)', lineHeight: 1.6 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--brand)', lineHeight: 1.6 }}>
               {block.scripture}
             </div>
           </div>
