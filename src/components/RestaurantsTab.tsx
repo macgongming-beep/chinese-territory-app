@@ -1,7 +1,7 @@
 // 식당 탭 — design_handoff 06 화면
 // 식당 표시된 상가 목록 (지역별 그룹) + 추가 모달 + 식당봉사 신청 승인
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Building, RestaurantRequest, Role, TerritoryCard } from '../types'
+import type { Building, Unit, RestaurantRequest, Role, TerritoryCard } from '../types'
 import { RestaurantPickerModal } from './RestaurantPickerModal'
 import { normalizeCardSearch } from '../utils/cardSearch'
 import {
@@ -441,7 +441,7 @@ export function RestaurantsTab({
   }
 
   const [addOpen, setAddOpen] = useState(false)
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   // ── CSV 일괄등록 상태 ─────────────────────────────────────────
   const [csvPanelOpen, setCsvPanelOpen] = useState(false)
@@ -533,31 +533,45 @@ export function RestaurantsTab({
     [restaurantRequests],
   )
 
-  const restaurants = useMemo(
-    () => buildings.filter((b) => b.type === '상가' && b.isRestaurant),
-    [buildings],
-  )
+  // 세대별 평탄화 타입
+  type RestaurantRow = { building: Building; unit: Unit | null; key: string }
 
-  // 식당명: 건물 내 첫 번째 중국인 세대의 번호 (없으면 건물명 → 주소 순)
-  const getRestaurantName = (b: Building): string =>
-    b.units.find((u) => u.isChinese)?.number || b.name || b.address
+  const restaurants = useMemo<RestaurantRow[]>(() => {
+    const rows: RestaurantRow[] = []
+    for (const b of buildings) {
+      if (b.type !== '상가' || !b.isRestaurant) continue
+      const chineseUnits = b.units.filter((u) => u.isChinese)
+      if (chineseUnits.length === 0) {
+        // 중국인 세대 없으면 건물명 fallback 1행
+        rows.push({ building: b, unit: null, key: `${b.id}-none` })
+      } else {
+        for (const u of chineseUnits) {
+          rows.push({ building: b, unit: u, key: `${b.id}-${u.id}` })
+        }
+      }
+    }
+    return rows
+  }, [buildings])
+
+  // 식당명: 세대 번호(unit.number) → 건물명 → 주소 순
+  const getRestaurantName = (row: RestaurantRow): string =>
+    row.unit?.number || row.building.name || row.building.address
 
   const filtered = useMemo(() => {
     const q = normalizeCardSearch(search)
     if (!q) return restaurants
-    return restaurants.filter((b) => {
-      const restaurantName = getRestaurantName(b)
-      return normalizeCardSearch(`${restaurantName}${b.address}`).includes(q)
-    })
+    return restaurants.filter((row) =>
+      normalizeCardSearch(`${getRestaurantName(row)}${row.building.address}`).includes(q),
+    )
   }, [restaurants, search])
 
   const grouped = useMemo(() => {
-    const map = new Map<string, Building[]>()
-    for (const b of filtered) {
-      const card = cards.find((c) => c.id === b.cardId)
+    const map = new Map<string, RestaurantRow[]>()
+    for (const row of filtered) {
+      const card = cards.find((c) => c.id === row.building.cardId)
       const region = (card?.region as string) || '기타'
       const list = map.get(region) ?? []
-      list.push(b)
+      list.push(row)
       map.set(region, list)
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, 'ko'))
@@ -613,6 +627,7 @@ export function RestaurantsTab({
       {/* 상단 카운트 + 추가 + CSV */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
         <span style={{ fontSize: 13, color: 'var(--muted)' }}>전체 {restaurants.length}개</span>
+        {/* restaurants = 세대별 행 수 */}
         {canManage && (
           <div style={{ display: 'flex', gap: 8 }}>
             {onBulkSetRestaurant && (
@@ -812,10 +827,11 @@ export function RestaurantsTab({
               </div>
               {expandedRegions.has(region) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {list.map((b) => {
-                  const restaurantName = getRestaurantName(b)
+                {list.map((row) => {
+                  const { building: b, key } = row
+                  const restaurantName = getRestaurantName(row)
                   return (
-                    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
                       <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--tint)', display: 'grid', placeItems: 'center', color: 'var(--muted)', flexShrink: 0 }}>
                         <ForkIcon />
                       </div>
@@ -834,17 +850,17 @@ export function RestaurantsTab({
                       </button>
                       {canManage && onToggleRestaurantFlag && (
                         <div style={{ position: 'relative' }}>
-                          <button type="button" onClick={() => setOpenMenuId(openMenuId === b.id ? null : b.id)}
+                          <button type="button" onClick={() => setOpenMenuId(openMenuId === key ? null : key)}
                             style={{ width: 28, height: 28, minHeight: 28, display: 'grid', placeItems: 'center', background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', borderRadius: 6 }}
                             aria-label="더보기">
                             <DotsIcon />
                           </button>
-                          {openMenuId === b.id && (
+                          {openMenuId === key && (
                             <>
                               <div onClick={() => setOpenMenuId(null)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
                               <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 31, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', minWidth: 140, padding: 4 }}>
                                 <button type="button"
-                                  onClick={async () => { setOpenMenuId(null); if (confirm(`"${b.name || b.address}" 식당 표시를 해제할까요?`)) { await onToggleRestaurantFlag(b.id, false) } }}
+                                  onClick={async () => { setOpenMenuId(null); if (confirm(`"${restaurantName}" 식당 표시를 해제할까요?`)) { await onToggleRestaurantFlag(b.id, false) } }}
                                   style={{ width: '100%', textAlign: 'left', padding: '8px 10px', minHeight: 0, background: 'transparent', border: 'none', fontSize: 13, color: 'var(--status-danger)', cursor: 'pointer', borderRadius: 6 }}>
                                   식당 표시 해제
                                 </button>
