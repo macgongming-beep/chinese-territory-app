@@ -196,7 +196,7 @@ export function DesktopTerritory({
     const chineseUnits = b.units.filter((u) => u.isChinese)
     return acc + (chineseUnits.length === 0 ? 1 : chineseUnits.length)
   }, 0)
-  const [buildingSubTab, setBuildingSubTab] = useState<'건물 목록' | '중국인 포인트'>('건물 목록')
+  const [buildingSubTab, setBuildingSubTab] = useState<'건물 목록' | '중국어 포인트'>('건물 목록')
   const [showCardModal, setShowCardModal] = useState(false)
   const [pendingBoundaryCard, setPendingBoundaryCard] = useState<{ id: number; name: string } | null>(null)
   const [regionFilter, setRegionFilter] = useState<TerritoryRegion | '전체'>('전체')
@@ -373,7 +373,7 @@ export function DesktopTerritory({
     }).length
 
   const getAreaMetricCount = (area: string) => {
-    if (activeTab === '건물 관리' && buildingSubTab === '중국인 포인트') {
+    if (activeTab === '건물 관리' && buildingSubTab === '중국어 포인트') {
       return buildings.reduce((sum, building) => {
         const card = cardMap.get(building.cardId)
         if (!card || card.area !== area) return sum
@@ -1103,7 +1103,7 @@ export function DesktopTerritory({
   }
 
   const downloadFilteredBuildingCsv = () => {
-    const isPointList = buildingSubTab === '중국인 포인트'
+    const isPointList = buildingSubTab === '중국어 포인트'
     const headers = isPointList
       ? ['카드명', '지역', '동', '건물명', '주소', '유형', '호수', '정기방문', '정기방문자', '최근 방문', '메모']
       : ['카드명', '지역', '동', '건물명', '주소', '유형', '세대', '중국인', '중국인 다수', '정기방문', '건물 메모', '세대 메모']
@@ -1381,7 +1381,7 @@ export function DesktopTerritory({
 
 
 
-  const showPointDetailPane = activeTab === '건물 관리' && buildingSubTab === '중국인 포인트' && selectedPointDetailData
+  const showPointDetailPane = activeTab === '건물 관리' && buildingSubTab === '중국어 포인트' && selectedPointDetailData
   const territoryLayoutClassName = showPointDetailPane
     ? 'territory-layout point-detail-open'
     : activeTab === '건물 관리' || !detailPaneOpen
@@ -1511,7 +1511,7 @@ export function DesktopTerritory({
             <div className="cal-modal-head">
               <div className="cal-modal-title">
                 <h2>중국인 거주 표시 해제</h2>
-                <p className="merge-name-modal-sub">해제하면 이 항목은 중국인 포인트 목록에서 사라질 수 있습니다.</p>
+                <p className="merge-name-modal-sub">해제하면 이 항목은 중국어 포인트 목록에서 사라질 수 있습니다.</p>
               </div>
             </div>
             <div className="cal-modal-body">
@@ -2125,7 +2125,7 @@ export function DesktopTerritory({
         {/* ── 건물 관리 서브탭 ── */}
         {activeTab === '건물 관리' && (
           <div className="territory-subtabs" style={{ marginBottom: 16 }}>
-            {(['건물 목록', '중국인 포인트'] as const).map((tab) => (
+            {(['건물 목록', '중국어 포인트'] as const).map((tab) => (
               <button className={buildingSubTab === tab ? 'active' : ''} key={tab} onClick={() => setBuildingSubTab(tab)} type="button">{tab}</button>
             ))}
           </div>
@@ -2345,7 +2345,7 @@ export function DesktopTerritory({
               </div>
             </div>
           )}
-          {activeTab === '건물 관리' && buildingSubTab === '중국인 포인트' && (
+          {activeTab === '건물 관리' && buildingSubTab === '중국어 포인트' && (
             <div className="tbl-filter-layer" style={{ gap: 12 }}>
               <span className="tbl-filter-label">상태</span>
               <select className="tbl-filter-select" value={pointStatusFilter} onChange={(e) => setPointStatusFilter(e.target.value as UnitStatus | '전체')}>
@@ -2840,7 +2840,7 @@ export function DesktopTerritory({
           </div>
           </>
         ) : (
-          <div className="point-management-table" ref={pointTableRef} role="table" aria-label="중국인 포인트 목록">
+          <div className="point-management-table" ref={pointTableRef} role="table" aria-label="중국어 포인트 목록">
             <div className="point-management-head" role="row">
               <span>카드</span>
               <span>건물/주소</span>
@@ -2931,7 +2931,7 @@ export function DesktopTerritory({
             })}
             {pointRows.length === 0 && (
               <div className="empty-card-row">
-                표시할 중국인 포인트가 없습니다. 지도에서 호수를 기록하거나 CSV로 포인트를 업로드해 주세요.
+                표시할 중국어 포인트가 없습니다. 지도에서 호수를 기록하거나 CSV로 포인트를 업로드해 주세요.
               </div>
             )}
           </div>

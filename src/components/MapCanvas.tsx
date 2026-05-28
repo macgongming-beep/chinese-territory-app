@@ -294,7 +294,7 @@ function markerHtml(
   const strokeColor = '#ffffff'
   const scale = isSelected ? 1.22 : 1
   const opacity = isDimmed ? 0.38 : 1
-  const label = escapeAttr(`${building.name} · ${status} · ${cardName}${hasChineseNeedsReview ? ' · 중국인 발견' : hasRegularVisit ? ' · 정기방문 있음' : ''}`)
+  const label = escapeAttr(`${building.name} · ${status} · ${cardName}${hasChineseNeedsReview ? ' · 중국어 사용자' : hasRegularVisit ? ' · 정기방문 있음' : ''}`)
 
   return `
     <div
