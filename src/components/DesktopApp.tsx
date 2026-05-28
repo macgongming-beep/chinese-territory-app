@@ -868,8 +868,8 @@ export function DesktopApp({
             </section>
           } />
           <Route path="service-logs" element={
-            (viewMode === 'admin' || viewMode === 'leader')
-              ? <section className="la-page" style={{ alignItems: 'center' }}><div style={{ maxWidth: 640, width: '100%', position: 'relative', padding: '24px 0' }}><ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={viewMode} isEmbedded /></div></section>
+            actualRole === 'developer'
+              ? <section className="la-page" style={{ alignItems: 'center' }}><div style={{ maxWidth: 640, width: '100%', position: 'relative', padding: '24px 0' }}><ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={actualRole} isEmbedded /></div></section>
               : <Navigate to="/settings/profile" replace />
           } />
         </Route>
