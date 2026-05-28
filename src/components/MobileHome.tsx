@@ -824,6 +824,7 @@ export function MobileHome({
                   onUpdateEvent={role === 'user' ? undefined : onUpdateCalendarEvent}
                   onUpdateEventSeries={role === 'user' ? undefined : onUpdateCalendarEventSeries}
                   onApplyToEvent={onApplyToEvent}
+                  onAddParticipantToEvent={_onAddParticipantToEvent}
                   specialPeriods={specialPeriods}
                   globalSettings={globalSettings}
                 />
