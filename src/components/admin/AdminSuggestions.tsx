@@ -53,6 +53,31 @@ function downloadSuggestionsCSV(suggestions: ServiceSuggestion[]) {
   URL.revokeObjectURL(url)
 }
 
+// ── 샘플 CSV 다운로드 ─────────────────────────────────────────
+function downloadSampleCSV() {
+  const rows = [
+    CSV_HEADERS,
+    // 예시 1: 구조형 블록 2개 (id 비워두면 신규 생성)
+    ['', '첫 방문 제안 예시', '봄|전도', '0', '1', '0', '첫 방문', 'structured', '성경이 오늘날에도 도움이 될까요?', '딤후 3:16', '성경에는 어떤 내용이 들어 있을까요?', ''],
+    ['', '첫 방문 제안 예시', '봄|전도', '0', '1', '1', '재방문', 'structured', '지난번에 말씀드린 내용 기억하세요?', '시 37:29', '앞으로도 계속 얘기 나눌 수 있을까요?', ''],
+    // 예시 2: 자유형 블록 1개
+    ['', '성서 연구 안내문', '공부', '0', '0', '0', '안내', 'free_text', '', '', '', '성경 공부에 관심 있으신 분께 무료로 제공합니다.\n일주일에 한 번, 집에서 편하게 진행합니다.'],
+    // 예시 3: 구조형 + 자유형 혼합
+    ['', '혼합형 예시', '', '0', '1', '0', '소개', 'structured', '이 지역에 오래 사셨나요?', '계 21:4', '좋은 소식이 있는데 나눠도 될까요?', ''],
+    ['', '혼합형 예시', '', '0', '1', '1', '메모', 'free_text', '', '', '', '주민 친화적으로 접근. 오전 방문 권장.'],
+  ]
+  const content = rows.map((r) => r.map(escapeCSV).join(',')).join('\n')
+  const blob = new Blob(['﻿' + content], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'suggestions_sample.csv'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 // ── CSV 파싱 → ServiceSuggestion 배열 ────────────────────────
 type ParsedSuggestion = Omit<ServiceSuggestion, 'created_at'> & { id: number }
 
@@ -563,6 +588,10 @@ export function AdminSuggestions({}: Props) {
           <div style={{ display: 'flex', gap: 6 }}>
             {/* 숨김 파일 인풋 */}
             <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileChange} style={{ display: 'none' }} />
+            <button onClick={downloadSampleCSV} type="button"
+              style={{ padding: '7px 12px', border: '1px dashed var(--line-muted)', borderRadius: '8px', background: 'var(--bg)', color: 'var(--text-muted)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              샘플 CSV
+            </button>
             <button onClick={() => fileInputRef.current?.click()} type="button"
               style={{ padding: '7px 12px', border: '1px solid var(--line-muted)', borderRadius: '8px', background: 'var(--bg)', color: 'var(--ink)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               CSV 가져오기
