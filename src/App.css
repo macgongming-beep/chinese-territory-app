@@ -8393,7 +8393,7 @@ button:focus-visible {
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  border: 1.5px solid var(--ink);
+  border: 1.5px solid var(--danger-500);
   border-radius: 14px;
   background: var(--bg-card, #ffffff);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
