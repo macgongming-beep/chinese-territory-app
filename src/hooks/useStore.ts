@@ -163,10 +163,11 @@ export function useStore() {
         })()
 
         // Phase 5 projection: 필요한 컬럼만 명시. created_at 등 메타 제외.
+        // (is_forbidden은 DB 컬럼 미존재, 타입상 optional이라 제외 안전)
         const [buildingsRes, cardsRes, boundariesRes] = await Promise.all([
           supabase
             .from('buildings')
-            .select('id, card_id, name, address, type, lat, lng, warning, memo, is_chinese_heavy, is_restaurant, units(id, building_id, number, status, is_chinese, is_forbidden, memo, regular_visits(visitor_name, registered_at))')
+            .select('id, card_id, name, address, type, lat, lng, warning, memo, is_chinese_heavy, is_restaurant, units(id, building_id, number, status, is_chinese, memo, regular_visits(visitor_name, registered_at))')
             .order('id'),
           cardsQueryPromise,
           supabase.from('card_boundaries').select('card_id, points, updated_at'),
