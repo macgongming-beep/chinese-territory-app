@@ -752,7 +752,7 @@ export function MobileMap({
             <div className="mobile-map-title-copy">
               {navLevel === 'map' ? (
                 <>
-                  <h1>구역 · 지도</h1>
+                  <h1>{selectedCardId ? (cards.find(c => c.id === selectedCardId)?.name ?? '구역 · 지도') : '구역 · 지도'}</h1>
                   <span className="mm-stats-sub" role="tablist">
                     <button
                       type="button"
