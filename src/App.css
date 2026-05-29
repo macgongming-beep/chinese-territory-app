@@ -8428,7 +8428,37 @@ button:focus-visible {
   font-weight: 700;
 }
 
-/* ── 현재 봉사 중 카드 (Black Accent 스타일) ── */
+/* ── 현재 봉사 중 카드 강조 (오늘 배정 안에서) ── */
+.mobile-today-card-row.is-active {
+  background: rgba(220, 38, 38, 0.04);
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin: 0 -8px;
+}
+.mobile-today-card-dot.is-active {
+  background: var(--danger-500, #dc2626);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+  animation: pulse-dot-active 2s infinite ease-in-out;
+}
+@keyframes pulse-dot-active {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.35); }
+  70% { box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+.mobile-today-card-active-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  background: var(--danger-500, #dc2626);
+  color: #ffffff;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
+/* ── 현재 봉사 중 카드 (Black Accent 스타일) — 제거 예정 (활성 세션 카드 더 이상 사용 안 함) ── */
 .mobile-active-session-card {
   display: flex;
   align-items: center;

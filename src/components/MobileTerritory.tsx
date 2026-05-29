@@ -54,7 +54,7 @@ export function MobileTerritory({
   returnVisitLogs = [],
   onOpenMap,
   onOpenRegularVisitMap,
-  onEndServiceSession,
+  onEndServiceSession: _onEndServiceSession,  // 종료 버튼 제거 — auto_close가 처리. prop 시그니처는 후방호환 유지.
   onCreateManualReturnVisit,
   onAddReturnVisitLog,
   onUpdateReturnVisitLog,
@@ -406,6 +406,44 @@ export function MobileTerritory({
     setExpandedEventIds((prev) => new Set(prev).add(targetAssignmentEventId))
   }, [targetAssignmentEventId])
 
+  // 시간대 변경 자동 펴기·접기: 현재 시간대로 진입한 일정만 펴짐, 이전 시간대는 자동 접힘.
+  // (예: 13:00 봉사 펴진 상태에서 15:00 도달 → 13:00 접고 15:00 펴짐)
+  // 단, 사용자가 명시적으로 다른 일정 펼친 경우는 건드리지 않음 (그건 toggleTodayEvent로 처리됨).
+  const lastSlotRef = useRef<string>(getCurrentTimeSlot())
+  useEffect(() => {
+    const syncByTimeSlot = () => {
+      const slot = getCurrentTimeSlot()
+      if (slot === lastSlotRef.current) return  // 시간대 변경 없음
+      const prevSlot = lastSlotRef.current
+      lastSlotRef.current = slot
+
+      const newSlotEvent = myTodayAssignments.find(({ event }) => getTimeSlotFromTime(event.time) === slot)
+      const prevSlotEvents = myTodayAssignments
+        .filter(({ event }) => getTimeSlotFromTime(event.time) === prevSlot)
+        .map(({ event }) => event.id)
+
+      setExpandedEventIds((prev) => {
+        const next = new Set(prev)
+        // 이전 시간대 일정 접기
+        prevSlotEvents.forEach((id) => next.delete(id))
+        // 새 시간대 일정 펴기
+        if (newSlotEvent) next.add(newSlotEvent.event.id)
+        return next
+      })
+    }
+
+    // 1분마다 시간대 체크
+    const interval = window.setInterval(syncByTimeSlot, 60_000)
+    // 페이지 다시 보일 때도 체크 (백그라운드에서 시간 지난 경우)
+    const onVisible = () => { if (!document.hidden) syncByTimeSlot() }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [myTodayAssignments])
+
   const myTodaySessions = useMemo(
     () =>
       serviceSessions
@@ -561,29 +599,7 @@ export function MobileTerritory({
     <div className="mobile-territory-page">
       {role !== 'admin' && (
         <>
-          {activeSession && (
-            <section className="mobile-territory-section">
-              <div className="mobile-active-session-card">
-                <span className="mas-dot" />
-                <div className="mas-body">
-                  <strong>{activeCard?.name ?? t(language, 'territory.noCard')}</strong>
-                  <span>
-                    {(() => {
-                      const evt = activeSession.calendarEventId ? calendarEvents.find((e) => e.id === activeSession.calendarEventId) : null
-                      if (evt) return `${evt.time} ${evt.title} · ${t(language, 'map.servicing')}`
-                      return `${timeSlotLabel(activeSession.timeSlot)} · ${t(language, 'map.servicing')}`
-                    })()}
-                  </span>
-                </div>
-                <div className="mas-actions">
-                  {activeCard && (
-                    <button className="mas-map-btn" onClick={() => onOpenMap(activeCard.id)} type="button">{t(language, 'zone.map')}</button>
-                  )}
-                  <button className="mas-end-btn" onClick={() => onEndServiceSession(activeSession.id)} type="button">{t(language, 'territory.end')}</button>
-                </div>
-              </div>
-            </section>
-          )}
+          {/* 활성 세션 카드 제거됨 — 자동 종료 + "오늘 배정" 안 활성 카드 강조로 대체 */}
 
           <section className="mobile-territory-section mobile-today-service-section">
             <div className="mt-mini-section-head">
@@ -621,14 +637,20 @@ export function MobileTerritory({
                             <div className="mobile-territory-empty compact">{t(language, 'territory.noAssignedCards')}</div>
                           ) : (
                             <>
-                              {assignedCards.map((card) => (
-                                <div className="mobile-today-card-row" key={`card-${card.id}`}>
-                                  <span className="mobile-today-card-dot" aria-hidden="true" />
-                                  <strong>{card.name}</strong>
-                                  <em>{card.progress}%</em>
-                                  <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
-                                </div>
-                              ))}
+                              {assignedCards.map((card) => {
+                                const isActive = activeSessionCardIds.has(card.id)
+                                return (
+                                  <div className={`mobile-today-card-row${isActive ? ' is-active' : ''}`} key={`card-${card.id}`}>
+                                    <span className={`mobile-today-card-dot${isActive ? ' is-active' : ''}`} aria-hidden="true" />
+                                    <strong>
+                                      {card.name}
+                                      {isActive && <span className="mobile-today-card-active-badge">봉사 중</span>}
+                                    </strong>
+                                    <em>{card.progress}%</em>
+                                    <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
+                                  </div>
+                                )
+                              })}
                               {myInformal.map((asn) => {
                                 const asset = informalAssets.find((x) => x.id === asn.assetId)
                                 return (
