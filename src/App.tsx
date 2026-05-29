@@ -409,6 +409,7 @@ function App() {
               onFetchMyLoginLogs={fetchMyLoginLogs}
               onApplyToEvent={applyToEvent}
               onAddParticipantToEvent={addParticipantToEvent}
+              onRemoveParticipantFromEvent={removeParticipantFromEvent}
               onCreateCalendarEvent={createCalendarEvent}
               onDeleteCalendarEvent={deleteCalendarEvent}
               onUpdateCalendarEvent={updateCalendarEvent}

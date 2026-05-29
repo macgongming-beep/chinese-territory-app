@@ -531,6 +531,10 @@ export function useStore() {
     () => fetchSlices(['calendar'], { triggeredBy: 'mutation:calendar' }),
     [fetchSlices],
   )
+  const refetchCalendarAndVisits = useCallback(
+    () => fetchSlices(['calendar', 'visits'], { triggeredBy: 'mutation:calendar:participant-removal' }),
+    [fetchSlices],
+  )
   const refetchCommunication = useCallback(
     () => fetchSlices(['communication'], { triggeredBy: 'mutation:communication' }),
     [fetchSlices],
@@ -615,7 +619,11 @@ export function useStore() {
     assignToEvent,
     removeParticipantFromEvent,
     addParticipantToEvent,
-  } = makeCalendarMutations({ fetchAll: refetchCalendar, calendarEvents })
+  } = makeCalendarMutations({
+    fetchAll: refetchCalendar,
+    refetchAfterParticipantRemoval: refetchCalendarAndVisits,
+    calendarEvents,
+  })
 
   const {
     toggleRegularVisit,

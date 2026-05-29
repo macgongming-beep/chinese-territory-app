@@ -30,6 +30,7 @@ type Props = {
   onApply?: () => void
   onCancelApply?: () => void
   onAddParticipant?: (userName: string) => void
+  onRemoveParticipant?: (userName: string) => void
   globalSettings?: Record<string, string>
 }
 
@@ -161,16 +162,16 @@ export function AdminEventDetailSheet({
   onApply,
   onCancelApply,
   onAddParticipant,
+  onRemoveParticipant,
   globalSettings = {},
 }: Props) {
   const isApplied = useMemo(() => event.applicants.includes(currentVisitor), [event.applicants, currentVisitor])
-  // 신청은 모든 역할 가능 (admin 도 본인이 참가 의사 표할 수 있음).
-  // role 파라미터는 향후 다른 조건부 UI 용으로 유지.
-  void role
   const canApply = event.allowApplications
   const applicants = event.applicants ?? []
+  const canManageParticipants = role === 'admin' || role === 'developer' || role === 'leader'
   
   const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false)
+  const [isRemoveParticipantMode, setIsRemoveParticipantMode] = useState(false)
   const [participantSearchText, setParticipantSearchText] = useState('')
 
   const hideParticipants = globalSettings.hide_participants_from_users === 'true' && role === 'user'
@@ -187,6 +188,13 @@ export function AdminEventDetailSheet({
       },
     }))
     onClose()
+  }
+
+  const handleRemoveParticipant = (name: string) => {
+    if (!onRemoveParticipant) return
+    const ok = window.confirm(`${name}님을 이 일정에서 제외할까요?\n이미 팀이나 카드에 배정되어 있으면 배정에서도 제외됩니다.`)
+    if (!ok) return
+    onRemoveParticipant(name)
   }
 
   return (
@@ -465,26 +473,51 @@ export function AdminEventDetailSheet({
                 </>
               }
             />
-            {(role === 'admin' || role === 'leader') && (
-              <button
-                type="button"
-                onClick={() => setIsAddParticipantModalOpen(true)}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: 99,
-                  border: '1px solid var(--line-muted)',
-                  background: 'var(--surface)',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: 'var(--text)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4
-                }}
-              >
-                + 추가
-              </button>
+            {canManageParticipants && (onAddParticipant || onRemoveParticipant) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
+                {onAddParticipant && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddParticipantModalOpen(true)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 99,
+                      border: '1px solid var(--line-muted)',
+                      background: 'var(--surface)',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: 'var(--text)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    + 추가
+                  </button>
+                )}
+                {onRemoveParticipant && applicants.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsRemoveParticipantMode((v) => !v)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 99,
+                      border: '1px solid var(--line-muted)',
+                      background: isRemoveParticipantMode ? 'var(--danger-50, #FEF2F2)' : 'var(--surface)',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: isRemoveParticipantMode ? 'var(--status-danger)' : 'var(--text)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    {isRemoveParticipantMode ? '제외 닫기' : '- 제외'}
+                  </button>
+                )}
+              </div>
             )}
           </div>
           <div
@@ -504,7 +537,7 @@ export function AdminEventDetailSheet({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
-                  padding: '5px 12px 5px 5px',
+                  padding: isRemoveParticipantMode ? '5px 6px 5px 5px' : '5px 12px 5px 5px',
                   background: 'var(--surface)',
                   border: '1px solid var(--line)',
                   borderRadius: 99,
@@ -513,6 +546,26 @@ export function AdminEventDetailSheet({
               >
                 <Avatar name={name} size={22} />
                 <span style={{ fontSize: 13, fontWeight: 600 }}>{name}</span>
+                {isRemoveParticipantMode && onRemoveParticipant && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveParticipant(name)}
+                    style={{
+                      height: 22,
+                      minHeight: 22,
+                      padding: '0 8px',
+                      borderRadius: 99,
+                      border: 'none',
+                      background: 'var(--danger-50, #FEF2F2)',
+                      color: 'var(--status-danger)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    제외
+                  </button>
+                )}
               </span>
             ))}
             {/* 본인이 신청 안 했고 신청 가능한 일정이면 "+ 추가" 점선 칩 */}

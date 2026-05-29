@@ -34,9 +34,10 @@ function buildEventPayload(input: CalendarEventInput): Record<string, unknown> {
 
 export function makeCalendarMutations(deps: {
   fetchAll: () => Promise<void>
+  refetchAfterParticipantRemoval?: () => Promise<void>
   calendarEvents: CalendarEvent[]
 }) {
-  const { fetchAll, calendarEvents } = deps
+  const { fetchAll, refetchAfterParticipantRemoval, calendarEvents } = deps
 
   // ─── 일정 CRUD ───────────────────────────────────────────────
   const createCalendarEvent = async (input: { date: string } & CalendarEventInput) => {
@@ -220,6 +221,16 @@ export function makeCalendarMutations(deps: {
       return
     }
 
+    const sessionResult = await supabase.from('service_sessions')
+      .delete()
+      .eq('calendar_event_id', eventId)
+      .eq('user_name', userName)
+      .eq('source', 'assigned')
+    if (sessionResult.error) {
+      reportMutationError('참가자의 자동 봉사 세션을 정리하지 못했습니다.', sessionResult.error)
+      return
+    }
+
     const participantResult = await supabase.from('event_participants')
       .delete()
       .eq('event_id', eventId)
@@ -235,7 +246,7 @@ export function makeCalendarMutations(deps: {
       targetType: 'event_participant',
       details: { user_name: userName, source: 'admin_remove' },
     })
-    await fetchAll()
+    await (refetchAfterParticipantRemoval ?? fetchAll)()
     showToast(`${userName}님을 참가자와 배정에서 제외했습니다`)
   }
 

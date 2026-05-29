@@ -666,6 +666,7 @@ export function DesktopCalendar({
 
                 const canEdit = role === 'admin' || role === 'developer' || role === 'leader'
                 const canManage = role === 'admin' || role === 'developer'
+                const canManageParticipants = canEdit
 
                 const previewApplicants = event.applicants.slice(0, 7)
                 const overflow = event.applicants.length - previewApplicants.length
@@ -679,6 +680,7 @@ export function DesktopCalendar({
                     globalSettings={globalSettings}
                     canEdit={canEdit}
                     canManage={canManage}
+                    canManageParticipants={canManageParticipants}
                     canAccessChat={canAccessChat}
                     isApplied={isApplied}
                     previewApplicants={previewApplicants}
@@ -821,6 +823,7 @@ function EventDetailCard({
   globalSettings,
   canEdit,
   canManage,
+  canManageParticipants,
   canAccessChat,
   isApplied,
   previewApplicants,
@@ -847,6 +850,7 @@ function EventDetailCard({
   globalSettings: Record<string, string>
   canEdit: boolean
   canManage: boolean
+  canManageParticipants: boolean
   canAccessChat: boolean
   isApplied: boolean
   previewApplicants: string[]
@@ -868,6 +872,7 @@ function EventDetailCard({
   setAddParticipantQuery: (q: string) => void
 }) {
   const [dotsOpen, setDotsOpen] = useState(false)
+  const [isParticipantRemoveMode, setIsParticipantRemoveMode] = useState(false)
 
   return (
     <article className="detail-card" id={`event-card-${event.id}`}>
@@ -971,57 +976,77 @@ function EventDetailCard({
         <div className="event-applicants-section">
           <div className="cal-section-head">
             <h3>신청자 <span style={{ fontWeight: 500, color: 'var(--gray-400)', fontSize: 12, marginLeft: 4 }}>{event.applicants.length}</span></h3>
-            {(role === 'leader' || role === 'admin' || role === 'developer') && onAddParticipant && (
-              <div className="cal-add-participant-wrap" ref={addParticipantEventId === event.id ? addParticipantRef : undefined}>
-                <button
-                  className="cal-add-participant-chip-btn"
-                  type="button"
-                  onClick={() => {
-                    if (addParticipantEventId === event.id) {
-                      setAddParticipantEventId(null)
-                    } else {
-                      setAddParticipantEventId(event.id)
-                      setAddParticipantQuery('')
-                    }
-                  }}
-                >
-                  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" aria-hidden>
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  추가
-                </button>
-                {addParticipantEventId === event.id && (
-                  <div className="cal-add-participant-dropdown">
-                    <input
-                      className="cal-add-participant-input"
-                      autoFocus
-                      placeholder="이름 검색..."
-                      value={addParticipantQuery}
-                      onChange={(e) => setAddParticipantQuery(e.target.value)}
-                    />
-                    <div className="cal-add-participant-list">
-                      {allUserNames
-                        .filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery))
-                        .map((name) => (
-                          <button
-                            key={name}
-                            type="button"
-                            className="cal-add-participant-item"
-                            onClick={() => {
-                              onAddParticipant(event.id, name)
-                              setAddParticipantEventId(null)
-                            }}
-                          >
-                            {name}
-                          </button>
-                        ))}
-                      {allUserNames.filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery)).length === 0 && (
-                        <div style={{ padding: '10px', fontSize: 12, color: 'var(--gray-400)', textAlign: 'center' }}>
-                          검색 결과가 없습니다
+            {(canManageParticipants || onAddParticipant) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {(role === 'leader' || role === 'admin' || role === 'developer') && onAddParticipant && (
+                  <div className="cal-add-participant-wrap" ref={addParticipantEventId === event.id ? addParticipantRef : undefined}>
+                    <button
+                      className="cal-add-participant-chip-btn"
+                      type="button"
+                      onClick={() => {
+                        if (addParticipantEventId === event.id) {
+                          setAddParticipantEventId(null)
+                        } else {
+                          setAddParticipantEventId(event.id)
+                          setAddParticipantQuery('')
+                        }
+                      }}
+                    >
+                      <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" aria-hidden>
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      추가
+                    </button>
+                    {addParticipantEventId === event.id && (
+                      <div className="cal-add-participant-dropdown">
+                        <input
+                          className="cal-add-participant-input"
+                          autoFocus
+                          placeholder="이름 검색..."
+                          value={addParticipantQuery}
+                          onChange={(e) => setAddParticipantQuery(e.target.value)}
+                        />
+                        <div className="cal-add-participant-list">
+                          {allUserNames
+                            .filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery))
+                            .map((name) => (
+                              <button
+                                key={name}
+                                type="button"
+                                className="cal-add-participant-item"
+                                onClick={() => {
+                                  onAddParticipant(event.id, name)
+                                  setAddParticipantEventId(null)
+                                }}
+                              >
+                                {name}
+                              </button>
+                            ))}
+                          {allUserNames.filter((n) => !event.applicants.includes(n) && n.includes(addParticipantQuery)).length === 0 && (
+                            <div style={{ padding: '10px', fontSize: 12, color: 'var(--gray-400)', textAlign: 'center' }}>
+                              검색 결과가 없습니다
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {canManageParticipants && event.applicants.length > 0 && (
+                  <div className="cal-add-participant-wrap">
+                    <button
+                      className="cal-add-participant-chip-btn"
+                      type="button"
+                      onClick={() => setIsParticipantRemoveMode((v) => !v)}
+                      style={isParticipantRemoveMode ? {
+                        color: 'var(--danger-600)',
+                        background: 'var(--danger-50)',
+                        borderColor: 'var(--danger-100)',
+                      } : undefined}
+                    >
+                      {isParticipantRemoveMode ? '제외 닫기' : '- 제외'}
+                    </button>
                   </div>
                 )}
               </div>
@@ -1032,8 +1057,19 @@ function EventDetailCard({
             <span className="event-applicant-chip" key={name}>
               <span className={`event-applicant-avatar${event.assigned.includes(name) ? ' assigned' : ''}`}>{name.slice(0, 1)}</span>
               <span className="event-applicant-name">{name}</span>
-              {canManage && (
-                <button className="event-applicants-remove-btn" type="button" onClick={() => onRemoveParticipant(event.id, name)}>×</button>
+              {canManageParticipants && isParticipantRemoveMode && (
+                <button
+                  className="event-applicants-remove-btn"
+                  type="button"
+                  aria-label={`${name} 참가자 제외`}
+                  onClick={() => {
+                    if (window.confirm(`${name}님을 이 일정에서 제외할까요?\n이미 팀이나 카드에 배정되어 있으면 배정에서도 제외됩니다.`)) {
+                      onRemoveParticipant(event.id, name)
+                    }
+                  }}
+                >
+                  ×
+                </button>
               )}
             </span>
           ))}

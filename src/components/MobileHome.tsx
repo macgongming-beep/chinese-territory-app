@@ -237,6 +237,7 @@ export function MobileHome({
   onFetchMyLoginLogs,
   onApplyToEvent,
   onAddParticipantToEvent: _onAddParticipantToEvent,
+  onRemoveParticipantFromEvent: _onRemoveParticipantFromEvent,
   onToggleUser: _onToggleUser,
   onEndServiceSession,
   onAssignCardToEventParticipant: _onAssignCardToEventParticipant,
@@ -326,6 +327,7 @@ export function MobileHome({
   onFetchMyLoginLogs: (limit?: number) => Promise<LoginLogRecord[]>
   onApplyToEvent: (eventId: number) => void
   onAddParticipantToEvent?: (eventId: number, userName: string) => void
+  onRemoveParticipantFromEvent?: (eventId: number, userName: string) => void
   onToggleUser: (cardId: number, userName: string) => void
   onEndServiceSession: (sessionId: number) => void
   onAssignCardToEventParticipant: (eventId: number, userName: string, cardId: number | null) => void
@@ -825,6 +827,7 @@ export function MobileHome({
                   onUpdateEventSeries={role === 'user' ? undefined : onUpdateCalendarEventSeries}
                   onApplyToEvent={onApplyToEvent}
                   onAddParticipantToEvent={_onAddParticipantToEvent}
+                  onRemoveParticipantFromEvent={_onRemoveParticipantFromEvent}
                   specialPeriods={specialPeriods}
                   globalSettings={globalSettings}
                 />
