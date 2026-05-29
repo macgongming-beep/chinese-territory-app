@@ -46,7 +46,7 @@ export function makeCalendarMutations(deps: {
       reportMutationError('일정을 등록하지 못했습니다.', result.error)
       return
     }
-    await createSystemChatMessage(result.data?.id, '채팅방이 생성되었습니다.')
+    // 시스템 채팅 메시지 ("채팅방이 생성되었습니다") 제거 — 불필요 알림 줄이기
     await fetchAll()
     showToast('일정이 등록됐습니다')
   }
@@ -61,7 +61,7 @@ export function makeCalendarMutations(deps: {
       reportMutationError('반복 일정을 등록하지 못했습니다.', result.error)
       return
     }
-    await Promise.all((result.data ?? []).map((row) => createSystemChatMessage(row.id, '채팅방이 생성되었습니다.')))
+    // 시스템 채팅 메시지 ("채팅방이 생성되었습니다") 제거 — 불필요 알림 줄이기
     await fetchAll()
     showToast(`${dates.length}개 일정이 등록됐습니다`)
   }
@@ -162,7 +162,7 @@ export function makeCalendarMutations(deps: {
         reportMutationError('봉사 신청을 저장하지 못했습니다.', result.error)
         return
       }
-      await createSystemChatMessage(eventId, `${currentVisitor}님이 합류했습니다.`)
+      // 시스템 채팅 메시지 ("합류했습니다") 제거 — 불필요 알림 줄이기
       await logServiceAction({
         eventId,
         action: 'joined',
@@ -184,10 +184,51 @@ export function makeCalendarMutations(deps: {
   }
 
   const removeParticipantFromEvent = async (eventId: number, userName: string) => {
-    await supabase.from('event_participants')
+    const multiCardResult = await supabase.from('event_card_assignment_cards')
       .delete()
       .eq('event_id', eventId)
       .eq('user_name', userName)
+    if (multiCardResult.error) {
+      reportMutationError('참가자의 추가 카드 배정을 정리하지 못했습니다.', multiCardResult.error)
+      return
+    }
+
+    const cardAssignmentResult = await supabase.from('event_card_assignments')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('user_name', userName)
+    if (cardAssignmentResult.error) {
+      reportMutationError('참가자의 카드 배정을 정리하지 못했습니다.', cardAssignmentResult.error)
+      return
+    }
+
+    const informalResult = await supabase.from('event_informal_assignments')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('user_name', userName)
+    if (informalResult.error) {
+      reportMutationError('참가자의 비공식 배정을 정리하지 못했습니다.', informalResult.error)
+      return
+    }
+
+    const restaurantResult = await supabase.from('event_restaurant_assignments')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('user_name', userName)
+    if (restaurantResult.error) {
+      reportMutationError('참가자의 식당 배정을 정리하지 못했습니다.', restaurantResult.error)
+      return
+    }
+
+    const participantResult = await supabase.from('event_participants')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('user_name', userName)
+    if (participantResult.error) {
+      reportMutationError('참가자를 제외하지 못했습니다.', participantResult.error)
+      return
+    }
+
     await logServiceAction({
       eventId,
       action: 'left',
@@ -195,6 +236,7 @@ export function makeCalendarMutations(deps: {
       details: { user_name: userName, source: 'admin_remove' },
     })
     await fetchAll()
+    showToast(`${userName}님을 참가자와 배정에서 제외했습니다`)
   }
 
   const addParticipantToEvent = async (eventId: number, userName: string) => {
@@ -209,7 +251,7 @@ export function makeCalendarMutations(deps: {
       reportMutationError('참가자를 추가하지 못했습니다.', result.error)
       return
     }
-    await createSystemChatMessage(eventId, `${userName}님이 합류했습니다.`)
+    // 시스템 채팅 메시지 ("합류했습니다") 제거 — 불필요 알림 줄이기
     await logServiceAction({
       eventId,
       action: 'joined',

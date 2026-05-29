@@ -1,6 +1,5 @@
 import type { Building, Role, ServiceSession, ServiceSessionStatus, TimeSlot } from '../../types'
 import { supabase, showToast, reportMutationError, getLocalDateString, getCurrentVisitor } from './shared'
-import { createSystemChatMessage } from './chatSystem'
 import { logServiceAction } from './serviceLog'
 
 export function makeServiceSessionMutations(deps: {
@@ -121,7 +120,7 @@ export function makeServiceSessionMutations(deps: {
       return null
     }
 
-    await createSystemChatMessage(input.calendarEventId, `${visitor}님이 ${input.timeSlot} 봉사를 시작했습니다.`)
+    // 시스템 채팅 메시지 ("봉사를 시작했습니다") 제거 — 불필요 알림 줄이기
 
     // 봉사 로그 기록
     const newSessionId = result.data?.id ?? existingId ?? null
@@ -154,7 +153,7 @@ export function makeServiceSessionMutations(deps: {
       return
     }
 
-    await createSystemChatMessage(targetSession?.calendarEventId, `${targetSession?.userName ?? '사용자'}님이 봉사를 종료했습니다.`)
+    // 시스템 채팅 메시지 ("봉사를 종료했습니다") 제거 — 불필요 알림 줄이기
 
     // 봉사 로그 기록
     await logServiceAction({
