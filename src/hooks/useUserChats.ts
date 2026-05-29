@@ -315,6 +315,25 @@ export function useUserChats(
     )
   }, [])
 
+  // 모든 채팅방 읽음 처리 (활성 + 잠긴 것 모두)
+  const markAllChatsRead = useCallback(async () => {
+    const token = getAuthToken()
+    if (!token) return
+    const eventIds = chats.map((c) => c.eventId)
+    if (eventIds.length === 0) return
+
+    // 낙관적 즉시 반영
+    setChats((prev) => prev.map((c) => ({ ...c, unreadCount: 0 })))
+
+    const { error } = await supabase.rpc('mark_all_chats_read', {
+      p_token: token,
+      p_event_ids: eventIds,
+    })
+    if (error) {
+      console.warn('[user_chats] mark_all_chats_read failed:', error)
+    }
+  }, [chats])
+
   return {
     chats,
     activeChats,
@@ -323,5 +342,6 @@ export function useUserChats(
     loading,
     refetch: fetchAll,
     markChatReadLocally,
+    markAllChatsRead,
   }
 }
