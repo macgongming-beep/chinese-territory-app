@@ -170,7 +170,7 @@ export function MobileProfileSettings({
         </button>
       </section>
 
-      {(user.role === 'user' || user.role === 'leader') && (
+      {(
         <section className="mobile-profile-card">
           <h2>기능 설정</h2>
           <div className="mobile-feature-toggle-row">
