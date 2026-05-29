@@ -179,6 +179,7 @@ export function DesktopMyService({
     getUserReturnVisits(returnVisits, currentVisitor),
     [currentVisitor, returnVisits],
   )
+  const showReturnVisits = localStorage.getItem('feat_returnVisit') === '1'
 
   const regularVisitPreview = myReturnVisits.slice(0, 6)
   const hasMoreRegularVisits = myReturnVisits.length > regularVisitPreview.length
@@ -300,7 +301,7 @@ export function DesktopMyService({
             )}
           </section>
 
-          <section className="desk-card dms-section">
+          {showReturnVisits && <section className="desk-card dms-section">
             <div className="desk-card__head">
               <h2 className="desk-card__title"><span className="desk-card__title-dot" />정기 방문</h2>
               <span className="dms-count-pill">{myReturnVisits.length}건</span>
@@ -332,7 +333,7 @@ export function DesktopMyService({
                 {hasMoreRegularVisits && <p className="dms-more-note">외 {myReturnVisits.length - regularVisitPreview.length}건 더 있습니다.</p>}
               </div>
             )}
-          </section>
+          </section>}
         </aside>
       </div>
 

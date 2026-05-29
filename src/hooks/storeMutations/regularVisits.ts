@@ -7,24 +7,11 @@ export function makeRegularVisitMutations(deps: {
   cards: TerritoryCard[]
   returnVisits: ReturnVisit[]
 }) {
-  const { fetchAll, buildings, cards, returnVisits } = deps
+  const { fetchAll, buildings, returnVisits } = deps
 
+  // 표시 이름: 건물명 + 호수 (이전에는 카드에서 동 이름을 추출했는데 불필요하게 앞에 붙음)
   const getReturnVisitDisplayName = (building: Building, unitNumber: string) => {
-    const card = cards.find((c) => c.id === building.cardId)
-    const region = (card?.region as string) ?? ''
-    const cardName = card?.name ?? ''
-    let nameWithoutRegion = cardName
-    for (const r of ['처인구', '기흥구', '수지구', '영통구', '화성시']) {
-      if (cardName.startsWith(r)) {
-        nameWithoutRegion = cardName.slice(r.length).trim()
-        break
-      }
-    }
-    if (region && nameWithoutRegion === cardName && cardName.startsWith(region)) {
-      nameWithoutRegion = cardName.slice(region.length).trim()
-    }
-    const dong = nameWithoutRegion.split(' ')[0] || building.name
-    return `${dong} ${unitNumber}`
+    return `${building.name} ${unitNumber}`
   }
 
   const syncReturnVisitForUnit = async (building: Building, unitId: number, visitorName: string) => {

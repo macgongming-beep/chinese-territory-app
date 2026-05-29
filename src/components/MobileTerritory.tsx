@@ -107,7 +107,8 @@ export function MobileTerritory({
   const targetAssignmentEventId = Number(searchParams.get('assignmentEvent') ?? 0) || null
   const [filter, setFilter] = useState<'전체' | '미배정' | '내 카드'>('전체')
   const [showRegularDetail, setShowRegularDetail] = useState(false)
-  const [rvCollapsed, setRvCollapsed] = useState(false)
+  const [rvCollapsed, setRvCollapsed] = useState(true)  // 기본 접힘
+  const showReturnVisits = localStorage.getItem('feat_returnVisit') === '1'
   const [showRestaurantSheet, setShowRestaurantSheet] = useState(false)
 
   // ── 식당봉사 활성 세션 ────────────────────────────────────
@@ -840,11 +841,13 @@ export function MobileTerritory({
             </section>
           )}
 
+          {showReturnVisits && (
           <section className="mobile-territory-section mobile-regular-section mt-main-section" aria-label={t(language, 'territory.regularVisit')}>
             <div className="mt-main-section-head">
               <button className="mt-main-title-btn" onClick={() => setRvCollapsed((v) => !v)} type="button">
                 <h2>{t(language, 'territory.regularVisit')}</h2>
                 <span className="mt-main-count">{myReturnVisits.length}</span>
+                <span className="mt-main-collapse-icon" aria-hidden="true">{rvCollapsed ? '›' : '⌄'}</span>
               </button>
               <div className="rv-menu-wrap">
                 <button
@@ -1100,6 +1103,7 @@ export function MobileTerritory({
               </div>
             ))}
           </section>
+          )}
 
           {/* 지난 봉사 — 미니 캘린더 (활동 탭 맨 아래) */}
           {myPastAssignments.length > 0 && (
