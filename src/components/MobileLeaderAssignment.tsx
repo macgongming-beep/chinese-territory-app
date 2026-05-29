@@ -259,16 +259,15 @@ export function MobileLeaderAssignment({
 
   const cardBuildingStats = useMemo(() => {
     const stats = new Map<number, { total: number; house: number; shop: number }>()
+    // total은 card.buildings (이미 정확한 건물 수). house/shop은 buildings 배열에서 타입별 카운트.
     cards.forEach((card) => {
       stats.set(card.id, { total: card.buildings ?? 0, house: 0, shop: 0 })
     })
     buildings.forEach((building) => {
-      const current = stats.get(building.cardId) ?? { total: 0, house: 0, shop: 0 }
-      const total = current.total === 0 && !cards.some((card) => card.id === building.cardId)
-        ? 1
-        : current.total + (current.house + current.shop >= current.total ? 1 : 0)
+      const current = stats.get(building.cardId)
+      if (!current) return  // 알 수 없는 카드의 건물은 스킵
       stats.set(building.cardId, {
-        total,
+        total: current.total,  // total은 초기값 유지 (card.buildings)
         house: current.house + (building.type === '주택' ? 1 : 0),
         shop: current.shop + (building.type === '상가' ? 1 : 0),
       })
@@ -277,13 +276,12 @@ export function MobileLeaderAssignment({
   }, [buildings, cards])
 
   const getCardBuildingStats = (card: TerritoryCard) => {
-    const stats = cardBuildingStats.get(card.id)
-    if (!stats) return { total: card.buildings ?? 0, house: 0, shop: 0 }
-    const typedTotal = stats.house + stats.shop
+    const s = cardBuildingStats.get(card.id)
+    if (!s) return { total: card.buildings ?? 0, house: 0, shop: 0 }
     return {
-      total: typedTotal || stats.total || card.buildings || 0,
-      house: stats.house,
-      shop: stats.shop,
+      total: s.total,   // 전체 건물 수는 항상 card.buildings 기준
+      house: s.house,
+      shop: s.shop,
     }
   }
 
