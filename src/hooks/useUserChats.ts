@@ -47,12 +47,15 @@ function isLockedByEndedAt(latestEnded: number): boolean {
   return Date.now() - latestEnded > 7 * 24 * 60 * 60 * 1000
 }
 
-// 이벤트 날짜 기준 잠금: 일정 날짜가 7일 이상 지났으면 "지난 대화" 로
+// 이벤트 날짜 기준 잠금: 다음날 자정 이후 → "이전 대화" 섹션으로 이동
+// (메시지 읽기/쓰기는 DB 잠금 기준(7일)이 별도 관리 — 위치만 변경)
 function isLockedByEventDate(eventDate: string): boolean {
   if (!eventDate) return false
-  const eventTime = new Date(eventDate + 'T00:00:00').getTime()
-  if (!Number.isFinite(eventTime)) return false
-  return Date.now() - eventTime > 7 * 24 * 60 * 60 * 1000
+  // 이벤트 당일 자정 + 1일 = 다음날 00:00
+  const nextDayMidnight = new Date(eventDate + 'T00:00:00')
+  nextDayMidnight.setDate(nextDayMidnight.getDate() + 1)
+  if (!Number.isFinite(nextDayMidnight.getTime())) return false
+  return Date.now() >= nextDayMidnight.getTime()
 }
 
 export function useUserChats(
