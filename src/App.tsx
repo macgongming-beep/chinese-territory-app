@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Toast } from './components/Toast'
 import { PwaInstallBanner } from './components/PwaInstall'
 import { PullToRefresh } from './components/PullToRefresh'
@@ -51,6 +52,7 @@ function isRole(value: unknown): value is Role {
 }
 
 function App() {
+  const location = useLocation()
   const { user, login, signup, logout, changePin, updateMyProfile, loading: authLoading, allUsers, fetchMyLoginLogs } = useAuth()
   const actualRole: Role = user?.role ?? 'user'
   const [mobileViewMode, setMobileViewMode] = useState<Role>(actualRole)
@@ -269,7 +271,8 @@ function App() {
     <>
       <Toast />
       <PwaInstallBanner language={language} />
-      <PullToRefresh onRefresh={refetchAll} />
+      {/* 지도 화면에서는 바텀시트 드래그와 충돌하므로 비활성화 */}
+      {location.pathname !== '/map' && <PullToRefresh onRefresh={refetchAll} />}
       <Suspense
         fallback={
           <div className="app-loading">
