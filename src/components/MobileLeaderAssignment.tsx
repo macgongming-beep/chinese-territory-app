@@ -279,11 +279,24 @@ export function MobileLeaderAssignment({
     const s = cardBuildingStats.get(card.id)
     if (!s) return { total: card.buildings ?? 0, house: 0, shop: 0 }
     return {
-      total: s.total,   // 전체 건물 수는 항상 card.buildings 기준
+      total: s.total,
       house: s.house,
       shop: s.shop,
     }
   }
+
+  // 카드별 주택/상가 세대(units) 수 — card.houseUnits 필드가 없어서 직접 계산
+  const cardUnitStats = useMemo(() => {
+    const m = new Map<number, { house: number; shop: number }>()
+    buildings.forEach((building) => {
+      const prev = m.get(building.cardId) ?? { house: 0, shop: 0 }
+      const unitCount = building.units?.length ?? 0
+      if (building.type === '주택') prev.house += unitCount
+      else if (building.type === '상가') prev.shop += unitCount
+      m.set(building.cardId, prev)
+    })
+    return m
+  }, [buildings])
 
   const areaOptions = useMemo(
     () => Array.from(new Set(accessibleCards.map((card) => card.area))).sort((a, b) => a.localeCompare(b, 'ko')),
@@ -746,8 +759,9 @@ export function MobileLeaderAssignment({
                           {group.cards.map((card) => {
                             const selected = usedCardIds.includes(card.id)
                             const totalUnits = card.units ?? 0
-                            const houseCount = (card as { houseUnits?: number }).houseUnits ?? 0
-                            const shopCount = totalUnits - houseCount
+                            const unitStats = cardUnitStats.get(card.id) ?? { house: 0, shop: 0 }
+                            const houseCount = unitStats.house
+                            const shopCount = unitStats.shop
                             const state: '미사용' | '사용중' | '사용완료' =
                               card.progress >= 100 ? '사용완료' : card.progress > 0 ? '사용중' : '미사용'
                             return (
