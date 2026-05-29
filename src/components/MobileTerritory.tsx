@@ -1670,6 +1670,7 @@ export function MobileTerritory({
         language={language}
         translatePlaceNames={translatePlaceNames}
         buildings={buildings}
+        cards={cards}
         visitHistories={visitHistories}
         currentVisitor={currentVisitor}
         restaurantRequests={restaurantRequests}
