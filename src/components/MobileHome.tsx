@@ -413,6 +413,14 @@ export function MobileHome({
   )
   void todayCardsCollapsed; void setTodayCardsCollapsed
 
+  const [returnVisitEnabled, setReturnVisitEnabled] = useState(
+    () => window.localStorage.getItem('feat_returnVisit') === '1'
+  )
+  const handleToggleReturnVisit = (enabled: boolean) => {
+    setReturnVisitEnabled(enabled)
+    window.localStorage.setItem('feat_returnVisit', enabled ? '1' : '0')
+  }
+
   // A안 선택 날짜 (dot row 클릭으로 변경)
 
   const rawActiveTab = pathToTab[location.pathname] || '홈'
@@ -1261,6 +1269,31 @@ export function MobileHome({
                 </section>
 
                 
+                {/* [기능] 섹션 */}
+                <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>기능</div>
+                <section className="mobile-settings-menu" aria-label="기능 설정">
+                  <div className="mobile-settings-feature-row">
+                    <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                      </svg>
+                    </span>
+                    <span className="mobile-settings-row-text">
+                      <strong>정기방문 관리</strong>
+                      <small>재방문 대상을 따로 관리하는 기능</small>
+                    </span>
+                    <label className="mobile-feature-toggle-switch" style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={returnVisitEnabled}
+                        onChange={(e) => handleToggleReturnVisit(e.target.checked)}
+                      />
+                      <span />
+                    </label>
+                  </div>
+                </section>
+
                 {/* [소식 & 알림] 섹션 */}
                 <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>소식 & 알림</div>
                 <section className="mobile-settings-menu" aria-label="소식 및 알림 메뉴">

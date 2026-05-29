@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import type { Role } from '../types'
@@ -28,13 +28,6 @@ export function MobileProfileSettings({
   const [savingPin, setSavingPin] = useState(false)
   const [loginLogs, setLoginLogs] = useState<LoginLogRecord[]>([])
   const [loadingLoginLogs, setLoadingLoginLogs] = useState(false)
-  const [returnVisitEnabled, setReturnVisitEnabled] = useState(
-    () => localStorage.getItem('feat_returnVisit') === '1'
-  )
-  const toggleReturnVisit = useCallback((enabled: boolean) => {
-    setReturnVisitEnabled(enabled)
-    localStorage.setItem('feat_returnVisit', enabled ? '1' : '0')
-  }, [])
   const [loginLogsExpanded, setLoginLogsExpanded] = useState(false)
 
   useEffect(() => {
@@ -170,25 +163,7 @@ export function MobileProfileSettings({
         </button>
       </section>
 
-      {(
-        <section className="mobile-profile-card">
-          <h2>기능 설정</h2>
-          <div className="mobile-feature-toggle-row">
-            <div className="mobile-feature-toggle-info">
-              <strong>정기방문 관리</strong>
-              <span>재방문 대상을 따로 관리하는 기능입니다.</span>
-            </div>
-            <label className="mobile-feature-toggle-switch">
-              <input
-                type="checkbox"
-                checked={returnVisitEnabled}
-                onChange={(e) => toggleReturnVisit(e.target.checked)}
-              />
-              <span />
-            </label>
-          </div>
-        </section>
-      )}
+      {/* 기능 설정 토글은 설정 탭 메인에서 관리 */}
 
       <section className="mobile-profile-card mobile-profile-login-card">
         <div className="mobile-profile-login-head">

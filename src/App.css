@@ -2440,6 +2440,16 @@ button:focus-visible {
   border-bottom: 0;
 }
 
+/* 토글이 있는 설정 행 (button 대신 div) */
+.mobile-settings-feature-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+}
+
 .mobile-settings-icon {
   display: grid;
   flex: 0 0 auto;
