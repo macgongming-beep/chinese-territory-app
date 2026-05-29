@@ -5886,15 +5886,24 @@ button:focus-visible {
 }
 
 .sheet-handle {
-  width: 32px;
-  height: 4px;
-  margin: 8px auto 6px;
-  border-radius: 99px;
-  background: var(--line-2);
+  width: 100%;           /* 전체 폭으로 터치 영역 확장 */
+  height: 20px;          /* 터치 영역 충분히 확보 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  cursor: grab;
+}
+.sheet-handle::after {   /* 시각적 핸들 바는 가상요소로 */
+  content: '';
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--line-2);
 }
 
 .mobile-bottom-sheet.dragging .sheet-handle {
@@ -6183,12 +6192,13 @@ button:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 16px 8px;
+  padding: 4px 16px 12px;  /* 위 패딩 추가해서 탭 영역 확보 */
   border-bottom: 1px solid var(--line-muted);
   margin-bottom: 2px;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  cursor: pointer;           /* 클릭 가능 힌트 */
 }
 
 .mobile-sheet-summary span {

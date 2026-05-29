@@ -269,7 +269,7 @@ export function MobileMap({
   const moveSheetDrag = (clientY: number) => {
     if (!isDragging) return
     const deltaY = dragStartY.current - clientY
-    if (Math.abs(deltaY) > 6) dragMoved.current = true
+    if (Math.abs(deltaY) > 10) dragMoved.current = true  // 10px 이상 움직여야 드래그로 인정
     const newHeight = Math.max(MIN_HEIGHT, Math.min(FULL_HEIGHT, dragStartHeight.current + deltaY))
     setSheetHeight(newHeight)
   }
@@ -295,18 +295,22 @@ export function MobileMap({
   }
 
   const toggleSheetSnap = () => {
-    setSheetHeight((height) => (height > MIN_HEIGHT + 30 ? MIN_HEIGHT : HALF_HEIGHT))
+    setSheetHeight((height) => (height > MIN_HEIGHT + 40 ? MIN_HEIGHT : HALF_HEIGHT))
   }
 
   const handleSheetHandleClick = () => {
-    if (dragMoved.current) return
-    const now = Date.now()
-    if (now - lastSheetTapAt.current < 320) {
-      toggleSheetSnap()
-      lastSheetTapAt.current = 0
+    if (dragMoved.current) {
+      dragMoved.current = false
       return
     }
-    lastSheetTapAt.current = now
+    const now = Date.now()
+    const elapsed = now - lastSheetTapAt.current
+    if (elapsed < 400 && elapsed > 50) {  // 50~400ms 사이 두 번 탭 = 더블탭
+      toggleSheetSnap()
+      lastSheetTapAt.current = 0
+    } else {
+      lastSheetTapAt.current = now
+    }
   }
 
   // 카드(구역) 선택 변경 시 바텀 시트 자동 최소화
@@ -1152,7 +1156,7 @@ export function MobileMap({
             className={`mobile-bottom-sheet${isDragging ? ' dragging' : ''}`}
             style={{
               height: `${sheetHeight}px`,
-              transition: isDragging ? 'none' : 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+              transition: isDragging ? 'none' : 'height 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
             }}
           >
             <div
