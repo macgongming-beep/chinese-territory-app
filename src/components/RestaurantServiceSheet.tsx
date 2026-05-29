@@ -7,7 +7,7 @@
  *  3. 없으면 → 추가 신청 (이름+주소)
  */
 import { useMemo, useState } from 'react'
-import type { Building, RestaurantRequest, VisitHistory } from '../types'
+import type { Building, RestaurantRequest, TerritoryCard, Unit, VisitHistory } from '../types'
 import { normalizeCardSearch } from '../utils/cardSearch'
 import { t, translateKoreanAddress, type AppLanguage } from '../i18n'
 
@@ -60,16 +60,6 @@ function ClockIcon() {
 }
 
 // ── 유틸 ─────────────────────────────────────────────────────
-const KNOWN_DISTRICTS = ['처인구', '기흥구', '수지구', '영통구', '화성시']
-
-function extractDistrict(address: string): string {
-  for (const d of KNOWN_DISTRICTS) {
-    if (address.includes(d)) return d
-  }
-  const match = address.match(/[가-힣]+[구시군]/)
-  return match ? match[0] : '기타'
-}
-
 function fmtVisitDate(iso: string): string {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const diff = Math.round((today.getTime() - new Date(iso.slice(0, 10)).getTime()) / 86400000)
@@ -80,10 +70,25 @@ function fmtVisitDate(iso: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
+type RestaurantRow = {
+  building: Building
+  unit: Unit | null
+  key: string
+}
+
+function getRestaurantName(row: RestaurantRow): string {
+  return row.unit?.number || row.building.name || row.building.address
+}
+
+function getRestaurantSessionUnit(row: RestaurantRow): Unit | null {
+  return row.unit ?? row.building.units[0] ?? null
+}
+
 // ── Props ─────────────────────────────────────────────────────
 type Props = {
   role?: string
   buildings: Building[]
+  cards: TerritoryCard[]
   visitHistories: VisitHistory[]
   currentVisitor: string
   restaurantRequests?: RestaurantRequest[]
@@ -97,8 +102,9 @@ type Props = {
 type View = 'search' | 'preview' | 'preview-pending' | 'add-request'
 
 export function RestaurantServiceSheet({
-  role,
+  role: _role,
   buildings,
+  cards,
   visitHistories,
   currentVisitor,
   restaurantRequests = [],
@@ -110,7 +116,7 @@ export function RestaurantServiceSheet({
 }: Props) {
   const [view, setView] = useState<View>('search')
   const [search, setSearch] = useState('')
-  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
+  const [selectedRestaurant, setSelectedRestaurant] = useState<RestaurantRow | null>(null)
   const [selectedRequest, setSelectedRequest] = useState<RestaurantRequest | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -130,8 +136,27 @@ export function RestaurantServiceSheet({
   // 검색 중이면 모든 그룹 자동 펼침
   const isGroupOpen = (district: string) => search.trim() ? true : openDistricts.has(district)
 
-  // 식당 목록
-  const restaurants = useMemo(() => buildings.filter((b) => b.isRestaurant), [buildings])
+  const cardById = useMemo(
+    () => new Map(cards.map((card) => [card.id, card])),
+    [cards],
+  )
+
+  // 식당 목록: 구역-식당 탭과 동일하게 중국인 포인트 단위로 표시
+  const restaurants = useMemo<RestaurantRow[]>(() => {
+    const rows: RestaurantRow[] = []
+    for (const building of buildings) {
+      if (building.type !== '상가' || !building.isRestaurant) continue
+      const chineseUnits = building.units.filter((unit) => unit.isChinese)
+      if (chineseUnits.length === 0) {
+        rows.push({ building, unit: null, key: `${building.id}-none` })
+      } else {
+        for (const unit of chineseUnits) {
+          rows.push({ building, unit, key: `${building.id}-${unit.id}` })
+        }
+      }
+    }
+    return rows
+  }, [buildings])
 
   // 내가 신청한 대기 중 항목
   const myPendingRequests = useMemo(
@@ -143,35 +168,43 @@ export function RestaurantServiceSheet({
   const filtered = useMemo(() => {
     if (!search.trim()) return restaurants
     const q = normalizeCardSearch(search)
-    return restaurants.filter(
-      (b) => normalizeCardSearch(b.name).includes(q) || normalizeCardSearch(b.address).includes(q),
+    return restaurants.filter((row) =>
+      normalizeCardSearch(`${getRestaurantName(row)}${row.building.address}`).includes(q),
     )
   }, [restaurants, search])
 
-  // 지역별 그룹
+  // 지역별 그룹: 주소 추출이 아니라 카드의 구/시 기준으로 정렬
   const grouped = useMemo(() => {
-    const map = new Map<string, Building[]>()
-    for (const b of filtered) {
-      const d = extractDistrict(b.address)
-      if (!map.has(d)) map.set(d, [])
-      map.get(d)!.push(b)
+    const map = new Map<string, RestaurantRow[]>()
+    for (const row of filtered) {
+      const card = cardById.get(row.building.cardId)
+      const region = (card?.region as string) || '기타'
+      if (!map.has(region)) map.set(region, [])
+      map.get(region)!.push(row)
     }
-    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, 'ko'))
-  }, [filtered])
+    return Array.from(map.entries())
+      .map(([region, rows]) => [
+        region,
+        rows.slice().sort((a, b) => getRestaurantName(a).localeCompare(getRestaurantName(b), 'ko')),
+      ] as const)
+      .sort(([a], [b]) => a.localeCompare(b, 'ko'))
+  }, [filtered, cardById])
 
   // 선택된 식당의 방문이력
   const buildingHistories = useMemo(() => {
-    if (!selectedBuilding) return []
-    const unitIds = new Set(selectedBuilding.units.map((u) => u.id))
+    if (!selectedRestaurant) return []
+    const unitIds = selectedRestaurant.unit
+      ? new Set([selectedRestaurant.unit.id])
+      : new Set(selectedRestaurant.building.units.map((u) => u.id))
     return visitHistories
       .filter((h) => unitIds.has(h.unitId))
       .sort((a, b) => b.visitedAt.localeCompare(a.visitedAt))
       .slice(0, 8)
-  }, [selectedBuilding, visitHistories])
+  }, [selectedRestaurant, visitHistories])
 
   // ── 핸들러 ────────────────────────────────────────────────
-  const handleSelectBuilding = (b: Building) => {
-    setSelectedBuilding(b)
+  const handleSelectRestaurant = (row: RestaurantRow) => {
+    setSelectedRestaurant(row)
     setView('preview')
   }
 
@@ -181,10 +214,16 @@ export function RestaurantServiceSheet({
   }
 
   const handleStartBuildingSession = () => {
-    if (!selectedBuilding) return
-    const unit = selectedBuilding.units[0]
+    if (!selectedRestaurant) return
+    const unit = getRestaurantSessionUnit(selectedRestaurant)
     if (!unit) return
-    onStartSession({ kind: 'building', buildingId: selectedBuilding.id, unitId: unit.id, name: selectedBuilding.name || selectedBuilding.address, address: selectedBuilding.address })
+    onStartSession({
+      kind: 'building',
+      buildingId: selectedRestaurant.building.id,
+      unitId: unit.id,
+      name: getRestaurantName(selectedRestaurant),
+      address: selectedRestaurant.building.address,
+    })
     onClose()
   }
 
@@ -211,7 +250,7 @@ export function RestaurantServiceSheet({
 
   const handleBack = () => {
     setView('search')
-    setSelectedBuilding(null)
+    setSelectedRestaurant(null)
     setSelectedRequest(null)
   }
 
@@ -242,8 +281,8 @@ export function RestaurantServiceSheet({
           </div>
 
           <div className="restaurant-list-body">
-            {/* 내가 신청 대기 중인 항목 (관리자만 표시) */}
-            {role === 'admin' && !search.trim() && myPendingRequests.length > 0 && (
+            {/* 내가 신청 대기 중인 항목 — 본인 신청은 role 무관 표시 */}
+            {!search.trim() && myPendingRequests.length > 0 && (
               <div className="restaurant-pending-section">
                 <p className="restaurant-pending-label">
                   <ClockIcon /> {t(language, 'restaurant.myPending')}
@@ -271,13 +310,11 @@ export function RestaurantServiceSheet({
                 {search.trim() ? (
                   <>
                     <p>"{search}" 검색 결과가 없습니다</p>
-                    {role === 'admin' && (
-                      <button type="button" className="restaurant-add-request-btn" onClick={handleOpenAddRequest}>
-                        + 이 식당 추가 신청
-                      </button>
-                    )}
+                    <button type="button" className="restaurant-add-request-btn" onClick={handleOpenAddRequest}>
+                      + 이 식당 추가 신청
+                    </button>
                   </>
-                ) : (role === 'admin' && myPendingRequests.length > 0) ? null : (
+                ) : myPendingRequests.length > 0 ? null : (
                   <p>등록된 식당이 없습니다</p>
                 )}
               </div>
@@ -296,20 +333,24 @@ export function RestaurantServiceSheet({
                     </button>
                     {isGroupOpen(district) && (
                       <ul className="restaurant-group-list">
-                        {items.map((b) => {
-                          const unitIds = new Set(b.units.map((u) => u.id))
+                        {items.map((row) => {
+                          const b = row.building
+                          const restaurantName = getRestaurantName(row)
+                          const unitIds = row.unit
+                            ? new Set([row.unit.id])
+                            : new Set(b.units.map((u) => u.id))
                           const lastHistory = visitHistories
                             .filter((h) => unitIds.has(h.unitId))
                             .sort((a, c) => c.visitedAt.localeCompare(a.visitedAt))[0]
                           return (
-                            <li key={b.id}>
+                            <li key={row.key}>
                               <button
                                 type="button"
                                 className="restaurant-item"
-                                onClick={() => handleSelectBuilding(b)}
+                                onClick={() => handleSelectRestaurant(row)}
                               >
                                 <div className="restaurant-item-info">
-                                  <strong className="restaurant-item-name">{b.name}</strong>
+                                  <strong className="restaurant-item-name">{restaurantName}</strong>
                                   <span className="restaurant-item-address">{translateKoreanAddress(b.address, language, translatePlaceNames)}</span>
                                   {lastHistory && (
                                     <span className="restaurant-item-last">
@@ -327,7 +368,7 @@ export function RestaurantServiceSheet({
                     )}
                   </div>
                 ))}
-                {role === 'admin' && search.trim() && (
+                {search.trim() && (
                   <div className="restaurant-add-row">
                     <button type="button" className="restaurant-add-request-btn" onClick={handleOpenAddRequest}>
                       + "{search}" 식당 추가 신청
@@ -343,7 +384,9 @@ export function RestaurantServiceSheet({
   }
 
   // ── 렌더: 미리보기 (승인된 식당) ──────────────────────────
-  if (view === 'preview' && selectedBuilding) {
+  if (view === 'preview' && selectedRestaurant) {
+    const selectedBuilding = selectedRestaurant.building
+    const selectedRestaurantName = getRestaurantName(selectedRestaurant)
     return (
       <div className="mobile-sheet-backdrop" onClick={handleBack}>
         <section className="mobile-sheet restaurant-service-sheet" onClick={(e) => e.stopPropagation()}>
@@ -352,7 +395,7 @@ export function RestaurantServiceSheet({
             <button type="button" className="restaurant-back-btn" onClick={handleBack} aria-label="뒤로">
               <BackIcon />
             </button>
-            <h2>{selectedBuilding.name || selectedBuilding.address}</h2>
+            <h2>{selectedRestaurantName}</h2>
             <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
 
