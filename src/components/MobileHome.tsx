@@ -712,7 +712,7 @@ export function MobileHome({
 
                 {specialPeriods && specialPeriods.length > 0 && (
                   <div style={{ padding: '0 16px', marginTop: '12px', marginBottom: '4px' }}>
-                    <SpecialPeriodBanner specialPeriods={specialPeriods} variant="compact" onClick={() => navigate('/settings')} />
+                    <SpecialPeriodBanner specialPeriods={specialPeriods} variant="compact" />
                   </div>
                 )}
 

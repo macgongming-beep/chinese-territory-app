@@ -72,22 +72,24 @@ export function SpecialPeriodBanner({
         className="special-period-banner-compact"
         onClick={onClick}
         style={{
-          display: 'inline-flex',
+          display: 'flex',
           alignItems: 'center',
-          gap: '6px',
-          padding: '4px 10px',
+          gap: '8px',
+          padding: '8px 14px',
           background: `color-mix(in srgb, ${color} 10%, transparent)`,
           border: `1px solid color-mix(in srgb, ${color} 20%, transparent)`,
-          borderRadius: '9999px',
-          fontSize: '11px',
+          borderRadius: '12px',
+          fontSize: '13px',
           fontWeight: 600,
           color: color,
           cursor: onClick ? 'pointer' : 'default',
+          width: '100%',
+          boxSizing: 'border-box',
         }}
       >
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
         <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{active.label}</span>
-        <span style={{ flexShrink: 0, padding: '2px 6px', borderRadius: '10px', background: `color-mix(in srgb, ${color} 15%, transparent)`, color: color, fontSize: '10px', fontWeight: 700, marginLeft: 2 }}>
+        <span style={{ flexShrink: 0, marginLeft: 'auto', padding: '2px 8px', borderRadius: '8px', background: `color-mix(in srgb, ${color} 15%, transparent)`, color: color, fontSize: '12px', fontWeight: 700 }}>
           {dDayLabel}
         </span>
       </div>
