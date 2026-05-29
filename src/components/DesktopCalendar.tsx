@@ -1076,9 +1076,7 @@ function EventDetailCard({
           {overflow > 0 && (
             <span className="event-applicants-overflow">+{overflow}</span>
           )}
-          {event.allowApplications && !isApplied && (
-            <button className="event-applicants-add-chip" type="button" onClick={onApply}>+ 추가</button>
-          )}
+          {/* "+ 추가" 칩 제거 — 상단 신청하기 버튼과 동일 기능으로 중복 */}
           {event.applicants.length === 0 && !event.allowApplications && (
             <span style={{ fontSize: 12, color: 'var(--gray-400)', padding: '6px 2px' }}>신청자가 없습니다</span>
           )}

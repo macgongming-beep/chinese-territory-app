@@ -568,31 +568,7 @@ export function AdminEventDetailSheet({
                 )}
               </span>
             ))}
-            {/* 본인이 신청 안 했고 신청 가능한 일정이면 "+ 추가" 점선 칩 */}
-            {canApply && !isApplied && onApply && (
-              <button
-                type="button"
-                onClick={onApply}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  height: 32,
-                  minHeight: 32,
-                  padding: '0 12px',
-                  background: 'transparent',
-                  border: '1px dashed var(--line-2)',
-                  borderRadius: 99,
-                  color: 'var(--muted)',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-              >
-                {t(language ?? 'ko', 'calendar.addSelf')}
-              </button>
-            )}
+            {/* 점선 "+ 추가" 칩 제거 — 상단 "신청하기" 버튼과 동일 기능으로 중복 */}
             {applicants.length === 0 && !canApply && (
               <span style={{ fontSize: 13, color: 'var(--muted-2)', padding: '6px 4px', flexShrink: 0 }}>
                 {t(language ?? 'ko', 'calendar.noApplicants')}
