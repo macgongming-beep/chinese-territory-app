@@ -690,7 +690,7 @@ export function MobileHome({
             onSetRegularVisitor={onSetRegularVisitor}
             onOpenLocationSettings={() => navigate('/location-permission-settings')}
           />
-          {BottomNav}
+          {/* 지도는 풀스크린 — 하단 탭 없음 */}
         </>
       } />
       <Route path="/*" element={
