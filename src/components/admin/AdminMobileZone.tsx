@@ -332,10 +332,12 @@ export function AdminMobileZone({
   const goBack = () => {
     if (level === 'cards') {
       setLevel('dongs')
+      setSelectedDong('')  // 동 선택 해제해야 breadcrumb + 지도 범위가 처인구로 복귀
       setQuery('')
     } else if (level === 'dongs') {
       setLevel('regions')
       setSelectedRegion('')
+      setSelectedDong('')
       setQuery('')
     }
   }
