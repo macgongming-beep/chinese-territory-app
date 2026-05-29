@@ -10,7 +10,7 @@ const dictionary = {
   ko: {
     'nav.home': '홈',
     'nav.calendar': '캘린더',
-    'nav.myService': '활동',
+    'nav.myService': '나의 봉사',
     'nav.zone': '구역',
     'nav.map': '지도',
     'nav.assignment': '배정',
@@ -196,7 +196,7 @@ const dictionary = {
     'map.unknownCard': '카드 미지정',
     'map.servicing': '봉사 중',
     'map.exploring': '탐색 중',
-    'territory.title': '활동',
+    'territory.title': '나의 봉사',
     'territory.adminTitle': '구역 관리',
     'territory.todayService': '오늘의 봉사',
     'territory.assignedService': '배정된 봉사',
