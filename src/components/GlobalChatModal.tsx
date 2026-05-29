@@ -86,6 +86,7 @@ export function GlobalChatModal({
 }) {
   const lang = (language ?? 'ko') as AppLanguage
   const [localSelectedChat, setLocalSelectedChat] = useState<UserChat | null>(null)
+  const [pastExpanded, setPastExpanded] = useState(false)
   const { activeChats, lockedChats, loading, markAllChatsRead, totalUnread } = useUserChats(userId, userName, { realtime: false })
   const selectedChat = controlledSelectedChat ?? localSelectedChat
 
@@ -266,14 +267,31 @@ export function GlobalChatModal({
             </div>
           )}
 
-          {/* 종료 채팅 */}
+          {/* 이전 대화 — 기본 접힘 */}
           {!selectedChat && lockedChats.length > 0 && (
             <div>
-              <p style={{
-                margin: 0, padding: '12px 8px 6px', fontSize: 12, fontWeight: 600,
-                color: 'var(--muted)',
-              }}>{t(lang, 'header.chatPast')}</p>
-              {lockedChats.map((chat) => (
+              <button
+                onClick={() => setPastExpanded((v) => !v)}
+                type="button"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  width: '100%', padding: '12px 8px 6px',
+                  background: 'transparent', border: 'none',
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', flex: 1 }}>
+                  {t(lang, 'header.chatPast')} ({lockedChats.length})
+                </span>
+                <svg
+                  width={14} height={14} viewBox="0 0 24 24" fill="none"
+                  stroke="var(--muted)" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"
+                  style={{ transition: 'transform 0.2s', transform: pastExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+              {pastExpanded && lockedChats.map((chat) => (
                 <ChatRow key={chat.eventId} chat={chat} language={lang} onClick={handleClick} />
               ))}
             </div>

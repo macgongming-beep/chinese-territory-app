@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Building, CalendarEvent, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot } from '../types'
 import { getUserReturnVisits } from '../utils/returnVisits'
 
@@ -65,7 +65,7 @@ export function DesktopMyService({
   returnVisits = [],
   returnVisitLogs = [],
   onOpenMap,
-  onEndServiceSession,
+  onEndServiceSession: _onEndServiceSession,  // 종료 버튼 제거 — auto_close가 처리. 후방호환 유지.
   onAddReturnVisitLog,
 }: {
   buildings: Building[]
@@ -120,11 +120,40 @@ export function DesktopMyService({
   }, [calendarEvents, cards, currentVisitor, today])
 
   const currentSlot = getCurrentTimeSlot()
+  // 초기 펴기: 현재 시간대 일정 자동 오픈
   useEffect(() => {
     if (expandedEventIds.size > 0 || myTodayAssignments.length === 0) return
     const currentEvent = myTodayAssignments.find(({ event }) => getTimeSlotFromTime(event.time) === currentSlot)
     if (currentEvent) setExpandedEventIds(new Set([currentEvent.event.id]))
   }, [currentSlot, expandedEventIds.size, myTodayAssignments])
+
+  // 시간대 변경 시 자동 펴기·접기 (1분 인터벌)
+  const lastSlotRef = useRef<string>(getCurrentTimeSlot())
+  useEffect(() => {
+    const syncByTimeSlot = () => {
+      const slot = getCurrentTimeSlot()
+      if (slot === lastSlotRef.current) return
+      const prevSlot = lastSlotRef.current
+      lastSlotRef.current = slot
+      const newSlotEvent = myTodayAssignments.find(({ event }) => getTimeSlotFromTime(event.time) === slot)
+      const prevSlotEventIds = myTodayAssignments
+        .filter(({ event }) => getTimeSlotFromTime(event.time) === prevSlot)
+        .map(({ event }) => event.id)
+      setExpandedEventIds((prev) => {
+        const next = new Set(prev)
+        prevSlotEventIds.forEach((id) => next.delete(id))
+        if (newSlotEvent) next.add(newSlotEvent.event.id)
+        return next
+      })
+    }
+    const interval = window.setInterval(syncByTimeSlot, 60_000)
+    const onVisible = () => { if (!document.hidden) syncByTimeSlot() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [myTodayAssignments])
 
   const myTodaySessions = useMemo(
     () => serviceSessions
@@ -132,8 +161,6 @@ export function DesktopMyService({
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
     [currentVisitor, serviceSessions, today],
   )
-  const activeSession = myTodaySessions.find((session) => session.status === 'active' && !session.endedAt)
-  const activeSessionCard = activeSession?.primaryCardId ? cards.find((card) => card.id === activeSession.primaryCardId) : null
   const activeSessionCardIds = useMemo(
     () => new Set(myTodaySessions.filter((session) => session.status === 'active' && !session.endedAt && session.primaryCardId).map((session) => session.primaryCardId as number)),
     [myTodaySessions],
@@ -217,16 +244,22 @@ export function DesktopMyService({
                         <div className="dms-assigned-card-list">
                           {assignedCards.length === 0 ? (
                             <div className="dms-empty compact">배정된 카드가 없습니다.</div>
-                          ) : assignedCards.map((card) => (
-                            <div className="dms-assigned-card" key={card.id}>
-                              <div>
-                                <strong>{card.name}</strong>
-                                <span>{card.area} · {card.units}세대</span>
+                          ) : assignedCards.map((card) => {
+                            const isActive = activeSessionCardIds.has(card.id)
+                            return (
+                              <div className={`dms-assigned-card${isActive ? ' is-active' : ''}`} key={card.id}>
+                                <div>
+                                  <strong>
+                                    {card.name}
+                                    {isActive && <span className="dms-active-badge">봉사 중</span>}
+                                  </strong>
+                                  <span>{card.area} · {card.units}세대</span>
+                                </div>
+                                <em>{card.progress}%</em>
+                                <button onClick={() => onOpenMap(card.id)} type="button">지도</button>
                               </div>
-                              <em>{card.progress}%</em>
-                              <button onClick={() => onOpenMap(card.id)} type="button">지도</button>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                     </article>
@@ -239,19 +272,7 @@ export function DesktopMyService({
         </main>
 
         <aside className="dms-side">
-          {activeSession && (
-            <section className="desk-card dms-active-card">
-              <div>
-                <span>지금 봉사</span>
-                <strong>{activeSessionCard?.name ?? '카드 미지정'}</strong>
-                <p>{activeSession.timeSlot} · {activeSession.source === 'assigned' ? '배정 시작' : '직접 시작'}</p>
-              </div>
-              <div className="dms-active-actions">
-                {activeSession.primaryCardId && <button onClick={() => onOpenMap(activeSession.primaryCardId as number)} type="button">지도</button>}
-                <button onClick={() => onEndServiceSession(activeSession.id)} type="button">종료</button>
-              </div>
-            </section>
-          )}
+          {/* 활성 세션 카드 제거 — 자동 종료 + 오늘의 봉사 안 "봉사 중" 배지로 대체 */}
 
           <section className="desk-card dms-section">
             <div className="desk-card__head">

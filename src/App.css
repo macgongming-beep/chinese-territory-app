@@ -4248,6 +4248,22 @@ button:focus-visible {
   border-radius: var(--radius-md);
   background: var(--bg-card);
 }
+.dms-assigned-card.is-active {
+  border-color: rgba(220, 38, 38, 0.3);
+  background: rgba(220, 38, 38, 0.03);
+}
+.dms-active-badge {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 1px 7px;
+  background: #dc2626;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
 
 .dms-assigned-card strong,
 .dms-my-card-list strong,
