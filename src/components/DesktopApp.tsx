@@ -632,7 +632,7 @@ export function DesktopApp({
         <Route path="/zone" element={
           <div style={{ position: 'relative' }}>
             {showZoneMapView ? (
-              <DesktopMap
+              <DesktopMap language={language}
                 buildings={buildings}
                 boundaryEditRequest={boundaryEditRequest}
                 cardBoundaries={cardBoundaries}
@@ -717,7 +717,7 @@ export function DesktopApp({
           </div>
         } />
         <Route path="/map" element={
-          <DesktopMap
+          <DesktopMap language={language}
             buildings={mapBuildings}
             boundaryEditRequest={boundaryEditRequest}
             cardBoundaries={mapCardBoundaries}

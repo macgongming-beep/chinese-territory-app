@@ -752,7 +752,7 @@ export function MobileMap({
             <div className="mobile-map-title-copy">
               {navLevel === 'map' ? (
                 <>
-                  <h1>{selectedCardId ? (cards.find(c => c.id === selectedCardId)?.name ?? '구역 · 지도') : '구역 · 지도'}</h1>
+                  <h1>{selectedCardId ? (cards.find(c => c.id === selectedCardId)?.name ?? t(language, 'map.zoneMap')) : t(language, 'map.zoneMap')}</h1>
                   <span className="mm-stats-sub" role="tablist">
                     <button
                       type="button"
@@ -761,7 +761,7 @@ export function MobileMap({
                       className={`mm-stat-chip${buildingTypeFilter === '전체' ? ' is-active' : ''}`}
                       onClick={() => setBuildingTypeFilter('전체')}
                     >
-                      <span>전체</span><b className="tnum">{typeCounts.전체}</b>
+                      <span>{t(language, 'map.all')}</span><b className="tnum">{typeCounts.전체}</b>
                     </button>
                     <button
                       type="button"
@@ -770,7 +770,7 @@ export function MobileMap({
                       className={`mm-stat-chip${buildingTypeFilter === '주택' ? ' is-active' : ''}`}
                       onClick={() => setBuildingTypeFilter('주택')}
                     >
-                      <span>주택</span><b className="tnum">{typeCounts.주택}</b>
+                      <span>{t(language, 'map.house')}</span><b className="tnum">{typeCounts.주택}</b>
                     </button>
                     <button
                       type="button"
@@ -779,7 +779,7 @@ export function MobileMap({
                       className={`mm-stat-chip${buildingTypeFilter === '상가' ? ' is-active' : ''}`}
                       onClick={() => setBuildingTypeFilter('상가')}
                     >
-                      <span>상가</span><b className="tnum">{typeCounts.상가}</b>
+                      <span>{t(language, 'map.shop')}</span><b className="tnum">{typeCounts.상가}</b>
                     </button>
                   </span>
                 </>
@@ -953,7 +953,7 @@ export function MobileMap({
                 className={selectedArea === null ? 'active' : ''}
                 onClick={() => { setSelectedArea(null); setSelectedRegion(null); setSelectedCardId(null) }}
                 type="button"
-              >전체</button>
+              >{t(language, 'map.all')}</button>
               {areas.map((area) => (
                 <button
                   key={area}
@@ -1023,9 +1023,9 @@ export function MobileMap({
               onSelectAggregate={handleSelectAggregateMarker}
               onLocationPermissionBlocked={() => {
                 showToast(
-                  '위치 권한이 꺼져 있습니다. 설정에서 위치 권한을 허용하면 현재 위치를 볼 수 있습니다.',
+                  t(language, 'map.locationPermissionOff'),
                   'error',
-                  onOpenLocationSettings ? { label: '설정 보기', onClick: onOpenLocationSettings } : undefined,
+                  onOpenLocationSettings ? { label: t(language, 'map.viewSettings'), onClick: onOpenLocationSettings } : undefined,
                 )
               }}
               onSelectBuilding={(id) => {
@@ -1298,7 +1298,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                   onClick={() => {
                                     setBuildingMenuId(null)
                                     const dname = encodeURIComponent(building.name || building.address)
-                                    const sname = encodeURIComponent('내 위치')
+                                    const sname = encodeURIComponent(t(language, 'map.myLocation'))
                                     const openUrl = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
                                     const fallback = () => {
                                       const url = building.lat && building.lng
@@ -1369,10 +1369,10 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                   <span className="unit-chevron">›</span>
                                   <span className="unit-number-text">{unit.number}</span>
                                   {unit.isChinese && <span className="unit-chinese-badge">中</span>}
-                                  {unit.isForbidden && <span className="unit-forbidden-badge">방문금지</span>}
+                                  {unit.isForbidden && <span className="unit-forbidden-badge">{t(language, 'map.forbidden')}</span>}
                                   {unit.isRegularVisit && (
                                     <span className="unit-regular-badge">
-                                      정기방문{unit.regularVisitor ? ` · ${unit.regularVisitor}` : ''}
+                                      {t(language, 'map.regularVisit')}{unit.regularVisitor ? ` · ${unit.regularVisitor}` : ''}
                                     </span>
                                   )}
                                 </button>
@@ -1562,30 +1562,30 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
             <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>방문 기록 수정</h3>
 
             {/* 상태 */}
-            <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>상태</p>
+            <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{t(language, 'map.status')}</p>
             <select
               value={historyToEdit.result}
               onChange={e => setHistoryToEdit({ ...historyToEdit, result: e.target.value as any })}
               style={{ width: '100%', padding: '8px 10px', marginBottom: 12, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 13, boxSizing: 'border-box' }}
             >
-              <option value="미방문">미방문</option>
-              <option value="만남">만남</option>
-              <option value="부재">부재</option>
-              <option value="대상외">대상외</option>
+              <option value="미방문">{t(language, 'map.unvisited')}</option>
+              <option value="만남">{t(language, 'map.met')}</option>
+              <option value="부재">{t(language, 'map.absent')}</option>
+              <option value="대상외">{t(language, 'map.notTarget')}</option>
             </select>
 
             {/* 시간대 + 날짜 나란히 */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>시간대</p>
+                <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{t(language, 'map.timeSlot')}</p>
                 <select
                   value={historyToEdit.timeSlot}
                   onChange={e => setHistoryToEdit({ ...historyToEdit, timeSlot: e.target.value as any })}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 13, boxSizing: 'border-box' }}
                 >
-                  <option value="오전">오전</option>
-                  <option value="오후">오후</option>
-                  <option value="저녁">저녁</option>
+                  <option value="오전">{t(language, 'map.morning')}</option>
+                  <option value="오후">{t(language, 'map.afternoon')}</option>
+                  <option value="저녁">{t(language, 'map.evening')}</option>
                 </select>
               </div>
               <div style={{ flex: 1 }}>
@@ -1600,7 +1600,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
             </div>
 
             {/* 메모 */}
-            <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>메모</p>
+            <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{t(language, 'map.memoLabel')}</p>
             <textarea
               value={historyToEdit.memo || ''}
               onChange={e => setHistoryToEdit({ ...historyToEdit, memo: e.target.value })}
@@ -1629,7 +1629,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               <button
                 onClick={() => setHistoryToEdit(null)}
                 style={{ flex: 1, padding: '9px', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-              >취소</button>
+              >{t(language, 'map.cancel')}</button>
               <button
                 onClick={() => {
                   onUpdateVisitHistory(historyToEdit.id, historyToEdit.unitId, {
@@ -1642,7 +1642,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                   setHistoryToEdit(null)
                 }}
                 style={{ flex: 2, padding: '9px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-              >저장</button>
+              >{t(language, 'map.save')}</button>
             </div>
           </div>
         </div>
@@ -1676,7 +1676,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                   ? `${liveFullScreenUnit.building.name} ${liveFullScreenUnit.unit.number}`
                   : liveFullScreenUnit.unit.number}
                 {liveFullScreenUnit.unit.isChinese && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fef2f2', color: '#dc2626', fontWeight: 700 }}>中</span>}
-                {liveFullScreenUnit.unit.isForbidden && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}>방문금지</span>}
+                {liveFullScreenUnit.unit.isForbidden && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}>{t(language, 'map.forbidden')}</span>}
               </div>
               <div style={{ margin: '0 0 4px', fontSize: 12.5, fontWeight: 500, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {shortenAddress(liveFullScreenUnit.building.address)}
@@ -1706,7 +1706,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                         setEditingUnitNumber(true)
                       }}
                       style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--line)', cursor: 'pointer', fontSize: 13, color: 'var(--ink)', textAlign: 'left' }}
-                    >세대 수정</button>
+                    >{t(language, 'map.editUnit')}</button>
                     <button
                       type="button"
                       onClick={() => {
@@ -1717,7 +1717,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                         }
                       }}
                       style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#dc2626', textAlign: 'left' }}
-                    >세대 삭제</button>
+                    >{t(language, 'map.deleteUnit')}</button>
                   </div>
                 </>
               )}
@@ -1737,7 +1737,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                 type="button"
                 onClick={() => setEditingUnitNumber(false)}
                 style={{ padding: '7px 10px', border: '1px solid var(--line)', borderRadius: 7, background: 'var(--surface)', color: 'var(--muted)', fontSize: 12, cursor: 'pointer' }}
-              >취소</button>
+              >{t(language, 'map.cancel')}</button>
               <button
                 type="button"
                 onClick={() => {
@@ -1746,13 +1746,13 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                   setEditingUnitNumber(false)
                 }}
                 style={{ padding: '7px 12px', border: 'none', borderRadius: 7, background: 'var(--ink)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-              >저장</button>
+              >{t(language, 'map.save')}</button>
             </div>
           )}
 
           {/* 본문 */}
           <div style={{ flex: 1 }}>
-            <UnitDetailScreen
+            <UnitDetailScreen language={language}
               unit={liveFullScreenUnit.unit}
               building={liveFullScreenUnit.building}
               unitHistories={liveFullScreenUnit.unitHistories}
@@ -1781,6 +1781,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
 
 // ── 세대 상세 풀스크린 (신) ────────────────────────────────────
 function UnitDetailScreen({
+  language,
   unit,
   building,
   unitHistories,
@@ -1800,6 +1801,7 @@ function UnitDetailScreen({
   allUsers = [],
   onSetRegularVisitor,
 }: {
+  language: AppLanguage
   unit: Unit
   building: Building
   unitHistories: VisitHistory[]
@@ -1859,15 +1861,15 @@ function UnitDetailScreen({
         {/* 방문 이력 표 */}
         <div style={sectionStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <h3 style={sectionTitleStyle}>방문 이력</h3>
-            <span style={{ fontSize: 11, color: 'var(--muted)' }}>총 {unitHistories.length}건</span>
+            <h3 style={sectionTitleStyle}>{t(language, 'map.visitHistoryLabel')}</h3>
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>{t(language, 'map.total')} {unitHistories.length}{t(language, 'map.cases')}</span>
           </div>
           <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
             {/* Header */}
             <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(3, 1fr)', background: 'var(--bg)' }}>
               <div />
               {TIME_SLOTS.map(s => (
-                <div key={s} style={{ textAlign: 'center', padding: '7px 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{s}</div>
+                <div key={s} style={{ textAlign: 'center', padding: '7px 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{s === '오전' ? t(language, 'map.morning') : s === '오후' ? t(language, 'map.afternoon') : t(language, 'map.evening')}</div>
               ))}
             </div>
             {/* Rows */}
@@ -1877,7 +1879,7 @@ function UnitDetailScreen({
                 borderTop: '1px solid var(--line)',
                 background: 'var(--surface)',
               }}>
-                <div style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{row}</div>
+                <div style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{row === '평일' ? t(language, 'map.weekday') : t(language, 'map.weekend')}</div>
                 {TIME_SLOTS.map(slot => {
                   const cell = visitGrid[row][slot]
                   const c = resultColor(cell.lastResult)
@@ -1904,13 +1906,13 @@ function UnitDetailScreen({
         {/* 기록 */}
         {unitHistories.length > 0 && (
           <div style={sectionStyle}>
-            <h3 style={{ ...sectionTitleStyle, marginBottom: 8 }}>기록 {unitHistories.length}</h3>
+            <h3 style={{ ...sectionTitleStyle, marginBottom: 8 }}>{t(language, 'map.records')} {unitHistories.length}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {unitHistories.map(h => {
                 const c = resultColor(h.result)
                 const isMenuOpen = editingHistoryId === h.id
                 const isMemoOpen = inlineMemoHistoryId === h.id
-                const dayNames = ['일', '월', '화', '수', '목', '금', '토']
+                const dayNames = [t(language, 'map.sun'), t(language, 'map.mon'), t(language, 'map.tue'), t(language, 'map.wed'), t(language, 'map.thu'), t(language, 'map.fri'), t(language, 'map.sat')]
                 const dow = dayNames[new Date(h.visitedAt).getDay()]
                 const dateStr = `${h.visitedAt.slice(5).replace('-', '/')}(${dow})`
                 return (
@@ -1923,19 +1925,19 @@ function UnitDetailScreen({
                     {/* 메인 행 */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-                        <span style={{ fontWeight: 700, color: c, fontSize: 12, flexShrink: 0 }}>{h.result}</span>
+                        <span style={{ fontWeight: 700, color: c, fontSize: 12, flexShrink: 0 }}>{h.result === '만남' ? t(language, 'map.met') : h.result === '부재' ? t(language, 'map.absent') : h.result === '대상외' ? t(language, 'map.notTarget') : h.result}</span>
                         <span style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {dateStr} {h.timeSlot}{h.visitor ? ` · ${h.visitor}` : ''}
+                          {dateStr} {h.timeSlot === '오전' ? t(language, 'map.morning') : h.timeSlot === '오후' ? t(language, 'map.afternoon') : h.timeSlot === '저녁' ? t(language, 'map.evening') : h.timeSlot}{h.visitor ? ` · ${h.visitor}` : ''}
                         </span>
                       </div>
                       {isMenuOpen ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                           <button onClick={() => { setHistoryToEdit(h); setEditingHistoryId(null) }}
                             style={{ padding: '2px 8px', border: '1px solid var(--line)', borderRadius: 5, background: 'var(--surface)', color: 'var(--ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                            type="button">수정</button>
-                          <button onClick={() => { if (confirm('이 기록을 삭제할까요?')) onDeleteVisitHistory(h.id, unit.id); setEditingHistoryId(null) }}
+                            type="button">{t(language, 'common.edit')}</button>
+                          <button onClick={() => { if (confirm(t(language, 'map.deleteHistoryConfirm'))) onDeleteVisitHistory(h.id, unit.id); setEditingHistoryId(null) }}
                             style={{ padding: '2px 8px', border: '1px solid #fecaca', borderRadius: 5, background: '#fef2f2', color: '#dc2626', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                            type="button">삭제</button>
+                            type="button">{t(language, 'common.delete')}</button>
                           <button onClick={() => setEditingHistoryId(null)}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 13, padding: '0 2px', lineHeight: 1 }}
                             type="button">✕</button>
@@ -1997,7 +1999,7 @@ function UnitDetailScreen({
                             setInlineMemoHistoryId(null)
                           }}
                           style={{ padding: '5px 10px', border: 0, borderRadius: 6, background: c, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
-                          type="button">저장</button>
+                          type="button">{t(language, 'map.save')}</button>
                       </div>
                     )}
                   </div>
@@ -2012,8 +2014,8 @@ function UnitDetailScreen({
           <div style={{ display: 'flex', gap: 8 }}>
             {/* 방문금지 */}
             {[
-              { label: '방문금지', active: unit.isForbidden ?? false, onToggle: () => onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden }) },
-              { label: '중국어', active: unit.isChinese ?? false, onToggle: () => onToggleChinese(building.id, unit.id) },
+              { label: t(language, 'map.forbidden'), active: unit.isForbidden ?? false, onToggle: () => onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden }) },
+              { label: t(language, 'map.chinese'), active: unit.isChinese ?? false, onToggle: () => onToggleChinese(building.id, unit.id) },
             ].map(flag => (
               <button
                 key={flag.label}
@@ -2059,7 +2061,7 @@ function UnitDetailScreen({
               }}
             >
               {unit.isRegularVisit && <span style={{ fontSize: 11 }}>✓</span>}
-              정기방문
+              {t(language, 'map.regularVisit')}
             </button>
           </div>
           {unit.isRegularVisit && (
@@ -2083,7 +2085,7 @@ function UnitDetailScreen({
                     setShowRegularPopup(true)
                   }}
                   style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 11, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-                >변경</button>
+                >{t(language, 'map.change')}</button>
               )}
             </div>
           )}
@@ -2099,7 +2101,7 @@ function UnitDetailScreen({
               style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', width: '100%', maxWidth: 340 }}
               onClick={e => e.stopPropagation()}
             >
-              <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>정기방문 담당자</h3>
+              <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>{t(language, 'map.manager')}</h3>
               {/* 검색 입력 */}
               <input
                 autoFocus
@@ -2113,7 +2115,7 @@ function UnitDetailScreen({
                 }}
               />
               {/* 시작 날짜 */}
-              <p style={{ margin: '10px 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>시작 날짜</p>
+              <p style={{ margin: '10px 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{t(language, 'map.startDate')}</p>
               <input
                 type="date"
                 value={regularDateDraft}
@@ -2154,7 +2156,7 @@ function UnitDetailScreen({
                   type="button"
                   onClick={() => setShowRegularPopup(false)}
                   style={{ flex: 1, padding: '9px', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                >취소</button>
+                >{t(language, 'map.cancel')}</button>
                 <button
                   type="button"
                   onClick={async () => {
@@ -2172,7 +2174,7 @@ function UnitDetailScreen({
                     setShowRegularPopup(false)
                   }}
                   style={{ flex: 2, padding: '9px', border: 'none', borderRadius: 8, background: '#B8862A', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-                >등록</button>
+                >{t(language, 'map.register')}</button>
               </div>
             </div>
           </div>
@@ -2180,7 +2182,7 @@ function UnitDetailScreen({
 
         {/* 메모 */}
         <div style={sectionStyle}>
-          <h3 style={sectionTitleStyle}>메모</h3>
+          <h3 style={sectionTitleStyle}>{t(language, 'map.memoLabel')}</h3>
           {memoEditing ? (
             <div>
               <textarea
@@ -2203,12 +2205,12 @@ function UnitDetailScreen({
                   }}
                   style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                   type="button"
-                >저장</button>
+                >{t(language, 'map.save')}</button>
                 <button
                   onClick={() => { setMemoEditing(false); setMemoDraft(null) }}
                   style={{ flex: 1, padding: '8px', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                   type="button"
-                >취소</button>
+                >{t(language, 'map.cancel')}</button>
               </div>
             </div>
           ) : (
@@ -2222,7 +2224,7 @@ function UnitDetailScreen({
                 whiteSpace: 'pre-wrap', lineHeight: 1.5, fontFamily: 'inherit',
               }}
               type="button"
-            >{memo || '메모 추가...'}</button>
+            >{memo || t(language, 'map.addMemo') + '...'}</button>
           )}
         </div>
 
@@ -2253,11 +2255,11 @@ function UnitDetail({
   onQuickLogVisit,
   onSetExpandedUnitId,
 }: {
+  language: AppLanguage
   unit: Unit
   unitHistories: VisitHistory[]
   buildingId: number
   canRecordVisits: boolean
-  language: AppLanguage
   editingHistoryId: number | null
   setEditingHistoryId: (id: number | null) => void
   setHistoryToEdit: (h: VisitHistory) => void
@@ -2319,7 +2321,7 @@ function UnitDetail({
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#94a3b8', padding: '2px 4px' }}
                   type="button"
                 >
-                  {historyExpanded ? '닫기 ▴' : `+${unitHistories.length - 1}건 ▾`}
+                  {historyExpanded ? t(language, 'map.close') + ' ▴' : `+${unitHistories.length - 1}${t(language, 'map.cases')} ▾`}
                 </button>
               )}
             </div>
@@ -2377,7 +2379,7 @@ function UnitDetail({
               onClick={() => { if (!requireRecordAccess()) return; onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden }) }}
               type="button"
             >{unit.isForbidden ? '✓' : ''}</button>
-            방문금지
+            {t(language, 'map.forbidden')}
           </label>
           <label className="ugd-chinese-label">
             <button
@@ -2385,7 +2387,7 @@ function UnitDetail({
               onClick={() => { if (!requireRecordAccess()) return; onToggleRegularVisit(buildingId, unit.id) }}
               type="button"
             >{unit.isRegularVisit ? '✓' : ''}</button>
-            정기방문
+            {t(language, 'map.regularVisit')}
           </label>
           <label className="ugd-chinese-label">
             <button
@@ -2393,7 +2395,7 @@ function UnitDetail({
               onClick={() => { if (!requireRecordAccess()) return; onToggleChinese(buildingId, unit.id) }}
               type="button"
             >{unit.isChinese ? '✓' : ''}</button>
-            중국어
+            {t(language, 'map.chinese')}
           </label>
         </div>
 
@@ -2420,7 +2422,7 @@ function UnitDetail({
                 }}
                 style={{ display: 'block', width: '100%', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--danger-600)', textAlign: 'left' }}
                 type="button"
-              >세대 삭제</button>
+              >{t(language, 'map.deleteUnit')}</button>
             </div>
           )}
         </div>
@@ -2449,12 +2451,12 @@ function UnitDetail({
                 }}
                 style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', background: '#1e293b', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                 type="button"
-              >저장</button>
+              >{t(language, 'map.save')}</button>
               <button
                 onClick={() => { setMemoEditing(false); setMemoDraft(null) }}
                 style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                 type="button"
-              >취소</button>
+              >{t(language, 'map.cancel')}</button>
             </div>
           </>
         ) : (

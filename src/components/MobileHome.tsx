@@ -656,8 +656,7 @@ export function MobileHome({
     <Routes>
       <Route path="/map" element={
         <>
-          <MobileMap
-            language={language}
+          <MobileMap language={language}
             buildings={mapBuildings}
             cardBoundaries={mapCardBoundaries}
             cards={mapCards}
@@ -1270,7 +1269,7 @@ export function MobileHome({
 
                 
                 {/* [기능] 섹션 */}
-                <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>기능</div>
+                <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>{t(language, 'settings.features')}</div>
                 <section className="mobile-settings-menu" aria-label="기능 설정">
                   <div className="mobile-settings-feature-row">
                     <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
@@ -1280,8 +1279,8 @@ export function MobileHome({
                       </svg>
                     </span>
                     <span className="mobile-settings-row-text">
-                      <strong>정기방문 관리</strong>
-                      <small>재방문 대상을 따로 관리하는 기능</small>
+                      <strong>{t(language, 'settings.regularVisitManagement')}</strong>
+                      <small>{t(language, 'settings.regularVisitManagementDesc')}</small>
                     </span>
                     <label className="mobile-feature-toggle-switch" style={{ marginLeft: 'auto', flexShrink: 0 }}>
                       <input

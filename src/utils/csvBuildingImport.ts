@@ -111,7 +111,7 @@ export function normalizeUnitStatus(value: string): UnitStatus {
   if (text.includes('만남')) return '만남'
   if (text.includes('초대장') || text.includes('초대')) return '만남'   // 초대장 → 만남 (invitation_left는 별도)
   if (text.includes('부재')) return '부재'
-  if (text.includes('한국')) return '대상외'
+  if (text.includes('대상외') || text.includes('한국')) return '대상외'
   // 정기방문은 result값 아님 → 만남으로 처리 (regular_visits로 별도 등록)
   if (text.includes('정기') || text.includes('재방')) return '만남'
   return '미방문'
@@ -122,7 +122,7 @@ export function isInvitationLeft(value: string): boolean {
 }
 
 export function looksTruthy(value: string): boolean {
-  return /^(true|yes|y|1|중국인|중국|정기|재방|있음|ㅇ|예)$/i.test(value.trim())
+  return /^(true|yes|y|1|중국어|중국인|중국|정기|재방|있음|ㅇ|예)$/i.test(value.trim())
 }
 
 export function parseCsvDate(value: string): string | null {
@@ -186,16 +186,16 @@ export function downloadCsvExample(): void {
   ]
   const data = [
     ['처인구 고림동 1', '처인구', '고림동', '경기도 용인시 처인구 고진로 45', '동아빌라', '주택', '301호', '만남',
-      '중국인', '', '박진호', '2024-01-15', '정기방문 등록',
+      '중국어', '', '박진호', '2024-01-15', '정기방문 등록',
       '2024-03-10', '만남', '홍길동', '오후', '친절하게 받아줌'],
     ['처인구 고림동 1', '처인구', '고림동', '경기도 용인시 처인구 고진로 45', '동아빌라', '주택', '301호', '만남',
-      '중국인', '', '박진호', '2024-01-15', '',
+      '중국어', '', '박진호', '2024-01-15', '',
       '2024-04-05', '부재', '홍길동', '오전', ''],
     ['처인구 고림동 1', '처인구', '고림동', '경기도 용인시 처인구 경안천로 232', '감자탕형제들', '상가', '1층', '부재',
       '대상외', '', '', '', '',
       '', '', '', '', ''],
     ['', '처인구', '김량장동', '경기도 용인시 처인구 금령로 108-1', '신나는가게', '상가', '1층', '미방문',
-      '중국인', '방문거절 이력있음', '', '', '',
+      '중국어', '방문거절 이력있음', '', '', '',
       '2024-02-20', '거절', '김철수', '오전', '다시 오지 말라고 함'],
   ]
   const csvContent = [headers, ...data].map((row) => row.map(csvCell).join(',')).join('\n')

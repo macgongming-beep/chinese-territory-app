@@ -900,7 +900,7 @@ export function DesktopTerritory({
       const unitsValue = findValue(row, ['unit', 'units', '호수', '세대', '호수목록'])
       const statusValue = findValue(row, ['status', '상태'])
       const divisionValue = findValue(row, ['구분', 'division'])
-      const chineseValue = findValue(row, ['chinese', 'isChinese', '중국인', '중국인여부'])
+      const chineseValue = findValue(row, ['chinese', 'isChinese', '중국어', '중국어여부', '중국인', '중국인여부'])
       const warningValue = findValue(row, ['warning', '방문금지', '경고'])
       const regularVisitorValue = findValue(row, ['regularVisitor', 'regular', '정기방문자', '재방문자', '정기방문'])
       const regularStartValue = findValue(row, ['정기방문시작일', '정기방문시작', 'regularStart', 'regularVisitorStartDate'])
@@ -978,12 +978,13 @@ export function DesktopTerritory({
       const buildingType: CsvBuildingImport['type'] = typeValue.includes('상가') ? '상가' : '주택'
       const buildingKey = `${card.id}|${address}|${buildingName}`
 
-      // 구분 컬럼: 대상외(구: 한국인) → false, 중국인 → true, 없으면 heuristic
+      // 구분 컬럼: 대상외(구: 한국인) → false, 중국어(구: 중국인) → true, 없으면 heuristic
       const status = normalizeUnitStatus(statusValue)
+      const normalizedDivision = divisionValue.trim()
       let isChinese: boolean
-      if (divisionValue === '대상외' || divisionValue === '한국인') {
+      if (['대상외', '한국인', '한국'].includes(normalizedDivision)) {
         isChinese = false
-      } else if (divisionValue === '중국인') {
+      } else if (['중국어', '중국인', '중국'].includes(normalizedDivision)) {
         isChinese = true
       } else if (chineseValue) {
         isChinese = looksTruthy(chineseValue)
@@ -1106,7 +1107,7 @@ export function DesktopTerritory({
     const isPointList = buildingSubTab === '중국어 포인트'
     const headers = isPointList
       ? ['카드명', '지역', '동', '건물명', '주소', '유형', '호수', '정기방문', '정기방문자', '최근 방문', '메모']
-      : ['카드명', '지역', '동', '건물명', '주소', '유형', '세대', '중국인', '중국인 다수', '정기방문', '건물 메모', '세대 메모']
+      : ['카드명', '지역', '동', '건물명', '주소', '유형', '세대', '중국어', '중국어 다수', '정기방문', '건물 메모', '세대 메모']
     const rows = isPointList
       ? pointRows.map(({ building, unit, latestHistory }) => {
           const card = cardMap.get(building.cardId)
@@ -1510,7 +1511,7 @@ export function DesktopTerritory({
           <div className="cal-modal territory-confirm-modal" onClick={(e) => e.stopPropagation()}>
             <div className="cal-modal-head">
               <div className="cal-modal-title">
-                <h2>중국인 거주 표시 해제</h2>
+                <h2>중국어 표시 해제</h2>
                 <p className="merge-name-modal-sub">해제하면 이 항목은 중국어 포인트 목록에서 사라질 수 있습니다.</p>
               </div>
             </div>
@@ -1822,7 +1823,7 @@ export function DesktopTerritory({
                   </button>
                 </div>
                 <p style={{ fontWeight: 600, marginBottom: 2 }}>건물 정보</p>
-                <p style={{ marginTop: 0 }}>카드명, 지역, 동, 주소, 건물명, 유형, 호수, 상태, <b>구분</b>(중국인/대상외), <b>방문금지</b>, 정기방문자, <b>정기방문시작일</b>, 메모</p>
+                <p style={{ marginTop: 0 }}>카드명, 지역, 동, 주소, 건물명, 유형, 호수, 상태, <b>구분</b>(중국어/대상외), <b>방문금지</b>, 정기방문자, <b>정기방문시작일</b>, 메모</p>
                 <p style={{ fontWeight: 600, marginBottom: 2 }}>방문기록 (선택 — 있으면 과거 기록도 함께 삽입)</p>
                 <p style={{ marginTop: 0 }}>방문일자(YYYY-MM-DD), 방문결과, 방문자, 시간대(오전/오후/저녁), 방문메모</p>
                 <small>한 세대에 방문기록이 여러 건이면 같은 주소+호수로 여러 행을 작성하세요. 카드 정보가 비어 있으면 구역선 기준으로 자동 배정합니다.</small>
@@ -2233,7 +2234,7 @@ export function DesktopTerritory({
                     </div>
                   </div>
                   <div className="tbl-filter-group">
-                    <span className="tbl-filter-label">중국인 다수</span>
+                    <span className="tbl-filter-label">중국어 다수</span>
                     <div className="tbl-mini-seg">
                       {(['전체', '있음', '없음'] as const).map((f) => (
                         <button key={f} className={cardChineseHeavyFilter === f ? 'active' : ''} onClick={() => setCardChineseHeavyFilter(f)} type="button">{f}</button>
@@ -2310,7 +2311,7 @@ export function DesktopTerritory({
                     </div>
                   </div>
                   <div className="tbl-filter-group">
-                    <span className="tbl-filter-label">중국인 다수</span>
+                    <span className="tbl-filter-label">중국어 다수</span>
                     <div className="tbl-mini-seg">
                       {(['전체', '있음', '없음'] as const).map((f) => (
                         <button key={f} className={buildingChineseHeavyFilter === f ? 'active' : ''} onClick={() => setBuildingChineseHeavyFilter(f)} type="button">{f}</button>
@@ -2426,7 +2427,7 @@ export function DesktopTerritory({
                 <th style={{ width: 140 }}>진행</th>
                 <th>인도자</th>
                 <th style={{ width: 150 }}>유형</th>
-                <th style={{ width: 80, textAlign: 'right' }}>중국인</th>
+                <th style={{ width: 80, textAlign: 'right' }}>중국어</th>
                 <th style={{ width: 90, textAlign: 'right' }}>정기방문</th>
                 <th style={{ width: 80 }}>구역선</th>
                 <th style={{ width: 80 }}>상태</th>
@@ -2590,7 +2591,7 @@ export function DesktopTerritory({
               <span>카드</span>
               <span>유형</span>
               <span>세대</span>
-              <span>중국인</span>
+              <span>중국어</span>
               <span>다수</span>
               <span>작업</span>
             </div>
@@ -2779,7 +2780,7 @@ export function DesktopTerritory({
                                         checked={unitEditDraft.isChinese}
                                         onChange={(e) => setUnitEditDraft((d) => ({ ...d, isChinese: e.target.checked }))}
                                       />
-                                      중국인
+                                      중국어
                                     </label>
                                   </div>
                                 </div>

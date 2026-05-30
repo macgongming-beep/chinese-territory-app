@@ -1,3 +1,4 @@
+import { t, type AppLanguage } from '../i18n';
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { MapCanvas } from './MapCanvas'
 import type { MapAggregateMarker } from './MapCanvas'
@@ -47,6 +48,7 @@ function getLocalDateString() {
 }
 
 export function DesktopMap({
+  language,
   buildings,
   boundaryEditRequest,
   cardBoundaries,
@@ -78,6 +80,7 @@ export function DesktopMap({
   specialPeriods,
   onSwitchToList,
 }: {
+  language: AppLanguage;
   buildings: Building[]
   boundaryEditRequest?: number
   cardBoundaries: CardBoundary[]
@@ -1153,7 +1156,7 @@ export function DesktopMap({
               </div>
             </div>
             <div className="cal-modal-foot">
-              <button className="cal-cancel-btn" onClick={() => setShowMapMergeModal(false)} type="button">취소</button>
+              <button className="cal-cancel-btn" onClick={() => setShowMapMergeModal(false)} type="button">{t(language, 'map.cancel')}</button>
               <button className="cal-save-btn" onClick={applyMapBoundaryMerge} type="button">병합 실행</button>
             </div>
           </div>
@@ -1213,7 +1216,7 @@ export function DesktopMap({
         <div className="map-toolbar" aria-label="지도 필터">
           {/* 건물 유형 segment */}
           <div className="map-toolbar-item">
-            <span className="map-toolbar-label">건물</span>
+            <span className="map-toolbar-label">{t(language, 'map.buildings')}</span>
             <div className="map-toolbar-seg">
               {(['전체', '상가', '주택'] as Array<Building['type'] | '전체'>).map((t) => (
                 <button
@@ -1229,11 +1232,11 @@ export function DesktopMap({
           </div>
           {/* 상태 segment */}
           <div className="map-toolbar-item">
-            <span className="map-toolbar-label">상태</span>
+            <span className="map-toolbar-label">{t(language, 'map.status')}</span>
             <div className="map-toolbar-seg">
               {([
                 { key: '전체', label: '전체' },
-                { key: '중국인', label: '중국어' },
+                { key: '중국인', label: t(language, 'map.chinese') },
                 { key: '부재', label: '부재' },
                 { key: '만남', label: '만남' },
               ] as const).map(({ key, label }) => (
@@ -1480,8 +1483,8 @@ export function DesktopMap({
                 {[
                   { status: '방문필요', color: '#2D6CDF', label: '방문필요' },
                   { status: '방문완료', color: '#4F7A4B', label: '방문완료' },
-                  { status: '방문금지', color: '#1A1A18', label: '방문금지' },
-                  { status: '정기방문', color: '#B8862A', label: '정기방문' },
+                  { status: '방문금지', color: '#1A1A18', label: t(language, 'map.forbidden') },
+                  { status: '정기방문', color: '#B8862A', label: t(language, 'map.regularVisit') },
                 ].map(({ status, color, label }) => {
                   const typedStatus = status as BuildingStatus
                   const isCollapsed = collapsedStatusGroups.has(typedStatus)
@@ -1781,14 +1784,14 @@ export function DesktopMap({
                       <input className="modern-edit-address" onChange={(e) => setEditAddress(e.target.value)} placeholder="건물 주소" value={editAddress} />
                       <input className="modern-edit-name" onChange={(e) => setEditName(e.target.value)} placeholder="건물명 (선택)" value={editName} />
                       <select value={editType} onChange={e => setEditType(e.target.value as Building['type'])} style={{ padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid #e2e8f0', fontSize: '12px', background: '#f8fafc' }}>
-                        <option value="주택">주택</option>
-                        <option value="상가">상가</option>
+                        <option value="주택">{t(language, 'map.house')}</option>
+                        <option value="상가">{t(language, 'map.shop')}</option>
                       </select>
                     </div>
                     <div className="edit-action-group">
-                      <button className="edit-save-btn" onClick={() => { onUpdateBuilding(building.id, editName.trim(), editAddress.trim(), undefined, undefined, editType); setEditingBuildingId(null) }}>저장</button>
-                      <button className="edit-cancel-btn" onClick={() => setEditingBuildingId(null)}>취소</button>
-                      <button className="edit-delete-btn" onClick={() => { setPendingDeleteBuildingId(building.id); setShowDeleteBuildingConfirmModal(true) }}>삭제</button>
+                      <button className="edit-save-btn" onClick={() => { onUpdateBuilding(building.id, editName.trim(), editAddress.trim(), undefined, undefined, editType); setEditingBuildingId(null) }}>{t(language, 'map.save')}</button>
+                      <button className="edit-cancel-btn" onClick={() => setEditingBuildingId(null)}>{t(language, 'map.cancel')}</button>
+                      <button className="edit-delete-btn" onClick={() => { setPendingDeleteBuildingId(building.id); setShowDeleteBuildingConfirmModal(true) }}>{t(language, 'common.delete')}</button>
                     </div>
                   </div>
                 )}
@@ -1804,8 +1807,8 @@ export function DesktopMap({
                     <div className={`unit-col-header${getActivePeriodForDate(getLocalDateString())?.hasInvitation ? ' with-invitation' : ''}`}>
                       <span>세대 정보</span>
                       {getActivePeriodForDate(getLocalDateString())?.hasInvitation && <span style={{ color: '#f59e0b' }}>초대장</span>}
-                      <span>만남</span>
-                      <span>부재</span>
+                      <span>{t(language, 'map.met')}</span>
+                      <span>{t(language, 'map.absent')}</span>
                       <span>한국</span>
                     </div>
 
@@ -1824,7 +1827,7 @@ export function DesktopMap({
                               <span className="unit-chevron">{isUnitExpanded ? '▾' : '▸'}</span>
                               <span className="unit-number-text">{unit.number}</span>
                               {unit.isChinese && <span className="unit-chinese-badge">中</span>}
-                              {unit.isForbidden && <span className="unit-forbidden-badge">방문금지</span>}
+                              {unit.isForbidden && <span className="unit-forbidden-badge">{t(language, 'map.forbidden')}</span>}
                               {unit.isRegularVisit && <span className="unit-regular-badge">재방</span>}
                               {latestHistory && (
                                 <span className="unit-recent-visit">
@@ -1852,7 +1855,7 @@ export function DesktopMap({
                                       }
                                     }}
                                     type="button"
-                                    title="초대장"
+                                    title={t(language, 'map.invitationLeft')}
                                   >{todayInvitation ? '✓' : ''}</button>
                                   {isPopupOpen && (
                                     <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 200, marginTop: 4, background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', padding: '10px 8px', width: 160, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2006,14 +2009,14 @@ export function DesktopMap({
                                       <button
                                         onClick={() => {
                                           setUnitDeleteMenuId(null)
-                                          if (confirm(`"${unit.number}" 세대 정보를 삭제할까요?`)) {
+                                          if (confirm(t(language, 'map.deleteUnitConfirm'))) {
                                             onDeleteUnit(building.id, unit.id)
                                             setExpandedUnitId(null)
                                           }
                                         }}
                                         style={{ display: 'block', width: '100%', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--danger-600)', textAlign: 'left' }}
                                         type="button"
-                                      >세대 삭제</button>
+                                      >{t(language, 'map.deleteUnit')}</button>
                                     </div>
                                   )}
                                 </div>
@@ -2042,12 +2045,12 @@ export function DesktopMap({
                                         }}
                                         style={{ flex: 1, padding: '6px 0', borderRadius: 8, border: 'none', background: '#1e293b', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                                         type="button"
-                                      >저장</button>
+                                      >{t(language, 'map.save')}</button>
                                       <button
                                         onClick={() => setUnitMemoEdits((prev) => { const next = { ...prev }; delete next[unit.id]; return next })}
                                         style={{ flex: 1, padding: '6px 0', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                                         type="button"
-                                      >취소</button>
+                                      >{t(language, 'map.cancel')}</button>
                                     </div>
                                   </>
                                 ) : (
@@ -2075,7 +2078,7 @@ export function DesktopMap({
                     {addingUnitToBuildingId === building.id ? (
                       <div className="inline-add-unit-form bld-add-unit-form">
                         <input autoFocus placeholder="추가할 호수 (예: 101호)" value={newUnitNumber} onChange={(e) => setNewUnitNumber(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newUnitNumber.trim()) { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') } }} />
-                        <button disabled={!newUnitNumber.trim()} onClick={() => { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') }}>추가</button>
+                        <button disabled={!newUnitNumber.trim()} onClick={() => { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') }}>{t(language, 'map.add')}</button>
                         <button onClick={() => setAddingUnitToBuildingId(null)} style={{ background: '#f1f5f9', color: 'var(--ink-500)' }}>✕</button>
                       </div>
                     ) : (
@@ -2125,7 +2128,7 @@ export function DesktopMap({
                   </p>
                 )}
                 <div className="cal-field">
-                  <label>카드</label>
+                  <label>{t(language, 'map.cardStr')}</label>
                   <select
                     className="cal-input"
                     value={newBuildingCardId}
@@ -2172,14 +2175,14 @@ export function DesktopMap({
                   />
                 </div>
                 <div className="cal-field">
-                  <label>유형</label>
+                  <label>{t(language, 'map.type')}</label>
                   <select
                     className="cal-input"
                     value={newBuildingType}
                     onChange={(e) => setNewBuildingType(e.target.value as Building['type'])}
                   >
-                    <option value="주택">주택</option>
-                    <option value="상가">상가</option>
+                    <option value="주택">{t(language, 'map.house')}</option>
+                    <option value="상가">{t(language, 'map.shop')}</option>
                   </select>
                 </div>
               </div>
@@ -2197,7 +2200,7 @@ export function DesktopMap({
                   disabled={!newBuildingName.trim() || geocoding || (newBuildingLat == null && !newBuildingAddress.trim())}
                   onClick={handleConfirmAddBuilding}
                 >
-                  {geocoding ? '주소 확인 중...' : newBuildingLat == null ? '위치 확인' : '추가'}
+                  {geocoding ? t(language, 'map.checkingAddress') + '...' : newBuildingLat == null ? t(language, 'map.checkLocation') : t(language, 'map.add')}
                 </button>
               </div>
             </div>
@@ -2226,7 +2229,7 @@ export function DesktopMap({
             width: '320px',
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
           }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700 }}>정기방문 등록</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700 }}>{t(language, 'map.registerRegularVisit')}</h3>
             <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#666' }}>정기 방문자의 이름을 입력해 주세요.</p>
             <input
               autoFocus
@@ -2238,7 +2241,7 @@ export function DesktopMap({
                   setShowRegularVisitModal(false)
                 }
               }}
-              placeholder="방문자 이름"
+              placeholder={t(language, 'map.visitorName')}
               style={{
                 width: '100%',
                 padding: '12px',
@@ -2304,7 +2307,7 @@ export function DesktopMap({
             width: '320px',
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
           }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700 }}>정기방문 해제</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700 }}>{t(language, 'map.unregisterRegularVisit')}</h3>
             <p style={{ margin: '0 0 20px', fontSize: '15px', color: '#4b5563', lineHeight: '1.5' }}>
               정기방문을 해제하시겠습니까?
             </p>
@@ -2359,7 +2362,7 @@ export function DesktopMap({
             width: '320px',
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
           }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700, color: 'var(--danger-600)' }}>건물 삭제</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700, color: 'var(--danger-600)' }}>{t(language, 'map.deleteBuilding')}</h3>
             <p style={{ margin: '0 0 20px', fontSize: '15px', color: '#4b5563', lineHeight: '1.5' }}>
               정말 이 건물을 삭제하시겠습니까? 모든 호수와 방문 이력이 영구적으로 삭제됩니다.
             </p>
@@ -2397,32 +2400,32 @@ export function DesktopMap({
       {historyEditor && (
         <div className="admin-modal-overlay">
           <div className="admin-modal-body" style={{ width: '320px' }}>
-            <h3>{historyEditor.mode === 'add' ? '방문 기록 추가' : '방문 기록 수정'}</h3>
+            <h3>{historyEditor.mode === 'add' ? t(language, 'map.addHistory') : t(language, 'map.editHistory')}</h3>
             <div className="admin-modal-form">
-              <label>상태</label>
+              <label>{t(language, 'map.status')}</label>
               <select 
                 value={historyEditor.result}
                 onChange={e => setHistoryEditor({ ...historyEditor, result: e.target.value as UnitStatus })}
                 style={{ width: '100%', padding: '8px', marginBottom: '12px' }}
               >
-                <option value="미방문">미방문</option>
-                <option value="만남">만남</option>
-                <option value="부재">부재</option>
-                <option value="대상외">대상외</option>
+                <option value="미방문">{t(language, 'map.unvisited')}</option>
+                <option value="만남">{t(language, 'map.met')}</option>
+                <option value="부재">{t(language, 'map.absent')}</option>
+                <option value="대상외">{t(language, 'map.notTarget')}</option>
               </select>
 
-              <label>시간대</label>
+              <label>{t(language, 'map.timeSlot')}</label>
               <select 
                 value={historyEditor.timeSlot}
                 onChange={e => setHistoryEditor({ ...historyEditor, timeSlot: e.target.value as TimeSlot })}
                 style={{ width: '100%', padding: '8px', marginBottom: '12px' }}
               >
-                <option value="오전">오전</option>
-                <option value="오후">오후</option>
-                <option value="저녁">저녁</option>
+                <option value="오전">{t(language, 'map.morning')}</option>
+                <option value="오후">{t(language, 'map.afternoon')}</option>
+                <option value="저녁">{t(language, 'map.evening')}</option>
               </select>
 
-              <label>날짜 (YYYY-MM-DD)</label>
+              <label>{t(language, 'map.dateIso')}</label>
               <input 
                 type="date"
                 value={historyEditor.visitedAt}
@@ -2430,7 +2433,7 @@ export function DesktopMap({
                 style={{ width: '100%', padding: '8px', marginBottom: '12px' }}
               />
 
-              <label>메모</label>
+              <label>{t(language, 'map.memoLabel')}</label>
               <textarea
                 value={historyEditor.memo}
                 onChange={e => setHistoryEditor({ ...historyEditor, memo: e.target.value })}
@@ -2466,8 +2469,8 @@ export function DesktopMap({
               <button
                 onClick={() => setHistoryEditor(null)}
                 style={{ background: '#f1f5f9', color: 'var(--ink-500)' }}
-              >취소</button>
-              <button onClick={saveHistoryEditor}>저장</button>
+              >{t(language, 'map.cancel')}</button>
+              <button onClick={saveHistoryEditor}>{t(language, 'map.save')}</button>
             </div>
           </div>
         </div>
