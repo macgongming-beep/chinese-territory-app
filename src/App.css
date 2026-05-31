@@ -29281,6 +29281,8 @@ button:focus-visible {
 .asg-conflict button.danger { color: var(--status-danger, #dc2626); border-color: var(--status-danger, #dc2626); }
 
 /* 배정 v3 — 화면2 지도 영역 */
-.asg-zone-map { display: flex; flex-direction: column; }
-.asg-zone-map > div:first-child { height: 60vh; position: relative; }
+.asg-zone-map { display: block; }
+.asg-zone-map .map-canvas-container { height: 60vh; min-height: 360px; position: relative; }
+.asg-zone-map .naver-map-canvas,
+.asg-zone-map .mock-map { height: 100%; min-height: 360px; }
 .asg-zone-map-hint { margin: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); font-size: 12px; color: var(--muted); background: var(--surface, #fff); border-top: 1px solid var(--line); line-height: 1.5; }
