@@ -161,7 +161,11 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
               else dispatch({ type: 'ASSIGN_CARD', teamId: activeTeam.id, cardId })
             }}
           />
-          <p className="asg-zone-map-hint">폴리곤을 탭하면 활성팀({activeTeam?.name ?? '팀 선택'}) 색으로 칠해집니다. 비공식·식당은 목록에서.</p>
+          <p className="asg-zone-map-hint">
+            폴리곤을 탭하면 활성팀({activeTeam?.name ?? '팀 선택'}) 색으로 칠해집니다.
+            {' '}(담당 카드 {cards.length} · 경계선 {myBoundaries.length})
+            {myBoundaries.length === 0 && ' — 경계선이 그려진 담당 구역이 없어 목록에서 배정하세요.'}
+          </p>
         </div>
       ) : (
         <div className="asg-zone-list">
