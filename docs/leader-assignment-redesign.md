@@ -1,10 +1,10 @@
-# 인도자 배정 재설계 v2 — 일정상세 통합 + 지도 기반 구역 배분
+# 인도자 배정 재설계 v3 — 일정상세 통합 + 지도 기반 구역 배분
 
-> **목적**: 설계 문서 (코덱스 1차 리뷰 반영한 v2).
+> **목적**: 설계 문서 (코덱스·제미나이 2차 리뷰까지 반영한 v3).
 > 인도자 배정을 별도 탭 → 일정상세로 통합하고, 구역 배분에 "지도 색칠"을 도입.
-> v1 → v2 변경: draft 단일 reducer 원칙 격상 / 진입 시 서버 shared 상태 로드 /
-> 빌드순서 목록먼저(리스크감소) / 비공식·식당 화면2로 이동 + 지도는 구역 전용 /
-> sticky 팀바 / 지도·목록 렌더 스펙 / Undo 토스트 / 권한 / 7~10일 / 인원상한 없음.
+> v2 → v3 변경: 비공식·식당 즉시저장(B안, draft 제외) / 서버복원 시 팀메타 비보존 명시 /
+> 충돌 시 3선택지 / 참가자 sanitize / 공유 실패 보호 / 폴리곤 fillColor만 리렌더 /
+> 보기전용 진입 허용 / Undo reducer / 진입 slice props 전제 / 탭제거 feature flag.
 > 작성일: 2026-05-30
 
 ---
@@ -44,6 +44,8 @@
 6. 경계선 없는 구역카드는 인도자 배정 안 함 → 폴백 불필요
 7. 관리자 카드 배정은 이번 범위 아님
 8. **팀 인원 상한 없음** → 인원 수만 표시
+9. **DB는 사용자별 cardIds만 저장** (`event_card_assignments` / `event_card_assignment_cards`). 팀의 teamId/이름/색/순서는 저장 안 됨 → 서버에서 draft 복원 시 팀 메타는 재생성(보존 안 됨)
+10. **비공식/식당 배정은 기존 즉시 저장 방식 유지 (B안)** — draft에 안 넣음. localStorage draft는 **구역(cardIds) + 팀멤버만**
 
 ---
 
@@ -157,12 +159,34 @@
 - "이 카드 → 어느 팀"을 지도(색+이름)·목록(팀 pill) 동일 표현
 - 둘 다 **단일 draft에서 파생**. 지도 전용/목록 전용 state 금지
 
-### 3.5 배정 공유 + draft 관리 (가장 중요)
-- **단일 source of truth: `draft.teams[].cardIds`** (+ members, + 비공식/식당 배정). 지도·목록은 순수 파생
-- 편집 중: localStorage 자동저장 (Supabase 안 건드림)
-- **진입 시: 서버에 이미 shared 배정 있으면 그걸 시작 draft로 로드** (빈 localStorage 우선 X → 다중기기 충돌 완화)
-- 오래된 draft 감지: `localStorage draft.updatedAt` vs `event.assignmentSharedAt` 비교 → 서버가 더 최신이면 "다른 곳에서 공유됨, 새로고침?" 경고
-- 공유: 일정상세 [배정 공유] → `onAssignCardsToEventParticipantsBulk(eventId, ..., {status:'shared'})` → 공유 후 localStorage draft 정리
+### 3.5 배정 공유 + draft 관리 (가장 중요, v3 보강)
+
+**draft 범위 (B안):**
+- 단일 source of truth: **`draft.teams[]` = { teamId, name, color, order, cardIds[], members[] }**
+- **구역 배정(cardIds) + 팀 멤버만 draft.** 지도·목록은 순수 파생
+- **비공식/식당은 draft에 안 넣음** — 기존 즉시 저장 mutation 유지 (코덱스 B안). 화면2 목록에서 칩 탭 = 바로 Supabase 쓰기 (구역과 저장 타이밍 다름, 문서/UX에 명확히 분리)
+
+**진입 시 draft 구성 (우선순위):**
+1. localStorage draft 있고 서버보다 최신 → 그걸 이어서 (단 충돌 시 §아래 선택지)
+2. 없거나 서버가 최신 → **서버 shared 배정에서 draft 재구성**
+   - ⚠ **DB는 cardIds만 저장 → 팀 이름/색/순서는 보존 안 됨.** "같은 cardIds 가진 사람끼리 묶기"로 팀을 재생성하고 이름/색은 새로 부여 (원본과 100% 동일하지 않을 수 있음)
+
+**참가자 sanitize (제미나이 — 필수):**
+- draft 로드 시(로컬이든 서버든) **현재 `event.participants`와 교차 검증**
+- 신청 취소·관리자 거절로 **현재 참가자에 없는 사람은 draft 팀 멤버에서 자동 제거**
+- reducer 초기화 시점에 정제 단계 1개
+
+**충돌 시 선택지 (코덱스 — 단순 경고 X):**
+- local draft와 server shared가 둘 다 있고 어긋나면 → 조용히 덮지 말고 선택지:
+  1. 서버 공유본 사용
+  2. 내 임시 draft 이어서 편집
+  3. 임시 draft 삭제
+- (없으면 인도자가 짠 임시 팀이 조용히 날아감)
+
+**공유 + 정리 (제미나이 — 실패 보호):**
+- 일정상세 [배정 공유] → `onAssignCardsToEventParticipantsBulk(eventId, ..., {status:'shared'})`
+- **API 성공(resolve) 직후에만 localStorage draft 정리** (네트워크 실패 시 draft 보존)
+- eventId 관련 draft 키 정책: 관리자·인도자 둘 다 만질 수 있으므로 공유 후 **해당 eventId의 stale draft 처리 방침** 결정 필요 (V1: 본인 키만 정리 + 진입 시 sanitize로 방어)
 
 ---
 
@@ -191,7 +215,7 @@
 | 1 | 일정상세 진입점 + 화면1 팀 짓기 + **단일 draft reducer** | 중 (2~3일) |
 | 2 | 화면2 목록 뷰 + 비공식/식당 + 서버상태 진입로드 + 공유 | 중 (2일) |
 | 3 | 화면2 지도 뷰 (색칠/이름라벨/구선택/자동줌/Undo토스트) | 중 (2~3일) |
-| 4 | 기존 배정 탭 제거 + 권한 + QA | 소~중 (1~2일) |
+| 4 | 권한 + QA, 기존 배정 탭은 **feature flag/병행 유지** (안정화 후 제거) | 소~중 (1~2일) |
 
 **총 7~10일.** 데이터/백엔드 변경 없음.
 
@@ -199,18 +223,27 @@
 
 ## 6. 데이터 사용량 영향 (Supabase 최적화 영향 평가)
 
-- **읽기: 새 fetch 없음.** cards/buildings/cardBoundaries/calendarEvents 모두 이미 로드된 slice 재사용
-- **쓰기: 배정 공유 1회** → `refetchCalendar = fetchSlices(['calendar']) ≈ 14KB` (기존 최적화된 slice)
-- **편집 중(팀짓기/색칠/토글)은 localStorage** → Supabase 안 건드림
+- **읽기: 조건부로 새 fetch 없음** — 진입 컴포넌트가 cards/buildings/cardBoundaries/calendarEvents/eventInformalAssignments/eventRestaurantAssignments를 **전역 store에서 props로 받는 전제**에서만 성립. 필요한 slice를 props로 못 받으면 fetch 추가됨 (코덱스 지적) → 진입점 설계 시 props 전달 확인 필수
+- **쓰기: 구역 배정 공유 1회** → `refetchCalendar = fetchSlices(['calendar']) ≈ 14KB`
+- **편집 중 구역(팀짓기/색칠/토글)은 localStorage** → Supabase 안 건드림
+- ⚠ **단, 비공식/식당은 B안이라 칩 탭마다 즉시 Supabase 쓰기** (구역과 다름). 빈도 낮아 영향 작지만 "편집 중 0 write"는 구역에 한함
 - **지도 타일 = 네이버 API** (Supabase egress 무관, 기존 지도 탭과 같은 쿼터)
-- **구현 시 철칙: 토글·팀전환·색칠 시 refetch 금지.** 전부 클라이언트 state로만 (draft 단일 reducer가 보장)
-- 결론: Supabase 최적화에 **거의 영향 없음.** 별도 배정 탭 제거로 오히려 진입 fetch 감소
+- 결론: **구역 배정만 보면 영향 거의 없음.** 비공식/식당 즉시저장 + 진입 slice 누락 시엔 약간의 write/fetch 추가 가능
+
+**구현 시 철칙:**
+1. 토글·팀전환·구역색칠 시 **refetch 금지** (전부 클라이언트 state, draft 단일 reducer가 보장)
+2. **폴리곤은 fillColor만 리렌더** (제미나이) — state 변경 시 폴리곤 컴포넌트 Unmount/Mount 금지, `React.memo`/참조 최적화로 색상 속성만 갱신. 수십~수백 폴리곤 색 즉각 변경 시 성능 좌우
+3. 진입 컴포넌트는 필요한 slice를 props로 받을 것 (새 fetch 방지)
 
 ---
 
 ## 7. 권한
-- 보기전용 인도자(`canEditSelectedEvent === false`)는 [팀 구성 & 배정] 비활성, 색칠/이동 불가, 읽기만
+- 보기전용 인도자(`canEditSelectedEvent === false`)는 **보기 전용으로 진입 가능** (코덱스 — 이전/다음 봉사 배정 참고 요구). 색칠/이동/공유만 막고 읽기는 허용
 - 기존 `canManageAssignment` 체크 재활용
+
+## 7-1. Undo (코덱스)
+- 색칠/이동은 토스트뿐 아니라 **reducer에 "최근 작업 1회 되돌리기" action** 설계
+- `lastAction` 보관 → 토스트의 [실행취소] 탭 시 reducer가 역연산
 
 ---
 
@@ -239,6 +272,23 @@
 - 비공식/식당을 화면1→화면2 이동 (화면1 사람 전용 일관성)
 - 지도 위상 방어 (보조 아닌 1급, 목록먼저는 리스크감소 목적)
 
+## 10. 코덱스·제미나이 2차 리뷰 반영 (v3)
+
+| 지적 | 출처 | 반영 |
+|---|---|---|
+| 서버 shared 복원 시 팀 이름/색/순서 보존 안 됨 (DB는 cardIds만) | 코덱스 | §2-9, §3.5 명시 |
+| 비공식/식당 draft화 vs 즉시저장 충돌 → B안(즉시저장 유지) | 코덱스 | §2-10, §3.5 draft는 구역만 |
+| 충돌 시 단순경고 부족 → 3선택지 | 코덱스 | §3.5 선택지(서버/이어서/삭제) |
+| §6 "새 fetch 없음" 조건부 | 코덱스 | §6 진입 slice props 전제 명시 |
+| 보기전용 인도자 진입 가능 | 코덱스 | §7 읽기 허용 |
+| Undo reducer action | 코덱스 | §7-1 |
+| 탭 제거 전 feature flag/병행 | 코덱스 | §5 Phase 4 |
+| **참가자 sanitize** (취소·거절자 draft에서 자동 제거) | 제미나이 | §3.5 reducer 초기화 정제 |
+| 공유 실패 보호 (API 성공 후에만 draft 정리) | 제미나이 | §3.5 |
+| 폴리곤 fillColor만 리렌더 (Unmount/Mount 금지) | 제미나이 | §6 철칙 2 |
+
+**두 리뷰 결론: Phase 1 착수 가능 수준. 위 3대 핵심(팀메타 비보존 / 비공식·식당 즉시저장 / 충돌 선택지) + 참가자 sanitize 반영 완료.**
+
 ---
 
-**상태**: v2. 코덱스 2차 리뷰 또는 Phase 1 착수 대기.
+**상태**: v3. 양대 리뷰 반영 완료. Phase 1 착수 준비됨.
