@@ -12,8 +12,9 @@ import { t, weekdayShortLabels } from '../../i18n'
 
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { CalendarEvent, Role, SpecialPeriod, TerritoryCard } from '../../types'
+import type { Building, CalendarEvent, Role, SpecialPeriod, TerritoryCard } from '../../types'
 import type { AppLanguage } from '../../i18n'
+import { AssignmentEditor } from '../assignment/AssignmentEditor'
 import { loadPlacePresets, savePlacePresets, normalizePlacePresets, PLACE_PRESETS_MAX } from '../../lib/placePresets'
 import type { PlacePreset } from '../../lib/placePresets'
 import { Card } from '../ui'
@@ -61,8 +62,14 @@ type Props = {
   role: Role
   events: CalendarEvent[]
   cards?: TerritoryCard[]
+  buildings?: Building[]
   leaderNames?: string[]
   mentionUsers?: MentionUser[]
+  onAssignCardsToEventParticipantsBulk?: (
+    eventId: number,
+    assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
+    options?: { silentSuccess?: boolean; status?: 'confirmed' | 'shared' },
+  ) => Promise<void> | void
   onCreateEvent?: (input: EventInput & { date: string }) => void
   onCreateRepeatEvents?: (dates: string[], input: EventInput) => void
   onDeleteEvent?: (id: number) => void
@@ -196,11 +203,13 @@ export function AdminMobileCalendar({
   language,
   events,
   cards = [],
+  buildings = [],
   role,
   currentVisitor,
   currentUserId,
   leaderNames = [],
   mentionUsers = [],
+  onAssignCardsToEventParticipantsBulk,
   onCreateEvent,
   onCreateRepeatEvents,
   onDeleteEvent,
@@ -225,6 +234,8 @@ export function AdminMobileCalendar({
     | null
   >(null)
   const [detailEventId, setDetailEventId] = useState<number | null>(null)
+  // 배정 에디터(풀스크린) 대상 이벤트
+  const [assignEventId, setAssignEventId] = useState<number | null>(null)
   // 딥링크(?openEvent=) 로 시트가 열렸는지 추적 — 닫을 때 이전 화면으로 복귀하기 위함
   const [cameFromDeepLink, setCameFromDeepLink] = useState(false)
   const detailEvent = detailEventId !== null ? events.find((e) => e.id === detailEventId) ?? null : null
@@ -571,6 +582,11 @@ export function AdminMobileCalendar({
           }}
           onApply={onApplyToEvent ? () => onApplyToEvent(detailEvent.id) : undefined}
           onCancelApply={onApplyToEvent ? () => onApplyToEvent(detailEvent.id) : undefined}
+          onOpenAssignment={
+            onAssignCardsToEventParticipantsBulk && (role === 'admin' || role === 'developer' || role === 'leader')
+              ? () => { setAssignEventId(detailEvent.id); setDetailEventId(null) }
+              : undefined
+          }
           onEdit={
             onUpdateEvent
               ? () => {
@@ -594,6 +610,30 @@ export function AdminMobileCalendar({
           }
         />
       )}
+
+      {/* 배정 에디터 (풀스크린) — 인도자/관리자 */}
+      {assignEventId !== null && onAssignCardsToEventParticipantsBulk && (() => {
+        const assignEvent = events.find((e) => e.id === assignEventId)
+        if (!assignEvent) return null
+        // 인도자는 본인 담당 카드만, 관리자/개발자는 전체
+        const myCards = (role === 'admin' || role === 'developer')
+          ? cards
+          : cards.filter((c) => c.assignedLeader === currentVisitor || c.assignedLeaders?.includes(currentVisitor))
+        const canEdit = role === 'admin' || role === 'developer' || assignEvent.leader === currentVisitor
+        return (
+          <AssignmentEditor
+            event={assignEvent}
+            cards={myCards}
+            buildings={buildings}
+            currentVisitor={currentVisitor}
+            canEdit={canEdit}
+            onClose={() => setAssignEventId(null)}
+            onShare={(eventId, assignments) =>
+              onAssignCardsToEventParticipantsBulk(eventId, assignments, { status: 'shared' })
+            }
+          />
+        )
+      })()}
 
       {scopeAction && (
         <SeriesScopeSheet language={language}

@@ -31,6 +31,7 @@ type Props = {
   onCancelApply?: () => void
   onAddParticipant?: (userName: string) => void
   onRemoveParticipant?: (userName: string) => void
+  onOpenAssignment?: () => void
   globalSettings?: Record<string, string>
 }
 
@@ -163,6 +164,7 @@ export function AdminEventDetailSheet({
   onCancelApply,
   onAddParticipant,
   onRemoveParticipant,
+  onOpenAssignment,
   globalSettings = {},
 }: Props) {
   const isApplied = useMemo(() => event.applicants.includes(currentVisitor), [event.applicants, currentVisitor])
@@ -577,6 +579,23 @@ export function AdminEventDetailSheet({
           </div>
         </section>
 
+        )}
+
+        {/* 팀 구성 & 배정 진입 (인도자/관리자) */}
+        {onOpenAssignment && (
+          <button
+            type="button"
+            onClick={onOpenAssignment}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              width: '100%', padding: '14px 16px', marginTop: 4,
+              background: 'var(--ink)', color: '#fff', border: 'none',
+              borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            <span>🗂 팀 구성 &amp; 배정</span>
+            <span aria-hidden="true">→</span>
+          </button>
         )}
 
         <SharedAssignmentTeams event={event} cards={cards} />

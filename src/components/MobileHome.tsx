@@ -823,8 +823,10 @@ export function MobileHome({
                   role={role}
                   events={calendarEvents}
                   cards={cards}
+                  buildings={buildings}
                   leaderNames={leaderNames}
                   mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
+                  onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
                   /* 일정 생성/수정/삭제: admin + leader 만. user 는 신청만. */
                   onCreateEvent={role === 'user' ? undefined : onCreateCalendarEvent}
                   onCreateRepeatEvents={role === 'user' ? undefined : onCreateRepeatCalendarEvents}
