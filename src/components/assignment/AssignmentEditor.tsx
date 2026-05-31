@@ -5,7 +5,7 @@
 // 공유: 일정상세로 돌아가기 전 [배정 공유] 한 번 → 서버 bulk 저장.
 
 import { useEffect, useMemo, useState } from 'react'
-import type { Building, CalendarEvent, TerritoryCard } from '../../types'
+import type { Building, CalendarEvent, CardBoundary, TerritoryCard } from '../../types'
 import type { AssignmentDraft } from '../../hooks/assignmentDraft'
 import {
   useAssignmentDraft,
@@ -20,6 +20,7 @@ type Props = {
   event: CalendarEvent
   cards: TerritoryCard[]          // 인도자 담당 카드
   buildings: Building[]
+  cardBoundaries: CardBoundary[]
   currentVisitor: string
   canEdit: boolean
   onClose: () => void
@@ -29,7 +30,7 @@ type Props = {
   ) => Promise<void> | void
 }
 
-export function AssignmentEditor({ event, cards, buildings, currentVisitor, canEdit, onClose, onShare }: Props) {
+export function AssignmentEditor({ event, cards, buildings, cardBoundaries, currentVisitor, canEdit, onClose, onShare }: Props) {
   // 진입 시 draft 결정 (lazy 1회). 충돌이면 server로 시작하고 모달 띄움.
   const [{ initial, conflictPair }] = useState(() => {
     const entry = resolveDraftEntry(event, currentVisitor)
@@ -100,6 +101,7 @@ export function AssignmentEditor({ event, cards, buildings, currentVisitor, canE
           activeTeamId={activeTeamId}
           cards={cards}
           buildings={buildings}
+          cardBoundaries={cardBoundaries}
           canEdit={canEdit}
           canUndo={canUndo}
           dispatch={dispatch}

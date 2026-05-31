@@ -368,6 +368,8 @@ function NaverMapCanvas({
   onMovePreviewPin,
   onMoveBuilding,
   compact = false,
+  cardColorMap,
+  hideBuildingMarkers = false,
 }: {
   buildings: Building[]
   aggregateMarkers?: MapAggregateMarker[]
@@ -407,6 +409,8 @@ function NaverMapCanvas({
   onMovePreviewPin?: (lat: number, lng: number) => void
   onMoveBuilding?: (id: number, lat: number, lng: number) => void
   compact?: boolean
+  cardColorMap?: Map<number, string>   // cardId → hex. 배정 색칠용 (팀별 색)
+  hideBuildingMarkers?: boolean          // 배정 모드: 건물 핀 숨김, 폴리곤만
 }) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<any>(null)
@@ -431,6 +435,10 @@ function NaverMapCanvas({
   highlightedCardIdsRef.current = highlightedCardIds
   const selectedCardIdsRef = useRef(selectedCardIds)
   selectedCardIdsRef.current = selectedCardIds
+  const cardColorMapRef = useRef(cardColorMap)
+  cardColorMapRef.current = cardColorMap
+  const hideBuildingMarkersRef = useRef(hideBuildingMarkers)
+  hideBuildingMarkersRef.current = hideBuildingMarkers
 
   const onMapRightClickRef = useRef(onMapRightClick)
   onMapRightClickRef.current = onMapRightClick
@@ -505,6 +513,9 @@ function NaverMapCanvas({
       })
       return
     }
+
+    // 배정 색칠 모드: 건물 핀 숨기고 폴리곤만
+    if (hideBuildingMarkersRef.current) return
 
     const zoom = mapInstanceRef.current.getZoom()
     const clusters = clusterBuildings(buildingsRef.current, zoom)
@@ -811,16 +822,51 @@ function NaverMapCanvas({
     const hIds = highlightedCardIdsRef.current || new Set()
     const selectedIds = selectedCardIdsRef.current
 
+    const colorMap = cardColorMapRef.current
+
     cardPolygonsRef.current.forEach((polygon, cardId) => {
-      // 해당 구역이 하이라이트(선택됨/필터됨) 대상인지 결정
-      const isSelected = 
+      const isVisible = !(drawingBoundary && cardId === currentCardId)
+
+      // ── 배정 색칠 모드 (cardColorMap 있으면 우선) ──
+      if (colorMap) {
+        const teamColor = colorMap.get(cardId)
+        if (teamColor) {
+          // 팀 배정된 구역 — 팀색으로 채움
+          polygon.setOptions({
+            fillColor: teamColor,
+            fillOpacity: 0.42,
+            strokeColor: teamColor,
+            strokeOpacity: 0.95,
+            strokeWeight: 2.5,
+            strokeStyle: 'solid',
+            zIndex: 25,
+            map: isVisible ? mapInstanceRef.current : null,
+            clickable: !addingBuilding,
+          })
+        } else {
+          // 미배정 — 회색 점선
+          polygon.setOptions({
+            fillColor: '#94a3b8',
+            fillOpacity: 0.08,
+            strokeColor: '#94a3b8',
+            strokeOpacity: 0.5,
+            strokeWeight: 1.5,
+            strokeStyle: 'shortdash',
+            zIndex: 5,
+            map: isVisible ? mapInstanceRef.current : null,
+            clickable: !addingBuilding,
+          })
+        }
+        return
+      }
+
+      // ── 기존 단색 강조 모드 ──
+      const isSelected =
         selectedIds && selectedIds.size > 0
           ? selectedIds.has(cardId)
         : currentCardId === '전체'
-          ? hIds.has(cardId) 
+          ? hIds.has(cardId)
           : cardId === currentCardId
-
-      const isVisible = !(drawingBoundary && cardId === currentCardId)
 
       polygon.setOptions({
         fillColor: isSelected ? '#5D5B54' : palette.cardDraft,
@@ -1234,7 +1280,7 @@ function NaverMapCanvas({
       prevHighlightedCardIdsSignatureRef.current = highlightedCardIdsSignature
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardBoundaries, draftBoundaryPoints, selectedCardId, selectedCardIds, drawingBoundary, addingBuilding, editingBuildingLocation, buildings.length, highlightedCardIds])
+  }, [cardBoundaries, draftBoundaryPoints, selectedCardId, selectedCardIds, drawingBoundary, addingBuilding, editingBuildingLocation, buildings.length, highlightedCardIds, cardColorMap])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -1392,6 +1438,8 @@ export function MapCanvas({
   onMovePreviewPin,
   onMoveBuilding,
   compact = false,
+  cardColorMap,
+  hideBuildingMarkers = false,
 }: {
   buildings: Building[]
   aggregateMarkers?: MapAggregateMarker[]
@@ -1430,6 +1478,8 @@ export function MapCanvas({
   onMovePreviewPin?: (lat: number, lng: number) => void
   onMoveBuilding?: (id: number, lat: number, lng: number) => void
   compact?: boolean
+  cardColorMap?: Map<number, string>
+  hideBuildingMarkers?: boolean
 }) {
   const naverMapClientId = import.meta.env.VITE_NAVER_MAP_CLIENT_ID as string | undefined
   const validBuildings = useMemo(
@@ -1479,6 +1529,8 @@ export function MapCanvas({
           onMovePreviewPin={onMovePreviewPin}
           onMoveBuilding={onMoveBuilding}
           compact={compact}
+          cardColorMap={cardColorMap}
+          hideBuildingMarkers={hideBuildingMarkers}
         />
       </div>
     )

@@ -12,7 +12,7 @@ import { t, weekdayShortLabels } from '../../i18n'
 
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { Building, CalendarEvent, Role, SpecialPeriod, TerritoryCard } from '../../types'
+import type { Building, CalendarEvent, CardBoundary, Role, SpecialPeriod, TerritoryCard } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { AssignmentEditor } from '../assignment/AssignmentEditor'
 import { loadPlacePresets, savePlacePresets, normalizePlacePresets, PLACE_PRESETS_MAX } from '../../lib/placePresets'
@@ -63,6 +63,7 @@ type Props = {
   events: CalendarEvent[]
   cards?: TerritoryCard[]
   buildings?: Building[]
+  cardBoundaries?: CardBoundary[]
   leaderNames?: string[]
   mentionUsers?: MentionUser[]
   onAssignCardsToEventParticipantsBulk?: (
@@ -204,6 +205,7 @@ export function AdminMobileCalendar({
   events,
   cards = [],
   buildings = [],
+  cardBoundaries = [],
   role,
   currentVisitor,
   currentUserId,
@@ -625,6 +627,7 @@ export function AdminMobileCalendar({
             event={assignEvent}
             cards={myCards}
             buildings={buildings}
+            cardBoundaries={cardBoundaries}
             currentVisitor={currentVisitor}
             canEdit={canEdit}
             onClose={() => setAssignEventId(null)}

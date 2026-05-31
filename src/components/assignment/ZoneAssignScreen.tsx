@@ -7,15 +7,17 @@
 
 import { useMemo, useState } from 'react'
 import type { Dispatch } from 'react'
-import type { Building, TerritoryCard } from '../../types'
+import type { Building, CardBoundary, TerritoryCard } from '../../types'
 import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
+import { MapCanvas } from '../MapCanvas'
 
 type Props = {
   teams: DraftTeam[]
   activeTeamId: string | null
   cards: TerritoryCard[]           // 인도자 담당 카드 (배정 대상)
   buildings: Building[]
+  cardBoundaries: CardBoundary[]
   canEdit: boolean
   canUndo: boolean
   dispatch: Dispatch<DraftAction>
@@ -24,7 +26,7 @@ type Props = {
 
 type ViewMode = 'list' | 'map'
 
-export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, canEdit, canUndo, dispatch, onBack }: Props) {
+export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBoundaries, canEdit, canUndo, dispatch, onBack }: Props) {
   const [view, setView] = useState<ViewMode>('list')
   const [query, setQuery] = useState('')
   const [unassignedOnly, setUnassignedOnly] = useState(false)
@@ -35,6 +37,20 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, canEdi
     teams.forEach((t) => t.cardIds.forEach((id) => m.set(id, t)))
     return m
   }, [teams])
+
+  // 지도 색칠용: cardId → 팀 색(hex)
+  const cardColorMap = useMemo(() => {
+    const m = new Map<number, string>()
+    teams.forEach((t) => t.cardIds.forEach((id) => m.set(id, teamHex(t.color))))
+    return m
+  }, [teams])
+
+  // 담당 카드만 지도에 (경계선 있는 것)
+  const myCardIds = useMemo(() => new Set(cards.map((c) => c.id)), [cards])
+  const myBoundaries = useMemo(
+    () => cardBoundaries.filter((b) => myCardIds.has(b.cardId)),
+    [cardBoundaries, myCardIds],
+  )
 
   // 카드별 주택/상가 세대 수
   const unitStats = useMemo(() => {
@@ -125,8 +141,27 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, canEdi
 
       {/* 본문 */}
       {view === 'map' ? (
-        <div className="asg-zone-map-stub">
-          🗺️ 지도 배분은 Phase 3에서 추가됩니다. 지금은 목록으로 배정해 주세요.
+        <div className="asg-zone-map">
+          <MapCanvas
+            buildings={buildings}
+            cardBoundaries={myBoundaries}
+            cards={cards}
+            selectedBuildingId={0}
+            selectedCardId="전체"
+            highlightedCardIds={myCardIds}
+            cardColorMap={cardColorMap}
+            hideBuildingMarkers
+            isMobile
+            onSelectBuilding={() => undefined}
+            onSelectCardBoundary={(cardId) => {
+              if (!canEdit || !activeTeam) return
+              const owner = cardTeam.get(cardId)
+              if (owner?.id === activeTeam.id) dispatch({ type: 'UNASSIGN_CARD', teamId: activeTeam.id, cardId })
+              else if (owner) dispatch({ type: 'MOVE_CARD', cardId, toTeamId: activeTeam.id })
+              else dispatch({ type: 'ASSIGN_CARD', teamId: activeTeam.id, cardId })
+            }}
+          />
+          <p className="asg-zone-map-hint">폴리곤을 탭하면 활성팀({activeTeam?.name ?? '팀 선택'}) 색으로 칠해집니다. 비공식·식당은 목록에서.</p>
         </div>
       ) : (
         <div className="asg-zone-list">
