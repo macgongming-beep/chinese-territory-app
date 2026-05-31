@@ -5,6 +5,7 @@ export { draftReducer } from './reducer'
 export {
   buildDraftFromServer,
   buildEmptyDraft,
+  draftToAssignments,
   loadLocalDraft,
   saveLocalDraft,
   clearLocalDraft,

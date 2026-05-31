@@ -53,6 +53,19 @@ export function buildEmptyDraft(): AssignmentDraft {
   return { mode: 'card', status: 'draft', updatedAt: null, teams: [] }
 }
 
+// draft → 서버 bulk 배정 형식 (각 멤버가 자기 팀의 cardIds를 받음)
+export function draftToAssignments(
+  draft: AssignmentDraft,
+): Array<{ userName: string; cardIds: number[] }> {
+  const out: Array<{ userName: string; cardIds: number[] }> = []
+  draft.teams.forEach((team) => {
+    team.members.forEach((userName) => {
+      out.push({ userName, cardIds: team.cardIds })
+    })
+  })
+  return out
+}
+
 // ── localStorage ──────────────────────────────────────────────
 export function loadLocalDraft(eventId: number, userName: string): AssignmentDraft | null {
   try {
