@@ -29286,3 +29286,9 @@ button:focus-visible {
 .asg-zone-map .naver-map-canvas,
 .asg-zone-map .mock-map { height: 100%; min-height: 360px; }
 .asg-zone-map-hint { margin: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); font-size: 12px; color: var(--muted); background: var(--surface, #fff); border-top: 1px solid var(--line); line-height: 1.5; }
+
+/* 배정 v3 — 구 선택 + 컨트롤 */
+.asg-zone-controls { display: flex; flex-direction: column; gap: 8px; padding: 0 16px 10px; }
+.asg-region-pills { display: flex; gap: 6px; overflow-x: auto; }
+.asg-region-pill { flex-shrink: 0; padding: 6px 12px; border: 1px solid var(--line-2, #e2e8f0); border-radius: 99px; background: var(--surface, #fff); font-size: 12.5px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.asg-region-pill.is-on { background: var(--ink); color: #fff; border-color: var(--ink); }

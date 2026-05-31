@@ -31,6 +31,19 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
   const [query, setQuery] = useState('')
   const [unassignedOnly, setUnassignedOnly] = useState(false)
 
+  // 구(區) 목록 — 담당 카드가 여러 구에 걸치면 지도가 너무 줌아웃됨 → 한 구만 보기
+  const regions = useMemo(() => {
+    const counts = new Map<string, number>()
+    cards.forEach((c) => counts.set(c.region, (counts.get(c.region) ?? 0) + 1))
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).map(([r]) => r)
+  }, [cards])
+  // 기본: 카드가 가장 많은 구 (한 구만 보기). regions가 1개면 그것.
+  const [selectedRegion, setSelectedRegion] = useState<string>(() => regions[0] ?? '전체')
+  const regionCards = useMemo(
+    () => (selectedRegion === '전체' ? cards : cards.filter((c) => c.region === selectedRegion)),
+    [cards, selectedRegion],
+  )
+
   // cardId → teamId 역인덱스 (어느 카드가 어느 팀인지)
   const cardTeam = useMemo(() => {
     const m = new Map<number, DraftTeam>()
@@ -45,8 +58,8 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     return m
   }, [teams])
 
-  // 담당 카드만 지도에 (경계선 있는 것)
-  const myCardIds = useMemo(() => new Set(cards.map((c) => c.id)), [cards])
+  // 선택된 구의 담당 카드만 지도에 (경계선 있는 것) — 한 구로 좁혀 줌 적정화
+  const myCardIds = useMemo(() => new Set(regionCards.map((c) => c.id)), [regionCards])
   const myBoundaries = useMemo(
     () => cardBoundaries.filter((b) => myCardIds.has(b.cardId)),
     [cardBoundaries, myCardIds],
@@ -67,10 +80,10 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
 
   const activeTeam = teams.find((t) => t.id === activeTeamId) ?? null
 
-  // 동(area)별 그룹
+  // 동(area)별 그룹 — 선택된 구 기준
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const filtered = cards.filter((c) => {
+    const filtered = regionCards.filter((c) => {
       if (q && !c.name.toLowerCase().includes(q)) return false
       if (unassignedOnly && cardTeam.has(c.id)) return false
       return true
@@ -83,7 +96,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
       groups.set(key, arr)
     })
     return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0], 'ko'))
-  }, [cards, query, unassignedOnly, cardTeam])
+  }, [regionCards, query, unassignedOnly, cardTeam])
 
   const toggleCard = (cardId: number) => {
     if (!canEdit || !activeTeam) return
@@ -132,10 +145,24 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
             )
           })}
         </div>
-        {/* 뷰 토글 */}
-        <div className="asg-zone-toggle">
-          <button className={view === 'list' ? 'is-on' : ''} onClick={() => setView('list')} type="button">☰ 목록</button>
-          <button className={view === 'map' ? 'is-on' : ''} onClick={() => setView('map')} type="button">🗺️ 지도</button>
+        {/* 구 선택 (담당이 여러 구에 걸칠 때) + 뷰 토글 */}
+        <div className="asg-zone-controls">
+          {regions.length > 1 && (
+            <div className="asg-region-pills">
+              {regions.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  className={`asg-region-pill${selectedRegion === r ? ' is-on' : ''}`}
+                  onClick={() => setSelectedRegion(r)}
+                >📍 {r}</button>
+              ))}
+            </div>
+          )}
+          <div className="asg-zone-toggle">
+            <button className={view === 'list' ? 'is-on' : ''} onClick={() => setView('list')} type="button">☰ 목록</button>
+            <button className={view === 'map' ? 'is-on' : ''} onClick={() => setView('map')} type="button">🗺️ 지도</button>
+          </div>
         </div>
       </div>
 
@@ -145,7 +172,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
           <MapCanvas
             buildings={buildings}
             cardBoundaries={myBoundaries}
-            cards={cards}
+            cards={regionCards}
             selectedBuildingId={0}
             selectedCardId="전체"
             highlightedCardIds={myCardIds}
