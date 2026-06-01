@@ -12,7 +12,6 @@ import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
 import { sortTerritoryCardsByOperationalPriority } from '../../utils/cardSearch'
 import { MapCanvas } from '../MapCanvas'
-import { getBuildingStatus } from '../../utils/mapUtils'
 
 type BuildingTypeFilter = '전체' | '주택' | '상가'
 
@@ -37,8 +36,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
   const [query, setQuery] = useState('')
   const [unassignedOnly, setUnassignedOnly] = useState(false)
   const [buildingTypeFilter, setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
-  const [showCompleted, setShowCompleted] = useState(false) // 기본: 완료 제외
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+    const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   // 구(區) 목록 — 담당 카드가 여러 구에 걸치면 지도가 너무 줌아웃됨 → 한 구만 보기
   const regions = useMemo(() => {
@@ -79,10 +77,9 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     return buildings.filter((b) => {
       if (!myCardIds.has(b.cardId)) return false
       if (buildingTypeFilter !== '전체' && b.type !== buildingTypeFilter) return false
-      if (!showCompleted && getBuildingStatus(b) === '방문완료') return false
       return true
     })
-  }, [buildings, myCardIds, buildingTypeFilter, showCompleted])
+  }, [buildings, myCardIds, buildingTypeFilter])
 
   // 카드별 주택/상가 세대 수
   const unitStats = useMemo(() => {
@@ -118,9 +115,14 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
   // 동(area)별 그룹 — 선택된 구 기준
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const filtered = cards.filter((c) => {
+    const filtered = regionCards.filter((c) => {
       if (q && !c.name.toLowerCase().includes(q)) return false
       if (unassignedOnly && cardTeam.has(c.id)) return false
+      if (buildingTypeFilter !== '전체') {
+        const stats = unitStats.get(c.id) ?? { house: 0, shop: 0 }
+        if (buildingTypeFilter === '주택' && stats.house === 0) return false
+        if (buildingTypeFilter === '상가' && stats.shop === 0) return false
+      }
       return true
     })
     const groups = new Map<string, TerritoryCard[]>()
@@ -132,7 +134,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     })
     const result = Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0], 'ko'))
     return result.map(([groupName, groupCards]) => [groupName, sortTerritoryCardsByOperationalPriority(groupCards)] as [string, TerritoryCard[]])
-  }, [regionCards, query, unassignedOnly, cardTeam])
+  }, [regionCards, query, unassignedOnly, cardTeam, buildingTypeFilter, unitStats])
 
   const toggleGroup = (groupName: string) => {
     setCollapsedGroups((prev) => {
@@ -210,8 +212,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
               </button>
             </div>
             
-            {view === 'map' && (
-              <div style={{ display: 'flex', gap: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+            <div style={{ display: 'flex', gap: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
                 {(['전체', '주택', '상가'] as BuildingTypeFilter[]).map((t) => (
                   <button key={t} type="button"
                     className={`asg-filter-pill${buildingTypeFilter === t ? ' is-on' : ''}`}
@@ -219,13 +220,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                     style={{ padding: '4px 10px', fontSize: 12, whiteSpace: 'nowrap' }}
                   >{t}</button>
                 ))}
-                <button type="button"
-                  className={`asg-filter-pill${showCompleted ? ' is-on' : ''}`}
-                  onClick={() => setShowCompleted(v => !v)}
-                  style={{ padding: '4px 10px', fontSize: 12, whiteSpace: 'nowrap' }}
-                >완료 포함</button>
               </div>
-            )}
           </div>
         </div>
       </div>
