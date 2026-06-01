@@ -16,6 +16,18 @@ import {
 import { TeamBuildScreen } from './TeamBuildScreen'
 import { ZoneAssignScreen } from './ZoneAssignScreen'
 
+// "5/29 (금) 10:00 · 봉사 모임" 형식
+function formatEventDateTime(event: CalendarEvent): string {
+  const wd = ['일', '월', '화', '수', '목', '금', '토']
+  const d = new Date(event.date + 'T00:00:00')
+  const datePart = Number.isNaN(d.getTime())
+    ? event.date
+    : `${d.getMonth() + 1}/${d.getDate()} (${wd[d.getDay()]})`
+  const parts = [datePart, event.time].filter(Boolean)
+  if (event.title) parts.push(event.title)
+  return parts.join(' · ')
+}
+
 type Props = {
   event: CalendarEvent
   cards: TerritoryCard[]          // 인도자 담당 카드
@@ -41,7 +53,7 @@ export function AssignmentEditor({ event, cards, buildings, cardBoundaries, curr
   })
   const [conflict, setConflict] = useState(conflictPair)
 
-  const { draft, teams, activeTeamId, activeTeam, dispatch, reload } = useAssignmentDraft(
+  const { draft, teams, activeTeamId, dispatch, reload } = useAssignmentDraft(
     event.id,
     currentVisitor,
     initial,
@@ -113,10 +125,12 @@ export function AssignmentEditor({ event, cards, buildings, cardBoundaries, curr
   return (
     <div className="asg-editor">
       <header className="asg-editor-head">
-        <button className="asg-zone-back" onClick={onClose} type="button" aria-label="닫기">‹</button>
-        <div>
-          <strong>{event.title || '봉사'} 배정</strong>
-          <span>{event.time}{activeTeam ? ` · ${activeTeam.name}` : ''}</span>
+        <button className="asg-editor-back" onClick={onClose} type="button" aria-label="뒤로">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 6 9 12 15 18"/></svg>
+        </button>
+        <div className="asg-editor-titles">
+          <strong>봉사 배정</strong>
+          <span>{formatEventDateTime(event)}</span>
         </div>
       </header>
 

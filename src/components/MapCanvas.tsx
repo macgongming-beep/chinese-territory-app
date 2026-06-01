@@ -831,28 +831,28 @@ function NaverMapCanvas({
       if (colorMap) {
         const teamColor = colorMap.get(cardId)
         if (teamColor) {
-          // 팀 배정된 구역 — 팀색으로 채움
+          // 팀 배정된 구역 — 팀색으로 채움 (파스텔이라 채도 보강)
           polygon.setOptions({
             fillColor: teamColor,
-            fillOpacity: 0.42,
+            fillOpacity: 0.45,
             strokeColor: teamColor,
-            strokeOpacity: 0.95,
-            strokeWeight: 2.5,
+            strokeOpacity: 1,
+            strokeWeight: 3,
             strokeStyle: 'solid',
             zIndex: 25,
             map: isVisible ? mapInstanceRef.current : null,
             clickable: !addingBuilding,
           })
         } else {
-          // 미배정 — 회색 점선
+          // 미배정 담당 구역 — 잘 보이게 (연한 채움 + 또렷한 실선 테두리)
           polygon.setOptions({
-            fillColor: '#94a3b8',
-            fillOpacity: 0.08,
-            strokeColor: '#94a3b8',
-            strokeOpacity: 0.5,
-            strokeWeight: 1.5,
-            strokeStyle: 'shortdash',
-            zIndex: 5,
+            fillColor: '#5b6b7c',
+            fillOpacity: 0.10,
+            strokeColor: '#5b6b7c',
+            strokeOpacity: 0.85,
+            strokeWeight: 2.5,
+            strokeStyle: 'solid',
+            zIndex: 8,
             map: isVisible ? mapInstanceRef.current : null,
             clickable: !addingBuilding,
           })

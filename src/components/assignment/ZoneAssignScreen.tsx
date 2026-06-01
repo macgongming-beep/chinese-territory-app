@@ -253,7 +253,9 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                     disabled={!canEdit || !activeTeam}
                   >
                     <span className={`asg-zone-check${isActiveTeamCard ? ' is-on' : ''}`}>
-                      {isActiveTeamCard && '✓'}
+                      {isActiveTeamCard && (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      )}
                     </span>
                     <span className="asg-zone-card-main">
                       <strong>{card.name}</strong>

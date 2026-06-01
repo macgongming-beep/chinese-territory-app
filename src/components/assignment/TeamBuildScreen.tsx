@@ -73,7 +73,7 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
           <h2>신청자 <small>배정 안 된 사람만 진하게</small></h2>
           {selected.size > 0 && (
             <button className="asg-build-group-btn" onClick={makeTeam} type="button">
-              ✓ {selected.size}명 → 새 팀으로 묶기
+              {selected.size}명 새 팀으로 묶기
             </button>
           )}
         </div>
@@ -119,10 +119,10 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
                   <div className="asg-team-members">
                     {team.members.length > 0 ? team.members.join(' · ') : '구성원 없음'}
                   </div>
-                  <div className="asg-team-zones">
+                  <div className={`asg-team-zones${team.cardIds.length === 0 ? ' is-empty' : ''}`}>
                     {team.cardIds.length > 0
-                      ? `🗂 ${team.cardIds.map(cardName).slice(0, 2).join(' · ')}${team.cardIds.length > 2 ? ` 외 ${team.cardIds.length - 2}` : ''}`
-                      : '⚠ 구역 미배정'}
+                      ? `${team.cardIds.map(cardName).slice(0, 2).join(' · ')}${team.cardIds.length > 2 ? ` 외 ${team.cardIds.length - 2}` : ''}`
+                      : '구역 미배정'}
                   </div>
                 </div>
                 <span className="asg-team-chev" aria-hidden="true">›</span>
@@ -146,7 +146,7 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
       {/* 미배정 사람 */}
       {unassigned.length > 0 && (
         <section className="asg-unassigned">
-          <h3>⚠ 미배정 {unassigned.length}명</h3>
+          <h3>미배정 {unassigned.length}명</h3>
           <div className="asg-chip-wrap">
             {unassigned.map((name) => (
               <button
