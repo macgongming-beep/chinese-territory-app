@@ -3,7 +3,6 @@ import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } fr
 // MobileCalendar 는 디자인 v2 적용 후 미사용 (AdminMobileCalendar 가 모든 역할 처리)
 // import { MobileCalendar } from './MobileCalendar'
 import { MobileAdminAssignment } from './MobileAdminAssignment'
-import { MobileLeaderAssignment } from './MobileLeaderAssignment'
 import { MobileMap } from './MobileMap'
 import { MobileNotices } from './MobileNotices'
 import { MobileTerritory } from './MobileTerritory'
@@ -289,10 +288,10 @@ export function MobileHome({
   onRenameInformalGroup,
   onDeleteInformalGroup,
   onMoveAssetToGroup,
-  onAssignInformalToUser,
-  onRemoveInformalAssignment,
-  onAssignRestaurantToUser,
-  onRemoveRestaurantAssignment,
+  onAssignInformalToUser: _onAssignInformalToUser,
+  onRemoveInformalAssignment: _onRemoveInformalAssignment,
+  onAssignRestaurantToUser: _onAssignRestaurantToUser,
+  onRemoveRestaurantAssignment: _onRemoveRestaurantAssignment,
   onToggleBuildingRestaurant,
   onSetRegularVisitor,
   onAddRestaurantVisit,
@@ -632,8 +631,8 @@ export function MobileHome({
   const visibleTabs: MobileTab[] = role === 'user'
     ? ['홈', '캘린더', '활동', '설정']
     : role === 'leader'
-      ? ['홈', '캘린더', '활동', '배정', '구역', '설정']
-      : ['홈', '캘린더', '구역', '배정', '설정']  // admin
+      ? ['홈', '캘린더', '활동', '구역', '설정']  // 인도자 배정은 일정상세로 이동 → 배정 탭 제거
+      : ['홈', '캘린더', '구역', '배정', '설정']  // admin (카드→인도자 배정 유지)
 
   const BottomNav = (
     <nav className="bottom-nav" aria-label="주요 메뉴">
@@ -1048,26 +1047,8 @@ export function MobileHome({
                   }}
                 />
               ) : (
-                  <MobileLeaderAssignment
-                    cards={cards}
-                    buildings={buildings}
-                    cardBoundaries={cardBoundaries}
-                    calendarEvents={calendarEvents}
-                  currentVisitor={currentVisitor}
-                  role={role}
-                  actualRole={actualRole}
-                
-                  onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
-                  informalAssets={informalAssets}
-                  informalGroups={informalGroups}
-                  eventInformalAssignments={eventInformalAssignments}
-                  eventRestaurantAssignments={eventRestaurantAssignments}
-                  onAssignInformalToUser={onAssignInformalToUser}
-                  onRemoveInformalAssignment={onRemoveInformalAssignment}
-                  onAssignRestaurantToUser={onAssignRestaurantToUser}
-                  onRemoveRestaurantAssignment={onRemoveRestaurantAssignment}
-                  onToggleBuildingRestaurant={onToggleBuildingRestaurant}
-                />
+                /* 인도자 배정은 일정상세(캘린더)로 이동됨 → 직접 접근 시 캘린더로 */
+                <Navigate to="/calendar" replace />
               )}
               </>
             } />
