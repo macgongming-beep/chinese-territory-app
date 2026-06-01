@@ -41,7 +41,7 @@ export function AssignmentEditor({ event, cards, buildings, cardBoundaries, curr
   })
   const [conflict, setConflict] = useState(conflictPair)
 
-  const { draft, teams, activeTeamId, activeTeam, canUndo, dispatch, reload } = useAssignmentDraft(
+  const { draft, teams, activeTeamId, activeTeam, dispatch, reload } = useAssignmentDraft(
     event.id,
     currentVisitor,
     initial,
@@ -103,7 +103,6 @@ export function AssignmentEditor({ event, cards, buildings, cardBoundaries, curr
           buildings={buildings}
           cardBoundaries={cardBoundaries}
           canEdit={canEdit}
-          canUndo={canUndo}
           dispatch={dispatch}
           onBack={() => setScreen('teams')}
         />

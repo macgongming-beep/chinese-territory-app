@@ -33,6 +33,13 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
 
   const cardName = (id: number) => cards.find((c) => c.id === id)?.name ?? `카드 ${id}`
 
+  // 이름 → 소속 팀 색 (배정된 사람 칩 dot용)
+  const memberColor = useMemo(() => {
+    const m = new Map<string, string>()
+    teams.forEach((t) => t.members.forEach((name) => m.set(name, teamHex(t.color))))
+    return m
+  }, [teams])
+
   const toggleSelect = (name: string) => {
     if (!canEdit) return
     setSelected((prev) => {
@@ -51,10 +58,19 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
 
   return (
     <div className="asg-build">
+      {/* 요약 바 */}
+      <div className="asg-summary">
+        <div className="asg-summary-stats">
+          <span><b className="muted">신청</b> {participants.length}</span>
+          <span><b className="muted">배정</b> {assignedSet.size}</span>
+          <span><b className="muted">미배정</b> <em className={unassigned.length > 0 ? 'danger' : ''}>{unassigned.length}</em></span>
+        </div>
+      </div>
+
       {/* 신청자 풀 */}
       <section className="asg-build-pool">
         <div className="asg-build-pool-head">
-          <h2>신청 {participants.length}명</h2>
+          <h2>신청자 <small>배정 안 된 사람만 진하게</small></h2>
           {selected.size > 0 && (
             <button className="asg-build-group-btn" onClick={makeTeam} type="button">
               ✓ {selected.size}명 → 새 팀으로 묶기
@@ -73,8 +89,8 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
                 onClick={() => toggleSelect(name)}
                 disabled={!canEdit}
               >
+                {isAssigned && <span className="asg-person-dot" style={{ background: memberColor.get(name) }} aria-hidden="true" />}
                 {name}
-                {isAssigned && <span className="asg-person-dot" aria-hidden="true" />}
               </button>
             )
           })}

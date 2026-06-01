@@ -19,14 +19,13 @@ type Props = {
   buildings: Building[]
   cardBoundaries: CardBoundary[]
   canEdit: boolean
-  canUndo: boolean
   dispatch: Dispatch<DraftAction>
   onBack: () => void
 }
 
 type ViewMode = 'list' | 'map'
 
-export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBoundaries, canEdit, canUndo, dispatch, onBack }: Props) {
+export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBoundaries, canEdit, dispatch, onBack }: Props) {
   const [view, setView] = useState<ViewMode>('list')
   const [query, setQuery] = useState('')
   const [unassignedOnly, setUnassignedOnly] = useState(false)
@@ -80,6 +79,22 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
 
   const activeTeam = teams.find((t) => t.id === activeTeamId) ?? null
 
+  // 구별 카드 수 (필터 pill 카운트)
+  const regionCount = useMemo(() => {
+    const m = new Map<string, number>()
+    cards.forEach((c) => m.set(c.region, (m.get(c.region) ?? 0) + 1))
+    return m
+  }, [cards])
+
+  // cardId → 짧은 카드명 (지역/구 접두 제거: "처인구 고림동 1" → "고림동 1")
+  const shortName = (id: number) => {
+    const c = cards.find((x) => x.id === id)
+    if (!c) return `카드 ${id}`
+    return c.name.replace(/^(처인구|기흥구|수지구|영통구|화성시)\s*/, '')
+  }
+  const teamAreaNames = (t: DraftTeam) =>
+    t.cardIds.length ? t.cardIds.map(shortName).slice(0, 3).join(', ') + (t.cardIds.length > 3 ? ` 외 ${t.cardIds.length - 3}` : '') : null
+
   // 동(area)별 그룹 — 선택된 구 기준
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -117,14 +132,14 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
         <div className="asg-zone-topbar">
           <button className="asg-zone-back" onClick={onBack} type="button" aria-label="뒤로">‹</button>
           <strong>구역 배분</strong>
-          {canUndo && (
-            <button className="asg-zone-undo" onClick={() => dispatch({ type: 'UNDO' })} type="button">실행취소</button>
-          )}
+          <span className="asg-zone-sub-mem">{activeTeam ? activeTeam.members.join(' · ') : ''}</span>
         </div>
-        {/* 팀바 가로 스크롤 */}
+        {/* 배분할 팀 — 가로 스크롤, 받은 구역명 표시 */}
+        <span className="asg-teambar-label">배분할 팀</span>
         <div className="asg-teambar">
           {teams.map((team) => {
             const isActive = team.id === activeTeamId
+            const areas = teamAreaNames(team)
             return (
               <button
                 key={team.id}
@@ -136,16 +151,16 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                 <span className="asg-teambar-name">
                   <span className="asg-team-dot" style={{ background: teamHex(team.color) }} />
                   {team.name}
+                  <span className="asg-teambar-cnt">{team.members.length}</span>
                 </span>
-                <span className="asg-teambar-mem">{team.members.join('·') || '구성원 없음'}</span>
-                <span className="asg-teambar-zones">
-                  {team.cardIds.length > 0 ? `🗂 ${team.cardIds.length}` : '⚠ 구역없음'}
+                <span className="asg-teambar-zones" style={areas ? undefined : { color: 'var(--warn, #b8862a)' }}>
+                  {areas ?? '구역 미배정'}
                 </span>
               </button>
             )
           })}
         </div>
-        {/* 구 선택 (담당이 여러 구에 걸칠 때) + 뷰 토글 */}
+        {/* 구 필터 (무채색 카운트 pill) + 뷰 토글 */}
         <div className="asg-zone-controls">
           {regions.length > 1 && (
             <div className="asg-region-pills">
@@ -155,13 +170,19 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                   type="button"
                   className={`asg-region-pill${selectedRegion === r ? ' is-on' : ''}`}
                   onClick={() => setSelectedRegion(r)}
-                >📍 {r}</button>
+                >{r} <span className="asg-region-cnt">{regionCount.get(r) ?? 0}</span></button>
               ))}
             </div>
           )}
           <div className="asg-zone-toggle">
-            <button className={view === 'list' ? 'is-on' : ''} onClick={() => setView('list')} type="button">☰ 목록</button>
-            <button className={view === 'map' ? 'is-on' : ''} onClick={() => setView('map')} type="button">🗺️ 지도</button>
+            <button className={view === 'list' ? 'is-on' : ''} onClick={() => setView('list')} type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              목록
+            </button>
+            <button className={view === 'map' ? 'is-on' : ''} onClick={() => setView('map')} type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+              지도
+            </button>
           </div>
         </div>
       </div>
@@ -188,11 +209,16 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
               else dispatch({ type: 'ASSIGN_CARD', teamId: activeTeam.id, cardId })
             }}
           />
-          <p className="asg-zone-map-hint">
-            폴리곤을 탭하면 활성팀({activeTeam?.name ?? '팀 선택'}) 색으로 칠해집니다.
-            {' '}(담당 카드 {cards.length} · 경계선 {myBoundaries.length})
-            {myBoundaries.length === 0 && ' — 경계선이 그려진 담당 구역이 없어 목록에서 배정하세요.'}
-          </p>
+          <div className="asg-zone-map-hint">
+            <div className="asg-zone-map-hint-row">
+              <span className="asg-zone-map-hint-swatch" style={{ background: activeTeam ? `${teamHex(activeTeam.color)}22` : 'transparent', borderColor: activeTeam ? teamHex(activeTeam.color) : 'var(--line)' }} />
+              <span>폴리곤을 탭하면 <b>{activeTeam?.name ?? '팀 선택'}</b> 색으로 칠해집니다.</span>
+            </div>
+            <div className="asg-zone-map-hint-meta">
+              담당 카드 {regionCards.length} · 경계선 {myBoundaries.length}
+              {activeTeam ? ` · ${activeTeam.name} 배분 ${activeTeam.cardIds.length}` : ''}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="asg-zone-list">
@@ -238,9 +264,13 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                         {` · ${card.progress}%`}
                       </small>
                     </span>
-                    {owner && !isActiveTeamCard && (
+                    {owner && !isActiveTeamCard ? (
                       <span className="asg-zone-owner-pill" style={{ background: `${teamHex(owner.color)}22`, color: teamHex(owner.color) }}>
                         {owner.name}
+                      </span>
+                    ) : (
+                      <span className={`asg-state-pill ${card.progress > 0 ? 'used' : 'unused'}`}>
+                        {card.progress > 0 ? '사용중' : '미사용'}
                       </span>
                     )}
                   </button>

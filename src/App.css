@@ -29292,3 +29292,30 @@ button:focus-visible {
 .asg-region-pills { display: flex; gap: 6px; overflow-x: auto; }
 .asg-region-pill { flex-shrink: 0; padding: 6px 12px; border: 1px solid var(--line-2, #e2e8f0); border-radius: 99px; background: var(--surface, #fff); font-size: 12.5px; font-weight: 700; color: var(--muted); cursor: pointer; }
 .asg-region-pill.is-on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* 배정 v3 — 디자인 핸드오프 폴리시 */
+.asg-zone-sub-mem { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.asg-teambar-label { display: block; padding: 8px 16px 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.asg-teambar-cnt { margin-left: 4px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.asg-teambar-card { min-width: 132px; gap: 4px; }
+.asg-teambar-zones { font-size: 12px; color: var(--text, #475569); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asg-region-pill { display: inline-flex; align-items: center; gap: 4px; }
+.asg-region-cnt { font-size: 12px; opacity: 0.65; font-variant-numeric: tabular-nums; font-weight: 500; }
+.asg-zone-toggle button { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.asg-zone-map-hint { margin: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--surface, #fff); border-top: 1px solid var(--line); }
+.asg-zone-map-hint-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text, #475569); }
+.asg-zone-map-hint-row b { color: var(--ink); }
+.asg-zone-map-hint-swatch { width: 13px; height: 13px; border-radius: 3px; border: 1.5px solid; flex-shrink: 0; }
+.asg-zone-map-hint-meta { margin-top: 6px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* 배정 v3 — 요약바 / StatePill / 폴리시 */
+.asg-summary { padding: 10px 14px; background: var(--surface, #fff); border: 1px solid var(--line); border-radius: 10px; }
+.asg-summary-stats { display: flex; gap: 16px; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.asg-summary-stats b.muted { color: var(--muted); font-weight: 500; margin-right: 3px; }
+.asg-summary-stats em { font-style: normal; font-weight: 700; }
+.asg-summary-stats em.danger { color: var(--status-danger, #c44536); }
+.asg-build-pool-head h2 small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+.asg-person-chip .asg-person-dot { width: 7px; height: 7px; border-radius: 50%; margin-right: 2px; margin-left: 0; }
+.asg-state-pill { flex-shrink: 0; padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+.asg-state-pill.used { background: #eef4ee; color: var(--ok, #4f7a4b); }
+.asg-state-pill.unused { background: var(--bg-muted, #f1f5f9); color: var(--muted); }
