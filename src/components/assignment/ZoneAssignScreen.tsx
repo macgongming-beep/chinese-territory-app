@@ -12,6 +12,7 @@ import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
 import { sortTerritoryCardsByOperationalPriority } from '../../utils/cardSearch'
 import { MapCanvas } from '../MapCanvas'
+import { getBuildingStatus } from '../../utils/mapUtils'
 
 type BuildingTypeFilter = '전체' | '주택' | '상가'
 
@@ -37,6 +38,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
   const [unassignedOnly, setUnassignedOnly] = useState(false)
   const [buildingTypeFilter, setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [openCompletedGroups, setOpenCompletedGroups] = useState<Set<string>>(new Set())
 
   // 구(區) 목록 — 담당 카드가 여러 구에 걸치면 지도가 너무 줌아웃됨 → 한 구만 보기
   const regions = useMemo(() => {
@@ -77,6 +79,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     return buildings.filter((b) => {
       if (!myCardIds.has(b.cardId)) return false
       if (buildingTypeFilter !== '전체' && b.type !== buildingTypeFilter) return false
+      if (getBuildingStatus(b) === '방문완료') return false
       return true
     })
   }, [buildings, myCardIds, buildingTypeFilter])
@@ -138,6 +141,15 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
 
   const toggleGroup = (groupName: string) => {
     setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupName)) next.delete(groupName)
+      else next.add(groupName)
+      return next
+    })
+  }
+
+  const toggleCompletedGroup = (groupName: string) => {
+    setOpenCompletedGroups((prev) => {
       const next = new Set(prev)
       if (next.has(groupName)) next.delete(groupName)
       else next.add(groupName)
@@ -289,6 +301,10 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
 
           {grouped.map(([groupName, groupCards]) => {
             const isCollapsed = collapsedGroups.has(groupName)
+            const activeCards = groupCards.filter(c => (c.progress ?? 0) < 100 && c.status !== '완료')
+            const completedCards = groupCards.filter(c => (c.progress ?? 0) >= 100 || c.status === '완료')
+            const isCompletedOpen = openCompletedGroups.has(groupName)
+
             return (
             <div className="asg-zone-group" key={groupName}>
               <button type="button" className="asg-zone-group-head is-btn" onClick={() => toggleGroup(groupName)}>
@@ -296,9 +312,9 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
                   {groupName}
                 </span>
-                <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 400 }}>{groupCards.length}개</span>
+                <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 400 }}>{activeCards.length}개</span>
               </button>
-              {!isCollapsed && groupCards.map((card) => {
+              {!isCollapsed && activeCards.map((card) => {
                 const owner = cardTeam.get(card.id)
                 const isActiveTeamCard = owner?.id === activeTeamId
                 const stats = unitStats.get(card.id) ?? { house: 0, shop: 0 }
@@ -329,13 +345,67 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                         {owner.name}
                       </span>
                     ) : (
-                      <span className={`asg-state-pill ${card.progress > 0 ? 'used' : 'unused'}`}>
-                        {card.progress > 0 ? '사용중' : '미사용'}
+                      <span className={`asg-state-pill ${card.progress >= 100 ? 'done' : card.progress > 0 ? 'used' : 'unused'}`}>
+                        {card.progress >= 100 ? '완료됨' : card.progress > 0 ? '사용중' : '미사용'}
                       </span>
                     )}
                   </button>
                 )
               })}
+
+              {!isCollapsed && completedCards.length > 0 && (
+                <>
+                  <button type="button" className="asg-zone-completed-head is-btn" onClick={() => toggleCompletedGroup(groupName)} style={{ marginTop: 4, padding: '8px 4px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                    <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ display: 'inline-block', width: 14, height: 1, background: 'var(--line)' }} />
+                      완료됨
+                      <span style={{ display: 'inline-block', width: 14, height: 1, background: 'var(--line)' }} />
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 400, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {completedCards.length}개
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isCompletedOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                  </button>
+                  {isCompletedOpen && completedCards.map((card) => {
+                const owner = cardTeam.get(card.id)
+                const isActiveTeamCard = owner?.id === activeTeamId
+                const stats = unitStats.get(card.id) ?? { house: 0, shop: 0 }
+                return (
+                  <button
+                    key={card.id}
+                    type="button"
+                    className={`asg-zone-card${isActiveTeamCard ? ' is-mine' : ''}`}
+                    onClick={() => toggleCard(card.id)}
+                    disabled={!canEdit || !activeTeam}
+                  >
+                    <span className={`asg-zone-check${isActiveTeamCard ? ' is-on' : ''}`}>
+                      {isActiveTeamCard && (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      )}
+                    </span>
+                    <span className="asg-zone-card-main">
+                      <strong>{card.name}</strong>
+                      <small>
+                        {stats.house > 0 && `주택 ${stats.house}`}
+                        {stats.house > 0 && stats.shop > 0 && ' · '}
+                        {stats.shop > 0 && `상가 ${stats.shop}`}
+                        {` · ${card.progress}%`}
+                      </small>
+                    </span>
+                    {owner && !isActiveTeamCard ? (
+                      <span className="asg-zone-owner-pill" style={{ background: `${teamHex(owner.color)}22`, color: teamHex(owner.color) }}>
+                        {owner.name}
+                      </span>
+                    ) : (
+                      <span className={`asg-state-pill ${card.progress >= 100 ? 'done' : card.progress > 0 ? 'used' : 'unused'}`}>
+                        {card.progress >= 100 ? '완료됨' : card.progress > 0 ? '사용중' : '미사용'}
+                      </span>
+                    )}
+                  </button>
+                )
+                  })}
+                </>
+              )}
             </div>
           )})}
 
