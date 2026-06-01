@@ -138,7 +138,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
   }
 
   return (
-    <div className="asg-zone">
+    <div className={`asg-zone${view === 'map' ? ' is-map-view' : ''}`}>
       {/* sticky 헤더 */}
       <div className="asg-zone-sticky">
         <header className="asg-editor-head">

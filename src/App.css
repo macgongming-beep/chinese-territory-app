@@ -29459,3 +29459,23 @@ button:focus-visible {
   color: #fff;
   border-color: var(--ink);
 }
+
+.asg-zone.is-map-view {
+  height: 100dvh;
+  overflow: hidden;
+}
+.asg-zone.is-map-view .asg-zone-map {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.asg-zone.is-map-view .map-canvas-container {
+  flex: 1;
+  height: auto !important;
+  min-height: 0 !important;
+}
+.asg-zone.is-map-view .naver-map-canvas,
+.asg-zone.is-map-view .mock-map {
+  height: 100% !important;
+  min-height: 0 !important;
+}
