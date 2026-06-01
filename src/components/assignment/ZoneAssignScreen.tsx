@@ -159,11 +159,17 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     <div className={`asg-zone${view === 'map' ? ' is-map-view' : ''}`}>
       {/* sticky 헤더 */}
       <div className="asg-zone-sticky">
-        <div className="asg-zone-topbar">
-          <button className="asg-zone-back" onClick={onBack} type="button" aria-label="뒤로">‹</button>
-          <strong>구역 배분</strong>
-          <span className="asg-zone-sub-mem">{activeTeam ? `${activeTeam.name} · ${activeTeam.members.join(' · ')}` : ''}</span>
-        </div>
+        <header className="asg-editor-head" style={{ position: 'relative', borderBottom: 'none' }}>
+          <div className="asg-editor-head-left">
+            <button className="asg-editor-back" onClick={onBack} type="button" aria-label="뒤로">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div className="asg-editor-titles">
+              <strong>구역 배분</strong>
+              <span>{activeTeam ? `${activeTeam.name} · ${activeTeam.members.join(' · ')}` : ''}</span>
+            </div>
+          </div>
+        </header>
         {/* 배분할 팀 — 가로 스크롤, 받은 구역명 표시 */}
         <span className="asg-teambar-label">배분할 팀</span>
         <div className="asg-teambar">
@@ -209,30 +215,32 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
       {view === 'map' ? (
         <div className="asg-zone-map">
           {/* 구 + 주택/상가 + 완료 필터 (sticky 헤더 바로 아래) */}
-          <div className="asg-map-filters">
-            {regions.length > 1 && (
-              <div className="asg-map-filter-row">
-                {regions.map((r) => (
-                  <button key={r} type="button"
-                    className={`asg-filter-pill${selectedRegion === r ? ' is-on' : ''}`}
-                    onClick={() => setSelectedRegion(r)}
-                  >{r} <span className="asg-filter-cnt">{regionCount.get(r) ?? 0}</span></button>
-                ))}
-              </div>
-            )}
-            <div className="asg-map-filter-row">
-              {(['전체', '주택', '상가'] as BuildingTypeFilter[]).map((t) => (
-                <button key={t} type="button"
-                  className={`asg-filter-pill${buildingTypeFilter === t ? ' is-on' : ''}`}
-                  onClick={() => setBuildingTypeFilter(t)}
-                >{t}</button>
+          {/* 오버레이 필터: 구 선택 (좌측 상단) */}
+          {regions.length > 1 && (
+            <div className="asg-map-overlay-regions">
+              {regions.map((r) => (
+                <button key={r} type="button"
+                  className={`asg-filter-pill${selectedRegion === r ? ' is-on' : ''}`}
+                  onClick={() => setSelectedRegion(r)}
+                >{r} <span className="asg-filter-cnt">{regionCount.get(r) ?? 0}</span></button>
               ))}
-              <button type="button"
-                className={`asg-filter-pill${showCompleted ? ' is-on' : ''}`}
-                onClick={() => setShowCompleted(v => !v)}
-              >완료 포함</button>
             </div>
+          )}
+
+          {/* 오버레이 필터: 주택/상가/완료 (우측 상단 세로) */}
+          <div className="asg-map-overlay-types">
+            {(['전체', '주택', '상가'] as BuildingTypeFilter[]).map((t) => (
+              <button key={t} type="button"
+                className={`asg-filter-pill${buildingTypeFilter === t ? ' is-on' : ''}`}
+                onClick={() => setBuildingTypeFilter(t)}
+              >{t}</button>
+            ))}
+            <button type="button"
+              className={`asg-filter-pill${showCompleted ? ' is-on' : ''}`}
+              onClick={() => setShowCompleted(v => !v)}
+            >완료 포함</button>
           </div>
+
           <MapCanvas
             buildings={mapBuildings}
             cardBoundaries={myBoundaries}
