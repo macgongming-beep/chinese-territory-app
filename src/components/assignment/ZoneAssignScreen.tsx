@@ -29,6 +29,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
   const [view, setView] = useState<ViewMode>('list')
   const [query, setQuery] = useState('')
   const [unassignedOnly, setUnassignedOnly] = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   // 구(區) 목록 — 담당 카드가 여러 구에 걸치면 지도가 너무 줌아웃됨 → 한 구만 보기
   const regions = useMemo(() => {
@@ -112,6 +113,15 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     })
     return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0], 'ko'))
   }, [regionCards, query, unassignedOnly, cardTeam])
+
+  const toggleGroup = (groupName: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupName)) next.delete(groupName)
+      else next.add(groupName)
+      return next
+    })
+  }
 
   const toggleCard = (cardId: number) => {
     if (!canEdit || !activeTeam) return
@@ -243,10 +253,18 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
 
           {!activeTeam && <div className="asg-empty">먼저 위에서 팀을 선택하세요.</div>}
 
-          {grouped.map(([groupName, groupCards]) => (
+          {grouped.map(([groupName, groupCards]) => {
+            const isCollapsed = collapsedGroups.has(groupName)
+            return (
             <div className="asg-zone-group" key={groupName}>
-              <p className="asg-zone-group-head">{groupName}</p>
-              {groupCards.map((card) => {
+              <button type="button" className="asg-zone-group-head is-btn" onClick={() => toggleGroup(groupName)}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
+                  {groupName}
+                </span>
+                <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 400 }}>{groupCards.length}개</span>
+              </button>
+              {!isCollapsed && groupCards.map((card) => {
                 const owner = cardTeam.get(card.id)
                 const isActiveTeamCard = owner?.id === activeTeamId
                 const stats = unitStats.get(card.id) ?? { house: 0, shop: 0 }
@@ -285,7 +303,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                 )
               })}
             </div>
-          ))}
+          )})}
 
           {grouped.length === 0 && <div className="asg-empty">조건에 맞는 카드가 없습니다.</div>}
         </div>

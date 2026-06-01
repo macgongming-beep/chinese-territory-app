@@ -29380,3 +29380,15 @@ button:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.asg-zone-group-head.is-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 12px 16px;
+  text-align: left;
+}
