@@ -5,8 +5,8 @@ const collator = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base'
 export type TerritoryCardOperationalState = '방문필요' | '진행중' | '정기방문' | '완료' | '대상없음'
 
 const operationalStateOrder: Record<TerritoryCardOperationalState, number> = {
-  방문필요: 0,
-  진행중: 1,
+  진행중: 0,
+  방문필요: 1,
   정기방문: 2,
   완료: 3,
   대상없음: 4,
@@ -36,9 +36,9 @@ export function isEmptyTerritoryCard(card: TerritoryCard) {
 
 export function getTerritoryCardOperationalState(card: TerritoryCard): TerritoryCardOperationalState {
   if (isEmptyTerritoryCard(card)) return '대상없음'
-  if ((card.regularVisits ?? 0) > 0) return '정기방문'
   if ((card.progress ?? 0) >= 100 || card.status === '완료') return '완료'
   if ((card.progress ?? 0) > 0 || card.status === '진행중') return '진행중'
+  if ((card.regularVisits ?? 0) > 0) return '정기방문'
   return '방문필요'
 }
 
