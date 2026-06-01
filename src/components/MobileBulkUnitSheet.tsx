@@ -28,6 +28,22 @@ export function MobileBulkUnitSheet({
   const newOnes = preview.filter((n) => !existingNumbers.has(n))
   const skipped = preview.length - newOnes.length
 
+  // 층별 범위 요약 (101호~105호 식) — 가로 절약
+  const floorRanges = (() => {
+    // 호수 → 층 prefix (101 → '1', B201 → 'B2')
+    const byFloor = new Map<string, string[]>()
+    preview.forEach((n) => {
+      const floor = n.slice(0, n.length - 2) // 끝 2자리(호) 제외
+      const arr = byFloor.get(floor) ?? []
+      arr.push(n)
+      byFloor.set(floor, arr)
+    })
+    return Array.from(byFloor.entries()).map(([, nums]) => {
+      const allSkip = nums.every((n) => existingNumbers.has(n))
+      return { first: nums[0], last: nums[nums.length - 1], allSkip }
+    })
+  })()
+
   const handleAdd = async () => {
     if (newOnes.length === 0 || adding) return
     setAdding(true)
@@ -96,9 +112,9 @@ export function MobileBulkUnitSheet({
             {skipped > 0 && <span className="mbu-skip"> · {skipped}개 이미 있어 스킵</span>}
           </div>
           <div className="mbu-preview-grid">
-            {preview.map((n) => (
-              <span key={n} className={`mbu-chip${n.startsWith('B') ? ' is-basement' : ''}${existingNumbers.has(n) ? ' is-skip' : ''}`}>
-                {n}호
+            {floorRanges.map((r) => (
+              <span key={r.first} className={`mbu-chip${r.first.startsWith('B') ? ' is-basement' : ''}${r.allSkip ? ' is-skip' : ''}`}>
+                {r.first === r.last ? `${r.first}호` : `${r.first}~${r.last}호`}
               </span>
             ))}
           </div>
