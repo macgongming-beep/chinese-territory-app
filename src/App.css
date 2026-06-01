@@ -6745,11 +6745,25 @@ button:focus-visible {
 }
 
 .mobile-cal-empty {
-  padding: 28px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   text-align: center;
+}
+.mobile-cal-empty svg {
+  width: 42px;
+  height: 42px;
+  stroke: var(--muted);
+  opacity: 0.4;
+}
+.mobile-cal-empty p {
+  margin: 0;
 }
 
 .mobile-cal-event-card {
@@ -21711,11 +21725,25 @@ button:focus-visible {
 }
 
 .mobile-cal-empty {
-  padding: 20px 0;
-  color: #9ca3af;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 0;
+  color: var(--muted);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   text-align: center;
+}
+.mobile-cal-empty svg {
+  width: 42px;
+  height: 42px;
+  stroke: var(--muted);
+  opacity: 0.4;
+}
+.mobile-cal-empty p {
+  margin: 0;
 }
 
 .mobile-cal-event-card {
