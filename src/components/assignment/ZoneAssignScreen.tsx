@@ -12,6 +12,9 @@ import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
 import { sortTerritoryCardsByOperationalPriority } from '../../utils/cardSearch'
 import { MapCanvas } from '../MapCanvas'
+import { getBuildingStatus } from '../../utils/mapUtils'
+
+type BuildingTypeFilter = '전체' | '주택' | '상가'
 
 type Props = {
   teams: DraftTeam[]
@@ -33,6 +36,8 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
   const [view, setView] = useState<ViewMode>('list')
   const [query, setQuery] = useState('')
   const [unassignedOnly, setUnassignedOnly] = useState(false)
+  const [buildingTypeFilter, setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
+  const [showCompleted, setShowCompleted] = useState(false) // 기본: 완료 제외
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   // 구(區) 목록 — 담당 카드가 여러 구에 걸치면 지도가 너무 줌아웃됨 → 한 구만 보기
@@ -68,6 +73,16 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     () => cardBoundaries.filter((b) => myCardIds.has(b.cardId)),
     [cardBoundaries, myCardIds],
   )
+
+  // 지도용 buildings — 선택 구 + 타입 필터 + 완료 제외 (건물 포인트 표시용)
+  const mapBuildings = useMemo(() => {
+    return buildings.filter((b) => {
+      if (!myCardIds.has(b.cardId)) return false
+      if (buildingTypeFilter !== '전체' && b.type !== buildingTypeFilter) return false
+      if (!showCompleted && getBuildingStatus(b) === '방문완료') return false
+      return true
+    })
+  }, [buildings, myCardIds, buildingTypeFilter, showCompleted])
 
   // 카드별 주택/상가 세대 수
   const unitStats = useMemo(() => {
@@ -144,15 +159,13 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     <div className={`asg-zone${view === 'map' ? ' is-map-view' : ''}`}>
       {/* sticky 헤더 */}
       <div className="asg-zone-sticky">
-        <header className="asg-editor-head">
-          <div className="asg-editor-head-left">
-            <button className="asg-editor-back" onClick={onBack} type="button" aria-label="뒤로">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-            <div className="asg-editor-titles">
-              <strong>구역 배분</strong>
-              <span>{activeTeam ? `${activeTeam.name} · ${activeTeam.members.join(' · ')}` : ''}</span>
-            </div>
+        <header className="asg-header">
+          <button className="asg-header-back" onClick={onBack} type="button" aria-label="뒤로">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div className="asg-header-titles">
+            <strong>구역 배분</strong>
+            <span>{activeTeam ? `${activeTeam.name} · ${activeTeam.members.join(' · ')}` : '팀을 선택하세요'}</span>
           </div>
         </header>
         {/* 배분할 팀 — 가로 스크롤, 받은 구역명 표시 */}
@@ -181,9 +194,8 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
             )
           })}
         </div>
-        {/* 구 필터 (무채색 카운트 pill) + 뷰 토글 */}
+        {/* 뷰 토글 */}
         <div className="asg-zone-controls">
-
           <div className="asg-zone-toggle">
             <button className={view === 'list' ? 'is-on' : ''} onClick={() => setView('list')} type="button">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
@@ -200,29 +212,39 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
       {/* 본문 */}
       {view === 'map' ? (
         <div className="asg-zone-map">
-          {regions.length > 1 && (
-            <div className="asg-map-region-filter">
-              {regions.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  className={`asg-map-region-btn${selectedRegion === r ? ' is-on' : ''}`}
-                  onClick={() => setSelectedRegion(r)}
-                >
-                  {r} <span>{regionCount.get(r) ?? 0}</span>
-                </button>
+          {/* 구 + 주택/상가 + 완료 필터 (sticky 헤더 바로 아래) */}
+          <div className="asg-map-filters">
+            {regions.length > 1 && (
+              <div className="asg-map-filter-row">
+                {regions.map((r) => (
+                  <button key={r} type="button"
+                    className={`asg-filter-pill${selectedRegion === r ? ' is-on' : ''}`}
+                    onClick={() => setSelectedRegion(r)}
+                  >{r} <span className="asg-filter-cnt">{regionCount.get(r) ?? 0}</span></button>
+                ))}
+              </div>
+            )}
+            <div className="asg-map-filter-row">
+              {(['전체', '주택', '상가'] as BuildingTypeFilter[]).map((t) => (
+                <button key={t} type="button"
+                  className={`asg-filter-pill${buildingTypeFilter === t ? ' is-on' : ''}`}
+                  onClick={() => setBuildingTypeFilter(t)}
+                >{t}</button>
               ))}
+              <button type="button"
+                className={`asg-filter-pill${showCompleted ? ' is-on' : ''}`}
+                onClick={() => setShowCompleted(v => !v)}
+              >완료 포함</button>
             </div>
-          )}
+          </div>
           <MapCanvas
-            buildings={buildings}
+            buildings={mapBuildings}
             cardBoundaries={myBoundaries}
             cards={regionCards}
             selectedBuildingId={0}
             selectedCardId="전체"
             highlightedCardIds={myCardIds}
             cardColorMap={cardColorMap}
-            hideBuildingMarkers
             isMobile
             onSelectBuilding={() => undefined}
             onSelectCardBoundary={(cardId) => {

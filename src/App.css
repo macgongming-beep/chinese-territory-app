@@ -29501,3 +29501,55 @@ button:focus-visible {
 .cal-selected-empty p {
   margin: 0;
 }
+
+/* 배정 v3 — 지도 필터 바 (구/주택/상가/완료포함) */
+.asg-map-filters { padding: 10px 16px 8px; display: flex; flex-direction: column; gap: 8px; background: var(--bg, #f8f8f7); border-bottom: 1px solid var(--line); }
+.asg-map-filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.asg-filter-pill { padding: 6px 12px; border: 1px solid var(--line-2, #e2e8f0); border-radius: 99px; background: var(--surface, #fff); font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.asg-filter-pill.is-on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.asg-filter-cnt { font-size: 11px; opacity: 0.7; font-variant-numeric: tabular-nums; font-weight: 500; }
+
+/* 배정 v3 — 공통 헤더 토큰 (일정상세 → 팀구성 → 구역배분 전 화면 동일) */
+.asg-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 56px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg, #f8f8f7);
+  flex-shrink: 0;
+}
+.asg-header-back {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: 8px;
+  flex-shrink: 0;
+  margin-left: -6px;
+}
+.asg-header-titles { flex: 1; min-width: 0; }
+.asg-header-titles strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.asg-header-titles span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
