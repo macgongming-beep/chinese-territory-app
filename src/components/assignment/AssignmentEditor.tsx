@@ -72,14 +72,22 @@ export function AssignmentEditor({ event, cards, buildings, cardBoundaries, curr
 
   const [screen, setScreen] = useState<'teams' | 'zones'>('teams')
   const [sharing, setSharing] = useState(false)
+  const [confirmShare, setConfirmShare] = useState(false)
 
   const openTeamZones = (teamId: string) => {
     dispatch({ type: 'SET_ACTIVE_TEAM', teamId })
     setScreen('zones')
   }
 
-  const handleShare = async () => {
+  // 구역 없는 팀 (멤버는 있는데 카드 0)
+  const emptyTeams = useMemo(
+    () => teams.filter((t) => t.members.length > 0 && t.cardIds.length === 0),
+    [teams],
+  )
+
+  const doShare = async () => {
     if (sharing) return
+    setConfirmShare(false)
     setSharing(true)
     try {
       await onShare(event.id, draftToAssignments(draft))
@@ -88,6 +96,16 @@ export function AssignmentEditor({ event, cards, buildings, cardBoundaries, curr
     } finally {
       setSharing(false)
     }
+  }
+
+  const handleShare = () => {
+    if (sharing) return
+    // 구역 미배정 팀이 있으면 경고 (그 팀은 공유 시 보존 안 됨)
+    if (emptyTeams.length > 0) {
+      setConfirmShare(true)
+      return
+    }
+    void doShare()
   }
 
   // 충돌 선택 모달
@@ -150,6 +168,21 @@ export function AssignmentEditor({ event, cards, buildings, cardBoundaries, curr
           <button className="asg-share-btn" onClick={handleShare} disabled={sharing || teams.length === 0} type="button">
             {sharing ? '공유 중...' : '배정 공유'}
           </button>
+        </div>
+      )}
+
+      {/* 구역 미배정 팀 경고 */}
+      {confirmShare && (
+        <div className="asg-confirm-backdrop" onClick={() => setConfirmShare(false)}>
+          <div className="asg-confirm" onClick={(e) => e.stopPropagation()}>
+            <h2>구역이 없는 팀이 있어요</h2>
+            <p>
+              {emptyTeams.map((t) => t.name).join(', ')}에 배정된 구역이 없습니다.
+              지금 공유하면 이 팀은 저장되지 않아요.
+            </p>
+            <button className="asg-confirm-primary" onClick={() => setConfirmShare(false)} type="button">돌아가서 구역 배정</button>
+            <button className="asg-confirm-ghost" onClick={() => void doShare()} type="button">그대로 공유</button>
+          </div>
         </div>
       )}
     </div>
