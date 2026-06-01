@@ -29232,19 +29232,19 @@ button:focus-visible {
 
 /* ━━━ 배정 v3 — 에디터 호스트 / 화면2 / 충돌 ━━━ */
 .asg-editor { position: fixed; inset: 0; z-index: 4000; background: var(--bg, #f8f8f7); display: flex; flex-direction: column; overflow-y: auto; }
-.asg-editor-head { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--surface, #fff); position: sticky; top: 0; z-index: 5; }
+
 .asg-editor-head strong { display: block; font-size: 16px; font-weight: 800; color: var(--ink); }
 .asg-editor-head span { font-size: 12px; color: var(--muted); }
 .asg-editor-footer { position: sticky; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--surface, #fff); border-top: 1px solid var(--line); margin-top: auto; }
 .asg-share-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--ink); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
 .asg-share-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.asg-zone-back { width: 32px; height: 32px; border: none; background: none; font-size: 22px; color: var(--ink); cursor: pointer; flex-shrink: 0; }
+
 
 /* 화면2 */
 .asg-zone { display: flex; flex-direction: column; }
 .asg-zone-sticky { position: sticky; top: 0; z-index: 6; background: var(--bg, #f8f8f7); border-bottom: 1px solid var(--line); }
-.asg-zone-topbar { display: flex; align-items: center; gap: 8px; padding: 12px 16px 6px; }
-.asg-zone-topbar strong { font-size: 16px; font-weight: 800; color: var(--ink); flex: 1; }
+
+
 .asg-zone-undo { padding: 5px 12px; border: 1px solid var(--line-2, #e2e8f0); border-radius: 7px; background: var(--surface, #fff); font-size: 12px; font-weight: 700; color: var(--ink); cursor: pointer; }
 .asg-teambar { display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px 10px; -webkit-overflow-scrolling: touch; }
 .asg-teambar-card { flex-shrink: 0; min-width: 120px; max-width: 160px; display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1.5px solid var(--line-2, #e2e8f0); border-radius: 10px; background: var(--surface, #fff); cursor: pointer; text-align: left; }
@@ -29294,7 +29294,7 @@ button:focus-visible {
 .asg-region-pill.is-on { background: var(--ink); color: #fff; border-color: var(--ink); }
 
 /* 배정 v3 — 디자인 핸드오프 폴리시 */
-.asg-zone-sub-mem { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+
 .asg-teambar-label { display: block; padding: 8px 16px 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .asg-teambar-cnt { margin-left: 4px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .asg-teambar-card { min-width: 132px; gap: 4px; }
@@ -29321,9 +29321,62 @@ button:focus-visible {
 .asg-state-pill.unused { background: var(--bg-muted, #f1f5f9); color: var(--muted); }
 
 /* 배정 v3 — 헤더 디자인 정렬 */
-.asg-editor-head { gap: 6px; }
-.asg-editor-back { width: 32px; height: 32px; min-height: 32px; display: grid; place-items: center; border: none; background: none; color: var(--ink); cursor: pointer; margin-left: -6px; flex-shrink: 0; }
-.asg-editor-titles { display: flex; flex-direction: column; min-width: 0; }
-.asg-editor-titles strong { font-size: 16px; font-weight: 800; color: var(--ink); line-height: 1.2; }
-.asg-editor-titles span { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+
+
+
 .asg-team-zones.is-empty { color: var(--warn, #b8862a); }
+
+/* 공통 배정 헤더 (일정상세 스타일 통일) */
+.asg-editor-head {
+  height: 56px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.asg-editor-head-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.asg-editor-back {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+.asg-editor-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.asg-editor-titles strong {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+  line-height: normal;
+}
+.asg-editor-titles span {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
