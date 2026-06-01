@@ -10,6 +10,7 @@ import type { Dispatch } from 'react'
 import type { Building, CardBoundary, TerritoryCard } from '../../types'
 import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
+import { sortTerritoryCardsByOperationalPriority } from '../../utils/cardSearch'
 import { MapCanvas } from '../MapCanvas'
 
 type Props = {
@@ -111,7 +112,8 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
       arr.push(c)
       groups.set(key, arr)
     })
-    return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0], 'ko'))
+    const result = Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0], 'ko'))
+    return result.map(([groupName, groupCards]) => [groupName, sortTerritoryCardsByOperationalPriority(groupCards)] as [string, TerritoryCard[]])
   }, [regionCards, query, unassignedOnly, cardTeam])
 
   const toggleGroup = (groupName: string) => {
@@ -146,7 +148,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
             </button>
             <div className="asg-editor-titles">
               <strong>구역 배분</strong>
-              <span>{activeTeam ? activeTeam.members.join(' · ') : ''}</span>
+              <span>{activeTeam ? `${activeTeam.name} · ${activeTeam.members.join(' · ')}` : ''}</span>
             </div>
           </div>
         </header>
