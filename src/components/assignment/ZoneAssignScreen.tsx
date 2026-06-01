@@ -314,7 +314,9 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                 </span>
                 <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 400 }}>{activeCards.length}개</span>
               </button>
-              {!isCollapsed && activeCards.map((card) => {
+              {!isCollapsed && activeCards.length > 0 && (
+                <div className="asg-zone-card-list">
+                  {activeCards.map((card) => {
                 const owner = cardTeam.get(card.id)
                 const isActiveTeamCard = owner?.id === activeTeamId
                 const stats = unitStats.get(card.id) ?? { house: 0, shop: 0 }
@@ -352,6 +354,8 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                   </button>
                 )
               })}
+                </div>
+              )}
 
               {!isCollapsed && completedCards.length > 0 && (
                 <>
@@ -366,7 +370,9 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isCompletedOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
                     </span>
                   </button>
-                  {isCompletedOpen && completedCards.map((card) => {
+                  {isCompletedOpen && (
+                    <div className="asg-zone-card-list">
+                      {completedCards.map((card) => {
                 const owner = cardTeam.get(card.id)
                 const isActiveTeamCard = owner?.id === activeTeamId
                 const stats = unitStats.get(card.id) ?? { house: 0, shop: 0 }
@@ -404,6 +410,8 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                   </button>
                 )
                   })}
+                    </div>
+                  )}
                 </>
               )}
             </div>
