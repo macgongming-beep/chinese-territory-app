@@ -10,7 +10,7 @@ import type { Dispatch } from 'react'
 import type { Building, CardBoundary, TerritoryCard } from '../../types'
 import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
-import { sortTerritoryCardsByOperationalPriority } from '../../utils/cardSearch'
+import { compareTerritoryCards } from '../../utils/cardSearch'
 import { MapCanvas } from '../MapCanvas'
 
 type Props = {
@@ -25,6 +25,28 @@ type Props = {
 }
 
 type ViewMode = 'list' | 'map'
+
+
+function sortForAssignment(cards: TerritoryCard[]) {
+  return cards.slice().sort((a, b) => {
+    const aComplete = (a.progress ?? 0) >= 100 || a.status === '완료'
+    const bComplete = (b.progress ?? 0) >= 100 || b.status === '완료'
+    
+    const aUsed = (a.progress ?? 0) > 0 || a.status === '진행중'
+    const bUsed = (b.progress ?? 0) > 0 || b.status === '진행중'
+
+    const getOrder = (complete: boolean, used: boolean) => {
+      if (complete) return 2 // 완료
+      if (used) return 0     // 사용중
+      return 1               // 미사용
+    }
+
+    const diff = getOrder(aComplete, aUsed) - getOrder(bComplete, bUsed)
+    if (diff !== 0) return diff
+
+    return compareTerritoryCards(a, b)
+  })
+}
 
 export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBoundaries, canEdit, dispatch, onBack }: Props) {
   const [view, setView] = useState<ViewMode>('list')
@@ -113,7 +135,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
       groups.set(key, arr)
     })
     const result = Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0], 'ko'))
-    return result.map(([groupName, groupCards]) => [groupName, sortTerritoryCardsByOperationalPriority(groupCards)] as [string, TerritoryCard[]])
+    return result.map(([groupName, groupCards]) => [groupName, sortForAssignment(groupCards)] as [string, TerritoryCard[]])
   }, [regionCards, query, unassignedOnly, cardTeam])
 
   const toggleGroup = (groupName: string) => {
