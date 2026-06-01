@@ -128,7 +128,7 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
                       : '구역 미배정'}
                   </div>
                                   </div>
-                  <span className="asg-team-chev" aria-hidden="true" style={{ marginRight: canEdit ? 12 : 0 }}>›</span>
+                  <span className="asg-team-chev" aria-hidden="true" style={{ marginRight: canEdit ? 32 : 0 }}>›</span>
                 </button>
                 {canEdit && (
                   <button
@@ -139,15 +139,16 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
                     }}
                     style={{
                       position: 'absolute',
-                      top: 12,
-                      right: 6,
-                      width: 32,
-                      height: 32,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      right: 8,
+                      width: 36,
+                      height: 36,
                       display: 'grid',
                       placeItems: 'center',
                       border: 'none',
                       background: 'transparent',
-                      color: 'var(--muted)',
+                      color: 'var(--danger, #ef4444)',
                       cursor: 'pointer'
                     }}
                     aria-label="팀 삭제"
