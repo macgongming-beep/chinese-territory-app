@@ -105,12 +105,15 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
         ) : (
           teams.map((team) => (
             <article className="asg-team-row" key={team.id} style={{ borderLeftColor: teamHex(team.color) }}>
-              <button
-                type="button"
-                className="asg-team-open"
-                onClick={() => onOpenTeamZones(team.id)}
-              >
-                <div className="asg-team-main">
+              <div style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  className="asg-team-open"
+                  onClick={() => onOpenTeamZones(team.id)}
+                  style={{ paddingRight: canEdit ? 44 : 14 }}
+                >
+                  <div className="asg-team-main">
+
                   <div className="asg-team-name-line">
                     <span className="asg-team-dot" style={{ background: teamHex(team.color) }} />
                     <strong>{team.name}</strong>
@@ -124,20 +127,35 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
                       ? `${team.cardIds.map(cardName).slice(0, 2).join(' · ')}${team.cardIds.length > 2 ? ` 외 ${team.cardIds.length - 2}` : ''}`
                       : '구역 미배정'}
                   </div>
-                </div>
-                <span className="asg-team-chev" aria-hidden="true">›</span>
-              </button>
-              {canEdit && (
-                <div className="asg-team-actions">
+                                  </div>
+                  <span className="asg-team-chev" aria-hidden="true" style={{ marginRight: canEdit ? 12 : 0 }}>›</span>
+                </button>
+                {canEdit && (
                   <button
                     type="button"
-                    className="asg-team-del"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation()
                       if (confirm(`${team.name}을(를) 삭제할까요?`)) dispatch({ type: 'DELETE_TEAM', teamId: team.id })
                     }}
-                  >팀 삭제</button>
-                </div>
-              )}
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 6,
+                      width: 32,
+                      height: 32,
+                      display: 'grid',
+                      placeItems: 'center',
+                      border: 'none',
+                      background: 'transparent',
+                      color: 'var(--muted)',
+                      cursor: 'pointer'
+                    }}
+                    aria-label="팀 삭제"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                )}
+              </div>
             </article>
           ))
         )}
