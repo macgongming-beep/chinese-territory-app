@@ -198,15 +198,34 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
         </div>
         {/* 뷰 토글 */}
         <div className="asg-zone-controls">
-          <div className="asg-zone-toggle">
-            <button className={view === 'list' ? 'is-on' : ''} onClick={() => setView('list')} type="button">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-              목록
-            </button>
-            <button className={view === 'map' ? 'is-on' : ''} onClick={() => setView('map')} type="button">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-              지도
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div className="asg-zone-toggle" style={{ padding: 0, margin: 0, flexShrink: 0 }}>
+              <button className={view === 'list' ? 'is-on' : ''} onClick={() => setView('list')} type="button" style={{ padding: '6px 10px', fontSize: 12 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                목록
+              </button>
+              <button className={view === 'map' ? 'is-on' : ''} onClick={() => setView('map')} type="button" style={{ padding: '6px 10px', fontSize: 12 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+                지도
+              </button>
+            </div>
+            
+            {view === 'map' && (
+              <div style={{ display: 'flex', gap: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+                {(['전체', '주택', '상가'] as BuildingTypeFilter[]).map((t) => (
+                  <button key={t} type="button"
+                    className={`asg-filter-pill${buildingTypeFilter === t ? ' is-on' : ''}`}
+                    onClick={() => setBuildingTypeFilter(t)}
+                    style={{ padding: '4px 10px', fontSize: 12, whiteSpace: 'nowrap' }}
+                  >{t}</button>
+                ))}
+                <button type="button"
+                  className={`asg-filter-pill${showCompleted ? ' is-on' : ''}`}
+                  onClick={() => setShowCompleted(v => !v)}
+                  style={{ padding: '4px 10px', fontSize: 12, whiteSpace: 'nowrap' }}
+                >완료 포함</button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -226,20 +245,6 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
               ))}
             </div>
           )}
-
-          {/* 오버레이 필터: 주택/상가/완료 (우측 상단 세로) */}
-          <div className="asg-map-overlay-types">
-            {(['전체', '주택', '상가'] as BuildingTypeFilter[]).map((t) => (
-              <button key={t} type="button"
-                className={`asg-filter-pill${buildingTypeFilter === t ? ' is-on' : ''}`}
-                onClick={() => setBuildingTypeFilter(t)}
-              >{t}</button>
-            ))}
-            <button type="button"
-              className={`asg-filter-pill${showCompleted ? ' is-on' : ''}`}
-              onClick={() => setShowCompleted(v => !v)}
-            >완료 포함</button>
-          </div>
 
           <MapCanvas
             buildings={mapBuildings}
