@@ -159,15 +159,11 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     <div className={`asg-zone${view === 'map' ? ' is-map-view' : ''}`}>
       {/* sticky 헤더 */}
       <div className="asg-zone-sticky">
-        <header className="asg-header">
-          <button className="asg-header-back" onClick={onBack} type="button" aria-label="뒤로">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <div className="asg-header-titles">
-            <strong>구역 배분</strong>
-            <span>{activeTeam ? `${activeTeam.name} · ${activeTeam.members.join(' · ')}` : '팀을 선택하세요'}</span>
-          </div>
-        </header>
+        <div className="asg-zone-topbar">
+          <button className="asg-zone-back" onClick={onBack} type="button" aria-label="뒤로">‹</button>
+          <strong>구역 배분</strong>
+          <span className="asg-zone-sub-mem">{activeTeam ? `${activeTeam.name} · ${activeTeam.members.join(' · ')}` : ''}</span>
+        </div>
         {/* 배분할 팀 — 가로 스크롤, 받은 구역명 표시 */}
         <span className="asg-teambar-label">배분할 팀</span>
         <div className="asg-teambar">
