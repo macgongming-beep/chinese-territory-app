@@ -495,7 +495,7 @@ export function AdminMobileCalendar({
         {selectedEvents.length === 0 ? (
           <div className="cal-selected-empty">
             <CalendarEmptyIcon />
-            {t(language, 'calendar.noEvents')}
+            <p>{t(language, 'calendar.noEvents')}</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
