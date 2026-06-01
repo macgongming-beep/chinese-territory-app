@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { generateBulkUnits } from '../utils/bulkUnits'
 
 /**
  * 건물 상세 패널에서 호수를 추가하는 행 컴포넌트.
@@ -29,30 +30,8 @@ export function AddUnitRow({
     setValue('')
   }
 
-  // 미리보기 생성 (지하 + 지상)
-  const preview = (() => {
-    const list: string[] = []
-    const upf = Math.max(1, unitsPerFloor)
-    const su = Math.max(1, startUnit)
-    // 지하 (B층 → B101, B102...)
-    if (hasBasement) {
-      const bf = Math.max(1, basementFloors)
-      for (let f = bf; f >= 1; f--) {
-        for (let u = su; u < su + upf; u++) {
-          list.push(`B${f}${String(u).padStart(2, '0')}`)
-        }
-      }
-    }
-    // 지상
-    const sf = Math.max(1, startFloor)
-    const ef = Math.max(sf, endFloor)
-    for (let f = sf; f <= ef; f++) {
-      for (let u = su; u < su + upf; u++) {
-        list.push(`${f}${String(u).padStart(2, '0')}`)
-      }
-    }
-    return list
-  })()
+  // 미리보기 생성 (지하 + 지상) — 공유 유틸
+  const preview = generateBulkUnits({ startFloor, endFloor, unitsPerFloor, startUnit, hasBasement, basementFloors })
 
   const newOnes = preview.filter((n) => !existingNumbers.has(n))
   const skipped = preview.length - newOnes.length

@@ -10,6 +10,7 @@ import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 import { showToast } from '../lib/toast'
 import { UnitSlotGrid } from './UnitSlotGrid'
 import { AppHeaderActionButtons } from './AppHeader'
+import { MobileBulkUnitSheet } from './MobileBulkUnitSheet'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
@@ -175,6 +176,7 @@ export function MobileMap({
   const [_absentTimestamps, _setAbsentTimestamps] = useState<Record<number, number>>({})
   const [newUnitNumber, setNewUnitNumber] = useState('101호')
   const [addingUnitToBuildingId, setAddingUnitToBuildingId] = useState<number | null>(null)
+  const [bulkUnitBuildingId, setBulkUnitBuildingId] = useState<number | null>(null)
 
   // 건물 수정
   const [editingBuildingId, setEditingBuildingId] = useState<number | null>(null)
@@ -1443,13 +1445,16 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                         })}
 
                         {addingUnitToBuildingId === building.id ? (
-                          <div style={{ padding: '8px 10px', borderTop: '1px dashed #cbd5e1', display: 'flex', gap: '6px' }}>
+                          <div className="mm-unit-add-row">
                             <input autoFocus placeholder={t(language, 'map.unitNumberPlaceholder')} value={newUnitNumber} onChange={e => setNewUnitNumber(e.target.value)}
                               onKeyDown={e => { if (e.key === 'Enter' && newUnitNumber.trim()) { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') } }}
-                              style={{ flex: 1, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 'var(--r-sm)', fontSize: '13px' }} />
+                              className="mm-unit-add-input" />
                             <button disabled={!newUnitNumber.trim()} onClick={() => { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') }}
-                              style={{ padding: '6px 12px', background: 'var(--accent-700)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 700, cursor: 'pointer', fontSize: '13px' }}>{t(language, 'common.add')}</button>
-                            <button onClick={() => setAddingUnitToBuildingId(null)} style={{ padding: '6px 8px', background: '#f1f5f9', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', color: 'var(--ink-500)', fontSize: '13px' }}>✕</button>
+                              className="mm-unit-add-btn">{t(language, 'common.add')}</button>
+                            <button onClick={() => setBulkUnitBuildingId(building.id)} className="mm-unit-bulk-btn" type="button">일괄</button>
+                            <button onClick={() => setAddingUnitToBuildingId(null)} className="mm-unit-cancel-btn" aria-label="닫기">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                            </button>
                           </div>
                         ) : (
                           <button className="bld-add-unit-btn" onClick={() => setAddingUnitToBuildingId(building.id)} type="button">{t(language, 'map.addUnit')}</button>
@@ -1775,6 +1780,21 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
           </div>
         </div>
       )}
+
+      {/* 호수 일괄 추가 바텀시트 */}
+      {bulkUnitBuildingId !== null && (() => {
+        const b = buildings.find((x) => x.id === bulkUnitBuildingId)
+        if (!b) return null
+        return (
+          <MobileBulkUnitSheet
+            buildingId={b.id}
+            buildingName={b.name}
+            existingNumbers={new Set(b.units.map((u) => u.number))}
+            onAdd={onAddUnit}
+            onClose={() => setBulkUnitBuildingId(null)}
+          />
+        )
+      })()}
     </main>
   )
 }
