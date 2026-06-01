@@ -1232,8 +1232,9 @@ function NaverMapCanvas({
     const visibleMapSignature = aggregateSignature || visibleSignature
 
     if (visibleMapSignature && visibleBuildingSignatureRef.current !== visibleMapSignature) {
+      const isInitialLoad = !visibleBuildingSignatureRef.current
       visibleBuildingSignatureRef.current = visibleMapSignature
-      if (!editingBuildingLocationRef.current && !addingBuildingRef.current) {
+      if (isInitialLoad && !editingBuildingLocationRef.current && !addingBuildingRef.current) {
         fitVisibleBuildings('data')
       }
     }
