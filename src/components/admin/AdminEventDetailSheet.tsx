@@ -587,14 +587,30 @@ export function AdminEventDetailSheet({
             type="button"
             onClick={onOpenAssignment}
             style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              display: 'flex', alignItems: 'center', gap: 10,
               width: '100%', padding: '14px 16px', marginTop: 4,
-              background: 'var(--ink)', color: '#fff', border: 'none',
-              borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer',
+              background: 'var(--surface, #fff)', color: 'var(--ink)',
+              border: '1px solid var(--line)', borderRadius: 12,
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
             }}
           >
-            <span>🗂 팀 구성 &amp; 배정</span>
-            <span aria-hidden="true">→</span>
+            <span style={{
+              width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+              display: 'grid', placeItems: 'center',
+              background: 'var(--bg-muted, #f1f0ee)', color: 'var(--ink)',
+            }} aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </span>
+            <span style={{ flex: 1, textAlign: 'left' }}>
+              팀 구성 &amp; 배정
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--muted)', marginTop: 1 }}>
+                신청자를 팀으로 묶고 구역을 나눠요
+              </span>
+            </span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted-2, #94a3b8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         )}
 
