@@ -336,9 +336,9 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                     <span className="asg-zone-card-main">
                       <strong>{card.name}</strong>
                       <small>
-                        {stats.house > 0 && `주택 ${stats.house}`}
-                        {stats.house > 0 && stats.shop > 0 && ' · '}
-                        {stats.shop > 0 && `상가 ${stats.shop}`}
+                        {(buildingTypeFilter === '전체' || buildingTypeFilter === '주택') && stats.house > 0 && `주택 ${stats.house}`}
+                        {buildingTypeFilter === '전체' && stats.house > 0 && stats.shop > 0 && ' · '}
+                        {(buildingTypeFilter === '전체' || buildingTypeFilter === '상가') && stats.shop > 0 && `상가 ${stats.shop}`}
                         {` · ${card.progress}%`}
                       </small>
                     </span>
@@ -392,9 +392,9 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                     <span className="asg-zone-card-main">
                       <strong>{card.name}</strong>
                       <small>
-                        {stats.house > 0 && `주택 ${stats.house}`}
-                        {stats.house > 0 && stats.shop > 0 && ' · '}
-                        {stats.shop > 0 && `상가 ${stats.shop}`}
+                        {(buildingTypeFilter === '전체' || buildingTypeFilter === '주택') && stats.house > 0 && `주택 ${stats.house}`}
+                        {buildingTypeFilter === '전체' && stats.house > 0 && stats.shop > 0 && ' · '}
+                        {(buildingTypeFilter === '전체' || buildingTypeFilter === '상가') && stats.shop > 0 && `상가 ${stats.shop}`}
                         {` · ${card.progress}%`}
                       </small>
                     </span>
