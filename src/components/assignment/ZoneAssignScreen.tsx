@@ -99,7 +99,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
   // 동(area)별 그룹 — 선택된 구 기준
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const filtered = regionCards.filter((c) => {
+    const filtered = cards.filter((c) => {
       if (q && !c.name.toLowerCase().includes(q)) return false
       if (unassignedOnly && cardTeam.has(c.id)) return false
       return true
@@ -178,18 +178,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
         </div>
         {/* 구 필터 (무채색 카운트 pill) + 뷰 토글 */}
         <div className="asg-zone-controls">
-          {regions.length > 1 && (
-            <div className="asg-region-pills">
-              {regions.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  className={`asg-region-pill${selectedRegion === r ? ' is-on' : ''}`}
-                  onClick={() => setSelectedRegion(r)}
-                >{r} <span className="asg-region-cnt">{regionCount.get(r) ?? 0}</span></button>
-              ))}
-            </div>
-          )}
+
           <div className="asg-zone-toggle">
             <button className={view === 'list' ? 'is-on' : ''} onClick={() => setView('list')} type="button">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
@@ -206,6 +195,20 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
       {/* 본문 */}
       {view === 'map' ? (
         <div className="asg-zone-map">
+          {regions.length > 1 && (
+            <div className="asg-map-region-filter">
+              {regions.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  className={`asg-map-region-btn${selectedRegion === r ? ' is-on' : ''}`}
+                  onClick={() => setSelectedRegion(r)}
+                >
+                  {r} <span>{regionCount.get(r) ?? 0}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <MapCanvas
             buildings={buildings}
             cardBoundaries={myBoundaries}
