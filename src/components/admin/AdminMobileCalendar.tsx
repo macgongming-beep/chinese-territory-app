@@ -1,5 +1,6 @@
 // 관리자 모바일 캘린더 — design_handoff 02 / 02b / 03 화면
 import { t, weekdayShortLabels } from '../../i18n'
+import { confirmDialog } from '../../lib/confirm'
 //
 // 구조:
 //   - 월 카드 (헤더 + nav + grid)
@@ -599,11 +600,11 @@ export function AdminMobileCalendar({
           }
           onDelete={
             onDeleteEvent
-              ? () => {
+              ? async () => {
                   if (detailEvent.seriesId && onDeleteEventSeries) {
                     setScopeAction({ kind: 'delete', event: detailEvent })
                     setDetailEventId(null)
-                  } else if (window.confirm(t(language, 'calendar.deleteConfirm'))) {
+                  } else if (await confirmDialog({ message: t(language, 'calendar.deleteConfirm'), danger: true, confirmLabel: '삭제' })) {
                     onDeleteEvent(detailEvent.id)
                     setDetailEventId(null)
                   }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { confirmDialog } from '../lib/confirm'
 import { useAuth } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
@@ -168,8 +169,8 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
                 {currentUser?.id !== item.id && (
                   <button
                     className="delete"
-                    onClick={() => {
-                      if (!confirm(`${item.name} 계정을 삭제할까요?`)) return
+                    onClick={async () => {
+                      if (!(await confirmDialog({ message: `${item.name} 계정을 삭제할까요?`, danger: true, confirmLabel: '삭제' }))) return
                       void deleteUser(item.id)
                     }}
                     type="button"

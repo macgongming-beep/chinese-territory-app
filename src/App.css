@@ -19618,6 +19618,106 @@ button:focus-visible {
   }
 }
 
+/* ── 전역 Confirm/Alert 다이얼로그 (토스트와 동일한 다크 글래스모피즘) ── */
+.cdlg-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: cdlg-fade 0.18s ease-out;
+}
+
+.cdlg {
+  width: 100%;
+  max-width: 360px;
+  padding: 24px;
+  color: #ffffff;
+  background: rgba(28, 28, 26, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: cdlg-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cdlg-title {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #ffffff;
+}
+
+.cdlg-message {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.82);
+  white-space: pre-line;
+}
+
+.cdlg-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.cdlg-btn {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.cdlg-cancel {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+.cdlg-cancel:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: #ffffff;
+}
+
+.cdlg-confirm {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #1c1c1a;
+}
+.cdlg-confirm:hover {
+  background: #ffffff;
+}
+
+.cdlg-danger {
+  background: rgba(220, 38, 38, 0.85);
+  border: 1px solid rgba(255, 100, 100, 0.35);
+  color: #ffffff;
+}
+.cdlg-danger:hover {
+  background: rgba(220, 38, 38, 1);
+  border-color: rgba(255, 140, 140, 0.6);
+}
+
+@keyframes cdlg-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes cdlg-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* ── App loading spinner ──────────────────────────────────── */
 .app-loading {
   display: grid;

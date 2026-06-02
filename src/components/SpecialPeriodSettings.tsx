@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { SpecialPeriod } from '../types'
+import { confirmDialog } from '../lib/confirm'
 import { PERIOD_COLORS } from '../types'
 
 type PeriodInput = { label: string; startDate: string; endDate: string; color: string; hasInvitation: boolean }
@@ -209,7 +210,7 @@ export function SpecialPeriodSettings({
             {isAdmin && (
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <button onClick={() => setEditingPeriod(activePeriod)} type="button" style={actionBtnStyle()}>수정</button>
-                <button onClick={() => { if (window.confirm(`"${activePeriod.label}" 시즌을 즉시 종료할까요?\n이미 기록된 방문은 보존됩니다.`)) void onDeleteSpecialPeriod?.(activePeriod.id) }} type="button" style={actionBtnStyle(true)}>종료</button>
+                <button onClick={async () => { if (await confirmDialog({ message: `"${activePeriod.label}" 시즌을 즉시 종료할까요?\n이미 기록된 방문은 보존됩니다.`, danger: true, confirmLabel: '종료' })) void onDeleteSpecialPeriod?.(activePeriod.id) }} type="button" style={actionBtnStyle(true)}>종료</button>
               </div>
             )}
           </div>
@@ -249,7 +250,7 @@ export function SpecialPeriodSettings({
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                     <button onClick={() => setEditingPeriod(period)} type="button" style={actionBtnStyle()}>수정</button>
-                    <button onClick={() => { if (window.confirm(`"${period.label}" 예정 시즌을 삭제할까요?`)) void onDeleteSpecialPeriod?.(period.id) }} type="button" style={actionBtnStyle(true)}>삭제</button>
+                    <button onClick={async () => { if (await confirmDialog({ message: `"${period.label}" 예정 시즌을 삭제할까요?`, danger: true, confirmLabel: '삭제' })) void onDeleteSpecialPeriod?.(period.id) }} type="button" style={actionBtnStyle(true)}>삭제</button>
                   </div>
                 </div>
               ))}
@@ -268,7 +269,7 @@ export function SpecialPeriodSettings({
                       <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{period.startDate} ~ {period.endDate}</div>
                     </div>
                   </div>
-                  <button onClick={() => { if (window.confirm(`"${period.label}" 시즌을 삭제할까요? 방문 기록은 보존됩니다.`)) void onDeleteSpecialPeriod?.(period.id) }} type="button" style={actionBtnStyle(true)}>삭제</button>
+                  <button onClick={async () => { if (await confirmDialog({ message: `"${period.label}" 시즌을 삭제할까요? 방문 기록은 보존됩니다.`, danger: true, confirmLabel: '삭제' })) void onDeleteSpecialPeriod?.(period.id) }} type="button" style={actionBtnStyle(true)}>삭제</button>
                 </div>
               ))}
               {pastPeriods.length > 5 && (

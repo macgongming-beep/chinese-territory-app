@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
+import { alertDialog } from '../lib/confirm'
 import { t, type AppLanguage } from '../i18n'
 
 export function DesktopProfileSettings({
@@ -145,7 +146,7 @@ export function DesktopProfileSettings({
               disabled={savingPin || !newPin.trim() || !newPinConfirm.trim()}
               onClick={async () => {
                 if (newPin !== newPinConfirm) {
-                  window.alert('비밀번호가 일치하지 않습니다.')
+                  void alertDialog({ message: '비밀번호가 일치하지 않습니다.' })
                   return
                 }
                 setSavingPin(true)

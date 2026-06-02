@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
+import { alertDialog } from '../lib/confirm'
 import { t, type AppLanguage } from '../i18n'
 import { AppHeader } from './AppHeader'
 
@@ -138,7 +139,7 @@ export function MobileProfileSettings({
           disabled={savingPin || !newPin.trim() || !newPinConfirm.trim()}
           onClick={async () => {
             if (newPin !== newPinConfirm) {
-              window.alert(t(language, 'profile.pinMismatch'))
+              void alertDialog({ message: t(language, 'profile.pinMismatch') })
               return
             }
             setSavingPin(true)

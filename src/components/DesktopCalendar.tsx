@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { confirmDialog } from '../lib/confirm'
 import type { CalendarEvent, SpecialPeriod, TerritoryCard } from '../types'
 import { PERIOD_COLORS } from '../types'
 import { ChatRoom } from './ChatRoom'
@@ -1062,8 +1063,8 @@ function EventDetailCard({
                   className="event-applicants-remove-btn"
                   type="button"
                   aria-label={`${name} 참가자 제외`}
-                  onClick={() => {
-                    if (window.confirm(`${name}님을 이 일정에서 제외할까요?\n이미 팀이나 카드에 배정되어 있으면 배정에서도 제외됩니다.`)) {
+                  onClick={async () => {
+                    if (await confirmDialog({ message: `${name}님을 이 일정에서 제외할까요?\n이미 팀이나 카드에 배정되어 있으면 배정에서도 제외됩니다.`, danger: true, confirmLabel: '제외' })) {
                       onRemoveParticipant(event.id, name)
                     }
                   }}

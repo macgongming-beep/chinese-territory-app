@@ -8,6 +8,7 @@ import { t } from '../i18n'
 import { getBuildingStatus, findCardForCoordinates } from '../utils/mapUtils'
 import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 import { showToast } from '../lib/toast'
+import { confirmDialog } from '../lib/confirm'
 import { UnitSlotGrid } from './UnitSlotGrid'
 import { AppHeaderActionButtons } from './AppHeader'
 import { MobileBulkUnitSheet } from './MobileBulkUnitSheet'
@@ -1714,9 +1715,9 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                     >{t(language, 'map.editUnit')}</button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setShowUnitHeaderMenu(false)
-                        if (confirm(`"${liveFullScreenUnit.unit.number}" 세대를 삭제할까요?`)) {
+                        if (await confirmDialog({ message: `"${liveFullScreenUnit.unit.number}" 세대를 삭제할까요?`, danger: true, confirmLabel: '삭제' })) {
                           onDeleteUnit(liveFullScreenUnit.building.id, liveFullScreenUnit.unit.id)
                           setFullScreenUnit(null)
                         }
@@ -1955,7 +1956,7 @@ function UnitDetailScreen({
                           <button onClick={() => { setHistoryToEdit(h); setEditingHistoryId(null) }}
                             style={{ padding: '2px 8px', border: '1px solid var(--line)', borderRadius: 5, background: 'var(--surface)', color: 'var(--ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
                             type="button">{t(language, 'common.edit')}</button>
-                          <button onClick={() => { if (confirm(t(language, 'map.deleteHistoryConfirm'))) onDeleteVisitHistory(h.id, unit.id); setEditingHistoryId(null) }}
+                          <button onClick={async () => { if (await confirmDialog({ message: t(language, 'map.deleteHistoryConfirm'), danger: true, confirmLabel: '삭제' })) onDeleteVisitHistory(h.id, unit.id); setEditingHistoryId(null) }}
                             style={{ padding: '2px 8px', border: '1px solid #fecaca', borderRadius: 5, background: '#fef2f2', color: '#dc2626', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
                             type="button">{t(language, 'common.delete')}</button>
                           <button onClick={() => setEditingHistoryId(null)}
@@ -2367,9 +2368,9 @@ function UnitDetail({
                             setHistoryToEdit(history)
                             setEditingHistoryId(null)
                           }} type="button">✎ {t(language, 'map.edit')}</button>
-                          <button onClick={() => {
+                          <button onClick={async () => {
                             if (!requireRecordAccess()) return
-                            if (confirm(t(language, 'map.deleteHistoryConfirm'))) {
+                            if (await confirmDialog({ message: t(language, 'map.deleteHistoryConfirm'), danger: true, confirmLabel: '삭제' })) {
                               onDeleteVisitHistory(history.id, unit.id)
                             }
                             setEditingHistoryId(null)
@@ -2433,9 +2434,9 @@ function UnitDetail({
               border: '1px solid #f1f5f9', overflow: 'hidden', minWidth: 120,
             }}>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setShowDeleteMenu(false)
-                  if (confirm(`"${unit.number}" ${t(language, 'map.deleteUnitConfirm')}`)) {
+                  if (await confirmDialog({ message: `"${unit.number}" ${t(language, 'map.deleteUnitConfirm')}`, danger: true, confirmLabel: '삭제' })) {
                     onDeleteUnit(buildingId, unit.id)
                     onSetExpandedUnitId(null)
                   }

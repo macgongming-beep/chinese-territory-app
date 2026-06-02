@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Building, Unit, RestaurantRequest, Role, TerritoryCard } from '../types'
 import { RestaurantPickerModal } from './RestaurantPickerModal'
+import { confirmDialog } from '../lib/confirm'
 import { normalizeCardSearch } from '../utils/cardSearch'
 import {
   SAMPLE_CSV_CONTENT,
@@ -863,7 +864,7 @@ export function RestaurantsTab({
                                 <button type="button"
                                   onClick={async () => {
                                     setOpenMenuId(null)
-                                    if (!confirm(`"${restaurantName}" 식당 목록에서 제거할까요?`)) return
+                                    if (!(await confirmDialog({ message: `"${restaurantName}" 식당 목록에서 제거할까요?`, danger: true, confirmLabel: '제거' }))) return
                                     if (rowUnit && onRemoveRestaurantUnit) {
                                       const u = rowUnit
                                       // 세대 단위 해제 (마지막이면 건물도 자동 해제)

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
 import { showToast } from '../lib/toast'
+import { confirmDialog } from '../lib/confirm'
 import { findCardForCoordinates, formatDisplayAddress, isValidMapCoordinate, normalizeMapCoordinates, parseCoordinate } from '../utils/mapUtils'
 import { downloadCardBoundaryBackup, mergeCardBoundaryPoints, parseCardBoundaryBackup } from '../utils/boundaryMerge'
 import { compareTerritoryCardsByOperationalPriority, getTerritoryCardOperationalState } from '../utils/cardSearch'
@@ -353,9 +354,9 @@ export function DesktopTerritory({
     setPointVisitEditor(null)
   }
 
-  const deletePointVisitHistory = (history: VisitHistory) => {
+  const deletePointVisitHistory = async (history: VisitHistory) => {
     if (!onDeleteVisitHistory) return
-    if (!window.confirm('이 방문 기록을 삭제할까요?')) return
+    if (!(await confirmDialog({ message: '이 방문 기록을 삭제할까요?', danger: true, confirmLabel: '삭제' }))) return
     onDeleteVisitHistory(history.id, history.unitId)
     setOpenHistoryActionId(null)
   }
@@ -527,7 +528,7 @@ export function DesktopTerritory({
     const actionLabel = bulkLeaderNames.length > 0
       ? `'${bulkLeaderNames.join(', ')}' 인도자로 배정`
       : '인도자 배정 해제'
-    const confirmed = window.confirm(`선택한 카드 ${targetIds.length}개를 ${actionLabel}할까요?`)
+    const confirmed = await confirmDialog({ message: `선택한 카드 ${targetIds.length}개를 ${actionLabel}할까요?` })
     if (!confirmed) return
 
     setBulkAssigning(true)
@@ -1179,7 +1180,7 @@ export function DesktopTerritory({
       return
     }
 
-    const confirmed = window.confirm(`핀 좌표 기준으로 건물 ${updates.length}개의 카드를 다시 배정할까요?`)
+    const confirmed = await confirmDialog({ message: `핀 좌표 기준으로 건물 ${updates.length}개의 카드를 다시 배정할까요?` })
     if (!confirmed) return
     setReassigningByBoundary(true)
     await onReassignBuildingsToCards(updates)
@@ -1214,7 +1215,7 @@ export function DesktopTerritory({
     const parts = [`${updates.length}개 재배정 예정`]
     if (noCoords > 0) parts.push(`좌표없음 ${noCoords}개 건너뜀`)
     if (outsideBounds > 0) parts.push(`구역선밖 ${outsideBounds}개 건너뜀`)
-    const confirmed = window.confirm(parts.join(' · ') + '\n\n계속할까요?')
+    const confirmed = await confirmDialog({ message: parts.join(' · ') + '\n\n계속할까요?' })
     if (!confirmed) return
 
     setReassigningChecked(true)
@@ -1267,12 +1268,12 @@ export function DesktopTerritory({
     })
   }
 
-  const handleDeleteCheckedCards = () => {
+  const handleDeleteCheckedCards = async () => {
     const ids = Array.from(checkedCardIds)
     if (ids.length === 0) return
     const idSet = new Set(ids)
     const relatedBuildingCount = buildings.filter((building) => idSet.has(building.cardId)).length
-    const confirmed = window.confirm(`선택한 카드 ${ids.length}개를 삭제할까요?\n이 카드에 속한 건물 ${relatedBuildingCount}개도 함께 삭제됩니다.`)
+    const confirmed = await confirmDialog({ message: `선택한 카드 ${ids.length}개를 삭제할까요?\n이 카드에 속한 건물 ${relatedBuildingCount}개도 함께 삭제됩니다.`, danger: true, confirmLabel: '삭제' })
     if (!confirmed) return
     onDeleteCards(ids)
     setCheckedCardIds(new Set())
@@ -1295,7 +1296,7 @@ export function DesktopTerritory({
         showToast('가져올 구역선이 없습니다.', 'error')
         return
       }
-      const confirmed = window.confirm(`백업 파일의 구역선 ${boundaries.length}개를 현재 카드에 복구할까요?`)
+      const confirmed = await confirmDialog({ message: `백업 파일의 구역선 ${boundaries.length}개를 현재 카드에 복구할까요?` })
       if (!confirmed) return
       await Promise.resolve(onRestoreCardBoundaries(boundaries))
     } catch (error) {
@@ -1337,10 +1338,10 @@ export function DesktopTerritory({
       return
     }
 
-    const confirmed = window.confirm(
-      `${targetCard.name} 카드로 ${selectedIds.length}개 카드의 건물과 구역선을 합칠까요?\n` +
-      '원본 카드는 남기고, 원본 카드의 구역선만 비워집니다.\n병합 후 화면에서 되돌리기 버튼으로 취소할 수 있습니다.',
-    )
+    const confirmed = await confirmDialog({
+      message: `${targetCard.name} 카드로 ${selectedIds.length}개 카드의 건물과 구역선을 합칠까요?\n` +
+        '원본 카드는 남기고, 원본 카드의 구역선만 비워집니다.\n병합 후 화면에서 되돌리기 버튼으로 취소할 수 있습니다.',
+    })
     if (!confirmed) return
 
     // 되돌리기용 스냅샷 캡처 (경계선 없는 카드는 null로 기록)
@@ -1371,10 +1372,10 @@ export function DesktopTerritory({
     setCardMergeUndo(null)
   }
 
-  const handleDeleteCheckedBuildings = () => {
+  const handleDeleteCheckedBuildings = async () => {
     const ids = Array.from(checkedBuildingIds)
     if (ids.length === 0) return
-    const confirmed = window.confirm(`선택한 건물 ${ids.length}개를 삭제할까요?\n건물에 속한 호수와 방문 정보도 함께 정리될 수 있습니다.`)
+    const confirmed = await confirmDialog({ message: `선택한 건물 ${ids.length}개를 삭제할까요?\n건물에 속한 호수와 방문 정보도 함께 정리될 수 있습니다.`, danger: true, confirmLabel: '삭제' })
     if (!confirmed) return
     onDeleteBuildings(ids)
     setCheckedBuildingIds(new Set())
@@ -2810,8 +2811,8 @@ export function DesktopTerritory({
                                       type="button"
                                     >수정</button>
                                     <button
-                                      onClick={() => {
-                                        if (window.confirm(`${unit.number}${/^\d+$/.test(unit.number) ? '호' : ''}를 삭제할까요?`)) onDeleteUnit(building.id, unit.id)
+                                      onClick={async () => {
+                                        if (await confirmDialog({ message: `${unit.number}${/^\d+$/.test(unit.number) ? '호' : ''}를 삭제할까요?`, danger: true, confirmLabel: '삭제' })) onDeleteUnit(building.id, unit.id)
                                       }}
                                       type="button"
                                     >삭제</button>

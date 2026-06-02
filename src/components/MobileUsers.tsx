@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth, type LoginLogRecord } from '../hooks/useAuth'
+import { confirmDialog } from '../lib/confirm'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
 import { AppHeader } from './AppHeader'
@@ -293,7 +294,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
           <button
             disabled={!canDelete}
             onClick={async () => {
-              if (!confirm(`${selectedUser.name} 사용자를 제거할까요?`)) return
+              if (!(await confirmDialog({ message: `${selectedUser.name} 사용자를 제거할까요?`, danger: true, confirmLabel: '제거' }))) return
               const ok = await deleteUser(selectedUser.id)
               if (ok) setSelectedUserId(null)
             }}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { showToast } from '../lib/toast'
+import { confirmDialog } from '../lib/confirm'
 import { getAuthToken } from '../lib/authToken'
 import { getActiveChatEventId, setActiveChatEventId } from '../lib/activeChat'
 import { t, type AppLanguage } from '../i18n'
@@ -384,7 +385,7 @@ export function ChatRoom({
   }
   const deleteSelectedMessages = async () => {
     if (selectedMessages.length === 0) return
-    const confirmed = window.confirm(t(lang, 'chat.deleteConfirm', { n: selectedMessages.length }))
+    const confirmed = await confirmDialog({ message: t(lang, 'chat.deleteConfirm', { n: selectedMessages.length }), danger: true, confirmLabel: '삭제' })
     if (!confirmed) return
     for (const message of selectedMessages) {
       await deleteMessage(message)

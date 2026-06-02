@@ -3,6 +3,7 @@ import type { AppLanguage } from '../../i18n'
 import type { SuggestionBlock, ServiceSuggestion } from '../../types'
 import { saveServiceSuggestion, deleteServiceSuggestion } from '../../hooks/storeMutations/serviceSuggestions'
 import { useServiceSuggestions } from '../../hooks/useServiceSuggestions'
+import { confirmDialog, alertDialog } from '../../lib/confirm'
 
 type Props = {
   language?: AppLanguage
@@ -218,7 +219,7 @@ export function AdminSuggestions({}: Props) {
   const handleSave = async () => {
     if (!editingSuggestion) return
     if (!editingSuggestion.title?.trim()) {
-      alert('제목을 입력해주세요.')
+      void alertDialog({ message: '제목을 입력해주세요.' })
       return
     }
 
@@ -236,7 +237,7 @@ export function AdminSuggestions({}: Props) {
       setEditingSuggestion(null)
     } catch (err) {
       console.error(err)
-      alert('저장 실패')
+      void alertDialog({ message: '저장 실패' })
     } finally {
       setSaving(false)
     }
@@ -255,12 +256,12 @@ export function AdminSuggestions({}: Props) {
       await fetchSuggestions()
     } catch (err) {
       console.error(err)
-      alert('상태 변경 실패')
+      void alertDialog({ message: '상태 변경 실패' })
     }
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('정말 이 제안 묶음을 삭제하시겠습니까?')) return
+    if (!(await confirmDialog({ message: '정말 이 제안 묶음을 삭제하시겠습니까?', danger: true, confirmLabel: '삭제' }))) return
     try {
       await deleteServiceSuggestion(id)
       await fetchSuggestions()
@@ -269,7 +270,7 @@ export function AdminSuggestions({}: Props) {
       }
     } catch (err) {
       console.error(err)
-      alert('삭제 실패')
+      void alertDialog({ message: '삭제 실패' })
     }
   }
 
@@ -361,7 +362,7 @@ export function AdminSuggestions({}: Props) {
     setImporting(false)
     setImportPreview(null)
     setImportErrors([])
-    alert(`가져오기 완료: ${ok}건 저장${fail ? `, ${fail}건 실패` : ''}`)
+    void alertDialog({ message: `가져오기 완료: ${ok}건 저장${fail ? `, ${fail}건 실패` : ''}` })
   }
 
   const rowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between' as const, gap: '10px', padding: '16px', borderRadius: '10px', background: 'var(--surface)', marginBottom: '10px', border: '1px solid var(--line-muted)' }

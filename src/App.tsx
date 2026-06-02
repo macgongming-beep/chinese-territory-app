@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Toast } from './components/Toast'
+import { ConfirmDialog } from './components/ConfirmDialog'
 import { PwaInstallBanner } from './components/PwaInstall'
 import { PullToRefresh } from './components/PullToRefresh'
 import { useStore } from './hooks/useStore'
@@ -240,6 +241,7 @@ function App() {
     return (
       <>
         <Toast />
+        <ConfirmDialog />
         <Suspense
           fallback={
             <div className="app-loading">
@@ -270,6 +272,7 @@ function App() {
   return (
     <>
       <Toast />
+      <ConfirmDialog />
       <PwaInstallBanner language={language} />
       {/* 지도 화면에서는 바텀시트 드래그와 충돌하므로 비활성화 */}
       {location.pathname !== '/map' && <PullToRefresh onRefresh={refetchAll} />}

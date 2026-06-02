@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { t, type AppLanguage } from '../i18n'
 import { isPWAInstalled, isMobile, isIOS, isAndroid } from '../lib/pwa'
+import { alertDialog } from '../lib/confirm'
 import {
   isPushSupported,
   isCurrentDeviceSubscribed,
@@ -336,7 +337,7 @@ export function PwaInstallSection({ language = 'ko' }: { language?: string } = {
         setSubscribed(true)
       } else {
         console.warn('[push] subscribe failed:', result.reason)
-        alert('알림 등록에 실패했습니다: ' + (result.reason ?? 'unknown'))
+        void alertDialog({ message: '알림 등록에 실패했습니다: ' + (result.reason ?? 'unknown') })
       }
     } finally {
       setBusy(false)

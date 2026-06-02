@@ -9,6 +9,7 @@ import type { Dispatch } from 'react'
 import type { TerritoryCard } from '../../types'
 import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
+import { confirmDialog } from '../../lib/confirm'
 
 type Props = {
   participants: string[]              // 일정 신청자 ∪ 배정자
@@ -133,9 +134,9 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
                 {canEdit && (
                   <button
                     type="button"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation()
-                      if (confirm(`${team.name}을(를) 삭제할까요?`)) dispatch({ type: 'DELETE_TEAM', teamId: team.id })
+                      if (await confirmDialog({ message: `${team.name}을(를) 삭제할까요?`, danger: true, confirmLabel: '삭제' })) dispatch({ type: 'DELETE_TEAM', teamId: team.id })
                     }}
                     style={{
                       position: 'absolute',

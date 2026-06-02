@@ -8,6 +8,7 @@ import type { AppLanguage } from '../i18n'
 import { t } from '../i18n'
 import type { Building, ReturnVisit, ReturnVisitLog } from '../types'
 import { formatRelativeVisitDate } from '../utils/returnVisits'
+import { confirmDialog } from '../lib/confirm'
 
 type Props = {
   language: AppLanguage
@@ -145,13 +146,13 @@ export function MobileRegularVisitDetail({
 
   const handleDeleteLog = async (logId: number) => {
     if (!onDeleteReturnVisitLog) return
-    if (!window.confirm(t(language, 'territory.deleteLogConfirm'))) return
+    if (!(await confirmDialog({ message: t(language, 'territory.deleteLogConfirm'), danger: true, confirmLabel: '삭제' }))) return
     await onDeleteReturnVisitLog(logId)
   }
 
   const handleDeleteRv = async () => {
     if (!onDeleteReturnVisit) return
-    if (!window.confirm(t(language, 'territory.deleteRegularConfirm'))) return
+    if (!(await confirmDialog({ message: t(language, 'territory.deleteRegularConfirm'), danger: true, confirmLabel: '삭제' }))) return
     await onDeleteReturnVisit(rv.id)
     navigate('/territory?section=regular')
   }

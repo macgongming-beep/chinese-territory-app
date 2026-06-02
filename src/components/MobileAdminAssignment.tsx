@@ -17,6 +17,7 @@
 
 import { useMemo, useState } from 'react'
 import { showToast } from '../lib/toast'
+import { confirmDialog } from '../lib/confirm'
 import type { Building, TerritoryCard } from '../types'
 import { isEmptyTerritoryCard, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
 
@@ -887,8 +888,8 @@ export function MobileAdminAssignment({
               <SheetButton
                 label={`${selectedLeader} 로 변경`}
                 sub="기존 인도자 해제하고 이 인도자만"
-                onClick={() => {
-                  if (confirm(`기존 인도자(${getCardLeaders(actionTarget).join(', ')})를 해제하고 ${selectedLeader} 로 변경할까요?`)) {
+                onClick={async () => {
+                  if (await confirmDialog({ message: `기존 인도자(${getCardLeaders(actionTarget).join(', ')})를 해제하고 ${selectedLeader} 로 변경할까요?`, confirmLabel: '변경' })) {
                     void handleReplaceAssignment(actionTarget)
                   }
                 }}
@@ -897,8 +898,8 @@ export function MobileAdminAssignment({
                 label="배정 모두 해제"
                 sub="이 카드를 미배정 상태로"
                 danger
-                onClick={() => {
-                  if (confirm(`"${actionTarget.name}" 의 모든 인도자 배정을 해제할까요?`)) {
+                onClick={async () => {
+                  if (await confirmDialog({ message: `"${actionTarget.name}" 의 모든 인도자 배정을 해제할까요?`, danger: true, confirmLabel: '해제' })) {
                     void Promise.resolve(onSetCardLeaders(actionTarget.id, [], { silentSuccess: true })).then(() => {
                       setSessionAssigned((prev) => {
                         const next = new Set(prev)

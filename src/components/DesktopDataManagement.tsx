@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { confirmDialog, alertDialog } from '../lib/confirm'
 
 export function DesktopDataManagement() {
   
@@ -42,11 +43,11 @@ export function DesktopDataManagement() {
       { key: 'hide_participants_from_users', value: String(hideParticipants) },
     ])
     setResetSaving(false)
-    window.alert('설정이 저장되었습니다.')
+    void alertDialog({ message: '설정이 저장되었습니다.' })
   }
 
   const runManualReset = async () => {
-    if (!window.confirm('만남 상태인 모든 세대를 지금 즉시 미방문으로 초기화할까요?\n방문 기록은 유지됩니다.')) return
+    if (!(await confirmDialog({ message: '만남 상태인 모든 세대를 지금 즉시 미방문으로 초기화할까요?\n방문 기록은 유지됩니다.', danger: true, confirmLabel: '초기화' }))) return
     setManualResetting(true)
     setManualResetResult(null)
     const { data } = await supabase.rpc('manual_reset_met_units')

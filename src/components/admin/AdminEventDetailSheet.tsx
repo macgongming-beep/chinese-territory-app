@@ -13,6 +13,7 @@
 
 import { useMemo, useState } from 'react'
 import type { CalendarEvent, Role, TerritoryCard } from '../../types'
+import { confirmDialog } from '../../lib/confirm'
 import { t, type AppLanguage } from '../../i18n'
 import { CommentSection, type MentionUser } from '../CommentSection'
 
@@ -192,9 +193,9 @@ export function AdminEventDetailSheet({
     onClose()
   }
 
-  const handleRemoveParticipant = (name: string) => {
+  const handleRemoveParticipant = async (name: string) => {
     if (!onRemoveParticipant) return
-    const ok = window.confirm(`${name}님을 이 일정에서 제외할까요?\n이미 팀이나 카드에 배정되어 있으면 배정에서도 제외됩니다.`)
+    const ok = await confirmDialog({ message: `${name}님을 이 일정에서 제외할까요?\n이미 팀이나 카드에 배정되어 있으면 배정에서도 제외됩니다.`, danger: true, confirmLabel: '제외' })
     if (!ok) return
     onRemoveParticipant(name)
   }

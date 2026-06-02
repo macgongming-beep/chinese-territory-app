@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { confirmDialog } from '../lib/confirm'
 import type { Role, VisitHistory } from '../types'
 
 type UserProfile = {
@@ -249,7 +250,7 @@ export function DesktopUsers({
     if (!p.userId) return
     if (currentUser?.id === p.userId) return
     const msg = `${p.name} 사용자를 제거할까요?\n\n로그인 계정만 삭제되며, 기존 방문 기록은 보존됩니다.`
-    if (!confirm(msg)) return
+    if (!(await confirmDialog({ message: msg, danger: true, confirmLabel: '제거' }))) return
     const ok = await deleteUser(p.userId)
     if (ok) setSelectedUser(null)
   }
@@ -540,8 +541,8 @@ export function DesktopUsers({
                         <strong>{profile.name}</strong>님이 비밀번호를 잊어버린 경우, 관리자가 '0000'으로 초기화해 줄 수 있습니다.
                       </p>
                       <button
-                        onClick={() => {
-                          if (confirm(`${profile.name}님의 비밀번호를 '0000'으로 초기화하시겠습니까?`)) {
+                        onClick={async () => {
+                          if (await confirmDialog({ message: `${profile.name}님의 비밀번호를 '0000'으로 초기화하시겠습니까?`, confirmLabel: '초기화' })) {
                             resetUserPin(profile.userId!)
                           }
                         }}

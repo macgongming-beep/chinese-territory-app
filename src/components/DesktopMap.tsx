@@ -23,6 +23,7 @@ import type {
 } from '../types'
 import { formatDisplayAddress, getBuildingStatus, getCardName, findCardForCoordinates, isValidMapCoordinate, normalizeMapCoordinates } from '../utils/mapUtils'
 import { showToast } from '../lib/toast'
+import { confirmDialog } from '../lib/confirm'
 import { getCurrentTimeSlot } from '../utils/timeUtils'
 import { mergeCardBoundaryPoints } from '../utils/boundaryMerge'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
@@ -1028,10 +1029,10 @@ export function DesktopMap({
       return
     }
 
-    const confirmed = window.confirm(
-      `${targetCard.name} 카드로 ${selectedIds.length}개 카드의 건물과 구역선을 합칠까요?\n` +
-      '원본 카드는 남기고, 원본 카드의 구역선만 비워집니다.\n병합 후 되돌리기 버튼으로 취소할 수 있습니다.',
-    )
+    const confirmed = await confirmDialog({
+      message: `${targetCard.name} 카드로 ${selectedIds.length}개 카드의 건물과 구역선을 합칠까요?\n` +
+        '원본 카드는 남기고, 원본 카드의 구역선만 비워집니다.\n병합 후 되돌리기 버튼으로 취소할 수 있습니다.',
+    })
     if (!confirmed) return
 
     const allMergeIds = [mergeTargetCardId, ...selectedIds.filter((id) => id !== mergeTargetCardId)]
@@ -1318,9 +1319,9 @@ export function DesktopMap({
                     <button
                       className="danger"
                       disabled={drawingBoundary}
-                      onClick={() => {
+                      onClick={async () => {
                         setShowBoundaryActionMenu(false)
-                        if (confirm(`${selectedBoundaryCard?.name ?? '선택 카드'} 구역선을 삭제할까요?`)) {
+                        if (await confirmDialog({ message: `${selectedBoundaryCard?.name ?? '선택 카드'} 구역선을 삭제할까요?`, danger: true, confirmLabel: '삭제' })) {
                           handleDeleteBoundary(boundaryCardId)
                         }
                       }}
@@ -1950,9 +1951,9 @@ export function DesktopMap({
                                         {isMenuOpen && (
                                           <div className="history-admin-menu">
                                             <button onClick={() => openHistoryEditorForEdit(building.id, history)} type="button">✎ 수정</button>
-                                            <button onClick={() => {
+                                            <button onClick={async () => {
                                               if (!requireRecordAccess()) return
-                                              if (confirm('이 방문 기록을 삭제할까요?')) {
+                                              if (await confirmDialog({ message: '이 방문 기록을 삭제할까요?', danger: true, confirmLabel: '삭제' })) {
                                                 onDeleteVisitHistory(history.id, unit.id)
                                               }
                                               setEditingHistoryId(null)
@@ -2007,9 +2008,9 @@ export function DesktopMap({
                                       border: '1px solid #f1f5f9', overflow: 'hidden', minWidth: 120,
                                     }}>
                                       <button
-                                        onClick={() => {
+                                        onClick={async () => {
                                           setUnitDeleteMenuId(null)
-                                          if (confirm(t(language, 'map.deleteUnitConfirm'))) {
+                                          if (await confirmDialog({ message: t(language, 'map.deleteUnitConfirm'), danger: true, confirmLabel: '삭제' })) {
                                             onDeleteUnit(building.id, unit.id)
                                             setExpandedUnitId(null)
                                           }
