@@ -57,7 +57,12 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
   const assignCardsToEventParticipantsBulk = async (
     eventId: number,
     assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
-    options?: { silentSuccess?: boolean; status?: 'confirmed' | 'shared' },
+    options?: {
+      silentSuccess?: boolean
+      status?: 'confirmed' | 'shared'
+      expectedSharedAt?: string | null      // 편집 시작 때 본 공유시각 (충돌 감지)
+      onConflict?: (serverSharedAt: string | null) => void  // 충돌 시 호출
+    },
   ) => {
     const silentSuccess = options?.silentSuccess === true
     const normalizedAssignments = Array.from(
@@ -83,6 +88,36 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
       ).values(),
     )
 
+    // ── 1순위: 트랜잭션 RPC (원자적 + 충돌 감지) ──
+    const rpcPayload = normalizedAssignments
+      .filter((item) => item.cardIds.length > 0)
+      .map((item) => ({ userName: item.userName, cardIds: item.cardIds }))
+    const token = (await import('../../lib/authToken')).getAuthToken()
+    if (token) {
+      const rpcRes = await supabase.rpc('assign_cards_bulk_tx', {
+        p_token: token,
+        p_event_id: eventId,
+        p_assignments: rpcPayload,
+        p_status: options?.status ?? null,
+        p_expected_shared_at: options?.expectedSharedAt ?? null,
+      })
+      if (!rpcRes.error) {
+        const result = rpcRes.data as { ok: boolean; conflict?: boolean; server_shared_at?: string | null; count?: number }
+        if (result && result.conflict) {
+          options?.onConflict?.(result.server_shared_at ?? null)
+          return
+        }
+        await fetchAll()
+        if (!silentSuccess) showToast(`참여자 카드 배정 ${result?.count ?? 0}건을 저장했습니다`)
+        return
+      }
+      // RPC 미적용(함수 없음) 등은 아래 폴백으로
+      if (!String(rpcRes.error.message ?? '').includes('Could not find the function')) {
+        console.warn('[assign_cards_bulk_tx] RPC 실패, 폴백 사용:', rpcRes.error)
+      }
+    }
+
+    // ── 폴백: 기존 방식 (RPC 미적용 환경 호환) ──
     await supabase.from('event_card_assignment_cards').delete().eq('event_id', eventId)
 
     const deleteResult = await supabase

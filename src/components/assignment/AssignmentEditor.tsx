@@ -39,10 +39,13 @@ type Props = {
   onShare: (
     eventId: number,
     assignments: Array<{ userName: string; cardIds: number[] }>,
+    options: { expectedSharedAt: string | null; onConflict: (serverSharedAt: string | null) => void },
   ) => Promise<void> | void
 }
 
 export function AssignmentEditor({ event, cards, buildings, cardBoundaries, currentVisitor, canEdit, onClose, onShare }: Props) {
+  // 편집 시작 시점의 서버 공유시각 — 공유 때 충돌 감지에 사용 (P0-3)
+  const [entrySharedAt] = useState<string | null>(event.assignmentSharedAt ?? null)
   // 진입 시 draft 결정 (lazy 1회). 충돌이면 server로 시작하고 모달 띄움.
   const [{ initial, conflictPair }] = useState(() => {
     const entry = resolveDraftEntry(event, currentVisitor)
@@ -73,6 +76,7 @@ export function AssignmentEditor({ event, cards, buildings, cardBoundaries, curr
   const [screen, setScreen] = useState<'teams' | 'zones'>('teams')
   const [sharing, setSharing] = useState(false)
   const [confirmShare, setConfirmShare] = useState(false)
+  const [shareConflict, setShareConflict] = useState(false)
 
   const openTeamZones = (teamId: string) => {
     dispatch({ type: 'SET_ACTIVE_TEAM', teamId })
@@ -89,8 +93,16 @@ export function AssignmentEditor({ event, cards, buildings, cardBoundaries, curr
     if (sharing) return
     setConfirmShare(false)
     setSharing(true)
+    let conflicted = false
     try {
-      await onShare(event.id, draftToAssignments(draft))
+      await onShare(event.id, draftToAssignments(draft), {
+        expectedSharedAt: entrySharedAt,
+        onConflict: () => { conflicted = true },
+      })
+      if (conflicted) {
+        setShareConflict(true)  // 그 사이 남이 공유함 → 모달, draft는 유지
+        return
+      }
       clearLocalDraft(event.id, currentVisitor) // 성공 후에만 정리
       onClose()
     } finally {
@@ -182,6 +194,20 @@ export function AssignmentEditor({ event, cards, buildings, cardBoundaries, curr
             </p>
             <button className="asg-confirm-primary" onClick={() => setConfirmShare(false)} type="button">돌아가서 구역 배정</button>
             <button className="asg-confirm-ghost" onClick={() => void doShare()} type="button">그대로 공유</button>
+          </div>
+        </div>
+      )}
+
+      {/* 공유 충돌 — 편집 중 남이 먼저 공유 */}
+      {shareConflict && (
+        <div className="asg-confirm-backdrop">
+          <div className="asg-confirm" onClick={(e) => e.stopPropagation()}>
+            <h2>다른 곳에서 먼저 공유됐어요</h2>
+            <p>
+              편집하는 사이 다른 사람이 이 일정의 배정을 공유했습니다.
+              덮어쓰지 않았어요. 최신 내용을 보려면 새로고침하세요.
+            </p>
+            <button className="asg-confirm-primary" onClick={() => { setShareConflict(false); onClose() }} type="button">닫고 새로고침</button>
           </div>
         </div>
       )}

@@ -69,7 +69,7 @@ type Props = {
   onAssignCardsToEventParticipantsBulk?: (
     eventId: number,
     assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
-    options?: { silentSuccess?: boolean; status?: 'confirmed' | 'shared' },
+    options?: { silentSuccess?: boolean; status?: 'confirmed' | 'shared'; expectedSharedAt?: string | null; onConflict?: (serverSharedAt: string | null) => void },
   ) => Promise<void> | void
   onCreateEvent?: (input: EventInput & { date: string }) => void
   onCreateRepeatEvents?: (dates: string[], input: EventInput) => void
@@ -631,8 +631,12 @@ export function AdminMobileCalendar({
             currentVisitor={currentVisitor}
             canEdit={canEdit}
             onClose={() => setAssignEventId(null)}
-            onShare={(eventId, assignments) =>
-              onAssignCardsToEventParticipantsBulk(eventId, assignments, { status: 'shared' })
+            onShare={(eventId, assignments, opts) =>
+              onAssignCardsToEventParticipantsBulk(eventId, assignments, {
+                status: 'shared',
+                expectedSharedAt: opts.expectedSharedAt,
+                onConflict: opts.onConflict,
+              })
             }
           />
         )
