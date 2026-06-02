@@ -665,7 +665,8 @@ export function DesktopCalendar({
                   )
                 }
 
-                const canEdit = role === 'admin' || role === 'developer' || role === 'leader'
+                // 편집/참가자 관리: 관리자·개발자 또는 본인이 인도자인 일정만 (모바일 정책과 통일)
+                const canEdit = role === 'admin' || role === 'developer' || event.leader === currentVisitor
                 const canManage = role === 'admin' || role === 'developer'
                 const canManageParticipants = canEdit
 

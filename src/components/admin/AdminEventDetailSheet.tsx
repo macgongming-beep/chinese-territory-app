@@ -171,7 +171,13 @@ export function AdminEventDetailSheet({
   const isApplied = useMemo(() => event.applicants.includes(currentVisitor), [event.applicants, currentVisitor])
   const canApply = event.allowApplications
   const applicants = event.applicants ?? []
-  const canManageParticipants = role === 'admin' || role === 'developer' || role === 'leader'
+  // 편집/삭제/참가자 관리 권한 (PC DesktopCalendar 와 통일된 정책)
+  //  - 수정·참가자 관리: 관리자·개발자 또는 본인이 인도자인 일정
+  //  - 삭제: 관리자·개발자만
+  const isLeaderOfThisEvent = role === 'leader' && event.leader === currentVisitor
+  const canEditEvent = role === 'admin' || role === 'developer' || isLeaderOfThisEvent
+  const canDeleteEvent = role === 'admin' || role === 'developer'
+  const canManageParticipants = canEditEvent
   
   const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false)
   const [isRemoveParticipantMode, setIsRemoveParticipantMode] = useState(false)
@@ -248,7 +254,7 @@ export function AdminEventDetailSheet({
             <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--muted)' }}>{formatDateHeader(event.date, language)}</span>
           </div>
         </div>
-        {role === 'admin' && (onDelete || onEdit) && (
+        {((canEditEvent && onEdit) || (canDeleteEvent && onDelete)) && (
           <div style={{ position: 'relative' }}>
             <button
               type="button"
@@ -287,7 +293,7 @@ export function AdminEventDetailSheet({
                     padding: 4,
                   }}
                 >
-                  {onEdit && (
+                  {canEditEvent && onEdit && (
                     <button
                       type="button"
                       onClick={() => { setMenuOpen(false); onEdit() }}
@@ -300,7 +306,7 @@ export function AdminEventDetailSheet({
                       }}
                     >{language === 'ko' ? '수정' : language === 'zh' ? '修改' : 'Edit'}</button>
                   )}
-                  {onDelete && (
+                  {canDeleteEvent && onDelete && (
                     <button
                       type="button"
                       onClick={() => { setMenuOpen(false); onDelete() }}
