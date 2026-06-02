@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
-// MobileCalendar 는 디자인 v2 적용 후 미사용 (AdminMobileCalendar 가 모든 역할 처리)
-// import { MobileCalendar } from './MobileCalendar'
 import { MobileAdminAssignment } from './MobileAdminAssignment'
 import { MobileMap } from './MobileMap'
 import { MobileNotices } from './MobileNotices'
@@ -840,8 +838,6 @@ export function MobileHome({
                   specialPeriods={specialPeriods}
                   globalSettings={globalSettings}
                 />
-                {/* (legacy MobileCalendar 유지 — 향후 제거 가능. 일정 상세 시트 시점별 액션은
-                    AdminEventDetailSheet 가 role prop 받아 분기.) */}
               </>
             } />
 
