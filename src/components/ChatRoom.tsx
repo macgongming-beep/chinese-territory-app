@@ -98,6 +98,8 @@ export function ChatRoom({
   const [uploading, setUploading] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedMessageIds, setSelectedMessageIds] = useState<Set<number>>(new Set())
+  const [isMuted, setIsMuted] = useState(false)
+  const [muteBusy, setMuteBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const atBottomRef = useRef(true)
@@ -119,6 +121,50 @@ export function ChatRoom({
     }
     lastMessageIdRef.current = last.id
   }, [messages, currentVisitor])
+
+  // 음소거 상태 로드 (event_id + 본인)
+  useEffect(() => {
+    if (!currentUserId) { setIsMuted(false); return }
+    let cancelled = false
+    void supabase
+      .from('chat_room_mutes')
+      .select('event_id')
+      .eq('event_id', eventId)
+      .eq('user_id', currentUserId)
+      .maybeSingle()
+      .then(({ data }) => { if (!cancelled) setIsMuted(!!data) })
+    return () => { cancelled = true }
+  }, [eventId, currentUserId])
+
+  const toggleMute = async () => {
+    if (!currentUserId || muteBusy) return
+    setMuteBusy(true)
+    const next = !isMuted
+    setIsMuted(next) // 낙관적 업데이트
+    try {
+      if (next) {
+        const { error } = await supabase
+          .from('chat_room_mutes')
+          .upsert({ event_id: eventId, user_id: currentUserId }, { onConflict: 'event_id,user_id' })
+        if (error) throw error
+        showToast('이 채팅방 알림을 껐어요', 'info')
+      } else {
+        const { error } = await supabase
+          .from('chat_room_mutes')
+          .delete()
+          .eq('event_id', eventId)
+          .eq('user_id', currentUserId)
+        if (error) throw error
+        showToast('이 채팅방 알림을 다시 받아요', 'info')
+      }
+    } catch (err) {
+      console.warn('채팅 음소거 토글 실패:', err)
+      setIsMuted(!next) // 롤백
+      showToast('알림 설정 변경에 실패했어요', 'error')
+    } finally {
+      setMuteBusy(false)
+    }
+  }
 
   const handleMessagesScroll = () => {
     const el = messagesContainerRef.current
@@ -431,6 +477,18 @@ export function ChatRoom({
         ) : (
           <div className="chat-room__tools">
             <em>{t(lang, 'chat.countMsg', { n: messages.length })}</em>
+            {currentUserId != null && (
+              <button
+                className={`chat-mute-btn${isMuted ? ' is-muted' : ''}`}
+                aria-label={isMuted ? '알림 켜기' : '알림 끄기'}
+                title={isMuted ? '이 채팅방 알림이 꺼져 있어요' : '이 채팅방 알림 끄기'}
+                onClick={toggleMute}
+                disabled={muteBusy}
+                type="button"
+              >
+                {isMuted ? '🔕' : '🔔'}
+              </button>
+            )}
             {selectableMessages.length > 0 && (
               <button aria-label="메시지 선택" onClick={enterSelectMode} type="button">⋯</button>
             )}
