@@ -32,7 +32,7 @@ export type DraftState = {
   undo: AssignmentDraft | null     // 직전 1회 되돌리기 스냅샷 (코덱스 Undo)
 }
 
-export const TEAM_COLORS = ['blue', 'green', 'orange', 'purple', 'slate', 'rose', 'teal', 'amber'] as const
+export const TEAM_COLORS = ['blue', 'green', 'orange', 'purple', 'slate', 'rose', 'teal', 'amber', 'indigo', 'lime', 'coral', 'cyan', 'brown', 'emerald', 'pink', 'stone'] as const
 
 // reducer action — 모든 배정 변경은 이 액션들을 통해서만
 export type DraftAction =

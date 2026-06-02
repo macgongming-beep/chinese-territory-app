@@ -9,6 +9,14 @@ export const TEAM_COLOR_HEX: Record<string, string> = {
   rose: '#d98fa3',   // 파스텔 로즈
   teal: '#6fb3ac',   // 파스텔 틸
   amber: '#cdb06a',  // 파스텔 앰버
+  indigo: '#7986cb', // 파스텔 인디고
+  lime: '#c0ca33',   // 파스텔 라임
+  coral: '#ff8a65',  // 파스텔 코랄
+  cyan: '#4dd0e1',   // 파스텔 시안
+  brown: '#a1887f',  // 파스텔 브라운
+  emerald: '#4db6ac',// 파스텔 에메랄드
+  pink: '#f48fb1',   // 파스텔 핑크
+  stone: '#a8a29e',  // 파스텔 스톤
 }
 
 export function teamHex(color: string): string {
