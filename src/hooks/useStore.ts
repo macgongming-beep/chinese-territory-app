@@ -69,7 +69,7 @@ import type {
 } from './storeTransforms'
 
 export function getCurrentVisitor(): string {
-  return localStorage.getItem('currentVisitor') ?? '김민준'
+  return localStorage.getItem('currentVisitor') ?? ''
 }
 
 export function getLocalDateString() {

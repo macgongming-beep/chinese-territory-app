@@ -1,6 +1,6 @@
 import type { Building, ServiceSession, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../../types'
 import { getCurrentTimeSlot } from '../../utils/timeUtils'
-import { supabase, showToast, reportMutationError, getLocalDateString } from './shared'
+import { supabase, showToast, reportMutationError, getLocalDateString, requireVisitor } from './shared'
 import { logServiceAction } from './serviceLog'
 
 export function makeVisitMutations(deps: {
@@ -43,7 +43,8 @@ export function makeVisitMutations(deps: {
     }
 
     const visitedAt = getLocalDateString()
-    const visitor = localStorage.getItem('currentVisitor') ?? '김민준'
+    const visitor = requireVisitor()
+    if (!visitor) return
     const existingAttemptResult = await supabase
       .from('visit_histories')
       .select('id')
@@ -111,7 +112,8 @@ export function makeVisitMutations(deps: {
     const todayStr = getLocalDateString()
     const recordSession = getRecordServiceSession(buildingId)
     const slot = recordSession?.timeSlot ?? getCurrentTimeSlot()
-    const visitor = localStorage.getItem('currentVisitor') ?? '김민준'
+    const visitor = requireVisitor()
+    if (!visitor) return
 
     const existingResult = await supabase
       .from('visit_histories')
@@ -184,7 +186,8 @@ export function makeVisitMutations(deps: {
     const todayStr = getLocalDateString()
     const recordSession = getRecordServiceSession(buildingId)
     const slot = recordSession?.timeSlot ?? getCurrentTimeSlot()
-    const visitor = localStorage.getItem('currentVisitor') ?? '김민준'
+    const visitor = requireVisitor()
+    if (!visitor) return
 
     const unitUpdate = await supabase.from('units').update({ status: result }).eq('id', unitId)
     if (unitUpdate.error) {
@@ -409,7 +412,8 @@ export function makeVisitMutations(deps: {
   ) => {
     const recordSession = getRecordServiceSession(buildingId, input.visitedAt)
     const activePeriodId = getActiveSpecialPeriodIdForDate(input.visitedAt)
-    const visitor = localStorage.getItem('currentVisitor') ?? '김민준'
+    const visitor = requireVisitor()
+    if (!visitor) return
 
     const insertResult = await supabase.from('visit_histories').insert({
       unit_id: unitId,

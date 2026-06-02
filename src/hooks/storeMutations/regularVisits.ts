@@ -1,5 +1,5 @@
 import type { Building, ReturnVisit, TerritoryCard } from '../../types'
-import { supabase, showToast, reportMutationError } from './shared'
+import { supabase, showToast, reportMutationError, requireVisitor } from './shared'
 
 export function makeRegularVisitMutations(deps: {
   fetchAll: () => Promise<void>
@@ -52,7 +52,8 @@ export function makeRegularVisitMutations(deps: {
       await fetchAll()
       showToast('정기방문이 해제됐습니다')
     } else {
-      const name = visitorName || (localStorage.getItem('currentVisitor') ?? '김민준')
+      const name = visitorName || requireVisitor()
+      if (!name) return
       const result = await supabase.from('regular_visits').insert({ unit_id: unitId, visitor_name: name, registered_at: new Date().toISOString() })
       if (result.error) {
         reportMutationError('정기방문을 등록하지 못했습니다.', result.error)
@@ -117,7 +118,8 @@ export function makeRegularVisitMutations(deps: {
     result: '만남' | '부재' | null,
     memo: string,
   ) => {
-    const visitor = localStorage.getItem('currentVisitor') ?? '김민준'
+    const visitor = requireVisitor()
+    if (!visitor) return
     const now = new Date().toISOString()
     const logRes = await supabase.from('return_visit_logs').insert({
       return_visit_id: returnVisitId,
@@ -146,7 +148,8 @@ export function makeRegularVisitMutations(deps: {
     unitId?: number | null
     buildingId?: number | null
   }) => {
-    const visitor = localStorage.getItem('currentVisitor') ?? '김민준'
+    const visitor = requireVisitor()
+    if (!visitor) return
     const res = await supabase.from('return_visits').insert({
       unit_id: input.unitId ?? null,
       building_id: input.buildingId ?? null,
