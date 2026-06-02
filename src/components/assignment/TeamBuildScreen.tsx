@@ -10,6 +10,7 @@ import type { TerritoryCard } from '../../types'
 import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
 import { confirmDialog } from '../../lib/confirm'
+import { matchesName } from '../../utils/koreanSearch'
 
 type Props = {
   participants: string[]              // 일정 신청자 ∪ 배정자
@@ -22,6 +23,7 @@ type Props = {
 
 export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch, onOpenTeamZones }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [search, setSearch] = useState('')
 
   const assignedSet = useMemo(
     () => new Set(teams.flatMap((t) => t.members)),
@@ -31,6 +33,13 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
     () => participants.filter((p) => !assignedSet.has(p)),
     [participants, assignedSet],
   )
+  // 검색 필터 적용된 표시 목록 (이름 부분일치 + 초성)
+  const visibleParticipants = useMemo(
+    () => (search.trim() ? participants.filter((p) => matchesName(p, search)) : participants),
+    [participants, search],
+  )
+  // 검색창은 인원이 많을 때만 노출 (소규모 일정에선 불필요)
+  const showSearch = participants.length > 10
 
   const cardName = (id: number) => cards.find((c) => c.id === id)?.name ?? `카드 ${id}`
 
@@ -78,8 +87,26 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
             </button>
           )}
         </div>
+        {showSearch && (
+          <div className="asg-build-search">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="이름 검색 (초성 가능, 예: ㄱㅁㅈ)"
+              className="asg-build-search-input"
+              aria-label="신청자 이름 검색"
+            />
+            {search && (
+              <button type="button" className="asg-build-search-clear" onClick={() => setSearch('')} aria-label="검색 지우기">×</button>
+            )}
+          </div>
+        )}
         <div className="asg-chip-wrap">
-          {participants.map((name) => {
+          {visibleParticipants.length === 0 && (
+            <p className="asg-build-empty">검색 결과가 없어요.</p>
+          )}
+          {visibleParticipants.map((name) => {
             const isSel = selected.has(name)
             const isAssigned = assignedSet.has(name)
             return (
@@ -136,7 +163,11 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
                     type="button"
                     onClick={async (e) => {
                       e.stopPropagation()
-                      if (await confirmDialog({ message: `${team.name}을(를) 삭제할까요?`, danger: true, confirmLabel: '삭제' })) dispatch({ type: 'DELETE_TEAM', teamId: team.id })
+                      const zoneCount = team.cardIds.length
+                      const message = zoneCount > 0
+                        ? `${team.name}을(를) 삭제할까요?\n배분된 구역 ${zoneCount}개도 함께 미배정으로 풀립니다.`
+                        : `${team.name}을(를) 삭제할까요?`
+                      if (await confirmDialog({ message, danger: true, confirmLabel: '삭제' })) dispatch({ type: 'DELETE_TEAM', teamId: team.id })
                     }}
                     style={{
                       position: 'absolute',
