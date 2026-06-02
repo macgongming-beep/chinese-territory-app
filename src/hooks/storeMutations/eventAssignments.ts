@@ -46,12 +46,18 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
       .delete()
       .eq('event_id', eventId)
       .eq('user_name', userName)
-    await supabase
+    const cardsInsert = await supabase
       .from('event_card_assignment_cards')
       .insert({ event_id: eventId, user_name: userName, card_id: cardId })
 
     await fetchAll()
-    showToast('참여자 카드가 배정됐습니다')
+    if (cardsInsert.error) {
+      // 대표 카드는 저장됐지만 다중 카드 테이블 동기화 실패 → 조용히 넘어가지 않게
+      console.warn('event_card_assignment_cards 동기화 실패:', cardsInsert.error)
+      showToast('대표 카드는 배정됐지만 다중 카드 동기화는 SQL 실행 후 완전해집니다.', 'info')
+    } else {
+      showToast('참여자 카드가 배정됐습니다')
+    }
   }
 
   const assignCardsToEventParticipantsBulk = async (

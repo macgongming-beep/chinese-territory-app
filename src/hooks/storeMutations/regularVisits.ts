@@ -133,9 +133,16 @@ export function makeRegularVisitMutations(deps: {
       return
     }
     if (result) {
-      await supabase.from('return_visits')
+      const updRes = await supabase.from('return_visits')
         .update({ last_visited_at: now, last_result: result })
         .eq('id', returnVisitId)
+      if (updRes.error) {
+        // 로그는 저장됐지만 요약 갱신 실패 → 조용히 stale 되지 않게 알림
+        console.warn('정기방문 요약(last_*) 갱신 실패:', updRes.error)
+        showToast('기록은 저장됐지만 요약 갱신에 실패했어요. 새로고침 해주세요.', 'info')
+        await fetchAll()
+        return
+      }
     }
     await fetchAll()
     showToast('기록이 저장됐습니다')
