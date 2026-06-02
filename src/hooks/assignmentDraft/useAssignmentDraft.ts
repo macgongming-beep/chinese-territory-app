@@ -8,6 +8,7 @@ import { useCallback, useEffect, useReducer, useRef } from 'react'
 import type { AssignmentDraft, DraftAction, DraftState } from './types'
 import { draftReducer } from './reducer'
 import { saveLocalDraft } from './persistence'
+import { showToast } from '../../lib/toast'
 
 export function useAssignmentDraft(
   eventId: number,
@@ -24,12 +25,19 @@ export function useAssignmentDraft(
 
   // 최초 마운트 시 자동저장 스킵 (로드된 그대로는 다시 쓸 필요 없음)
   const firstRef = useRef(true)
+  const saveFailedRef = useRef(false)  // 실패 토스트 1회만
   useEffect(() => {
     if (firstRef.current) {
       firstRef.current = false
       return
     }
-    saveLocalDraft(eventId, userName, state.draft)
+    const ok = saveLocalDraft(eventId, userName, state.draft)
+    if (!ok && !saveFailedRef.current) {
+      saveFailedRef.current = true
+      showToast('임시 저장에 실패했습니다 (저장 공간 부족). 작업 후 바로 공유해 주세요.', 'error')
+    } else if (ok) {
+      saveFailedRef.current = false
+    }
   }, [eventId, userName, state.draft])
 
   // 외부에서 새 이벤트로 교체 시 reducer 재초기화

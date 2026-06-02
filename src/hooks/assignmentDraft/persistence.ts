@@ -67,21 +67,39 @@ export function draftToAssignments(
 }
 
 // ── localStorage ──────────────────────────────────────────────
+// draft 구조 최소 검증 (깨진/옛 포맷 방지)
+function isValidDraft(d: unknown): d is AssignmentDraft {
+  if (!d || typeof d !== 'object') return false
+  const draft = d as Partial<AssignmentDraft>
+  if (!Array.isArray(draft.teams)) return false
+  return draft.teams.every((t) =>
+    t && typeof t === 'object' && Array.isArray(t.cardIds) && Array.isArray(t.members),
+  )
+}
+
 export function loadLocalDraft(eventId: number, userName: string): AssignmentDraft | null {
   try {
     const raw = localStorage.getItem(storageKey(eventId, userName))
     if (!raw) return null
-    return JSON.parse(raw) as AssignmentDraft
+    const parsed = JSON.parse(raw)
+    if (!isValidDraft(parsed)) {
+      // 깨진 draft → 버림 (조용히 잘못된 데이터 쓰지 않게)
+      localStorage.removeItem(storageKey(eventId, userName))
+      return null
+    }
+    return parsed
   } catch {
     return null
   }
 }
 
-export function saveLocalDraft(eventId: number, userName: string, draft: AssignmentDraft): void {
+// 저장 성공 여부 반환 (실패 시 호출부가 토스트 등 처리)
+export function saveLocalDraft(eventId: number, userName: string, draft: AssignmentDraft): boolean {
   try {
     localStorage.setItem(storageKey(eventId, userName), JSON.stringify(draft))
+    return true
   } catch {
-    /* 용량 초과 등 무시 */
+    return false  // 용량 초과 등
   }
 }
 

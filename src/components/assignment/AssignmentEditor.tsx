@@ -15,6 +15,7 @@ import {
 } from '../../hooks/assignmentDraft'
 import { TeamBuildScreen } from './TeamBuildScreen'
 import { ZoneAssignScreen } from './ZoneAssignScreen'
+import { showToast } from '../../lib/toast'
 
 // "5/29 (금) 10:00 · 봉사 모임" 형식
 function formatEventDateTime(event: CalendarEvent): string {
@@ -68,8 +69,16 @@ export function AssignmentEditor({ event, cards, buildings, cardBoundaries, curr
   )
 
   // 진입 시 참가자 sanitize (취소·거절자 제거) — 1회
+  // 제거되는 사람이 있으면 토스트로 알림 (조용히 빠지지 않게)
   useEffect(() => {
+    const validSet = new Set(participants)
+    const removed = Array.from(
+      new Set(initial.teams.flatMap((t) => t.members).filter((m) => !validSet.has(m))),
+    )
     dispatch({ type: 'SANITIZE', participants })
+    if (removed.length > 0) {
+      showToast(`${removed.join(', ')}님이 신청 취소되어 배정에서 제외됐어요`, 'info')
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
