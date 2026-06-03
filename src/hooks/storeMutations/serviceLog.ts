@@ -27,7 +27,6 @@ export async function logServiceAction(input: ServiceLogInput): Promise<void> {
     p_details: input.details ?? {},
   })
   if (error) {
-    // eslint-disable-next-line no-console
     console.warn('[service_log] failed:', input.action, error)
   }
 }

@@ -1005,7 +1005,7 @@ function NaverMapCanvas({
             ? (draftBoundaryRef.current as any).getPaths().getAt(0)
             : (draftBoundaryRef.current as any).getPath()
           path.setAt(index, event.coord)
-        } catch (e) {
+        } catch {
           // ignore
         }
       })
@@ -1209,7 +1209,6 @@ function NaverMapCanvas({
   useEffect(() => {
     if (!scriptLoadedRef.current) return
     rebuildMarkers()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [virtualPinLat, virtualPinLng, virtualPinLabel])
 
   // 건물 목록, 선택, 또는 미리보기 핀 변경 시 마커 재생성
@@ -1247,7 +1246,6 @@ function NaverMapCanvas({
   useEffect(() => {
     if (!scriptLoadedRef.current) return
     focusBuildingOnMap(focusBuildingId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusBuildingId, buildings])
 
   useEffect(() => {

@@ -94,7 +94,7 @@ export function ImportEventsModal({ isOpen, onClose, onCreateEvent }: ImportEven
       }
       showToast(`성공적으로 ${parsedRows.length}개의 일정을 가져왔습니다.`, 'success')
       onClose()
-    } catch (error) {
+    } catch {
       showToast('일부 일정을 등록하는 중 오류가 발생했습니다.', 'error')
     } finally {
       setIsProcessing(false)

@@ -62,22 +62,6 @@ function SearchIcon({ size = 16 }: { size?: number }) {
   )
 }
 
-// @ts-ignore
-function Avatar({ name, muted, size = 36 }: { name: string; muted?: boolean; size?: number }) {
-  return (
-    <span
-      style={{
-        width: size, height: size, borderRadius: '50%',
-        background: muted ? 'var(--tint)' : 'var(--ink)',
-        color: muted ? 'var(--muted)' : '#fff',
-        display: 'grid', placeItems: 'center',
-        fontSize: Math.round(size * 0.4), fontWeight: 700, flexShrink: 0,
-      }}
-    >
-      {name.slice(0, 1)}
-    </span>
-  )
-}
 
 export function MobileAdminAssignment({
   cards,
