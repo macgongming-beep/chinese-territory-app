@@ -1,11 +1,53 @@
 # Chinese Territory App — 프로젝트 컨텍스트
 
 > **AI 에이전트 인수인계용. 작업 전 반드시 이 파일을 읽을 것.**
-> 마지막 업데이트: 2026-05-14 — 실시간/알림/PWA UX 개선 라운드 완료
+> 마지막 업데이트: 2026-06-03 — 안정화 라운드 완료 (P0~P3, 전역 Confirm, lint 0)
 
 ---
 
-## 🆕 최근 변경 사항 (2026-05-14)
+## 🆕 최근 변경 사항 (2026-06-03) — 안정화 라운드
+
+코덱스+제미나이 리뷰 기반 전체 점검 + 수정. 다음 작업 전 우선 확인.
+
+### 새 SQL 패치 (Supabase SQL Editor 에 이미 적용됨)
+1. `supabase/v3_assign_cards_bulk_tx.sql` — 인도자 배정 **트랜잭션 RPC**
+   `assign_cards_bulk_tx(p_token, p_event_id, p_assignments, p_status, p_expected_shared_at)`
+   - 기존 카드배정 delete→insert→status를 한 트랜잭션으로 (원자성)
+   - `assignment_shared_at` 비교로 **동시 공유 충돌 감지** (jsonb {ok, conflict, ...} 반환)
+   - 클라: `eventAssignments.ts` 가 RPC 우선, 함수 없으면 레거시 폴백
+2. `supabase/v3_data_retention.sql` — **DB 용량 자동 정리** (무료 500MB 대비)
+   - `app_settings` 보존기간 (채팅90/읽은알림30/운영로그60/로그인180일, 조정 가능)
+   - `cleanup_old_data()` 삭제+건수 반환 / `preview_data_cleanup()` 미리보기
+   - pg_cron `cleanup-old-data` 매일 KST 04:00 (UTC 19:00) 자동
+   - ⚠️ 기존 `cleanup_service_logs_daily` cron 은 unschedule 함 (이 함수가 흡수)
+
+### 주요 클라이언트 변경
+- **전역 Confirm/Alert 다이얼로그** (`src/lib/confirm.ts` + `components/ConfirmDialog.tsx`)
+  - `confirmDialog({message, danger, confirmLabel})` → Promise<boolean>, `alertDialog()`
+  - App.tsx 에 `<ConfirmDialog />` 마운트 (Toast 옆). 다크 글래스모피즘 (App.css `.cdlg-*`)
+  - `window.confirm` 40곳 + `window.alert` 9곳 전부 교체. **새 확인창은 이거 재사용할 것**
+- **P0 데이터 무결성**: `getCurrentVisitor()` 의 `'김민준'` fallback 제거 → `requireVisitor()`
+  가드 (로그인 정보 없으면 토스트+중단). `storeMutations/{visits,regularVisits}.ts`
+- **P1 조용한 실패 노출**: 방문요약/다중카드/draft 저장실패/sanitize 제거를 토스트로 알림
+- **P2 정책/UX**:
+  - PC 일정 편집 권한을 모바일과 통일 (관리자·개발자 또는 **본인 인도 일정만**, 삭제는 관리자·개발자만)
+    → `DesktopCalendar` canEdit, `AdminEventDetailSheet` canEditEvent/canDeleteEvent
+  - 팀짓기 미배정 인원 **검색/초성** (`utils/koreanSearch.ts` matchesName)
+  - 팀 삭제 시 "구역 N개도 풀림" 경고, 채팅방 **음소거 토글** (chat_room_mutes upsert/delete)
+- **P3-2 Realtime 복원력**: `src/lib/realtimeRecovery.ts` `subscribeWithRecovery()`
+  - 웹소켓 재연결 시 끊긴 동안 놓친 변경 **catch-up refetch** (재구독 순간 1회)
+  - useCalendarRealtime / useNotifications / useUserChats 3개 영구채널에 적용
+- **lint 162 → 0** (eslint.config.js 에 `_`접두사 무시 추가, 네이버 SDK any 파일레벨 disable,
+  의도적 react-hooks 패턴은 사유 명시 disable). `npm run lint` 깨끗하게 유지할 것.
+
+### 남은 과제 (큰 작업 — 별도 세션 권장)
+- 거대 파일 분할: `useStore.ts` 2300줄, `DesktopTerritory.tsx` 2200줄, `MapCanvas.tsx` 1400줄
+- P3-3 교차기기 draft 연동 (서버사이드 draft 필요, V2+)
+- visit_histories/buildings/cards 의 RLS (현재 anon 전체 접근)
+
+---
+
+## 이전 변경 사항 (2026-05-14)
 
 이번 라운드에서 작업한 내용. 코덱스 인수인계 시 우선 확인.
 
