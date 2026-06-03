@@ -220,8 +220,8 @@ export function AdminEventDetailSheet({
       {/* 커스텀 헤더 */}
       <header
         style={{
-          height: 56,
-          padding: '0 12px 0 12px',
+          minHeight: 'calc(56px + var(--safe-top))',
+          padding: 'calc(0px + var(--safe-top)) 12px 0 12px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
