@@ -229,7 +229,8 @@ function DesktopLeaderAssignmentView({
   const toggleParticipantSelect = (name: string) => {
     setSelectedParticipants((prev) => {
       const next = new Set(prev)
-      next.has(name) ? next.delete(name) : next.add(name)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
       return next
     })
   }
@@ -1178,7 +1179,8 @@ export function DesktopLeaderAssignment({
   const toggleSelectCard = (id: number) => {
     setSelectedCardIds((prev) => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }

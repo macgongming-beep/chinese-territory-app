@@ -1421,20 +1421,23 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                 <button className={`unit-check-btn${unit.status === '만남' ? ' ucb-meet' : ''}${!canRecordVisits ? ' locked' : ''}`}
                                   onClick={() => {
                                     if (!requireRecordAccess()) return
-                                    unit.status === '만남' ? onUndoLatestVisit(building.id, unit.id) : onQuickLogVisit(building.id, unit.id, '만남')
+                                    if (unit.status === '만남') onUndoLatestVisit(building.id, unit.id)
+                                    else onQuickLogVisit(building.id, unit.id, '만남')
                                   }}
                                   type="button">{unit.status === '만남' ? '✓' : ''}</button>
                                 <button
                                   className={`unit-check-btn${(unit.status === '부재' && latestHistory?.visitedAt === getLocalDateString()) ? ' ucb-absent' : ''}${!canRecordVisits ? ' locked' : ''}`}
                                   onClick={() => {
                                     if (!requireRecordAccess()) return
-                                    ;(unit.status === '부재' && latestHistory?.visitedAt === getLocalDateString()) ? onUndoLatestVisit(building.id, unit.id) : onQuickLogVisit(building.id, unit.id, '부재')
+                                    if (unit.status === '부재' && latestHistory?.visitedAt === getLocalDateString()) onUndoLatestVisit(building.id, unit.id)
+                                    else onQuickLogVisit(building.id, unit.id, '부재')
                                   }}
                                   type="button">{(unit.status === '부재' && latestHistory?.visitedAt === getLocalDateString()) ? '✓' : ''}</button>
                                 <button className={`unit-check-btn${unit.status === '대상외' ? ' ucb-korean' : ''}${!canRecordVisits ? ' locked' : ''}`}
                                   onClick={() => {
                                     if (!requireRecordAccess()) return
-                                    unit.status === '대상외' ? onUndoLatestVisit(building.id, unit.id) : onQuickLogVisit(building.id, unit.id, '대상외')
+                                    if (unit.status === '대상외') onUndoLatestVisit(building.id, unit.id)
+                                    else onQuickLogVisit(building.id, unit.id, '대상외')
                                   }}
                                   type="button">{unit.status === '대상외' ? '✓' : ''}</button>
                               </div>
