@@ -242,7 +242,7 @@ export function DesktopUsers({
     setEditNickname(profile.name)
     const dbUser = allUsers.find((item) => item.id === profile.userId)
     if (dbUser) { setEditLoginId(dbUser.loginId); setEditNickname(dbUser.name) }
-  }, [profile?.userId, profile?.isRegistered, allUsers])
+  }, [profile?.userId, profile?.isRegistered, profile?.name, allUsers])
 
   const roleScopeLabel = (role: Role) => getRoleScope(role).join(' · ')
 

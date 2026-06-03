@@ -183,6 +183,7 @@ function App() {
     if (typeof window === 'undefined') return
     const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY)
     const onChange = (event: MediaQueryListEvent) => setIsDesktop(event.matches)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 미디어쿼리 초기값 동기화(의도적)
     setIsDesktop(mediaQuery.matches)
     mediaQuery.addEventListener('change', onChange)
     return () => mediaQuery.removeEventListener('change', onChange)
@@ -191,6 +192,7 @@ function App() {
   useEffect(() => {
     if (!user) return
     if (actualRole !== 'admin') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 역할에서 뷰모드 동기화(의도적)
       setMobileViewMode(actualRole)
       return
     }
@@ -202,6 +204,7 @@ function App() {
   useEffect(() => {
     if (!user) return
     const storedLanguage = window.localStorage.getItem(getLanguageStorageKey(user.id))
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage에서 언어 초기화(의도적)
     setLanguage(isAppLanguage(storedLanguage) ? storedLanguage : 'ko')
     const storedTranslate = window.localStorage.getItem(getTranslatePlaceNamesKey(user.id))
     setTranslatePlaceNames(storedTranslate === 'true')

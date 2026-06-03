@@ -238,6 +238,7 @@ export function AppHeaderActionButtons({
     }
     window.addEventListener('app:open-event-chat', onOpenEventChat)
     return () => window.removeEventListener('app:open-event-chat', onOpenEventChat)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- handleOpenChatRoom 추가 시 매 렌더 재구독 발생, location만 추적
   }, [location.pathname, location.search, location.hash])
 
   return (

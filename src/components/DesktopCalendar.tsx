@@ -139,6 +139,7 @@ export function DesktopCalendar({
     if (!targetEvent) return
 
     const d = new Date(targetEvent.date)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 딥링크 대상 일정으로 캘린더 위치 동기화(의도적)
     setYear(d.getFullYear())
     setMonth(d.getMonth() + 1)
     setSelectedDay(d.getDate())

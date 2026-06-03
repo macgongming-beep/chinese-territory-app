@@ -566,6 +566,7 @@ export function RestaurantsTab({
     return restaurants.filter((row) =>
       normalizeCardSearch(`${getRestaurantName(row)}${row.building.address}`).includes(q),
     )
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- getRestaurantName은 안정적인 헬퍼(렌더 무관)
   }, [restaurants, search])
 
   const grouped = useMemo(() => {

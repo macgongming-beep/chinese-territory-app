@@ -37,6 +37,7 @@ export function DesktopNotices({
     const notice = notices.find((item) => item.id === Number(noticeId))
     if (!notice) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 딥링크 공지 자동 선택(의도적)
     setSelected(notice)
     setTimeout(() => {
       document.getElementById(`desktop-notice-${noticeId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })

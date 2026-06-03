@@ -86,7 +86,7 @@ function DesktopLeaderAssignmentView({
   const todayEvents = useMemo(() => {
     const all = calendarEvents.filter((e) => e.date === today)
     return all.sort((a, b) => `${a.time} ${a.title}`.localeCompare(`${b.time} ${b.title}`, 'ko'))
-  }, [calendarEvents, currentVisitor, today])
+  }, [calendarEvents, today])
 
   const [selectedEventId, setSelectedEventId] = useState<number>(todayEvents[0]?.id ?? 0)
   const [draft, setDraft] = useState<AssignmentDraft | null>(null)
@@ -171,6 +171,7 @@ function DesktopLeaderAssignmentView({
     } else {
       // 카드 클릭 → 새 팀 생성
       const newTeam: DraftTeam = {
+        // eslint-disable-next-line react-hooks/purity -- 팀 고유 ID 생성(클릭 핸들러 내), 의도적
         id: `team-${Date.now()}-${cardId}`,
         name: `팀 ${draft.teams.length + 1}`,
         color: TEAM_COLORS[draft.teams.length % TEAM_COLORS.length],

@@ -336,6 +336,7 @@ export function DesktopApp({
     cards.forEach((card) => {
       if (card.assignedUsers.includes(currentVisitor)) ids.add(card.id)
     })
+    // eslint-disable-next-line react-hooks/purity -- 최근 7일 cutoff: 렌더 시점 기준이 의도된 동작
     const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
     serviceSessions.forEach((session) => {
       if (session.userName !== currentVisitor) return

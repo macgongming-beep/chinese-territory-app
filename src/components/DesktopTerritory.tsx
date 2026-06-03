@@ -469,7 +469,10 @@ export function DesktopTerritory({
     cards.find((card) => card.id === selectedCardId) ??
     cards[0] ??
     null
-  const selectedCardBuildings = selectedCard ? buildingsByCardId.get(selectedCard.id) ?? [] : []
+  const selectedCardBuildings = useMemo(
+    () => (selectedCard ? buildingsByCardId.get(selectedCard.id) ?? [] : []),
+    [selectedCard, buildingsByCardId],
+  )
   const selectedChinesePointCount = selectedCardBuildings.reduce(
     (sum, building) => sum + building.units.filter((unit) => unit.isChinese).length,
     0,

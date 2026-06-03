@@ -454,6 +454,7 @@ export function MobileMap({
       if (b.units.length > 0 && !b.units.some(unitMatchesStrategyFilter)) return false
       return true
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 필터 함수는 이미 포함된 필터 state만 참조함
     [buildings, selectedCardId, focusedCardIdSet, selectedArea, selectedRegion, scopedCardIds, statusFilter, strategyFilter]
   )
 

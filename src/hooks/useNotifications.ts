@@ -72,6 +72,7 @@ export function useNotifications(userId: number | null | undefined) {
   const channelIdRef = useRef(
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
+      // eslint-disable-next-line react-hooks/purity -- 채널 ID는 useRef로 마운트당 1회만 사용됨
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
   )
 

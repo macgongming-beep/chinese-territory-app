@@ -493,8 +493,9 @@ export function DesktopMap({
   }
 
   // 구조 필터링된 카드 리스트
-  const structureFilteredCards = useMemo(() => 
-    cards.filter(cardMatchesStructureFilters), 
+  const structureFilteredCards = useMemo(() =>
+    cards.filter(cardMatchesStructureFilters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cardMatchesStructureFilters는 regionFilter/areaFilter만 참조(이미 포함)
     [cards, regionFilter, areaFilter]
   );
   // 카드 정렬: 대권역 순서 + 미배정 마지막
@@ -558,6 +559,7 @@ export function DesktopMap({
       if ((chineseOnlyFilter || visitResultFilter !== '전체') && !building.units.some(unitMatchesOperatingFilter)) return false
       return true
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 필터 함수는 이미 포함된 필터 state만 참조함
     [buildings, cardMap, regionFilter, areaFilter, cardFilter, targetTypeFilter, statusFilter, chineseOnlyFilter, visitResultFilter]
   )
 
@@ -570,6 +572,7 @@ export function DesktopMap({
       if ((chineseOnlyFilter || visitResultFilter !== '전체') && !building.units.some(unitMatchesOperatingFilter)) return false
       return true
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 필터 함수는 이미 포함된 필터 state만 참조함
     [buildings, cardMap, regionFilter, areaFilter, targetTypeFilter, statusFilter, chineseOnlyFilter, visitResultFilter]
   )
 

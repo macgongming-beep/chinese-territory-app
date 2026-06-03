@@ -124,6 +124,7 @@ export function DesktopMyService({
   useEffect(() => {
     if (expandedEventIds.size > 0 || myTodayAssignments.length === 0) return
     const currentEvent = myTodayAssignments.find(({ event }) => getTimeSlotFromTime(event.time) === currentSlot)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 현재 시간대 일정 자동 펼침(의도적)
     if (currentEvent) setExpandedEventIds(new Set([currentEvent.event.id]))
   }, [currentSlot, expandedEventIds.size, myTodayAssignments])
 

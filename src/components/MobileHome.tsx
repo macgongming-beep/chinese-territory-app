@@ -548,6 +548,7 @@ export function MobileHome({
     cards.forEach((card) => {
       if (card.assignedUsers.includes(currentVisitor)) ids.add(card.id)
     })
+    // eslint-disable-next-line react-hooks/purity -- 최근 7일 cutoff: 렌더 시점 기준이 의도된 동작
     const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
     serviceSessions.forEach((session) => {
       if (session.userName !== currentVisitor) return
@@ -557,6 +558,7 @@ export function MobileHome({
       if (session.assignedCardId) ids.add(session.assignedCardId)
     })
     // 일정별 카드 배정 (event_card_assignments) — 최근 14일 + 미래
+    // eslint-disable-next-line react-hooks/purity -- 최근 14일 cutoff: 렌더 시점 기준이 의도된 동작
     const eventCutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
       .toISOString().slice(0, 10)
     calendarEvents.forEach((event) => {

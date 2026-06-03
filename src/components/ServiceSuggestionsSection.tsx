@@ -35,6 +35,7 @@ export function ServiceSuggestionsSection({ language = 'ko' }: { language?: AppL
     // Find all visible suggestions
     const visibleOnes = suggestions.filter(s => s.is_visible)
     if (visibleOnes.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- suggestions에서 현재 추천 파생(의도적)
       setCurrentSuggestion(null)
       return
     }

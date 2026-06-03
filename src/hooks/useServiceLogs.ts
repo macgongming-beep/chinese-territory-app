@@ -99,6 +99,7 @@ export function useServiceLogs(filter: ServiceLogFilter = {}) {
   }, [filter.eventId, filter.cardId, filter.limit])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 마운트/deps 변경 시 데이터 fetch(의도적)
     fetch()
   }, [fetch])
 
