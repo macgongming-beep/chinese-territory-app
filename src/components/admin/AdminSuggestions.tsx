@@ -169,7 +169,7 @@ function formatDate(isoStr?: string | null) {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
 }
 
-export function AdminSuggestions({}: Props) {
+export function AdminSuggestions(_props: Props) {
   const { suggestions, loading, fetchSuggestions } = useServiceSuggestions()
   const [editingSuggestion, setEditingSuggestion] = useState<Partial<ServiceSuggestion> | null>(null)
   const [saving, setSaving] = useState(false)

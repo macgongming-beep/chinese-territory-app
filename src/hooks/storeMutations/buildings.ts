@@ -25,7 +25,7 @@ export function makeBuildingMutations(deps: {
     }
     // 이름이 없으면 주소에서 자동 추출 (예: "언동로 213")
     const autoName = input.name.trim() || (() => {
-      const m = input.address.match(/([가-힣]+(?:로|길)\s*[\d\-]+)/)
+      const m = input.address.match(/([가-힣]+(?:로|길)\s*[\d-]+)/)
       if (m) return m[1].replace(/\s+/, ' ').trim()
       const parts = input.address.trim().split(/\s+/)
       return parts.slice(-2).join(' ')
