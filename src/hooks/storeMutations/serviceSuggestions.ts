@@ -9,7 +9,7 @@ export async function saveServiceSuggestion(input: {
   is_visible: boolean
   content: SuggestionBlock[]
 }) {
-  const payload: any = {
+  const payload: Record<string, unknown> = {
     title: input.title,
     show_title_on_home: input.show_title_on_home,
     tags: input.tags,

@@ -100,7 +100,7 @@ export function isPWAInstalled(): boolean {
   // standalone display mode
   if (window.matchMedia('(display-mode: standalone)').matches) return true
   // iOS Safari
-  if ((window.navigator as any).standalone === true) return true
+  if ((window.navigator as Navigator & { standalone?: boolean }).standalone === true) return true
   return false
 }
 

@@ -802,6 +802,7 @@ export function DesktopTerritory({
 
   const geocodeAddress = (address: string) =>
     new Promise<{ lat: number; lng: number } | null>((resolve) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
       const naver = (window as any).naver
       if (!naver?.maps?.Service || !address.trim()) {
         resolve(null)
@@ -814,6 +815,7 @@ export function DesktopTerritory({
           resolve(null)
           return
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
         naver.maps.Service.geocode({ query }, (status: any, response: any) => {
           if (status === naver.maps.Service.Status.OK && response.v2?.addresses?.length > 0) {
             const result = response.v2.addresses[0]

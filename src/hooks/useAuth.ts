@@ -264,11 +264,11 @@ export function useAuth() {
         .single()
 
       if (error || !data) {
-        if ((error as any)?.message?.includes('login_id')) {
+        if ((error as { message?: string })?.message?.includes('login_id')) {
           showToast('DB에 login_id 컬럼이 없습니다. SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
           return false
         }
-        if ((error as any)?.message?.includes('approval_status')) {
+        if ((error as { message?: string })?.message?.includes('approval_status')) {
           showToast('가입 승인 SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
           return false
         }
@@ -341,7 +341,7 @@ export function useAuth() {
       .eq('id', user.id)
 
     if (error) {
-      if ((error as any)?.message?.includes('phone')) {
+      if ((error as { message?: string })?.message?.includes('phone')) {
         showToast('DB에 phone 컬럼이 없습니다. 전화번호 마이그레이션을 먼저 실행해 주세요.', 'error')
         return false
       }
@@ -533,11 +533,11 @@ export function useAuth() {
       .insert({ login_id: trimmedLoginId, name: trimmedName, pin: trimmedPin, role, approval_status: 'approved' })
 
     if (error) {
-      if ((error as any)?.message?.includes('login_id')) {
+      if ((error as { message?: string })?.message?.includes('login_id')) {
         showToast('DB에 login_id 컬럼이 없습니다. SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
         return false
       }
-      if ((error as any)?.message?.includes('approval_status')) {
+      if ((error as { message?: string })?.message?.includes('approval_status')) {
         const fallback = await supabase
           .from('app_users')
           .insert({ login_id: trimmedLoginId, name: trimmedName, pin: trimmedPin, role })
@@ -571,7 +571,7 @@ export function useAuth() {
       .eq('id', userId)
 
     if (error) {
-      if ((error as any)?.message?.includes('approval_status')) {
+      if ((error as { message?: string })?.message?.includes('approval_status')) {
         showToast('가입 승인 SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
         return false
       }
@@ -627,7 +627,7 @@ export function useAuth() {
       .eq('id', userId)
 
     if (error) {
-      if ((error as any)?.message?.includes('login_id')) {
+      if ((error as { message?: string })?.message?.includes('login_id')) {
         showToast('DB에 login_id 컬럼이 없습니다. SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
         return false
       }

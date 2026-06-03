@@ -24,6 +24,7 @@ function geocodeAddress(address: string): Promise<{ lat: number; lng: number } |
     if (!naver?.maps?.Service?.geocode) { resolve(null); return }
     const timer = setTimeout(() => resolve(null), 4000) // 4초 내 응답 없으면 null
     // 주의: geocode를 구조분해할당 하면 this 컨텍스트를 잃어 콜백이 안 올 수 있음
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
     naver.maps.Service.geocode({ query: address }, (status: string, res: any) => {
       clearTimeout(timer)
       const addr = res?.v2?.addresses?.[0]

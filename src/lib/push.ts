@@ -83,9 +83,9 @@ export async function subscribeToPush(userId: number): Promise<{ ok: boolean; re
         // 실제로는 Uint8Array (ArrayBuffer 기반)도 동작 — 안전하게 BufferSource로 캐스팅
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
       })
-    } catch (err: any) {
+    } catch (err) {
       console.error('[push] subscribe failed:', err)
-      return { ok: false, reason: err?.message ?? 'SUBSCRIBE_FAILED' }
+      return { ok: false, reason: (err as { message?: string })?.message ?? 'SUBSCRIBE_FAILED' }
     }
   }
 

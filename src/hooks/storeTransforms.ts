@@ -249,10 +249,10 @@ export function toBuilding(raw: RawBuilding): Building {
         memo: u.memo ?? undefined,
         isRegularVisit: !!(u.regular_visits && (Array.isArray(u.regular_visits) ? u.regular_visits.length > 0 : true)),
         regularVisitor: u.regular_visits
-          ? (Array.isArray(u.regular_visits) ? u.regular_visits[0]?.visitor_name : (u.regular_visits as any).visitor_name)
+          ? (Array.isArray(u.regular_visits) ? u.regular_visits[0]?.visitor_name : (u.regular_visits as { visitor_name?: string }).visitor_name)
           : undefined,
         regularVisitStart: u.regular_visits
-          ? (Array.isArray(u.regular_visits) ? u.regular_visits[0]?.registered_at ?? undefined : (u.regular_visits as any).registered_at ?? undefined)
+          ? (Array.isArray(u.regular_visits) ? u.regular_visits[0]?.registered_at ?? undefined : (u.regular_visits as { registered_at?: string }).registered_at ?? undefined)
           : undefined,
       })),
   }
@@ -491,6 +491,7 @@ export function toNotice(raw: RawNotice): Notice {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 원시 DB row → 타입 변환 입력
 export function toServiceSuggestion(row: any): import('../types').ServiceSuggestion {
   return {
     id: row.id,

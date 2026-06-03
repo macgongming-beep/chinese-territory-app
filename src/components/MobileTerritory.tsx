@@ -520,9 +520,11 @@ export function MobileTerritory({
 
   // 네이버 지도 Geocoding으로 짧은 주소 → 전체 주소 자동완성
   const geocodeAndFill = (query: string, setter: (v: string) => void, setLoading: (v: boolean) => void) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
     const naver = (window as any).naver
     if (!naver?.maps?.Service) return // 지도 SDK 미로드 시 skip
     setLoading(true)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
     naver.maps.Service.geocode({ query }, (status: any, response: any) => {
       setLoading(false)
       if (status === naver.maps.Service.Status.ERROR) return

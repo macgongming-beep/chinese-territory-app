@@ -101,6 +101,7 @@ export function NotificationSettings({
       const token = getAuthToken()
       if (!token) return
       setGlobalQuietLoading(true)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 생성된 supabase 타입에 없는 RPC
       const { data, error } = await supabase.rpc('get_global_push_quiet_settings' as any, { p_token: token })
       if (!alive) return
       setGlobalQuietLoading(false)
@@ -131,6 +132,7 @@ export function NotificationSettings({
     setGlobalQuiet(next)
     setGlobalQuietSaving(true)
     setGlobalQuietMessage(null)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 생성된 supabase 타입에 없는 RPC
     const { data, error } = await supabase.rpc('update_global_push_quiet_settings' as any, {
       p_token: token,
       p_enabled: next.enabled,

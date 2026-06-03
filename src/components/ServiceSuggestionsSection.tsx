@@ -2,6 +2,7 @@ import { useServiceSuggestions } from '../hooks/useServiceSuggestions'
 import { useState, useEffect } from 'react'
 import type { AppLanguage } from '../i18n'
 import { t } from '../i18n'
+import type { ServiceSuggestion, SuggestionBlock } from '../types'
 
 // DB에서 오는 block.type 값 번역 맵
 const BLOCK_TYPE_ZH: Record<string, string> = {
@@ -26,7 +27,7 @@ function translateBlockType(type: string, language: AppLanguage): string {
 
 export function ServiceSuggestionsSection({ language = 'ko' }: { language?: AppLanguage }) {
   const { suggestions, loading } = useServiceSuggestions()
-  const [currentSuggestion, setCurrentSuggestion] = useState<any>(null)
+  const [currentSuggestion, setCurrentSuggestion] = useState<ServiceSuggestion | null>(null)
 
   useEffect(() => {
     if (loading || !suggestions.length) return
@@ -59,7 +60,7 @@ export function ServiceSuggestionsSection({ language = 'ko' }: { language?: AppL
       </div>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {currentSuggestion.content.map((block: any, idx: number) => (
+        {currentSuggestion.content.map((block: SuggestionBlock, idx: number) => (
           <SuggestionCard key={idx} block={block} language={language} />
         ))}
       </div>
@@ -67,7 +68,7 @@ export function ServiceSuggestionsSection({ language = 'ko' }: { language?: AppL
   )
 }
 
-function SuggestionCard({ block, language = 'ko' }: { block: any; language?: AppLanguage }) {
+function SuggestionCard({ block, language = 'ko' }: { block: SuggestionBlock; language?: AppLanguage }) {
   return (
     <div style={{ background: '#fff', borderRadius: 16, border: '1px solid var(--line-muted)', padding: 20, height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
