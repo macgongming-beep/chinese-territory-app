@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getAuthToken } from '../lib/authToken'
 import { isActiveChatLink } from '../lib/activeChat'
+import { subscribeWithRecovery } from '../lib/realtimeRecovery'
 
 export type NotificationType =
   | 'notice'
@@ -72,7 +73,6 @@ export function useNotifications(userId: number | null | undefined) {
   const channelIdRef = useRef(
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
-      // eslint-disable-next-line react-hooks/purity -- 채널 ID는 useRef로 마운트당 1회만 사용됨
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
   )
 
@@ -142,11 +142,13 @@ export function useNotifications(userId: number | null | undefined) {
           )
         }
       )
-      .subscribe()
+    // 재연결 시 끊긴 동안 도착한 알림 catch-up
+    subscribeWithRecovery(channel, () => { void fetchAll() })
 
     return () => {
       supabase.removeChannel(channel)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchAll 은 안정적, userId 변경 시에만 재구독
   }, [userId])
 
   // 안 읽음 카운트

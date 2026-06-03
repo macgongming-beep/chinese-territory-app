@@ -9,6 +9,7 @@
 
 import { useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { subscribeWithRecovery } from '../lib/realtimeRecovery'
 
 export function useCalendarRealtime(
   onChange: () => void,
@@ -35,7 +36,8 @@ export function useCalendarRealtime(
       .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, trigger)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_card_assignments' }, trigger)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_card_assignment_cards' }, trigger)
-      .subscribe()
+    // 재연결 시 끊긴 동안 놓친 일정 변경 catch-up
+    subscribeWithRecovery(channel, () => cbRef.current())
 
     return () => {
       if (pending) clearTimeout(pending)

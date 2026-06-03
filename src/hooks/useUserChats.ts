@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getAuthToken } from '../lib/authToken'
+import { subscribeWithRecovery } from '../lib/realtimeRecovery'
 import {
   USER_CHATS_CACHE_TTL,
   clearInflightUserChats,
@@ -286,7 +287,8 @@ export function useUserChats(
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_read_status', filter: `user_id=eq.${userId}` }, trigger)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_participants', filter: `user_name=eq.${userName}` }, trigger)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_message_signals' }, trigger)
-      .subscribe()
+    // 재연결 시 끊긴 동안 놓친 채팅/참여 변경 즉시 catch-up (2분 폴링보다 빠름)
+    subscribeWithRecovery(channel, () => fetchAll({ force: true }))
 
     // 백그라운드 폴링: 30초 → 2분으로 완화 (Phase 4)
     // Realtime이 살아있으므로 폴링은 fallback 역할만. 채팅 신호는 즉시 받음.
