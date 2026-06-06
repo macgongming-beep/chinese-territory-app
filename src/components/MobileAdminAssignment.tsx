@@ -530,15 +530,15 @@ export function MobileAdminAssignment({
           </div>
 
           {/* 검색 + 지도 버튼 */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-            <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch', width: '100%' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <SearchInput value={cardQuery} onChange={setCardQuery} placeholder="구·동 검색" />
             </div>
             <button
               type="button"
               style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                height: 42, minHeight: 42, padding: '0 14px',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                height: 42, minHeight: 42, padding: '0 10px',
                 border: '1px solid var(--line-2)', background: 'var(--surface)',
                 color: 'var(--text)', borderRadius: 10,
                 fontSize: 13, fontWeight: 600, cursor: 'pointer',
