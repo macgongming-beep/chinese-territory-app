@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // dist: 빌드 산출물 / scratch: 일회성 마이그레이션 스크립트 /
+  // supabase/functions: Deno 엣지 함수(브라우저용 설정 대상 아님)
+  globalIgnores(['dist', 'scratch', 'supabase/functions']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

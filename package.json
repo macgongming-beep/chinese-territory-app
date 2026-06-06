@@ -11,6 +11,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "backup": "node scripts/backup.js"
   },
   "dependencies": {
@@ -33,11 +35,13 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "jsdom": "^29.1.1",
     "sharp": "^0.34.5",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.0",
     "vite": "^8.0.4",
     "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^4.1.8",
     "web-push": "^3.6.7",
     "workbox-expiration": "^7.4.1",
     "workbox-precaching": "^7.4.1",

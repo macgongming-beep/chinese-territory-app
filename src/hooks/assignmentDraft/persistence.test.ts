@@ -1,0 +1,126 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import {
+  draftToAssignments,
+  buildDraftFromServer,
+  buildEmptyDraft,
+  saveLocalDraft,
+  loadLocalDraft,
+  clearLocalDraft,
+  resolveDraftEntry,
+} from './persistence'
+import type { AssignmentDraft } from './types'
+import type { CalendarEvent } from '../../types'
+
+function ev(over: Partial<CalendarEvent>): CalendarEvent {
+  return {
+    id: 1,
+    cardAssignments: [],
+    assignmentStatus: 'draft',
+    assignmentSharedAt: null,
+    ...over,
+  } as CalendarEvent
+}
+
+function draft(teams: AssignmentDraft['teams']): AssignmentDraft {
+  return { mode: 'card', status: 'draft', updatedAt: null, teams }
+}
+
+describe('draftToAssignments', () => {
+  it('각 팀원이 그 팀의 cardIds 를 받는다', () => {
+    const d = draft([
+      { id: 'a', name: '팀 1', color: 'blue', order: 0, cardIds: [10, 20], members: ['김민준', '이영희'] },
+      { id: 'b', name: '팀 2', color: 'green', order: 1, cardIds: [30], members: ['박상철'] },
+    ])
+    expect(draftToAssignments(d)).toEqual([
+      { userName: '김민준', cardIds: [10, 20] },
+      { userName: '이영희', cardIds: [10, 20] },
+      { userName: '박상철', cardIds: [30] },
+    ])
+  })
+
+  it('멤버 없는 팀은 결과에 없음', () => {
+    const d = draft([{ id: 'a', name: '팀 1', color: 'blue', order: 0, cardIds: [10], members: [] }])
+    expect(draftToAssignments(d)).toEqual([])
+  })
+})
+
+describe('buildDraftFromServer', () => {
+  it('같은 cardIds 가진 사람끼리 한 팀으로 묶는다', () => {
+    const event = ev({
+      assignmentStatus: 'shared',
+      assignmentSharedAt: '2026-06-01T00:00:00Z',
+      cardAssignments: [
+        { userName: '김민준', assignedCardIds: [10, 20] },
+        { userName: '이영희', assignedCardIds: [10, 20] },
+        { userName: '박상철', assignedCardIds: [30] },
+      ],
+    } as Partial<CalendarEvent>)
+    const d = buildDraftFromServer(event)
+    expect(d.teams).toHaveLength(2)
+    const t1 = d.teams.find((t) => t.cardIds.join(',') === '10,20')!
+    expect(t1.members.sort()).toEqual(['김민준', '이영희'])
+    expect(d.status).toBe('shared')
+  })
+
+  it('assignedCardId(단수) 폴백 처리', () => {
+    const event = ev({
+      assignmentStatus: 'shared',
+      cardAssignments: [{ userName: '김민준', assignedCardId: 99 }],
+    } as Partial<CalendarEvent>)
+    const d = buildDraftFromServer(event)
+    expect(d.teams[0].cardIds).toEqual([99])
+  })
+
+  it('buildEmptyDraft 는 빈 teams', () => {
+    expect(buildEmptyDraft().teams).toEqual([])
+  })
+})
+
+describe('localStorage 왕복', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('save → load 라운드트립', () => {
+    const d = draft([{ id: 'a', name: '팀 1', color: 'blue', order: 0, cardIds: [1], members: ['김민준'] }])
+    expect(saveLocalDraft(5, '인도자', d)).toBe(true)
+    expect(loadLocalDraft(5, '인도자')).toEqual(d)
+  })
+
+  it('깨진 draft 는 버리고 null', () => {
+    localStorage.setItem('mobileLeaderAssignmentDraft:5:인도자', '{"teams":"not-array"}')
+    expect(loadLocalDraft(5, '인도자')).toBeNull()
+  })
+
+  it('clear 후 null', () => {
+    saveLocalDraft(5, '인도자', buildEmptyDraft())
+    clearLocalDraft(5, '인도자')
+    expect(loadLocalDraft(5, '인도자')).toBeNull()
+  })
+})
+
+describe('resolveDraftEntry — 충돌 판단', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('로컬 없음 + 서버 공유 → fresh(서버본)', () => {
+    const event = ev({ id: 7, assignmentStatus: 'shared', assignmentSharedAt: '2026-06-01T00:00:00Z' })
+    const r = resolveDraftEntry(event, '인도자')
+    expect(r.kind).toBe('fresh')
+  })
+
+  it('로컬만 있음 → local', () => {
+    saveLocalDraft(7, '인도자', buildEmptyDraft())
+    const event = ev({ id: 7, assignmentStatus: 'draft' })
+    expect(resolveDraftEntry(event, '인도자').kind).toBe('local')
+  })
+
+  it('서버가 로컬보다 최신 → conflict', () => {
+    saveLocalDraft(7, '인도자', { ...buildEmptyDraft(), updatedAt: '2026-06-01T00:00:00Z' })
+    const event = ev({ id: 7, assignmentStatus: 'shared', assignmentSharedAt: '2026-06-02T00:00:00Z' })
+    expect(resolveDraftEntry(event, '인도자').kind).toBe('conflict')
+  })
+
+  it('로컬이 서버보다 최신 → local', () => {
+    saveLocalDraft(7, '인도자', { ...buildEmptyDraft(), updatedAt: '2026-06-03T00:00:00Z' })
+    const event = ev({ id: 7, assignmentStatus: 'shared', assignmentSharedAt: '2026-06-02T00:00:00Z' })
+    expect(resolveDraftEntry(event, '인도자').kind).toBe('local')
+  })
+})

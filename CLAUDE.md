@@ -39,6 +39,12 @@
   - useCalendarRealtime / useNotifications / useUserChats 3개 영구채널에 적용
 - **lint 162 → 0** (eslint.config.js 에 `_`접두사 무시 추가, 네이버 SDK any 파일레벨 disable,
   의도적 react-hooks 패턴은 사유 명시 disable). `npm run lint` 깨끗하게 유지할 것.
+  (scratch/, supabase/functions 는 eslint globalIgnores 처리 — 앱 소스 아님)
+- **자동화 테스트 (vitest 4) 도입** — `npm test` (vitest run) / `npm run test:watch`
+  - `vitest.config.ts` (jsdom 환경, 별도 설정 — 빌드용 vite.config 와 분리)
+  - `tsconfig.app.json` 에서 `*.test.ts` exclude (프로덕션 빌드와 테스트 분리)
+  - 현재 49개: koreanSearch(초성검색) / assignmentDraft reducer·persistence /
+    cardSearch / visitStrategy. **순수 로직 위주. 리팩토링 전 안전망으로 활용/확장할 것.**
 
 ### 남은 과제 (큰 작업 — 별도 세션 권장)
 - 거대 파일 분할: `useStore.ts` 2300줄, `DesktopTerritory.tsx` 2200줄, `MapCanvas.tsx` 1400줄
@@ -124,10 +130,12 @@
 | 호스팅 | Vercel (GitHub `main` 브랜치 자동 배포) |
 
 ```bash
-npm run dev      # 개발 서버 (Vite, --host 로 LAN 접근 가능)
-npm run build    # 빌드 검증
-npm run lint     # ESLint
-npm run backup   # Supabase 전체 백업 (scripts/backup.js)
+npm run dev        # 개발 서버 (Vite, --host 로 LAN 접근 가능)
+npm run build      # 빌드 검증 (tsc -b && vite build)
+npm run lint       # ESLint (0 유지)
+npm test           # vitest run (순수 로직 단위 테스트 49개)
+npm run test:watch # vitest watch 모드
+npm run backup     # Supabase 전체 백업 (scripts/backup.js)
 ```
 
 **환경변수 (`.env.local`, gitignore 됨)**:
@@ -374,7 +382,7 @@ App.css          [모바일 공통] 0px~
 - [ ] 세션 토큰 또는 Supabase Auth 마이그레이션 검토
 - [ ] CSV import (카드/건물/세대)
 - [ ] `useStore.ts`, `DesktopTerritory.tsx` 분할 리팩토링
-- [ ] 자동화 테스트 (vitest)
+- [x] 자동화 테스트 (vitest) — 순수 로직 49개 도입 완료. 리팩토링 시 확장할 것
 - [ ] chat_messages SELECT 를 anon/authenticated 에 다시 부여한 것을 더 좁은
       RLS policy 로 좁히기 (현재 `using (deleted_at is null)` open).
       예: 본인이 참가자인 일정만, 또는 token 기반 view.
