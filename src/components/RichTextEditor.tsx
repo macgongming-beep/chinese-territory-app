@@ -14,6 +14,14 @@ const COLORS: { label: string; value: string }[] = [
   { label: '보라', value: '#7c3aed' },
 ]
 
+// execCommand('fontSize') 값(1~7) → 표시 라벨/크기. styleWithCSS=true 라 <span style="font-size">로 저장됨.
+const SIZES: { label: string; value: string; px: number }[] = [
+  { label: '작게', value: '2', px: 13 },
+  { label: '보통', value: '3', px: 16 },
+  { label: '크게', value: '5', px: 22 },
+  { label: '아주크게', value: '6', px: 26 },
+]
+
 type Props = {
   value: string
   onChange: (html: string) => void
@@ -68,6 +76,19 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
             style={{ ...btnStyle, minWidth: 26, padding: 0 }}
           >
             <span style={{ width: 16, height: 16, borderRadius: '50%', background: c.value, display: 'block', border: '1px solid rgba(0,0,0,0.15)' }} />
+          </button>
+        ))}
+        <span style={{ width: 1, height: 18, background: 'var(--line-muted)', margin: '0 2px' }} />
+        {SIZES.map((s) => (
+          <button
+            key={s.value}
+            type="button"
+            onMouseDown={keepSelection}
+            onClick={() => exec('fontSize', s.value)}
+            title={`글자 크기: ${s.label}`}
+            style={{ ...btnStyle, fontSize: Math.min(s.px, 17), lineHeight: 1 }}
+          >
+            가
           </button>
         ))}
       </div>

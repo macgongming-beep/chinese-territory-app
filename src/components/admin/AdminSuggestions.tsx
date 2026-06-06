@@ -585,9 +585,9 @@ export function AdminSuggestions(_props: Props) {
       )}
 
       <div className="detail-card" style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>대화 방법 제안 관리</h2>
-          <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink)', flexShrink: 0, whiteSpace: 'nowrap' }}>대화 방법 제안 관리</h2>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {/* 숨김 파일 인풋 */}
             <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileChange} style={{ display: 'none' }} />
             <button onClick={downloadSampleCSV} type="button"

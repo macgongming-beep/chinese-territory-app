@@ -20,6 +20,12 @@ describe('sanitizeRichText', () => {
     expect(sanitizeRichText('<img src=x onerror=alert(1)>')).not.toContain('<img')
   })
 
+  it('글자 크기(font-size) style 유지', () => {
+    const out = sanitizeRichText('<span style="font-size: large">큰글씨</span>')
+    expect(out).toContain('큰글씨')
+    expect(out.toLowerCase()).toContain('font-size')
+  })
+
   it('순수 텍스트는 그대로', () => {
     expect(sanitizeRichText('그냥 텍스트')).toBe('그냥 텍스트')
   })
