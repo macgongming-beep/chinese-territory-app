@@ -27,6 +27,7 @@ import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { getLocalDateString } from '../utils/dateUtils'
 import { findActivePeriod } from '../utils/specialPeriod'
+import { geocodeQuery } from '../lib/naverGeocode'
 import { getCurrentTimeSlot } from '../utils/timeUtils'
 import { mergeCardBoundaryPoints } from '../utils/boundaryMerge'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
@@ -341,22 +342,6 @@ export function DesktopMap({
     closeAddBuildingModal()
   }
 
-  const geocodeBuildingAddress = (address: string) =>
-    new Promise<GeoPoint | null>((resolve) => {
-      const naver = (window as any).naver
-      if (!address.trim() || !naver?.maps?.Service) {
-        resolve(null)
-        return
-      }
-      naver.maps.Service.geocode({ query: address.trim() }, (status: any, response: any) => {
-        if (status === naver.maps.Service.Status.OK && response.v2?.addresses?.length > 0) {
-          const result = response.v2.addresses[0]
-          resolve(normalizeMapCoordinates(Number(result.y), Number(result.x)))
-          return
-        }
-        resolve(null)
-      })
-    })
 
   useEffect(() => {
     const naver = (window as any).naver
@@ -377,7 +362,7 @@ export function DesktopMap({
 
     targets.forEach((building) => {
       coordinateRepairingIdsRef.current.add(building.id)
-      geocodeBuildingAddress(building.address).then((coordinates) => {
+      geocodeQuery(building.address).then((coordinates) => {
         if (!coordinates) return
         onUpdateBuilding(building.id, building.name, building.address, coordinates.lat, coordinates.lng, building.type)
         showToast(`"${building.name || building.address}" 좌표를 주소로 보정했습니다`, 'success')

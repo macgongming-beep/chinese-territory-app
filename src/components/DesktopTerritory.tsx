@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
+import { geocodeFirstMatch } from '../lib/naverGeocode'
 import { findCardForCoordinates, formatDisplayAddress, isValidMapCoordinate, normalizeMapCoordinates, parseCoordinate } from '../utils/mapUtils'
 import { downloadCardBoundaryBackup, mergeCardBoundaryPoints, parseCardBoundaryBackup } from '../utils/boundaryMerge'
 import { compareTerritoryCardsByOperationalPriority, getTerritoryCardOperationalState } from '../utils/cardSearch'
@@ -804,35 +805,7 @@ export function DesktopTerritory({
   }
 
   const geocodeAddress = (address: string) =>
-    new Promise<{ lat: number; lng: number } | null>((resolve) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
-      const naver = (window as any).naver
-      if (!naver?.maps?.Service || !address.trim()) {
-        resolve(null)
-        return
-      }
-      const candidates = getGeocodeCandidates(address)
-      const tryCandidate = (index: number) => {
-        const query = candidates[index]
-        if (!query) {
-          resolve(null)
-          return
-        }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
-        naver.maps.Service.geocode({ query }, (status: any, response: any) => {
-          if (status === naver.maps.Service.Status.OK && response.v2?.addresses?.length > 0) {
-            const result = response.v2.addresses[0]
-            const coordinates = normalizeMapCoordinates(Number(result.y), Number(result.x))
-            if (coordinates) {
-              resolve(coordinates)
-              return
-            }
-          }
-          tryCandidate(index + 1)
-        })
-      }
-      tryCandidate(0)
-    })
+    address.trim() ? geocodeFirstMatch(getGeocodeCandidates(address)) : Promise.resolve(null)
 
   const parseCsvFile = async (file: File) => {
     setCsvParsing(true)
