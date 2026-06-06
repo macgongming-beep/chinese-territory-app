@@ -1,5 +1,16 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { getLocalDateString } from './dateUtils'
+import { getLocalDateString, toLocalDateString } from './dateUtils'
+
+describe('toLocalDateString', () => {
+  it('로컬 컴포넌트 기준 YYYY-MM-DD (UTC 변환 아님)', () => {
+    // 로컬 2026-06-06 01:00 — UTC 라면 전날(06-05)이 될 시각
+    const d = new Date(2026, 5, 6, 1, 0, 0)
+    expect(toLocalDateString(d)).toBe('2026-06-06')
+  })
+  it('0-padding', () => {
+    expect(toLocalDateString(new Date(2026, 0, 3))).toBe('2026-01-03')
+  })
+})
 
 describe('getLocalDateString', () => {
   afterEach(() => vi.useRealTimers())

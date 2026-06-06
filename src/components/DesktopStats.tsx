@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import type { Building, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, VisitHistory } from '../types'
+import { toLocalDateString } from '../utils/dateUtils'
 
 const TIME_SLOTS: TimeSlot[] = ['오전', '오후', '저녁']
 type ScopeFilter = 'all' | 'regular' | number
@@ -216,8 +217,8 @@ export function DesktopStats({
       const w = 7 - idx
       const endDate = new Date(today); endDate.setDate(today.getDate() - w * 7)
       const startDate = new Date(endDate); startDate.setDate(endDate.getDate() - 6)
-      const start = startDate.toISOString().slice(0, 10)
-      const end   = endDate.toISOString().slice(0, 10)
+      const start = toLocalDateString(startDate)
+      const end   = toLocalDateString(endDate)
       const wh = filteredHistories.filter(h => h.visitedAt >= start && h.visitedAt <= end)
       return { label: `${startDate.getMonth() + 1}/${startDate.getDate()}`, total: wh.length, meetings: wh.filter(h => h.result === '만남').length }
     })

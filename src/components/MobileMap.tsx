@@ -2063,7 +2063,7 @@ function UnitDetailScreen({
                   onToggleRegularVisit(building.id, unit.id)
                 } else {
                   setRegularNameDraft(currentVisitor ?? '')
-                  setRegularDateDraft(new Date().toISOString().slice(0, 10))
+                  setRegularDateDraft(getLocalDateString())
                   setShowRegularPopup(true)
                 }
               }}

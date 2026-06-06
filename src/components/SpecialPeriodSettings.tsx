@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { SpecialPeriod } from '../types'
 import { confirmDialog } from '../lib/confirm'
 import { findActivePeriod } from '../utils/specialPeriod'
+import { getLocalDateString } from '../utils/dateUtils'
 import { PERIOD_COLORS } from '../types'
 
 type PeriodInput = { label: string; startDate: string; endDate: string; color: string; hasInvitation: boolean }
@@ -152,7 +153,7 @@ export function SpecialPeriodSettings({
   onUpdateSpecialPeriod?: (id: number, input: PeriodInput) => Promise<void> | void
   onDeleteSpecialPeriod?: (id: number) => Promise<void> | void
 }) {
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayStr = getLocalDateString()
   const activePeriod = findActivePeriod(specialPeriods, todayStr)
   const upcomingPeriods = specialPeriods.filter((p) => todayStr < p.startDate).sort((a, b) => a.startDate.localeCompare(b.startDate))
   const pastPeriods = specialPeriods.filter((p) => todayStr > p.endDate).sort((a, b) => b.startDate.localeCompare(a.startDate))

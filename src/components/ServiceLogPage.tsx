@@ -5,6 +5,7 @@
 import { useMemo, useState } from 'react'
 import { useServiceLogs, getActionMeta, logsToCSV, downloadCSV, type ServiceLog } from '../hooks/useServiceLogs'
 import type { CalendarEvent, TerritoryCard, Role } from '../types'
+import { getLocalDateString } from '../utils/dateUtils'
 
 type ServiceLogPageProps = {
   cards: TerritoryCard[]
@@ -67,7 +68,7 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
 
   const handleCSV = () => {
     if (logs.length === 0) return
-    const today = new Date().toISOString().slice(0, 10)
+    const today = getLocalDateString()
     const filterPart = selectedCardId
       ? `_card${selectedCardId}`
       : selectedEventId

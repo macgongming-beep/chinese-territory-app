@@ -1,5 +1,6 @@
 import type { SpecialPeriod } from '../types'
 import { findActivePeriod } from '../utils/specialPeriod'
+import { getLocalDateString } from '../utils/dateUtils'
 
 /**
  * 활성화된 특별봉사 시즌 배너 (모든 사용자에게 노출)
@@ -14,7 +15,7 @@ export function SpecialPeriodBanner({
   variant?: 'card' | 'compact' | 'inline'
   onClick?: () => void
 }) {
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayStr = getLocalDateString()
   const active = findActivePeriod(specialPeriods, todayStr)
   if (!active) return null
 

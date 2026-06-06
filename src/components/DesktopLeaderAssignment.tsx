@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, Role, TerritoryCard } from '../types'
 import { showToast } from '../lib/toast'
 import { isEmptyTerritoryCard, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
+import { getLocalDateString } from '../utils/dateUtils'
 import { InformalPickerModal } from './InformalPickerModal'
 import { RestaurantPickerModal } from './RestaurantPickerModal'
 
@@ -73,7 +74,7 @@ function DesktopLeaderAssignmentView({
   onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
 }) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = getLocalDateString()
 
   // 접근 가능한 카드
   const accessibleCards = useMemo(() =>
