@@ -1,4 +1,5 @@
 import type { SpecialPeriod } from '../types'
+import { findActivePeriod } from '../utils/specialPeriod'
 
 /**
  * 활성화된 특별봉사 시즌 배너 (모든 사용자에게 노출)
@@ -14,7 +15,7 @@ export function SpecialPeriodBanner({
   onClick?: () => void
 }) {
   const todayStr = new Date().toISOString().slice(0, 10)
-  const active = specialPeriods.find((p) => todayStr >= p.startDate && todayStr <= p.endDate)
+  const active = findActivePeriod(specialPeriods, todayStr)
   if (!active) return null
 
   const color = active.color || '#5D5B54'

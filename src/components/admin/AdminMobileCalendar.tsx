@@ -1,6 +1,7 @@
 // 관리자 모바일 캘린더 — design_handoff 02 / 02b / 03 화면
 import { t, weekdayShortLabels } from '../../i18n'
 import { confirmDialog } from '../../lib/confirm'
+import { findActivePeriod } from '../../utils/specialPeriod'
 //
 // 구조:
 //   - 월 카드 (헤더 + nav + grid)
@@ -401,7 +402,7 @@ export function AdminMobileCalendar({
             const isSelected = day === selectedDay
             const isSun = idx % 7 === 0
             const hasEvent = monthEvents.some((e) => e.date === dayStr)
-            const activePeriod = specialPeriods.find((p) => dayStr >= p.startDate && dayStr <= p.endDate)
+            const activePeriod = findActivePeriod(specialPeriods, dayStr)
             return (
               <button
                 key={`d-${day}-${idx}`}

@@ -26,6 +26,7 @@ import { formatDisplayAddress, getBuildingStatus, getCardName, findCardForCoordi
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { getLocalDateString } from '../utils/dateUtils'
+import { findActivePeriod } from '../utils/specialPeriod'
 import { getCurrentTimeSlot } from '../utils/timeUtils'
 import { mergeCardBoundaryPoints } from '../utils/boundaryMerge'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
@@ -946,10 +947,8 @@ export function DesktopMap({
   }
 
   // 특정 날짜에 활성화된 특별봉사 시즌 (없으면 null)
-  const getActivePeriodForDate = (dateStr: string): SpecialPeriod | null => {
-    if (!specialPeriods) return null
-    return specialPeriods.find((p) => dateStr >= p.startDate && dateStr <= p.endDate) ?? null
-  }
+  const getActivePeriodForDate = (dateStr: string): SpecialPeriod | null =>
+    findActivePeriod(specialPeriods, dateStr)
 
   const saveHistoryEditor = () => {
     if (!historyEditor) return

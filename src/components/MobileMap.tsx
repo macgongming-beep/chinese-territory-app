@@ -11,6 +11,7 @@ import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { getLocalDateString } from '../utils/dateUtils'
+import { findActivePeriod } from '../utils/specialPeriod'
 import { AppHeaderActionButtons } from './AppHeader'
 import { MobileBulkUnitSheet } from './MobileBulkUnitSheet'
 
@@ -162,10 +163,8 @@ export function MobileMap({
   const [unitNumberDraft, setUnitNumberDraft] = useState('')
 
   // 특정 날짜에 활성화된 특별봉사 시즌 (없으면 null)
-  const getActivePeriodForDate = (dateStr: string): SpecialPeriod | null => {
-    if (!specialPeriods) return null
-    return specialPeriods.find((p) => dateStr >= p.startDate && dateStr <= p.endDate) ?? null
-  }
+  const getActivePeriodForDate = (dateStr: string): SpecialPeriod | null =>
+    findActivePeriod(specialPeriods, dateStr)
   const [unitMemos, setUnitMemos] = useState<Record<number, string>>({})
   const [_absentTimestamps, _setAbsentTimestamps] = useState<Record<number, number>>({})
   const [newUnitNumber, setNewUnitNumber] = useState('101호')

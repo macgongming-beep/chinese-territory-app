@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { trackFetch } from '../lib/perfTracker'
+import { findActivePeriodId } from '../utils/specialPeriod'
 import type {
   Building,
   CalendarEvent,
@@ -570,12 +571,8 @@ export function useStore() {
   } = makeCardMutations({ fetchAll: refetchCards, cards })
 
   // 특정 날짜에 활성화된 특별봉사 시즌 id 반환 (없으면 null)
-  const getActiveSpecialPeriodIdForDate = (dateStr: string): number | null => {
-    const found = specialPeriods.find(
-      (p) => dateStr >= p.startDate && dateStr <= p.endDate,
-    )
-    return found?.id ?? null
-  }
+  const getActiveSpecialPeriodIdForDate = (dateStr: string): number | null =>
+    findActivePeriodId(specialPeriods, dateStr)
 
   const {
     updateUnitStatus,

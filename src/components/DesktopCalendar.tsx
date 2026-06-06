@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { confirmDialog } from '../lib/confirm'
+import { findActivePeriod } from '../utils/specialPeriod'
 import type { CalendarEvent, SpecialPeriod, TerritoryCard } from '../types'
 import { PERIOD_COLORS } from '../types'
 import { ChatRoom } from './ChatRoom'
@@ -555,7 +556,7 @@ export function DesktopCalendar({
             {calendarDays.map((day, index) => {
               const dayStr = day ? toDateStr(year, month, day) : null
               const dayEvents = dayStr ? events.filter((e) => e.date === dayStr) : []
-              const activePeriod = dayStr ? specialPeriods.find((p) => dayStr >= p.startDate && dayStr <= p.endDate) : null
+              const activePeriod = dayStr ? findActivePeriod(specialPeriods, dayStr) : null
               const isPeriodStart = activePeriod && dayStr === activePeriod.startDate
               return (
                 <button
