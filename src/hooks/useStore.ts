@@ -72,12 +72,8 @@ export function getCurrentVisitor(): string {
   return localStorage.getItem('currentVisitor') ?? ''
 }
 
-export function getLocalDateString() {
-  const date = new Date()
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const day = `${date.getDate()}`.padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
-}
+// 공용 dateUtils 로 통합 (기존 import 경로 호환을 위해 재export)
+export { getLocalDateString } from '../utils/dateUtils'
 
 export function useStore() {
   const [cards, setCards] = useState<TerritoryCard[]>([])

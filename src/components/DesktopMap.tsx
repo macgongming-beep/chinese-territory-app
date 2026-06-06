@@ -25,6 +25,7 @@ import type {
 import { formatDisplayAddress, getBuildingStatus, getCardName, findCardForCoordinates, isValidMapCoordinate, normalizeMapCoordinates } from '../utils/mapUtils'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
+import { getLocalDateString } from '../utils/dateUtils'
 import { getCurrentTimeSlot } from '../utils/timeUtils'
 import { mergeCardBoundaryPoints } from '../utils/boundaryMerge'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
@@ -42,12 +43,6 @@ type HistoryEditor = {
   invitationLeft?: boolean
 }
 
-function getLocalDateString() {
-  const date = new Date()
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const day = `${date.getDate()}`.padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
-}
 
 export function DesktopMap({
   language,

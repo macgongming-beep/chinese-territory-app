@@ -10,19 +10,13 @@ import { getBuildingStatus, findCardForCoordinates } from '../utils/mapUtils'
 import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
+import { getLocalDateString } from '../utils/dateUtils'
 import { AppHeaderActionButtons } from './AppHeader'
 import { MobileBulkUnitSheet } from './MobileBulkUnitSheet'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
 type BuildingTypeFilter = '전체' | Building['type']
-
-function getLocalDateString() {
-  const date = new Date()
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const day = `${date.getDate()}`.padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
-}
 
 function shortenAddress(addr: string): string {
   return addr.replace(/^경기도\s*용인시\s*/, '')
