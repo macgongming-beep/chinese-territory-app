@@ -252,10 +252,15 @@ src/
 ├── lib/
 │   ├── supabase.ts          # Supabase 클라이언트
 │   └── toast.ts             # 전역 토스트 이벤트 버스
-├── utils/
+├── utils/                   # ⚠️ 중복 정의 금지 — 아래 공용 유틸 재사용할 것
 │   ├── visitStrategy.ts     # 방문 전략 파생 (재시도/정기방문)
 │   ├── cardSearch.ts        # 카드 검색/정렬
-│   └── mapUtils.ts          # 지도 좌표 유틸
+│   ├── koreanSearch.ts      # matchesName (이름 부분일치 + 초성 검색)
+│   ├── dateUtils.ts         # getLocalDateString (로컬 YYYY-MM-DD)
+│   ├── specialPeriod.ts     # findActivePeriod / findActivePeriodId (특별봉사 기간 판정)
+│   └── mapUtils.ts          # 지도 좌표 유틸 + getBuildingStatus
+├── locales/                 # i18n 번역 사전 (ko/zh/en, i18n.ts 에서 분리)
+│   ├── ko.ts / zh.ts / en.ts
 ├── data/
 │   ├── territoryStructure.ts  # 지역/동 데이터
 │   ├── territoryBoundary.ts   # 행정구역 폴리곤
