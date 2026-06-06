@@ -19722,6 +19722,13 @@ button:focus-visible {
   border-color: rgba(255, 140, 140, 0.6);
 }
 
+/* ── 리치텍스트 에디터 (자유양식 제안) placeholder ── */
+.rte-content:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted, #9ca3af);
+  pointer-events: none;
+}
+
 @keyframes cdlg-fade {
   from { opacity: 0; }
   to { opacity: 1; }

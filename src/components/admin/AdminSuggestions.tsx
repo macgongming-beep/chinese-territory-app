@@ -4,6 +4,7 @@ import type { SuggestionBlock, ServiceSuggestion } from '../../types'
 import { saveServiceSuggestion, deleteServiceSuggestion } from '../../hooks/storeMutations/serviceSuggestions'
 import { useServiceSuggestions } from '../../hooks/useServiceSuggestions'
 import { confirmDialog, alertDialog } from '../../lib/confirm'
+import { RichTextEditor } from '../RichTextEditor'
 
 type Props = {
   language?: AppLanguage
@@ -524,11 +525,10 @@ export function AdminSuggestions(_props: Props) {
                           블록 삭제
                         </button>
                       </div>
-                      <textarea 
-                        value={block.body} 
-                        onChange={(e) => handleUpdateBlock(idx, { body: e.target.value })}
-                        style={{ ...inputStyle, height: 200, resize: 'vertical', fontSize: 15, lineHeight: 1.5, borderColor: 'var(--brand)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}
-                        placeholder="대화 방법 본문을 자유롭게 작성해 주세요."
+                      <RichTextEditor
+                        value={block.body}
+                        onChange={(html) => handleUpdateBlock(idx, { body: html })}
+                        placeholder="대화 방법 본문을 자유롭게 작성해 주세요. (텍스트를 선택하고 굵게/밑줄/색 버튼)"
                       />
                     </div>
                   )}

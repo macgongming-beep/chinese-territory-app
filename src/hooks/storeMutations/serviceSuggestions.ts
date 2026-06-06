@@ -1,5 +1,15 @@
 import { supabase } from '../../lib/supabase'
 import type { SuggestionBlock } from '../../types'
+import { sanitizeRichText } from '../../lib/richText'
+
+// 자유양식 본문의 리치텍스트를 저장 전 정제 (XSS 방지 + 클린 저장)
+function sanitizeContent(content: SuggestionBlock[]): SuggestionBlock[] {
+  return content.map((block) =>
+    block.format === 'free_text'
+      ? { ...block, body: sanitizeRichText(block.body) }
+      : block,
+  )
+}
 
 export async function saveServiceSuggestion(input: {
   id?: number
@@ -14,7 +24,7 @@ export async function saveServiceSuggestion(input: {
     show_title_on_home: input.show_title_on_home,
     tags: input.tags,
     is_visible: input.is_visible,
-    content: input.content,
+    content: sanitizeContent(input.content),
   }
   if (input.is_visible) {
     // If we are turning it on, update last_used_at

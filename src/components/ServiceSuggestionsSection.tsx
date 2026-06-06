@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import type { AppLanguage } from '../i18n'
 import { t } from '../i18n'
 import type { ServiceSuggestion, SuggestionBlock } from '../types'
+import { sanitizeRichText } from '../lib/richText'
 
 // DB에서 오는 block.type 값 번역 맵
 const BLOCK_TYPE_ZH: Record<string, string> = {
@@ -106,9 +107,10 @@ function SuggestionCard({ block, language = 'ko' }: { block: SuggestionBlock; la
           </div>
         </div>
       ) : (
-        <div style={{ flex: 1, whiteSpace: 'pre-wrap', color: 'var(--ink)', lineHeight: 1.6, fontSize: 15, fontWeight: 500 }}>
-          {block.body}
-        </div>
+        <div
+          style={{ flex: 1, whiteSpace: 'pre-wrap', color: 'var(--ink)', lineHeight: 1.6, fontSize: 15, fontWeight: 500, wordBreak: 'break-word' }}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichText(block.body) }}
+        />
       )}
     </div>
   )
