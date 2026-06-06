@@ -47,7 +47,11 @@
     cardSearch / visitStrategy. **순수 로직 위주. 리팩토링 전 안전망으로 활용/확장할 것.**
 
 ### 남은 과제 (큰 작업 — 별도 세션 권장)
-- 거대 파일 분할: `useStore.ts` 2300줄, `DesktopTerritory.tsx` 2200줄, `MapCanvas.tsx` 1400줄
+- 거대 파일 분할 (진행 중): ✅ `useStore.ts` 784줄로 축소(이전 분할),
+  ✅ `i18n.ts` 1909→134줄 (`src/locales/{ko,zh,en}.ts` 분리),
+  ✅ `getLocalDateString` 4중복 → `utils/dateUtils.ts` 통합.
+  남은 모놀리스(고결합·고위험): `DesktopTerritory.tsx` 3196줄,
+  `DesktopMap.tsx` 2488줄, `MobileMap.tsx` 2258줄 — 컴포넌트 분해는 별도 신중 작업
 - P3-3 교차기기 draft 연동 (서버사이드 draft 필요, V2+)
 - visit_histories/buildings/cards 의 RLS (현재 anon 전체 접근)
 
