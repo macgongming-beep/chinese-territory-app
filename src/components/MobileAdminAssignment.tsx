@@ -537,11 +537,12 @@ export function MobileAdminAssignment({
             <button
               type="button"
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                height: 42, minHeight: 42, padding: '0 12px',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                height: 42, minHeight: 42, padding: '0 14px',
                 border: '1px solid var(--line-2)', background: 'var(--surface)',
                 color: 'var(--text)', borderRadius: 10,
                 fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                flexShrink: 0, whiteSpace: 'nowrap',
               }}
               onClick={openAssignmentMap}
             >
