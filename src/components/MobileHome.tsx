@@ -1342,16 +1342,19 @@ export function MobileHome({
                         )}
                         <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                       </button>
-                      <button onClick={() => navigate('/service-logs')} type="button">
-                        <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
-                          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 8h10M7 12h10M7 16h6" /></svg>
-                        </span>
-                        <span className="mobile-settings-row-text">
-                          <strong>{t(language, 'settings.serviceLogs')}</strong>
-                          <small>{t(language, 'settings.serviceLogsDesc')}</small>
-                        </span>
-                        <span className="mobile-settings-chevron" aria-hidden="true">›</span>
-                      </button>
+                      {/* 봉사 로그는 개발자 전용 (데스크톱과 동일) — 일반 관리자는 못 보므로 숨김 */}
+                      {actualRole === 'developer' && (
+                        <button onClick={() => navigate('/service-logs')} type="button">
+                          <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 8h10M7 12h10M7 16h6" /></svg>
+                          </span>
+                          <span className="mobile-settings-row-text">
+                            <strong>{t(language, 'settings.serviceLogs')}</strong>
+                            <small>{t(language, 'settings.serviceLogsDesc')}</small>
+                          </span>
+                          <span className="mobile-settings-chevron" aria-hidden="true">›</span>
+                        </button>
+                      )}
                       <button onClick={() => navigate('/special-periods')} type="button">
                         <span className="mobile-settings-icon mobile-settings-icon-season" aria-hidden="true">
                           <SettingsIcon name="season" />
