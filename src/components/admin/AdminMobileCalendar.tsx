@@ -1,6 +1,7 @@
 // 관리자 모바일 캘린더 — design_handoff 02 / 02b / 03 화면
 import { t, weekdayShortLabels } from '../../i18n'
 import { confirmDialog } from '../../lib/confirm'
+import { showToast } from '../../lib/toast'
 import { findActivePeriod } from '../../utils/specialPeriod'
 //
 // 구조:
@@ -552,7 +553,10 @@ export function AdminMobileCalendar({
               }
             } else if (onCreateEvent) {
               const { date: eventDate, repeat, repeatEnd, ...eventInput } = input
-              if (repeat && repeatEnd && onCreateRepeatEvents) {
+              if (repeat) {
+                // 반복 켰는데 종료일 없음 → 조용히 단일 생성되던 문제 방지
+                if (!repeatEnd) { showToast('반복 종료일을 선택해 주세요', 'error'); return }
+                if (!onCreateRepeatEvents) { showToast('반복 일정 권한이 없습니다', 'error'); return }
                 onCreateRepeatEvents(getWeeklyDates(eventDate, repeatEnd), eventInput)
               } else {
                 onCreateEvent(input)

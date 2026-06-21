@@ -53,6 +53,11 @@ export function makeCalendarMutations(deps: {
   }
 
   const createRepeatCalendarEvents = async (dates: string[], input: CalendarEventInput) => {
+    // 종료일이 시작일보다 이전이면 dates 가 비어 0개 등록되는 사고 방지
+    if (!dates || dates.length === 0) {
+      showToast('반복 종료일을 시작일 이후로 정해 주세요.', 'error')
+      return
+    }
     const seriesId = crypto.randomUUID()
     const basePayload = buildEventPayload(input)
     const result = await supabase.from('calendar_events').insert(

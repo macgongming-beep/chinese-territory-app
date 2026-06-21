@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { confirmDialog } from '../lib/confirm'
+import { showToast } from '../lib/toast'
 import { findActivePeriod } from '../utils/specialPeriod'
 import type { CalendarEvent, SpecialPeriod, TerritoryCard } from '../types'
 import { PERIOD_COLORS } from '../types'
@@ -231,7 +232,9 @@ export function DesktopCalendar({
   const handleCreate = () => {
     if (!newTitle.trim()) return
     const input: EventInput = { time: newTime, endTime: newEndTime || undefined, title: newTitle, place: newPlace, mapLink: newMapLink || undefined, leader: newLeader, memo: newMemo, hasMeeting: newHasMeeting, allowApplications: newAllowApplications }
-    if (isRepeat && repeatEnd) {
+    if (isRepeat) {
+      // 반복 켰는데 종료일 없음 → 조용히 단일 생성되던 문제 방지
+      if (!repeatEnd) { showToast('반복 종료일을 선택해 주세요', 'error'); return }
       onCreateRepeatEvents(getWeeklyDates(newDate, repeatEnd), input)
     } else {
       onCreateEvent({ date: newDate, ...input })
