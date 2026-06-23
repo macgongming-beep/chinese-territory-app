@@ -827,9 +827,9 @@ export function MobileHome({
                   leaderNames={leaderNames}
                   mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
                   onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
-                  /* 일정 생성/수정/삭제: admin + leader 만. user 는 신청만. */
-                  onCreateEvent={role === 'user' ? undefined : onCreateCalendarEvent}
-                  onCreateRepeatEvents={role === 'user' ? undefined : onCreateRepeatCalendarEvents}
+                  /* 일정 생성: 관리자·개발자만. 인도자는 본인 일정 수정만 가능, user 는 신청만. */
+                  onCreateEvent={(role === 'admin' || role === 'developer') ? onCreateCalendarEvent : undefined}
+                  onCreateRepeatEvents={(role === 'admin' || role === 'developer') ? onCreateRepeatCalendarEvents : undefined}
                   onDeleteEvent={role === 'user' ? undefined : onDeleteCalendarEvent}
                   onDeleteEventSeries={role === 'user' ? undefined : onDeleteCalendarEventSeries}
                   onUpdateEvent={role === 'user' ? undefined : onUpdateCalendarEvent}

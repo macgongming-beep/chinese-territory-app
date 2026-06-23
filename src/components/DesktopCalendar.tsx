@@ -513,7 +513,7 @@ export function DesktopCalendar({
               <button className="cal-nav-btn" onClick={prevMonth} type="button">‹</button>
               <button className="cal-today-btn" onClick={goToday} type="button">오늘</button>
               <button className="cal-nav-btn" onClick={nextMonth} type="button">›</button>
-              {(role === 'admin' || role === 'leader') && (
+              {(role === 'admin' || role === 'developer') && (
                 <button className="cal-add-event-btn" onClick={openCreate} type="button">+ 일정 추가</button>
               )}
             </div>
@@ -622,7 +622,7 @@ export function DesktopCalendar({
                 </div>
                 <h3>{month}월 {selectedDay}일 일정이 없습니다</h3>
                 <p>새로운 일정을 추가해보세요</p>
-                {(role === 'admin' || role === 'leader') && (
+                {(role === 'admin' || role === 'developer') && (
                   <button className="cal-empty-add-btn" onClick={openCreate} type="button">+ 일정 추가</button>
                 )}
               </div>
