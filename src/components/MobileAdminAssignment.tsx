@@ -15,7 +15,7 @@
 //   - 각 카드: 배정 (free, ink solid) 또는 배정됨 (pill, 담당자 이름 목록)
 //   - sticky 하단: 이번 세션 N개 배정 + "완료"
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import type { Building, TerritoryCard } from '../types'
@@ -79,6 +79,25 @@ export function MobileAdminAssignment({
   onOpenMapView?: (cardIds?: number[]) => void
 }) {
   const [step, setStep] = useState<1 | 2>(1)
+
+  // 언마운트(탭 전환) 감지 — 아래 step2 효과가 그때는 history 정리를 건너뛰게
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
+
+  // step 2(구역 선택) 동안 OS/스와이프 뒤로가기를 가로채 step 1(인도자 선택)로.
+  // (이 화면은 하단 탭이 보여 탭 전환 가능 → unmount 시엔 history.back 생략)
+  useEffect(() => {
+    if (step !== 2) return
+    let poppedByGesture = false
+    window.history.pushState({ assignStep2: true }, '')
+    const onPop = () => { poppedByGesture = true; setStep(1) }
+    window.addEventListener('popstate', onPop)
+    return () => {
+      window.removeEventListener('popstate', onPop)
+      if (!poppedByGesture && mountedRef.current) window.history.back()
+    }
+  }, [step])
+
   const [selectedLeaders, setSelectedLeaders] = useState<Set<string>>(new Set())
   // 단일 선택 호환용 — Set 의 첫 원소 또는 null
   const selectedLeader = selectedLeaders.size > 0 ? [...selectedLeaders][0] : null
