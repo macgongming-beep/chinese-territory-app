@@ -138,6 +138,8 @@ export function AdminMobileZone({
   const [selectedDong, setSelectedDong] = useState(urlDong)
   const [query, setQuery] = useState('')
   const [showDoneExcludedCards, setShowDoneExcludedCards] = useState(false)
+  // 동/카드 목록 타입 필터 (지도뷰처럼 전체/주택/상가) — 0개면 목록에서 숨김
+  const [typeFilter, setTypeFilter] = useState<'전체' | '주택' | '상가'>('전체')
 
   // 드릴 상태 + scope URL 동기화 (replace — 히스토리 오염 방지)
   useEffect(() => {
@@ -469,15 +471,32 @@ export function AdminMobileZone({
           <span><span style={{ color: 'var(--muted)' }}>미배정</span> <b style={{ color: 'var(--status-danger)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.unassigned}</b></span>
         </div>
       ) : level !== 'regions' ? (
-        <div style={{
-          display: 'flex', alignItems: 'baseline', flexWrap: 'wrap',
-          fontSize: 13, color: 'var(--muted)', padding: '0 4px', gap: '4px 8px',
-        }}>
-          <span>전체<b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 3, fontVariantNumeric: 'tabular-nums' }}>{drillStats.total}</b></span>
-          <span style={{ color: 'var(--muted-3)' }}>·</span>
-          <span>주택<b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 3, fontVariantNumeric: 'tabular-nums' }}>{drillStats.house}</b></span>
-          <span style={{ color: 'var(--muted-3)' }}>·</span>
-          <span>상가<b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 3, fontVariantNumeric: 'tabular-nums' }}>{drillStats.shop}</b></span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', padding: '0 2px', gap: 6 }}>
+          {([
+            { key: '전체' as const, label: '전체', count: drillStats.total },
+            { key: '주택' as const, label: '주택', count: drillStats.house },
+            { key: '상가' as const, label: '상가', count: drillStats.shop },
+          ]).map((f) => {
+            const active = typeFilter === f.key
+            return (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setTypeFilter(f.key)}
+                style={{
+                  display: 'inline-flex', alignItems: 'baseline', gap: 3,
+                  padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
+                  fontSize: 13, fontWeight: active ? 700 : 500,
+                  border: active ? '1px solid var(--ink)' : '1px solid var(--line)',
+                  background: active ? 'var(--ink)' : 'var(--surface)',
+                  color: active ? '#fff' : 'var(--muted)',
+                }}
+              >
+                {f.label}
+                <b style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: active ? '#fff' : 'var(--ink)' }}>{f.count}</b>
+              </button>
+            )
+          })}
         </div>
       ) : (
         /* scope === 'mine' && level === 'regions' → 담당 state totals 행 (디자인 22) */
@@ -550,9 +569,11 @@ export function AdminMobileZone({
               동이 없습니다
             </Card>
           ) : (
-            dongList.map((d) => (
-              <GroupRow key={d.name} name={d.name} house={d.house} shop={d.shop} done={d.done} total={d.total} onClick={() => goToDong(d.name)} />
-            ))
+            dongList
+              .filter((d) => typeFilter === '전체' || (typeFilter === '주택' ? d.house > 0 : d.shop > 0))
+              .map((d) => (
+                <GroupRow key={d.name} name={d.name} house={d.house} shop={d.shop} done={d.done} total={d.total} typeFilter={typeFilter} onClick={() => goToDong(d.name)} />
+              ))
           )}
         </div>
       )}
@@ -565,9 +586,15 @@ export function AdminMobileZone({
             </Card>
           ) : (
             <>
-              {renderedCardList.map((c) => (
-                <CardRow key={c.id} card={c} buildingCount={cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }} onClick={() => onOpenMap(c.id)} />
-              ))}
+              {renderedCardList
+                .filter((c) => {
+                  if (typeFilter === '전체') return true
+                  const bc = cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }
+                  return typeFilter === '주택' ? bc.house > 0 : bc.shop > 0
+                })
+                .map((c) => (
+                  <CardRow key={c.id} card={c} buildingCount={cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }} typeFilter={typeFilter} onClick={() => onOpenMap(c.id)} />
+                ))}
               {doneExcludedCards.length > 0 && (
                 <button
                   type="button"
@@ -779,7 +806,7 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMo
 
 // ── 그룹 (시/구 OR 동) 행 ──────────────────────
 function GroupRow({
-  name, house, shop, done, total, onClick,
+  name, house, shop, done, total, onClick, typeFilter = '전체',
 }: {
   name: string
   house: number
@@ -787,7 +814,11 @@ function GroupRow({
   done: number
   total: number
   onClick: () => void
+  typeFilter?: '전체' | '주택' | '상가'
 }) {
+  const countText = typeFilter === '주택' ? `주택 ${house}`
+    : typeFilter === '상가' ? `상가 ${shop}`
+    : `주택 ${house} · 상가 ${shop}`
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
   const isUnassigned = total === 0
   return (
@@ -810,7 +841,7 @@ function GroupRow({
               {name}
             </span>
             <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
-              주택 {house} · 상가 {shop}
+              {countText}
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
@@ -830,14 +861,18 @@ function GroupRow({
 
 // ── 카드 행 (drill-down 마지막 레벨) ────────────
 function CardRow({
-  card, buildingCount, onClick,
+  card, buildingCount, onClick, typeFilter = '전체',
 }: {
   card: TerritoryCard
   buildingCount: { house: number; shop: number }
   onClick: () => void
+  typeFilter?: '전체' | '주택' | '상가'
 }) {
   const operationalState = getTerritoryCardOperationalState(card)
   const isEmptyTarget = operationalState === '대상없음'
+  const countText = typeFilter === '주택' ? `주택 ${buildingCount.house}`
+    : typeFilter === '상가' ? `상가 ${buildingCount.shop}`
+    : `주택 ${buildingCount.house} · 상가 ${buildingCount.shop}`
   return (
     <button
       type="button"
@@ -858,7 +893,7 @@ function CardRow({
               </div>
               <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
                 {card.assignedLeader ? `담당 ${card.assignedLeader} · ` : ''}
-                {isEmptyTarget ? '완료·제외' : `주택 ${buildingCount.house} · 상가 ${buildingCount.shop}`}
+                {isEmptyTarget ? '완료·제외' : countText}
               </span>
             </div>
             <span
