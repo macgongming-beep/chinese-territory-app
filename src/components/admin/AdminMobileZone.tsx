@@ -485,8 +485,8 @@ export function AdminMobileZone({
                 onClick={() => setTypeFilter(f.key)}
                 style={{
                   display: 'inline-flex', alignItems: 'baseline', gap: 3,
-                  padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
-                  fontSize: 13, fontWeight: active ? 700 : 500,
+                  padding: '3px 9px', borderRadius: 7, cursor: 'pointer',
+                  fontSize: 12, fontWeight: active ? 700 : 500, lineHeight: 1.5,
                   border: active ? '1px solid var(--ink)' : '1px solid var(--line)',
                   background: active ? 'var(--ink)' : 'var(--surface)',
                   color: active ? '#fff' : 'var(--muted)',
