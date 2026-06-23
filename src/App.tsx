@@ -420,8 +420,11 @@ function App() {
               onAddParticipantToEvent={addParticipantToEvent}
               onRemoveParticipantFromEvent={removeParticipantFromEvent}
               onCreateCalendarEvent={createCalendarEvent}
+              onCreateRepeatCalendarEvents={createRepeatCalendarEvents}
               onDeleteCalendarEvent={deleteCalendarEvent}
               onUpdateCalendarEvent={updateCalendarEvent}
+              onUpdateCalendarEventSeries={updateCalendarEventSeries}
+              onDeleteCalendarEventSeries={deleteCalendarEventSeries}
               onCreateNotice={createNotice}
               onDeleteNotice={deleteNotice}
               onAddUnit={addUnitToBuilding}
