@@ -14,7 +14,7 @@ import { findActivePeriod } from '../../utils/specialPeriod'
 // 헤더는 상위 MobileHome.tsx 의 AppHeader 가 그림.
 
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import type { Building, CalendarEvent, CardBoundary, Role, SpecialPeriod, TerritoryCard } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { AssignmentEditor } from '../assignment/AssignmentEditor'
@@ -241,12 +241,9 @@ export function AdminMobileCalendar({
   const [detailEventId, setDetailEventId] = useState<number | null>(null)
   // 배정 에디터(풀스크린) 대상 이벤트
   const [assignEventId, setAssignEventId] = useState<number | null>(null)
-  // 딥링크(?openEvent=) 로 시트가 열렸는지 추적 — 닫을 때 이전 화면으로 복귀하기 위함
-  const [cameFromDeepLink, setCameFromDeepLink] = useState(false)
   const detailEvent = detailEventId !== null ? events.find((e) => e.id === detailEventId) ?? null : null
   const editingEvent = editingEventId !== null ? events.find((e) => e.id === editingEventId) ?? null : null
 
-  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   // 알림/딥링크 진입: ?openChat=X → 그 일정 채팅 열기,
   //                  ?openEvent=X → 그 일정 상세 시트 열기
@@ -278,7 +275,6 @@ export function AdminMobileCalendar({
       }))
     } else if (openEventId) {
       setDetailEventId(targetEvent.id)
-      setCameFromDeepLink(true)
     }
 
     const next = new URLSearchParams(searchParams)
@@ -287,6 +283,21 @@ export function AdminMobileCalendar({
     setSearchParams(next, { replace: true })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, events])
+
+  // 일정 상세 시트가 열린 동안 OS/스와이프 뒤로가기를 가로채 "시트만 닫기".
+  // (시트는 풀스크린이라 열린 채 다른 탭으로 이동 불가 → unmount 충돌 없음)
+  useEffect(() => {
+    if (detailEventId === null) return
+    let poppedByGesture = false
+    window.history.pushState({ mobileEventSheet: true }, '')
+    const onPop = () => { poppedByGesture = true; setDetailEventId(null) }
+    window.addEventListener('popstate', onPop)
+    return () => {
+      window.removeEventListener('popstate', onPop)
+      // 좌상단 버튼/전환 등 코드로 닫힌 경우엔 우리가 넣은 더미 히스토리를 정리
+      if (!poppedByGesture) window.history.back()
+    }
+  }, [detailEventId])
 
   const cells = useMemo(() => buildCalendarDays(year, month), [year, month])
   const selectedDateStr = toDateStr(year, month, selectedDay)
@@ -581,12 +592,8 @@ export function AdminMobileCalendar({
           onAddParticipant={(userName) => onAddParticipantToEvent?.(detailEvent.id, userName)}
           onRemoveParticipant={(userName) => onRemoveParticipantFromEvent?.(detailEvent.id, userName)}
           onClose={() => {
+            // setDetailEventId(null) → 위 useEffect cleanup 이 더미 히스토리 정리
             setDetailEventId(null)
-            // 홈 등 다른 화면에서 ?openEvent= 로 들어왔다면 닫을 때 그 화면으로 복귀
-            if (cameFromDeepLink) {
-              setCameFromDeepLink(false)
-              navigate(-1)
-            }
           }}
           onApply={onApplyToEvent ? () => onApplyToEvent(detailEvent.id) : undefined}
           onCancelApply={onApplyToEvent ? () => onApplyToEvent(detailEvent.id) : undefined}
