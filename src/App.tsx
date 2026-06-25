@@ -346,6 +346,8 @@ function App() {
             onAddParticipantToEvent={addParticipantToEvent}
             onToggleRegularVisit={toggleRegularVisit}
             onSetRegularVisitor={setRegularVisitor}
+            onDeleteReturnVisit={deleteReturnVisit}
+            onReassignReturnVisit={reassignReturnVisit}
             onToggleChinese={toggleChinese}
             onToggleUser={toggleUserOnCard}
             onStartServiceSession={startServiceSession}

@@ -141,10 +141,12 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
                         <span style={{ width: 6, height: 6, borderRadius: 99, background: broken ? 'var(--status-danger)' : 'var(--status-ok, #16a34a)' }} />
                         {rv.assignedUserName.trim() || '담당 없음'}{broken && rv.assignedUserName.trim() ? ' · 전출/삭제' : ''}
                       </span>
-                      {/* 마지막 방문 */}
-                      <span style={{ fontSize: 12, color: stale ? '#ea580c' : 'var(--muted)' }}>
-                        {rv.lastVisitedAt ? formatRelativeVisitDate(rv.lastVisitedAt, language) : '방문 기록 없음'}
-                      </span>
+                      {/* 마지막 방문 — 개발자만 (관리자는 방문기록 비공개) */}
+                      {isDeveloper && (
+                        <span style={{ fontSize: 12, color: stale ? '#ea580c' : 'var(--muted)' }}>
+                          {rv.lastVisitedAt ? formatRelativeVisitDate(rv.lastVisitedAt, language) : '방문 기록 없음'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -21,6 +21,7 @@ import { DesktopSpecialPeriods } from './DesktopSpecialPeriods'
 import { DesktopNotificationSettings } from './DesktopNotificationSettings'
 import { LocationPermissionSettings } from './LocationPermissionSettings'
 import { ServiceLogPage } from './ServiceLogPage'
+import { RegularVisitManagement } from './RegularVisitManagement'
 import { AppHeaderActionButtons } from './AppHeader'
 import type { Building, CalendarEvent, CardBoundary, DesktopPage, EventInformalAssignment, EventRestaurantAssignment, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { CsvBuildingImport } from '../utils/csvBuildingImport'
@@ -107,6 +108,8 @@ export function DesktopApp({
   onAddReturnVisitLog,
   onToggleRegularVisit,
   onSetRegularVisitor,
+  onDeleteReturnVisit,
+  onReassignReturnVisit,
   onToggleChinese,
   onToggleUser: _onToggleUser,
   onUndoLatestVisit,
@@ -239,6 +242,8 @@ export function DesktopApp({
   onAddReturnVisitLog: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
+  onDeleteReturnVisit?: (id: number) => Promise<void>
+  onReassignReturnVisit?: (id: number, newAssignee: string) => Promise<void> | void
   onToggleChinese: (buildingId: number, unitId: number) => void
   onToggleUser: (cardId: number, userName: string) => void
   onUndoLatestVisit: (buildingId: number, unitId: number) => void
@@ -872,6 +877,21 @@ export function DesktopApp({
           <Route path="service-logs" element={
             actualRole === 'developer'
               ? <section className="la-page" style={{ alignItems: 'center' }}><div style={{ maxWidth: 640, width: '100%', position: 'relative', padding: '24px 0' }}><ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={actualRole} isEmbedded /></div></section>
+              : <Navigate to="/settings/profile" replace />
+          } />
+          <Route path="regular-visits" element={
+            (viewMode === 'admin' || viewMode === 'developer')
+              ? <section className="la-page" style={{ alignItems: 'center' }}><div style={{ maxWidth: 640, width: '100%', position: 'relative', padding: '24px 0' }}>
+                  <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gray-900)', marginBottom: 20 }}>정기방문 관리</h2>
+                  <RegularVisitManagement
+                    returnVisits={returnVisits ?? []}
+                    activeUsers={allUsers}
+                    isDeveloper={actualRole === 'developer'}
+                    language={language}
+                    onReassign={(id, name) => onReassignReturnVisit?.(id, name)}
+                    onDelete={(id) => onDeleteReturnVisit?.(id) ?? Promise.resolve()}
+                  />
+                </div></section>
               : <Navigate to="/settings/profile" replace />
           } />
         </Route>
