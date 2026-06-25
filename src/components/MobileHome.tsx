@@ -1090,7 +1090,7 @@ export function MobileHome({
             <Route path="/privacy" element={
               <div className="mobile-settings-page" style={{ paddingBottom: 60 }}>
                 <AppHeader
-                  pageTitle="개인정보 처리방침"
+                  pageTitle={t(language, 'privacy.title')}
                   language={language}
                   showBack
                   onBack={() => navigate('/settings')}
@@ -1101,7 +1101,7 @@ export function MobileHome({
                   onOpenMenu={() => navigate('/settings')}
                 />
                 <div style={{ padding: '0 16px 40px', marginTop: 16 }}>
-                  <PrivacyPolicy />
+                  <PrivacyPolicy language={language} />
                 </div>
               </div>
             } />
@@ -1463,7 +1463,7 @@ export function MobileHome({
                   type="button"
                   style={{ minHeight: 0, margin: '14px auto 0', display: 'block', background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12.5, textDecoration: 'underline', cursor: 'pointer' }}
                 >
-                  개인정보 처리방침
+                  {t(language, 'privacy.title')}
                 </button>
 
                 <p className="mobile-settings-version">{t(language, 'settings.version')}</p>

@@ -153,8 +153,8 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
                   style={{ marginTop: 2 }}
                 />
                 <span>
-                  [필수] 개인정보 수집·이용에 동의합니다.{' '}
-                  <button type="button" className="text-btn" onClick={() => setShowPolicy(true)}>전문 보기</button>
+                  {t(language, 'privacy.consent')}{' '}
+                  <button type="button" className="text-btn" onClick={() => setShowPolicy(true)}>{t(language, 'privacy.viewFull')}</button>
                 </span>
               </label>
             </div>
@@ -223,7 +223,7 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
             style={{ background: 'var(--bg, #fff)', width: '100%', maxWidth: 560, maxHeight: '85vh', borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
           >
             <div style={{ overflowY: 'auto', padding: '20px 18px' }}>
-              <PrivacyPolicy />
+              <PrivacyPolicy language={language} />
             </div>
             <div style={{ padding: 12, borderTop: '1px solid var(--line, #e5e7eb)' }}>
               <button
@@ -231,7 +231,7 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
                 onClick={() => { setAgreedPrivacy(true); setShowPolicy(false) }}
                 style={{ width: '100%', minHeight: 0, padding: '12px', borderRadius: 10, border: 'none', background: 'var(--ink, #1c1c1a)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
               >
-                동의하고 닫기
+                {t(language, 'privacy.agreeClose')}
               </button>
             </div>
           </div>
