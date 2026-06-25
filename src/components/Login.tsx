@@ -144,14 +144,16 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
 
           {isSignup && (
             <div className="form-group checkbox-group">
-              <label className="checkbox-label" style={{ alignItems: 'flex-start', gap: 8, lineHeight: 1.5 }}>
-                <input
-                  type="checkbox"
-                  checked={agreedPrivacy}
-                  onChange={(e) => setAgreedPrivacy(e.target.checked)}
-                  disabled={isSubmitting}
-                  style={{ marginTop: 2 }}
-                />
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, lineHeight: 1.5 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', height: '1.5em', flexShrink: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={agreedPrivacy}
+                    onChange={(e) => setAgreedPrivacy(e.target.checked)}
+                    disabled={isSubmitting}
+                    style={{ margin: 0 }}
+                  />
+                </span>
                 <span>
                   {t(language, 'privacy.consent')}{' '}
                   <button type="button" className="text-btn" onClick={() => setShowPolicy(true)}>{t(language, 'privacy.viewFull')}</button>
