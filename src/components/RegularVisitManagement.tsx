@@ -182,12 +182,18 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
               placeholder="이름 검색 (초성 가능)"
               style={{ minHeight: 0, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 10, fontSize: 14, marginBottom: 10, background: 'var(--surface)', color: 'var(--ink)' }}
             />
-            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, alignContent: 'start' }}>
               {reassignCandidates.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>해당하는 사용자가 없어요</div>
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>해당하는 사용자가 없어요</div>
               ) : reassignCandidates.map((u) => (
                 <button key={u.name} type="button" onClick={() => doReassign(u.name)}
-                  style={{ minHeight: 0, padding: '12px 14px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', fontSize: 14, fontWeight: 600, textAlign: 'left', cursor: 'pointer' }}>
+                  style={{
+                    minHeight: 0, padding: '10px 6px', borderRadius: 9,
+                    border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)',
+                    fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
                   {u.name}
                 </button>
               ))}
