@@ -108,6 +108,7 @@ function App() {
     updateReturnVisitLog,
     deleteReturnVisitLog,
     deleteReturnVisit,
+    reassignReturnVisit,
     updateReturnVisitNickname,
     updateReturnVisitAddress,
     setRegularVisitor,
@@ -444,6 +445,7 @@ function App() {
               onUpdateReturnVisitLog={updateReturnVisitLog}
               onDeleteReturnVisitLog={deleteReturnVisitLog}
               onDeleteReturnVisit={deleteReturnVisit}
+              onReassignReturnVisit={reassignReturnVisit}
               onUpdateReturnVisitNickname={updateReturnVisitNickname}
               onUpdateReturnVisitAddress={updateReturnVisitAddress}
               onToggleChinese={toggleChinese}

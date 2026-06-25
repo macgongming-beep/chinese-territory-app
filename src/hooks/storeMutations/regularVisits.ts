@@ -213,7 +213,16 @@ export function makeRegularVisitMutations(deps: {
     showToast('주소가 저장됐습니다')
   }
 
+  // 정기방문 담당자 재배정 (전출/삭제로 끊긴 정기방문을 다른 봉사자에게)
+  const reassignReturnVisit = async (id: number, newAssignee: string) => {
+    const res = await supabase.from('return_visits').update({ assigned_user_name: newAssignee.trim() }).eq('id', id)
+    if (res.error) { reportMutationError('담당자를 변경하지 못했습니다.', res.error); return }
+    await fetchAll()
+    showToast(`담당자가 ${newAssignee.trim()}님으로 변경됐습니다`)
+  }
+
   return {
+    reassignReturnVisit,
     toggleRegularVisit,
     setRegularVisitor,
     toggleChinese,

@@ -629,6 +629,7 @@ export function useStore() {
     deleteReturnVisit,
     updateReturnVisitNickname,
     updateReturnVisitAddress,
+    reassignReturnVisit,
   } = makeRegularVisitMutations({ fetchAll: refetchReturnVisits, buildings, cards, returnVisits })
 
   // ── 도메인별 mutation 분리 (storeMutations.ts) ──────────────
@@ -720,6 +721,7 @@ export function useStore() {
     deleteReturnVisit,
     updateReturnVisitNickname,
     updateReturnVisitAddress,
+    reassignReturnVisit,
     setRegularVisitor,
     toggleChinese,
     createCalendarEvent,

@@ -12,6 +12,7 @@ import { MobileUsers } from './MobileUsers'
 import { MobileSignupRequests } from './MobileSignupRequests'
 import { AdminSuggestions } from './admin/AdminSuggestions'
 import { ServiceLogPage } from './ServiceLogPage'
+import { RegularVisitManagement } from './RegularVisitManagement'
 import { MobileProfileSettings } from './MobileProfileSettings'
 import { UserMobileHome } from './UserMobileHome'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
@@ -259,6 +260,7 @@ export function MobileHome({
   onUpdateReturnVisitLog,
   onDeleteReturnVisitLog,
   onDeleteReturnVisit,
+  onReassignReturnVisit,
   onUpdateReturnVisitNickname,
   onUpdateReturnVisitAddress,
   onToggleChinese,
@@ -353,6 +355,7 @@ export function MobileHome({
   onUpdateReturnVisitLog?: (id: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onDeleteReturnVisitLog?: (id: number) => Promise<void>
   onDeleteReturnVisit?: (id: number) => Promise<void>
+  onReassignReturnVisit?: (id: number, newAssignee: string) => Promise<void> | void
   onUpdateReturnVisitNickname?: (id: number, nickname: string) => Promise<void>
   onUpdateReturnVisitAddress?: (id: number, address: string) => Promise<void>
   onToggleChinese: (buildingId: number, unitId: number) => void
@@ -1082,6 +1085,35 @@ export function MobileHome({
               ) : <Navigate to="/settings" replace />
             } />
 
+            {/* 정기방문 관리 (관리자·개발자) */}
+            <Route path="/regular-visits" element={
+              (role === 'admin' || role === 'developer') ? (
+                <div className="mobile-settings-page" style={{ paddingBottom: 60 }}>
+                  <AppHeader
+                    pageTitle="정기방문 관리"
+                    language={language}
+                    showBack
+                    onBack={() => navigate('/settings')}
+                    userId={currentUser.id}
+                    userName={currentVisitor}
+                    role={role}
+                    chatUsers={headerChatUsers}
+                    onOpenMenu={() => navigate('/settings')}
+                  />
+                  <div style={{ padding: '0 16px', marginTop: 16 }}>
+                    <RegularVisitManagement
+                      returnVisits={returnVisits}
+                      activeUsers={allUsers}
+                      isDeveloper={actualRole === 'developer'}
+                      language={language}
+                      onReassign={(id, name) => onReassignReturnVisit?.(id, name)}
+                      onDelete={(id) => onDeleteReturnVisit?.(id) ?? Promise.resolve()}
+                    />
+                  </div>
+                </div>
+              ) : <Navigate to="/settings" replace />
+            } />
+
             {/* 특별 봉사 시즌 관리 */}
             <Route path="/special-periods" element={
               role === 'admin' ? (
@@ -1312,9 +1344,9 @@ export function MobileHome({
                   </button>
                 </section>
 
-                {role === 'admin' && (
+                {(role === 'admin' || role === 'developer') && (
                   <>
-                    {/* [관리 (Admin)] 섹션 */}
+                    {/* [관리 (Admin)] 섹션 — 관리자·개발자 */}
                     <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>관리 (Admin)</div>
                     <section className="mobile-settings-menu" aria-label="관리 메뉴">
                       <button onClick={() => navigate('/users')} type="button">
@@ -1340,6 +1372,17 @@ export function MobileHome({
                             {pendingSignupCount}
                           </span>
                         )}
+                        <span className="mobile-settings-chevron" aria-hidden="true">›</span>
+                      </button>
+                      {/* 정기방문 관리 (관리자·개발자) */}
+                      <button onClick={() => navigate('/regular-visits')} type="button">
+                        <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></svg>
+                        </span>
+                        <span className="mobile-settings-row-text">
+                          <strong>정기방문 관리</strong>
+                          <small>담당자 끊긴 정기방문 점검·재배정</small>
+                        </span>
                         <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                       </button>
                       {/* 봉사 로그는 개발자 전용 (데스크톱과 동일) — 일반 관리자는 못 보므로 숨김 */}
