@@ -13,6 +13,7 @@ import { MobileSignupRequests } from './MobileSignupRequests'
 import { AdminSuggestions } from './admin/AdminSuggestions'
 import { ServiceLogPage } from './ServiceLogPage'
 import { RegularVisitManagement } from './RegularVisitManagement'
+import { PrivacyPolicy } from './PrivacyPolicy'
 import { MobileProfileSettings } from './MobileProfileSettings'
 import { UserMobileHome } from './UserMobileHome'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
@@ -1085,6 +1086,26 @@ export function MobileHome({
               ) : <Navigate to="/settings" replace />
             } />
 
+            {/* 개인정보 처리방침 (전체 사용자) */}
+            <Route path="/privacy" element={
+              <div className="mobile-settings-page" style={{ paddingBottom: 60 }}>
+                <AppHeader
+                  pageTitle="개인정보 처리방침"
+                  language={language}
+                  showBack
+                  onBack={() => navigate('/settings')}
+                  userId={currentUser.id}
+                  userName={currentVisitor}
+                  role={role}
+                  chatUsers={headerChatUsers}
+                  onOpenMenu={() => navigate('/settings')}
+                />
+                <div style={{ padding: '0 16px 40px', marginTop: 16 }}>
+                  <PrivacyPolicy />
+                </div>
+              </div>
+            } />
+
             {/* 정기방문 관리 (관리자·개발자) */}
             <Route path="/regular-visits" element={
               (role === 'admin' || role === 'developer') ? (
@@ -1435,6 +1456,14 @@ export function MobileHome({
                     <SettingsIcon name="logout" />
                   </span>
                   <strong>{t(language, 'settings.logout')}</strong>
+                </button>
+
+                <button
+                  onClick={() => navigate('/privacy')}
+                  type="button"
+                  style={{ minHeight: 0, margin: '14px auto 0', display: 'block', background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12.5, textDecoration: 'underline', cursor: 'pointer' }}
+                >
+                  개인정보 처리방침
                 </button>
 
                 <p className="mobile-settings-version">{t(language, 'settings.version')}</p>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { AppLanguage } from '../i18n'
 import { languageLabels, t } from '../i18n'
+import { PrivacyPolicy } from './PrivacyPolicy'
 import './Login.css'
 
 type LoginProps = {
@@ -20,10 +21,13 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
   const [rememberMe, setRememberMe] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [signupCompleted, setSignupCompleted] = useState<{ loginId: string; nickname: string } | null>(null)
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false)
+  const [showPolicy, setShowPolicy] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!loginId.trim() || !pin.trim() || (isSignup && !nickname.trim())) return
+    if (isSignup && !agreedPrivacy) return
 
     setIsSubmitting(true)
     let success = false
@@ -138,10 +142,28 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
             </div>
           )}
 
+          {isSignup && (
+            <div className="form-group checkbox-group">
+              <label className="checkbox-label" style={{ alignItems: 'flex-start', gap: 8, lineHeight: 1.5 }}>
+                <input
+                  type="checkbox"
+                  checked={agreedPrivacy}
+                  onChange={(e) => setAgreedPrivacy(e.target.checked)}
+                  disabled={isSubmitting}
+                  style={{ marginTop: 2 }}
+                />
+                <span>
+                  [필수] 개인정보 수집·이용에 동의합니다.{' '}
+                  <button type="button" className="text-btn" onClick={() => setShowPolicy(true)}>전문 보기</button>
+                </span>
+              </label>
+            </div>
+          )}
+
           <button
             type="submit"
             className="login-submit-btn"
-            disabled={isSubmitting || !loginId.trim() || !pin.trim() || (isSignup && !nickname.trim())}
+            disabled={isSubmitting || !loginId.trim() || !pin.trim() || (isSignup && (!nickname.trim() || !agreedPrivacy))}
           >
             {isSubmitting ? t(language, 'common.processing') : isSignup ? t(language, 'login.signup') : t(language, 'login.login')}
           </button>
@@ -187,6 +209,31 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
             <button type="button" className="login-modal-btn" onClick={closeSignupModal}>
               확인
             </button>
+          </div>
+        </div>
+      )}
+
+      {showPolicy && (
+        <div
+          onClick={() => setShowPolicy(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: 'var(--bg, #fff)', width: '100%', maxWidth: 560, maxHeight: '85vh', borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+          >
+            <div style={{ overflowY: 'auto', padding: '20px 18px' }}>
+              <PrivacyPolicy />
+            </div>
+            <div style={{ padding: 12, borderTop: '1px solid var(--line, #e5e7eb)' }}>
+              <button
+                type="button"
+                onClick={() => { setAgreedPrivacy(true); setShowPolicy(false) }}
+                style={{ width: '100%', minHeight: 0, padding: '12px', borderRadius: 10, border: 'none', background: 'var(--ink, #1c1c1a)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
+              >
+                동의하고 닫기
+              </button>
+            </div>
           </div>
         </div>
       )}
