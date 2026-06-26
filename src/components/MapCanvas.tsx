@@ -430,6 +430,8 @@ function NaverMapCanvas({
   const visibleBuildingSignatureRef = useRef('')
   const selectedCardIdRef = useRef<number | '전체' | null>(selectedCardId)
   selectedCardIdRef.current = selectedCardId
+  const cardBoundariesRef = useRef(cardBoundaries)
+  cardBoundariesRef.current = cardBoundaries
   const aggregateMarkersRef = useRef(aggregateMarkers)
   aggregateMarkersRef.current = aggregateMarkers
   const highlightedCardIdsRef = useRef(highlightedCardIds)
@@ -1235,7 +1237,14 @@ function NaverMapCanvas({
       const isInitialLoad = !visibleBuildingSignatureRef.current
       visibleBuildingSignatureRef.current = visibleMapSignature
       if (isInitialLoad && !editingBuildingLocationRef.current && !addingBuildingRef.current) {
-        fitVisibleBuildings('data')
+        // 특정 카드로 진입한 경우, 건물 마커 기준(과도한 줌인) 대신 구역선 전체가 보이게 fit
+        const sel = selectedCardIdRef.current
+        const selBoundary = (sel !== null && sel !== '전체')
+          ? cardBoundariesRef.current.find((b: CardBoundary) => b.cardId === sel)
+          : null
+        if (!(selBoundary && selBoundary.points.length >= 3 && fitBoundaryPoints(selBoundary.points))) {
+          fitVisibleBuildings('data')
+        }
       }
     }
 
