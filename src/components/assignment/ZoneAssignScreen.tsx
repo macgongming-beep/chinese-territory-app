@@ -34,6 +34,7 @@ type ViewMode = 'list' | 'map'
 
 export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBoundaries, canEdit, dispatch, onBack }: Props) {
   const [view, setView] = useState<ViewMode>('list')
+  const [mainTab, setMainTab] = useState<'카드' | '비공식' | '식당'>('카드')
   const [query, setQuery] = useState('')
   const [unassignedOnly, setUnassignedOnly] = useState(false)
   const [buildingTypeFilter, setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
@@ -224,15 +225,23 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
               </button>
             </div>
             
-            <div style={{ display: 'flex', gap: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
-                {(['전체', '주택', '상가'] as BuildingTypeFilter[]).map((t) => (
-                  <button key={t} type="button"
-                    className={`asg-filter-pill${buildingTypeFilter === t ? ' is-on' : ''}`}
-                    onClick={() => setBuildingTypeFilter(t)}
-                    style={{ padding: '4px 10px', fontSize: 12, whiteSpace: 'nowrap' }}
-                  >{t}</button>
-                ))}
-              </div>
+            {/* [카드][비공식][식당] 탭 — 라운드 네모 */}
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+              {(['카드', '비공식', '식당'] as const).map((tb) => {
+                const on = mainTab === tb
+                return (
+                  <button key={tb} type="button" onClick={() => setMainTab(tb)}
+                    style={{
+                      minHeight: 0, padding: '6px 12px', borderRadius: 8, fontSize: 12.5, lineHeight: 1.2,
+                      fontWeight: on ? 700 : 500, cursor: 'pointer',
+                      border: on ? '1px solid var(--ink)' : '1px solid var(--line)',
+                      background: on ? 'var(--ink)' : 'var(--surface)',
+                      color: on ? '#fff' : 'var(--muted)',
+                    }}
+                  >{tb}</button>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -284,22 +293,41 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
         </div>
       ) : (
         <div className="asg-zone-list">
-          <div className="asg-zone-filter">
+          <div className="asg-zone-filter" style={{ gap: 6, alignItems: 'center' }}>
             <input
               className="asg-zone-search"
-              placeholder="카드 이름 검색"
+              style={{ flex: 1, minWidth: 0 }}
+              placeholder={mainTab === '식당' ? '식당 검색' : mainTab === '비공식' ? '비공식 검색' : '카드 검색'}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <label className="asg-zone-unassigned-toggle">
-              <input type="checkbox" checked={unassignedOnly} onChange={(e) => setUnassignedOnly(e.target.checked)} />
-              미배정만
-            </label>
+            {mainTab === '카드' && (['전체', '주택', '상가'] as BuildingTypeFilter[]).map((t) => {
+              const on = buildingTypeFilter === t
+              return (
+                <button key={t} type="button" onClick={() => setBuildingTypeFilter(t)}
+                  style={{ minHeight: 0, flexShrink: 0, padding: '7px 10px', borderRadius: 8, fontSize: 12, fontWeight: on ? 700 : 500,
+                    border: on ? '1px solid var(--ink)' : '1px solid var(--line)', background: on ? 'var(--ink)' : 'var(--surface)', color: on ? '#fff' : 'var(--muted)', cursor: 'pointer' }}
+                >{t}</button>
+              )
+            })}
+            {mainTab === '카드' && (
+              <label className="asg-zone-unassigned-toggle" style={{ flexShrink: 0 }}>
+                <input type="checkbox" checked={unassignedOnly} onChange={(e) => setUnassignedOnly(e.target.checked)} />
+                미배정만
+              </label>
+            )}
           </div>
 
-          {!activeTeam && <div className="asg-empty">먼저 위에서 팀을 선택하세요.</div>}
+          {/* 비공식/식당 탭 — 다음 단계에서 선택·배정 연결 */}
+          {mainTab !== '카드' && (
+            <div className="asg-empty" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--muted)' }}>
+              {mainTab === '비공식' ? '비공식' : '식당'} 배정은 곧 연결됩니다.
+            </div>
+          )}
 
-          {grouped.map(([groupName, groupCards]) => {
+          {mainTab === '카드' && !activeTeam && <div className="asg-empty">먼저 위에서 팀을 선택하세요.</div>}
+
+          {mainTab === '카드' && grouped.map(([groupName, groupCards]) => {
             const isCollapsed = collapsedGroups.has(groupName)
             const activeCards = groupCards.filter(c => (c.progress ?? 0) < 100 && c.status !== '완료')
             const completedCards = groupCards.filter(c => (c.progress ?? 0) >= 100 || c.status === '완료')
