@@ -33,7 +33,7 @@ export function UserMobileHome({
       <section className="mobile-home-section">
         <div className="mh-sec-head">
           <h2>
-            오늘의 봉사
+            {t(language, 'home.todayService')}
             {myTodayEvents.length > 0 && <span className="mh-cnt">{myTodayEvents.length}</span>}
           </h2>
         </div>

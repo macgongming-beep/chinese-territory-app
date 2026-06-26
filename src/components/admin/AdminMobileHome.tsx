@@ -77,7 +77,7 @@ export function AdminMobileHome({
       <section className="mobile-home-section">
         <div className="mh-sec-head">
           <h2>
-            오늘의 봉사
+            {t(language, 'home.todayService')}
             <span className="mh-cnt">{todayEvents.length}</span>
           </h2>
         </div>

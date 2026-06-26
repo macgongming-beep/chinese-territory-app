@@ -570,6 +570,7 @@ export function DesktopApp({
         <Route path="/territory" element={
           viewMode === 'admin' ? (
             <DesktopTerritory
+              language={language}
               buildings={buildings}
               cardBoundaries={cardBoundaries}
               cards={cards}
@@ -619,6 +620,7 @@ export function DesktopApp({
             />
           ) : (
             <DesktopMyService
+              language={language}
               buildings={buildings}
               calendarEvents={calendarEvents}
               cards={cards}
@@ -672,6 +674,7 @@ export function DesktopApp({
               />
             ) : (
               <DesktopTerritory
+                language={language}
                 buildings={buildings}
                 cardBoundaries={cardBoundaries}
                 cards={cards}

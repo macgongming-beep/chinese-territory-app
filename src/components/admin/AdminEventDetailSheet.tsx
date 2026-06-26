@@ -221,13 +221,18 @@ export function AdminEventDetailSheet({
       <header
         style={{
           minHeight: 'calc(56px + var(--safe-top))',
-          padding: 'calc(0px + var(--safe-top)) 12px 0 12px',
+          paddingTop: 'calc(var(--safe-top) + 8px)',
+          paddingLeft: 12,
+          paddingRight: 12,
+          paddingBottom: 8,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           borderBottom: '1px solid var(--line)',
           flexShrink: 0,
           background: 'var(--bg)',
+          position: 'relative',
+          zIndex: 10,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

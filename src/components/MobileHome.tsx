@@ -966,6 +966,7 @@ export function MobileHome({
               {/* 디자인 v2: 모든 역할이 AdminMobileZone 사용 — 권한별 콜백 가시성으로 차등.
                   admin: 모든 콜백 / leader: 식당 토글만 / user: 자료 관리 콜백 일체 차단 */}
               <AdminMobileZone
+                language={language}
                 cards={cards}
                 buildings={buildings}
                 currentVisitor={currentVisitor}

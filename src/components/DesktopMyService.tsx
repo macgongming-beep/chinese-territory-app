@@ -1,3 +1,5 @@
+import { t } from '../i18n'
+import type { AppLanguage } from '../i18n'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Building, CalendarEvent, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot } from '../types'
 import { getUserReturnVisits } from '../utils/returnVisits'
@@ -56,6 +58,7 @@ function statusClass(label: string) {
 }
 
 export function DesktopMyService({
+  language,
   buildings,
   calendarEvents,
   cards,
@@ -68,6 +71,7 @@ export function DesktopMyService({
   onEndServiceSession: _onEndServiceSession,  // 종료 버튼 제거 — auto_close가 처리. 후방호환 유지.
   onAddReturnVisitLog,
 }: {
+  language: AppLanguage
   buildings: Building[]
   calendarEvents: CalendarEvent[]
   cards: TerritoryCard[]
@@ -207,7 +211,7 @@ export function DesktopMyService({
         <main className="dms-main">
           <section className="desk-card dms-section">
             <div className="desk-card__head">
-              <h2 className="desk-card__title"><span className="desk-card__title-dot" />오늘의 봉사</h2>
+              <h2 className="desk-card__title"><span className="desk-card__title-dot" />{t(language, 'home.todayService')}</h2>
               <span className="dms-count-pill">{myTodayAssignments.length}개 일정</span>
             </div>
 

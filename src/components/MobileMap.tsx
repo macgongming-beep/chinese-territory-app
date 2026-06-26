@@ -927,7 +927,7 @@ export function MobileMap({
                 <div className="mm-drill-item-body">
                   <div className="mm-drill-item-title">{card.name}</div>
                   <div className="mm-drill-item-sub">
-                    전체 {counts.total} · 주택 {counts.house} · 상가 {counts.shop}
+                    {t(language, 'map.total')} {counts.total} · {t(language, 'map.house')} {counts.house} · {t(language, 'map.shop')} {counts.shop}
                   </div>
                 </div>
                 <span className="mm-drill-chevron">›</span>
@@ -1199,9 +1199,9 @@ export function MobileMap({
                     >
                       <div>
                         <strong>{marker.label}</strong>
-                        <span>건물 {marker.count} · 주택 {marker.houseCount} · 상가 {marker.shopCount}</span>
+                        <span>{t(language, 'map.building')} {marker.count} · {t(language, 'map.house')} {marker.houseCount} · {t(language, 'map.shop')} {marker.shopCount}</span>
                       </div>
-                      <em>세대 {marker.unitCount}</em>
+                      <em>{t(language, 'map.unit')} {marker.unitCount}</em>
                     </button>
                   ))}
                 </div>
@@ -1288,7 +1288,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                     setEditAddress(building.address)
                                     setShowDeleteConfirm(false)
                                   }}
-                                >설정</button>
+                                >{t(language, 'map.settings')}</button>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1321,7 +1321,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                       { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
                                     )
                                   }}
-                                >길찾기</button>
+                                >{t(language, 'map.directions')}</button>
                               </div>
                             </>
                           )}
@@ -1561,7 +1561,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
             style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', width: '100%', maxWidth: 340 }}
             onClick={e => e.stopPropagation()}
           >
-            <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>방문 기록 수정</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>{t(language, 'map.editHistory')}</h3>
 
             {/* 상태 */}
             <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{t(language, 'map.status')}</p>

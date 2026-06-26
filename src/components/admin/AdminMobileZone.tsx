@@ -1,3 +1,5 @@
+import { t } from '../../i18n'
+import type { AppLanguage } from '../../i18n'
 // 관리자 모바일 구역 — design_handoff 04 화면 (구역 시·구 단위)
 // + 20 / 21 / 22 drill-down 일부
 //
@@ -34,6 +36,7 @@ function extractDong(name: string, region: string): string {
 }
 
 type Props = {
+  language: AppLanguage
   cards: TerritoryCard[]
   buildings: Building[]
   currentVisitor: string
@@ -101,6 +104,7 @@ function SearchIcon({ size = 16 }: { size?: number }) {
 }
 
 export function AdminMobileZone({
+  language,
   cards,
   buildings,
   currentVisitor,
@@ -365,7 +369,7 @@ export function AdminMobileZone({
   if (zoneKind === 'informal') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 16px 24px' }}>
-        <TerritoryInlineTabs active="informal" onChange={setZoneKind} cardCount={cards.length} informalCount={informalCount} restaurantCount={restaurantCount} />
+        <TerritoryInlineTabs language={language} active="informal" onChange={setZoneKind} cardCount={cards.length} informalCount={informalCount} restaurantCount={restaurantCount} />
         <InformalCardsTab
           role={role}
           currentVisitor={currentVisitor}
@@ -385,7 +389,7 @@ export function AdminMobileZone({
   if (zoneKind === 'restaurant') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 16px 24px' }}>
-        <TerritoryInlineTabs active="restaurant" onChange={setZoneKind} cardCount={cards.length} informalCount={informalCount} restaurantCount={restaurantCount} />
+        <TerritoryInlineTabs language={language} active="restaurant" onChange={setZoneKind} cardCount={cards.length} informalCount={informalCount} restaurantCount={restaurantCount} />
         <RestaurantsTab
           role={role}
           buildings={buildings}
@@ -404,7 +408,7 @@ export function AdminMobileZone({
   // ── 구역 카드 탭 (메인) ────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 16px 24px' }}>
-      <TerritoryInlineTabs active="territory" onChange={setZoneKind} cardCount={cards.length} informalCount={informalCount} restaurantCount={restaurantCount} />
+      <TerritoryInlineTabs language={language} active="territory" onChange={setZoneKind} cardCount={cards.length} informalCount={informalCount} restaurantCount={restaurantCount} />
 
       {/* Top toolbar — level 에 따라 다른 구성 (디자인 04 vs 20/21)
           - regions: [담당/전체 segmented] [ViewToggle]
@@ -412,8 +416,8 @@ export function AdminMobileZone({
       {level === 'regions' ? (
         <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
           {/* user 는 본인 담당만 고정 — segmented 숨김 */}
-          {role !== 'user' && <SegmentedScope value={scope} onChange={setScope} />}
-          <ViewToggle value={view} onChange={(next) => {
+          {role !== 'user' && <SegmentedScope language={language} value={scope} onChange={setScope} />}
+          <ViewToggle language={language} value={view} onChange={(next) => {
             setView(next)
             if (next === 'map') {
               if (scope === 'mine') {
@@ -445,7 +449,7 @@ export function AdminMobileZone({
             fontSize: 12.5, color: 'var(--muted)',
             flexWrap: 'wrap', lineHeight: 1.4, flex: 1, minWidth: 0,
           }}>
-            <span style={{ color: level === 'dongs' && !selectedDong ? 'var(--muted)' : 'var(--muted)' }}>전체 구역</span>
+            <span style={{ color: level === 'dongs' && !selectedDong ? 'var(--muted)' : 'var(--muted)' }}>{t(language, 'territory.allZone')}</span>
             {selectedRegion && (
               <>
                 <span style={{ color: 'var(--muted-3)' }}>›</span>
@@ -461,7 +465,7 @@ export function AdminMobileZone({
               </>
             )}
           </nav>
-          <ViewToggle value={view} onChange={(next) => {
+          <ViewToggle language={language} value={view} onChange={(next) => {
             setView(next)
             if (next === 'map') {
               // 현재 드릴 컨텍스트의 카드만 지도에 노출
@@ -483,16 +487,16 @@ export function AdminMobileZone({
             대신 디자인 22 의 미사용/사용중/완료·제외 totals 행은 별도 카드로 아래 */}
       {scope === 'all' && level === 'regions' ? (
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px', fontSize: 13, color: 'var(--muted)' }}>
-          <span><span style={{ color: 'var(--muted)' }}>전체</span> <b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.total}</b></span>
-          <span><span style={{ color: 'var(--muted)' }}>배정</span> <b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.assigned}</b></span>
-          <span><span style={{ color: 'var(--muted)' }}>미배정</span> <b style={{ color: 'var(--status-danger)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.unassigned}</b></span>
+          <span><span style={{ color: 'var(--muted)' }}>{t(language, 'map.filterAll')}</span> <b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.total}</b></span>
+          <span><span style={{ color: 'var(--muted)' }}>{t(language, 'territory.assignedShort')}</span> <b style={{ color: 'var(--ink)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.assigned}</b></span>
+          <span><span style={{ color: 'var(--muted)' }}>{t(language, 'zone.unassigned')}</span> <b style={{ color: 'var(--status-danger)', fontWeight: 600, marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{topStats.unassigned}</b></span>
         </div>
       ) : level !== 'regions' ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', padding: '0 2px', gap: 6 }}>
           {([
-            { key: '전체' as const, label: '전체', count: drillStats.total },
-            { key: '주택' as const, label: '주택', count: drillStats.house },
-            { key: '상가' as const, label: '상가', count: drillStats.shop },
+            { key: '전체' as const, label: t(language, 'map.filterAll'), count: drillStats.total },
+            { key: '주택' as const, label: t(language, 'map.house'), count: drillStats.house },
+            { key: '상가' as const, label: t(language, 'map.shop'), count: drillStats.shop },
           ]).map((f) => {
             const active = typeFilter === f.key
             return (
@@ -528,7 +532,7 @@ export function AdminMobileZone({
             }}
           >
             <span style={{ width: 13, height: 13, borderRadius: 3, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${onlyNeedsVisit ? 'var(--status-danger)' : 'var(--line-2,#ccc)'}`, background: onlyNeedsVisit ? 'var(--status-danger)' : 'transparent', color: '#fff', fontSize: 10 }}>{onlyNeedsVisit ? '✓' : ''}</span>
-            방문필요
+            {t(language, 'zone.summaryNeed')}
           </button>
         </div>
       ) : (
@@ -540,9 +544,9 @@ export function AdminMobileZone({
           borderRadius: 8,
         }}>
           {[
-            { label: '미사용', count: mineStateTotals.unused, color: 'var(--status-danger)' },
-            { label: '사용중', count: mineStateTotals.inUse, color: 'var(--status-info)' },
-            { label: '완료·제외', count: mineStateTotals.done, color: 'var(--status-ok)' },
+            { label: t(language, 'territory.statusUnused'), count: mineStateTotals.unused, color: 'var(--status-danger)' },
+            { label: t(language, 'territory.statusInUse'), count: mineStateTotals.inUse, color: 'var(--status-info)' },
+            { label: t(language, 'territory.statusDone'), count: mineStateTotals.done, color: 'var(--status-ok)' },
           ].map((s) => (
             <span key={s.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
               <span style={{ width: 7, height: 7, borderRadius: 99, background: s.color, flexShrink: 0 }} />
@@ -571,7 +575,7 @@ export function AdminMobileZone({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={level === 'regions' ? '시·구 검색' : '동 이름 검색'}
+            placeholder={level === 'regions' ? t(language, 'territory.searchCity') : t(language, 'territory.searchDong')}
             style={{
               flex: 1, minWidth: 0, border: 'none', outline: 'none',
               background: 'transparent', font: 'inherit', color: 'inherit', padding: 0,
@@ -585,11 +589,11 @@ export function AdminMobileZone({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {regionList.length === 0 ? (
             <Card padding={18} style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-              {scope === 'mine' ? '담당 구역이 없습니다' : '카드가 없습니다'}
+              {scope === 'mine' ? t(language, 'territory.noMyZone') : t(language, 'territory.noCards')}
             </Card>
           ) : (
             regionList.map((r) => (
-              <GroupRow key={r.name} name={r.name} house={r.house} shop={r.shop} done={r.done} total={r.total} onClick={() => goToRegion(r.name)} />
+              <GroupRow language={language} key={r.name} name={r.name} house={r.house} shop={r.shop} done={r.done} total={r.total} onClick={() => goToRegion(r.name)} />
             ))
           )}
         </div>
@@ -599,13 +603,13 @@ export function AdminMobileZone({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {dongList.length === 0 ? (
             <Card padding={18} style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-              동이 없습니다
+              {t(language, 'territory.noDongs')}
             </Card>
           ) : (
             dongList
               .filter((d) => typeFilter === '전체' || (typeFilter === '주택' ? d.house > 0 : d.shop > 0))
               .map((d) => (
-                <GroupRow key={d.name} name={d.name} house={d.house} shop={d.shop} done={d.done} total={d.total} typeFilter={typeFilter} onClick={() => goToDong(d.name)} />
+                <GroupRow language={language} key={d.name} name={d.name} house={d.house} shop={d.shop} done={d.done} total={d.total} typeFilter={typeFilter} onClick={() => goToDong(d.name)} />
               ))
           )}
         </div>
@@ -615,7 +619,7 @@ export function AdminMobileZone({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {cardList.length === 0 ? (
             <Card padding={18} style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-              카드가 없습니다
+              {t(language, 'territory.noCards')}
             </Card>
           ) : (
             <>
@@ -627,7 +631,7 @@ export function AdminMobileZone({
                   return typeFilter === '주택' ? bc.house > 0 : bc.shop > 0
                 })
                 .map((c) => (
-                  <CardRow key={c.id} card={c} buildingCount={pickCounts(c.id)} typeFilter={typeFilter} onClick={() => onOpenMap(c.id)} />
+                  <CardRow language={language} key={c.id} card={c} buildingCount={pickCounts(c.id)} typeFilter={typeFilter} onClick={() => onOpenMap(c.id)} />
                 ))}
               {doneExcludedCards.length > 0 && (
                 <button
@@ -645,7 +649,7 @@ export function AdminMobileZone({
                     cursor: 'pointer',
                   }}
                 >
-                  완료·제외 {doneExcludedCards.length}개 {showDoneExcludedCards ? '접기' : '펼치기'}
+                  {t(language, 'territory.statusDone')} {doneExcludedCards.length} {showDoneExcludedCards ? t(language, 'app.collapse') : t(language, 'app.expand')}
                 </button>
               )}
             </>
@@ -658,12 +662,14 @@ export function AdminMobileZone({
 
 // ── 인라인 탭 (구역 카드 / 비공식 / 식당) ─────────
 function TerritoryInlineTabs({
+  language,
   active,
   onChange,
   cardCount,
   informalCount,
   restaurantCount,
 }: {
+  language: AppLanguage
   active: ZoneKind
   onChange: (kind: ZoneKind) => void
   cardCount: number
@@ -671,9 +677,9 @@ function TerritoryInlineTabs({
   restaurantCount: number
 }) {
   const tabs: { id: ZoneKind; label: string; count: number }[] = [
-    { id: 'territory', label: '구역 카드', count: cardCount },
-    { id: 'informal', label: '비공식', count: informalCount },
-    { id: 'restaurant', label: '식당', count: restaurantCount },
+    { id: 'territory', label: t(language, 'territory.zoneCard'), count: cardCount },
+    { id: 'informal', label: t(language, 'territory.informalTab'), count: informalCount },
+    { id: 'restaurant', label: t(language, 'territory.restaurantTab'), count: restaurantCount },
   ]
   return (
     <div
@@ -745,10 +751,10 @@ function TerritoryInlineTabs({
 }
 
 // ── 담당/전체 segmented ────────────────────────
-function SegmentedScope({ value, onChange }: { value: Scope; onChange: (v: Scope) => void }) {
+function SegmentedScope({ language, value, onChange }: { language: AppLanguage; value: Scope; onChange: (v: Scope) => void }) {
   const options: { value: Scope; label: string }[] = [
-    { value: 'mine', label: '담당 구역' },
-    { value: 'all', label: '전체 구역' },
+    { value: 'mine', label: t(language, 'territory.myZone') },
+    { value: 'all', label: t(language, 'territory.allZone') },
   ]
   return (
     <div style={{
@@ -791,7 +797,7 @@ function SegmentedScope({ value, onChange }: { value: Scope; onChange: (v: Scope
 }
 
 // ── 목록/지도 toggle ────────────────────────────
-function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
+function ViewToggle({ language, value, onChange }: { language: AppLanguage; value: ViewMode; onChange: (v: ViewMode) => void }) {
   return (
     <div style={{
       background: 'var(--tint)',
@@ -803,8 +809,8 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMo
       <button
         type="button"
         onClick={() => onChange('list')}
-        title="목록"
-        aria-label="목록"
+        title={t(language, 'common.list')}
+        aria-label={t(language, 'common.list')}
         style={{
           width: 36, height: 30, minHeight: 30,
           display: 'grid', placeItems: 'center',
@@ -820,8 +826,8 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMo
       <button
         type="button"
         onClick={() => onChange('map')}
-        title="지도"
-        aria-label="지도"
+        title={t(language, 'map.mapLabel')}
+        aria-label={t(language, 'map.mapLabel')}
         style={{
           width: 36, height: 30, minHeight: 30,
           display: 'grid', placeItems: 'center',
@@ -840,8 +846,10 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMo
 
 // ── 그룹 (시/구 OR 동) 행 ──────────────────────
 function GroupRow({
+  language,
   name, house, shop, done, total, onClick, typeFilter = '전체',
 }: {
+  language: AppLanguage
   name: string
   house: number
   shop: number
@@ -850,9 +858,9 @@ function GroupRow({
   onClick: () => void
   typeFilter?: '전체' | '주택' | '상가'
 }) {
-  const countText = typeFilter === '주택' ? `주택 ${house}`
-    : typeFilter === '상가' ? `상가 ${shop}`
-    : `주택 ${house} · 상가 ${shop}`
+  const countText = typeFilter === '주택' ? `${t(language, 'map.house')} ${house}`
+    : typeFilter === '상가' ? `${t(language, 'map.shop')} ${shop}`
+    : `${t(language, 'map.house')} ${house} · ${t(language, 'map.shop')} ${shop}`
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
   const isUnassigned = total === 0
   return (
@@ -895,8 +903,10 @@ function GroupRow({
 
 // ── 카드 행 (drill-down 마지막 레벨) ────────────
 function CardRow({
+  language,
   card, buildingCount, onClick, typeFilter = '전체',
 }: {
+  language: AppLanguage
   card: TerritoryCard
   buildingCount: { house: number; shop: number }
   onClick: () => void
@@ -904,9 +914,9 @@ function CardRow({
 }) {
   const operationalState = getTerritoryCardOperationalState(card)
   const isEmptyTarget = operationalState === '대상없음'
-  const countText = typeFilter === '주택' ? `주택 ${buildingCount.house}`
-    : typeFilter === '상가' ? `상가 ${buildingCount.shop}`
-    : `주택 ${buildingCount.house} · 상가 ${buildingCount.shop}`
+  const countText = typeFilter === '주택' ? `${t(language, 'map.house')} ${buildingCount.house}`
+    : typeFilter === '상가' ? `${t(language, 'map.shop')} ${buildingCount.shop}`
+    : `${t(language, 'map.house')} ${buildingCount.house} · ${t(language, 'map.shop')} ${buildingCount.shop}`
   return (
     <button
       type="button"
@@ -926,8 +936,8 @@ function CardRow({
                 <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{card.name}</span>
               </div>
               <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
-                {card.assignedLeader ? `담당 ${card.assignedLeader} · ` : ''}
-                {isEmptyTarget ? '완료·제외' : countText}
+                {card.assignedLeader ? `${t(language, 'territory.assignedPrefix')} ${card.assignedLeader} · ` : ''}
+                {isEmptyTarget ? t(language, 'territory.statusDone') : countText}
               </span>
             </div>
             <span
@@ -940,7 +950,7 @@ function CardRow({
                 fontSize: 12, fontWeight: 600, flexShrink: 0,
               }}
             >
-              <MapIcon size={13} /> 지도
+              <MapIcon size={13} /> {t(language, 'map.mapLabel')}
             </span>
           </div>
 

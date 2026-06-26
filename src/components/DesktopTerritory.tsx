@@ -1,3 +1,5 @@
+import { t } from '../i18n'
+import type { AppLanguage } from '../i18n'
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
@@ -65,6 +67,7 @@ function getTodayDateInputValue() {
 type CardStatusFilter = TerritoryCard['status'] | '전체' | '완료·제외'
 
 export function DesktopTerritory({
+  language,
   buildings,
   cardBoundaries,
   cards,
@@ -114,6 +117,7 @@ export function DesktopTerritory({
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
 }: {
+  language: AppLanguage
   buildings: Building[]
   cardBoundaries: CardBoundary[]
   cards: TerritoryCard[]
@@ -1918,9 +1922,9 @@ export function DesktopTerritory({
           <div className="page-header-text">
             <div className="zone-kind-tabs" role="tablist" aria-label="구역 종류">
               {[
-                { id: 'territory' as const, label: '구역 카드', count: cards.length },
-                { id: 'informal' as const, label: '비공식 카드', count: informalCount },
-                { id: 'restaurant' as const, label: '식당', count: restaurantCount },
+                { id: 'territory' as const, label: t(language, 'territory.zoneCard'), count: cards.length },
+                { id: 'informal' as const, label: t(language, 'territory.informalTab'), count: informalCount },
+                { id: 'restaurant' as const, label: t(language, 'territory.restaurantTab'), count: restaurantCount },
               ].map((t) => {
                 const active = zoneKind === t.id
                 return (
