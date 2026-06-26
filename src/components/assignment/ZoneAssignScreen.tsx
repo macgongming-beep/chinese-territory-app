@@ -7,7 +7,9 @@
 
 import { useMemo, useState } from 'react'
 import type { Dispatch } from 'react'
-import type { Building, CardBoundary, TerritoryCard } from '../../types'
+import type { Building, CardBoundary, InformalAsset, TerritoryCard } from '../../types'
+import { matchesName } from '../../utils/koreanSearch'
+import { showToast } from '../../lib/toast'
 import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
 import { sortTerritoryCardsByOperationalPriority } from '../../utils/cardSearch'
@@ -24,6 +26,11 @@ type Props = {
   cardBoundaries: CardBoundary[]
   canEdit: boolean
   dispatch: Dispatch<DraftAction>
+  eventId: number
+  currentVisitor: string
+  informalAssets?: InformalAsset[]
+  onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
+  onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
   onBack: () => void
 }
 
@@ -32,7 +39,7 @@ type ViewMode = 'list' | 'map'
 
 
 
-export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBoundaries, canEdit, dispatch, onBack }: Props) {
+export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBoundaries, canEdit, dispatch, eventId, currentVisitor, informalAssets = [], onAssignInformalToUser, onAssignRestaurantToUser, onBack }: Props) {
   const [view, setView] = useState<ViewMode>('list')
   const [mainTab, setMainTab] = useState<'카드' | '비공식' | '식당'>('카드')
   const [query, setQuery] = useState('')
@@ -157,6 +164,33 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
       return next
     })
   }
+
+  // 비공식/식당 → 활성팀 멤버 전원에게 즉시 배정 (B안)
+  const assignToActiveTeam = async (kind: 'informal' | 'restaurant', id: number, label: string) => {
+    if (!activeTeam || activeTeam.members.length === 0) {
+      showToast('멤버가 있는 팀을 먼저 선택하세요', 'error')
+      return
+    }
+    let ok = 0
+    for (const member of activeTeam.members) {
+      const res = kind === 'informal'
+        ? await onAssignInformalToUser?.({ eventId, userName: member, assetId: id, assignedBy: currentVisitor })
+        : await onAssignRestaurantToUser?.({ eventId, userName: member, buildingId: id, assignedBy: currentVisitor })
+      if (res) ok += 1
+    }
+    if (ok > 0) showToast(`"${label}" → ${activeTeam.name}(${activeTeam.members.join('·')}) 배정`)
+  }
+
+  const informalList = useMemo(
+    () => informalAssets.filter((a) => !a.archived && (!query.trim() || matchesName(a.name, query) || a.name.includes(query.trim()))),
+    [informalAssets, query],
+  )
+  const restaurantList = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return buildings
+      .filter((b) => b.isRestaurant)
+      .filter((b) => !q || b.name.toLowerCase().includes(q) || (b.address ?? '').toLowerCase().includes(q))
+  }, [buildings, query])
 
   const toggleCard = (cardId: number) => {
     if (!canEdit || !activeTeam) return
@@ -318,11 +352,38 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
             )}
           </div>
 
-          {/* 비공식/식당 탭 — 다음 단계에서 선택·배정 연결 */}
+          {/* 비공식 / 식당 — 탭하면 활성팀 전원에게 즉시 배정 */}
           {mainTab !== '카드' && (
-            <div className="asg-empty" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--muted)' }}>
-              {mainTab === '비공식' ? '비공식' : '식당'} 배정은 곧 연결됩니다.
-            </div>
+            <>
+              {!activeTeam && <div className="asg-empty">먼저 위에서 팀을 선택하세요.</div>}
+              {activeTeam && (
+                <div style={{ padding: '0 2px 4px', fontSize: 12, color: 'var(--muted)' }}>
+                  탭하면 <b style={{ color: 'var(--ink)' }}>{activeTeam.name}</b>({activeTeam.members.join('·') || '멤버 없음'})에게 바로 배정돼요.
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {(mainTab === '비공식' ? informalList.map((a) => ({ id: a.id, name: a.name, sub: '비공식 자료', kind: 'informal' as const }))
+                  : restaurantList.map((b) => ({ id: b.id, name: b.name, sub: b.address || '식당', kind: 'restaurant' as const }))
+                ).map((item) => (
+                  <button
+                    key={`${item.kind}-${item.id}`}
+                    type="button"
+                    disabled={!activeTeam}
+                    onClick={() => assignToActiveTeam(item.kind, item.id, item.name)}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', minHeight: 0, padding: '12px 14px', borderRadius: 10,
+                      border: '1px solid var(--line)', background: 'var(--surface)', cursor: activeTeam ? 'pointer' : 'default', opacity: activeTeam ? 1 : 0.5 }}
+                  >
+                    <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)' }}>{item.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{item.sub}</div>
+                  </button>
+                ))}
+                {(mainTab === '비공식' ? informalList : restaurantList).length === 0 && (
+                  <div className="asg-empty" style={{ color: 'var(--muted)' }}>
+                    {mainTab === '비공식' ? '비공식 자료가 없어요.' : '식당이 없어요.'}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           {mainTab === '카드' && !activeTeam && <div className="asg-empty">먼저 위에서 팀을 선택하세요.</div>}
