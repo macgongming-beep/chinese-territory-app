@@ -15,7 +15,7 @@ import { findActivePeriod } from '../../utils/specialPeriod'
 
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import type { Building, CalendarEvent, CardBoundary, InformalAsset, Role, SpecialPeriod, TerritoryCard } from '../../types'
+import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, Role, SpecialPeriod, TerritoryCard } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { AssignmentEditor } from '../assignment/AssignmentEditor'
 import { loadPlacePresets, savePlacePresets, normalizePlacePresets, PLACE_PRESETS_MAX } from '../../lib/placePresets'
@@ -75,6 +75,8 @@ type Props = {
     options?: { silentSuccess?: boolean; status?: 'confirmed' | 'shared'; expectedSharedAt?: string | null; onConflict?: (serverSharedAt: string | null) => void },
   ) => Promise<void> | void
   informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
   onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
   onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
   onCreateEvent?: (input: EventInput & { date: string }) => void
@@ -219,6 +221,8 @@ export function AdminMobileCalendar({
   mentionUsers = [],
   onAssignCardsToEventParticipantsBulk,
   informalAssets = [],
+  eventInformalAssignments = [],
+  eventRestaurantAssignments = [],
   onAssignInformalToUser,
   onAssignRestaurantToUser,
   onCreateEvent,
@@ -650,6 +654,8 @@ export function AdminMobileCalendar({
             currentVisitor={currentVisitor}
             canEdit={canEdit}
             informalAssets={informalAssets}
+            eventInformalAssignments={eventInformalAssignments}
+            eventRestaurantAssignments={eventRestaurantAssignments}
             onAssignInformalToUser={onAssignInformalToUser}
             onAssignRestaurantToUser={onAssignRestaurantToUser}
             onClose={() => setAssignEventId(null)}

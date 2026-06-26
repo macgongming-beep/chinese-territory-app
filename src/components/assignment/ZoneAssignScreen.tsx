@@ -7,7 +7,7 @@
 
 import { useMemo, useState } from 'react'
 import type { Dispatch } from 'react'
-import type { Building, CardBoundary, InformalAsset, TerritoryCard } from '../../types'
+import type { Building, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, TerritoryCard } from '../../types'
 import { matchesName } from '../../utils/koreanSearch'
 import { showToast } from '../../lib/toast'
 import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
@@ -29,6 +29,8 @@ type Props = {
   eventId: number
   currentVisitor: string
   informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
   onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
   onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
   onBack: () => void
@@ -39,7 +41,7 @@ type ViewMode = 'list' | 'map'
 
 
 
-export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBoundaries, canEdit, dispatch, eventId, currentVisitor, informalAssets = [], onAssignInformalToUser, onAssignRestaurantToUser, onBack }: Props) {
+export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBoundaries, canEdit, dispatch, eventId, currentVisitor, informalAssets = [], eventInformalAssignments = [], eventRestaurantAssignments = [], onAssignInformalToUser, onAssignRestaurantToUser, onBack }: Props) {
   const [view, setView] = useState<ViewMode>('list')
   const [mainTab, setMainTab] = useState<'카드' | '비공식' | '식당'>('카드')
   const [query, setQuery] = useState('')
@@ -181,16 +183,37 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     if (ok > 0) showToast(`"${label}" → ${activeTeam.name}(${activeTeam.members.join('·')}) 배정`)
   }
 
-  const informalList = useMemo(
-    () => informalAssets.filter((a) => !a.archived && (!query.trim() || matchesName(a.name, query) || a.name.includes(query.trim()))),
-    [informalAssets, query],
-  )
+  // 이 일정에 비공식 자료/식당이 누구에게 배정됐는지 (assetId/buildingId → 이름 목록)
+  const informalAssignedTo = useMemo(() => {
+    const m = new Map<number, string[]>()
+    eventInformalAssignments.filter((a) => a.eventId === eventId).forEach((a) => {
+      m.set(a.assetId, [...(m.get(a.assetId) ?? []), a.userName])
+    })
+    return m
+  }, [eventInformalAssignments, eventId])
+  const restaurantAssignedTo = useMemo(() => {
+    const m = new Map<number, string[]>()
+    eventRestaurantAssignments.filter((a) => a.eventId === eventId).forEach((a) => {
+      m.set(a.buildingId, [...(m.get(a.buildingId) ?? []), a.userName])
+    })
+    return m
+  }, [eventRestaurantAssignments, eventId])
+
+  const informalList = useMemo(() => {
+    const q = query.trim()
+    return informalAssets
+      .filter((a) => !a.archived && (!q || matchesName(a.name, q) || a.name.includes(q)))
+      .map((a) => ({ id: a.id, name: a.name, kind: 'informal' as const, assignedTo: informalAssignedTo.get(a.id) ?? [] }))
+      .filter((item) => !unassignedOnly || item.assignedTo.length === 0)
+  }, [informalAssets, query, informalAssignedTo, unassignedOnly])
   const restaurantList = useMemo(() => {
     const q = query.trim().toLowerCase()
     return buildings
       .filter((b) => b.isRestaurant)
       .filter((b) => !q || b.name.toLowerCase().includes(q) || (b.address ?? '').toLowerCase().includes(q))
-  }, [buildings, query])
+      .map((b) => ({ id: b.id, name: b.name, address: b.address, kind: 'restaurant' as const, assignedTo: restaurantAssignedTo.get(b.id) ?? [] }))
+      .filter((item) => !unassignedOnly || item.assignedTo.length === 0)
+  }, [buildings, query, restaurantAssignedTo, unassignedOnly])
 
   const toggleCard = (cardId: number) => {
     if (!canEdit || !activeTeam) return
@@ -335,6 +358,10 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
+            <label className="asg-zone-unassigned-toggle" style={{ flexShrink: 0 }}>
+              <input type="checkbox" checked={unassignedOnly} onChange={(e) => setUnassignedOnly(e.target.checked)} />
+              미배정만
+            </label>
             {mainTab === '카드' && (['전체', '주택', '상가'] as BuildingTypeFilter[]).map((t) => {
               const on = buildingTypeFilter === t
               return (
@@ -344,12 +371,6 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                 >{t}</button>
               )
             })}
-            {mainTab === '카드' && (
-              <label className="asg-zone-unassigned-toggle" style={{ flexShrink: 0 }}>
-                <input type="checkbox" checked={unassignedOnly} onChange={(e) => setUnassignedOnly(e.target.checked)} />
-                미배정만
-              </label>
-            )}
           </div>
 
           {/* 비공식 / 식당 — 탭하면 활성팀 전원에게 즉시 배정 */}
@@ -362,8 +383,9 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                 </div>
               )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {(mainTab === '비공식' ? informalList.map((a) => ({ id: a.id, name: a.name, sub: '비공식 자료', kind: 'informal' as const }))
-                  : restaurantList.map((b) => ({ id: b.id, name: b.name, sub: b.address || '식당', kind: 'restaurant' as const }))
+                {(mainTab === '비공식'
+                  ? informalList.map((a) => ({ id: a.id, name: a.name, sub: '비공식 자료', kind: 'informal' as const, assignedTo: a.assignedTo }))
+                  : restaurantList.map((b) => ({ id: b.id, name: b.name, sub: b.address || '식당', kind: 'restaurant' as const, assignedTo: b.assignedTo }))
                 ).map((item) => (
                   <button
                     key={`${item.kind}-${item.id}`}
@@ -375,11 +397,18 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                   >
                     <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)' }}>{item.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{item.sub}</div>
+                    {item.assignedTo.length > 0 && (
+                      <div style={{ fontSize: 11.5, color: 'var(--primary-600, #2563eb)', marginTop: 4, fontWeight: 600 }}>
+                        ✓ {item.assignedTo.join('·')} 배정됨
+                      </div>
+                    )}
                   </button>
                 ))}
                 {(mainTab === '비공식' ? informalList : restaurantList).length === 0 && (
                   <div className="asg-empty" style={{ color: 'var(--muted)' }}>
-                    {mainTab === '비공식' ? '비공식 자료가 없어요.' : '식당이 없어요.'}
+                    {unassignedOnly
+                      ? (mainTab === '비공식' ? '미배정 비공식 자료가 없어요.' : '미배정 식당이 없어요.')
+                      : (mainTab === '비공식' ? '비공식 자료가 없어요.' : '식당이 없어요.')}
                   </div>
                 )}
               </div>

@@ -833,6 +833,8 @@ export function MobileHome({
                   mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
                   onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
                   informalAssets={informalAssets}
+                  eventInformalAssignments={eventInformalAssignments}
+                  eventRestaurantAssignments={eventRestaurantAssignments}
                   onAssignInformalToUser={onAssignInformalToUser}
                   onAssignRestaurantToUser={onAssignRestaurantToUser}
                   /* 일정 생성: 관리자·개발자만. 인도자는 본인 일정 수정만 가능, user 는 신청만. */

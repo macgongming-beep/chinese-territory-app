@@ -5,7 +5,7 @@
 // 공유: 일정상세로 돌아가기 전 [배정 공유] 한 번 → 서버 bulk 저장.
 
 import { useEffect, useMemo, useState } from 'react'
-import type { Building, CalendarEvent, CardBoundary, InformalAsset, TerritoryCard } from '../../types'
+import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, TerritoryCard } from '../../types'
 import type { AssignmentDraft } from '../../hooks/assignmentDraft'
 import {
   useAssignmentDraft,
@@ -37,6 +37,8 @@ type Props = {
   currentVisitor: string
   canEdit: boolean
   informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
   onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
   onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
   onClose: () => void
@@ -47,7 +49,7 @@ type Props = {
   ) => Promise<void> | void
 }
 
-export function AssignmentEditor({ event, cards, buildings, cardBoundaries, currentVisitor, canEdit, informalAssets = [], onAssignInformalToUser, onAssignRestaurantToUser, onClose, onShare }: Props) {
+export function AssignmentEditor({ event, cards, buildings, cardBoundaries, currentVisitor, canEdit, informalAssets = [], eventInformalAssignments = [], eventRestaurantAssignments = [], onAssignInformalToUser, onAssignRestaurantToUser, onClose, onShare }: Props) {
   // 편집 시작 시점의 서버 공유시각 — 공유 때 충돌 감지에 사용 (P0-3)
   const [entrySharedAt] = useState<string | null>(event.assignmentSharedAt ?? null)
   // 진입 시 draft 결정 (lazy 1회). 충돌이면 server로 시작하고 모달 띄움.
@@ -161,6 +163,8 @@ export function AssignmentEditor({ event, cards, buildings, cardBoundaries, curr
           eventId={event.id}
           currentVisitor={currentVisitor}
           informalAssets={informalAssets}
+          eventInformalAssignments={eventInformalAssignments}
+          eventRestaurantAssignments={eventRestaurantAssignments}
           onAssignInformalToUser={onAssignInformalToUser}
           onAssignRestaurantToUser={onAssignRestaurantToUser}
           onBack={() => setScreen('teams')}
