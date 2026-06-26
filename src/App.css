@@ -19567,19 +19567,20 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  min-width: 260px;
-  padding: 14px 20px;
-  border-radius: 16px;
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 1.4;
-  color: #ffffff;
-  background: rgba(28, 28, 26, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15);
+  gap: 14px;
+  min-width: 240px;
+  padding: 13px 16px 13px 15px;
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.45;
+  color: var(--ink, #1A1A18);
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #E5E5E2);
+  border-left: 3px solid var(--ink, #1A1A18);
+  box-shadow: 0 10px 30px rgba(26, 26, 24, 0.12), 0 2px 8px rgba(26, 26, 24, 0.06);
   pointer-events: auto;
   animation: toast-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -19589,35 +19590,35 @@ button:focus-visible {
 }
 
 .toast-action-btn {
-  min-height: 32px;
+  min-height: 30px;
   padding: 0 12px;
   margin: -4px 0;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  border: 1px solid var(--line, #E5E5E2);
+  background: var(--tint, #EFEFED);
+  color: var(--ink, #1A1A18);
   font-size: 13px;
   font-weight: 650;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .toast-action-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: #ffffff;
+  background: var(--ink, #1A1A18);
+  border-color: var(--ink, #1A1A18);
+  color: #ffffff;
 }
 
 .toast-success {
-  /* Use default sleek dark background defined in .toast */
+  border-left-color: var(--success-500, #10B981);
 }
 
 .toast-error {
-  background: rgba(45, 20, 20, 0.95);
-  border-color: rgba(255, 100, 100, 0.2);
+  border-left-color: var(--status-danger, #C44536);
 }
 
 .toast-info {
-  /* Use default sleek dark background defined in .toast */
+  border-left-color: var(--muted, #7A7A75);
 }
 
 @keyframes toast-slide-in {

@@ -231,8 +231,8 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     if (ok > 0) showToast(`"${label}" → ${activeTeam.name}(${members.join('·')}) 배정`)
   }
 
-  // 공용 항목 타입 (비공식·식당). 식당은 unitId 세팅.
-  type SubItem = { key: string; id: number; unitId: number | null; name: string; address: string; assignedTo: string[]; isActive: boolean }
+  // 공용 항목 타입 (비공식·식당). 식당은 unitId, 비공식은 imageUrl 세팅.
+  type SubItem = { key: string; id: number; unitId: number | null; name: string; address: string; imageUrl?: string; assignedTo: string[]; isActive: boolean }
 
   // 비공식 — 그룹(미분류 + 그룹)별 묶음. 구역 비공식 화면과 동일한 구성.
   const informalGroupSections = useMemo(() => {
@@ -243,7 +243,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     visible.forEach((a) => {
       const assigns = informalAssigns.get(a.id) ?? []
       if (unassignedOnly && assigns.length > 0) return
-      const item: SubItem = { key: `inf-asset-${a.id}`, id: a.id, unitId: null, name: a.name, address: '', assignedTo: assigns.map((x) => x.user), isActive: assigns.some((x) => memberSet.has(x.user)) }
+      const item: SubItem = { key: `inf-asset-${a.id}`, id: a.id, unitId: null, name: a.name, address: '', imageUrl: a.imageUrl, assignedTo: assigns.map((x) => x.user), isActive: assigns.some((x) => memberSet.has(x.user)) }
       const key = a.groupId ?? 'null'
       byGroup.set(key, [...(byGroup.get(key) ?? []), item])
     })
@@ -491,31 +491,45 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                         {open && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {section.items.map((item) => (
-                              <button
+                              <div
                                 key={item.key}
-                                type="button"
-                                disabled={!activeTeam}
-                                onClick={() => mainTab === '비공식'
-                                  ? toggleInformal(item.id, item.name)
-                                  : toggleRestaurant(item.id, item.unitId, item.name)}
-                                style={{ display: 'block', width: '100%', textAlign: 'left', minHeight: 0, padding: '12px 14px', borderRadius: 12,
+                                role="button"
+                                tabIndex={activeTeam ? 0 : -1}
+                                onClick={() => {
+                                  if (!activeTeam) return
+                                  if (mainTab === '비공식') void toggleInformal(item.id, item.name)
+                                  else void toggleRestaurant(item.id, item.unitId, item.name)
+                                }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 0, padding: '10px 14px', borderRadius: 12,
                                   border: item.isActive ? '1.5px solid var(--ink)' : '1px solid var(--line)',
                                   background: item.isActive ? 'var(--bg-subtle, #f4f4f2)' : 'var(--surface)',
                                   cursor: activeTeam ? 'pointer' : 'default', opacity: activeTeam ? 1 : 0.5 }}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                                  {item.isActive && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: 'var(--ink)' }}>✓ 배정됨</span>}
-                                </div>
-                                {mainTab === '식당' && item.address && (
-                                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.address}</div>
+                                {mainTab === '비공식' && (
+                                  item.imageUrl ? (
+                                    <a href={item.imageUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0, lineHeight: 0 }}>
+                                      <img src={item.imageUrl} alt={item.name} loading="lazy"
+                                        style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--line)', display: 'block' }} />
+                                    </a>
+                                  ) : (
+                                    <span style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 8, background: 'var(--tint)', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 18 }}>🖼️</span>
+                                  )
                                 )}
-                                {item.assignedTo.length > 0 && (
-                                  <div style={{ fontSize: 11.5, color: 'var(--primary-600, #2563eb)', marginTop: 4, fontWeight: 600 }}>
-                                    {item.assignedTo.join('·')} 배정됨
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                                    {item.isActive && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: 'var(--ink)' }}>✓ 배정됨</span>}
                                   </div>
-                                )}
-                              </button>
+                                  {mainTab === '식당' && item.address && (
+                                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.address}</div>
+                                  )}
+                                  {item.assignedTo.length > 0 && (
+                                    <div style={{ fontSize: 11.5, color: 'var(--primary-600, #2563eb)', marginTop: 4, fontWeight: 600 }}>
+                                      {item.assignedTo.join('·')} 배정됨
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             ))}
                           </div>
                         )}
