@@ -3,7 +3,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { MapCanvas } from './MapCanvas'
 import type { MapAggregateMarker } from './MapCanvas'
-import type { Building, BuildingStatus, CardBoundary, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, BuildingStatus, CalendarEvent, CardBoundary, EventRestaurantAssignment, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t, translateKoreanAddress } from '../i18n'
 import { getBuildingStatus, findCardForCoordinates } from '../utils/mapUtils'
@@ -56,6 +56,8 @@ export function MobileMap({
   specialPeriods,
   allUsers = [],
   onSetRegularVisitor,
+  eventRestaurantAssignments = [],
+  calendarEvents = [],
 }: {
   language: AppLanguage
   translatePlaceNames?: boolean
@@ -90,6 +92,8 @@ export function MobileMap({
   specialPeriods?: SpecialPeriod[]
   allUsers?: { id: number; name: string }[]
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
+  calendarEvents?: CalendarEvent[]
 }) {
   // URL 파라미터 (가상 핀용)
   const [searchParams] = useSearchParams()
@@ -1776,6 +1780,8 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               currentVisitor={currentVisitor}
               allUsers={allUsers}
               onSetRegularVisitor={onSetRegularVisitor}
+              restaurantAssignments={eventRestaurantAssignments.filter((a) => a.unitId === liveFullScreenUnit.unit.id)}
+              calendarEvents={calendarEvents}
             />
           </div>
         </div>
@@ -1820,6 +1826,8 @@ function UnitDetailScreen({
   currentVisitor,
   allUsers = [],
   onSetRegularVisitor,
+  restaurantAssignments = [],
+  calendarEvents = [],
 }: {
   language: AppLanguage
   unit: Unit
@@ -1840,6 +1848,8 @@ function UnitDetailScreen({
   currentVisitor?: string
   allUsers?: { id: number; name: string }[]
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
+  restaurantAssignments?: EventRestaurantAssignment[]
+  calendarEvents?: CalendarEvent[]
 }) {
   const [memoEditing, setMemoEditing] = useState(false)
   const [memoDraft, setMemoDraft] = useState<string | null>(null)
@@ -1877,6 +1887,24 @@ function UnitDetailScreen({
     <div style={{ background: 'var(--bg)', minHeight: '100%', paddingBottom: 40 }}>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px 0' }}>
+
+        {/* 식당 봉사 배정 (이 세대) */}
+        {restaurantAssignments.length > 0 && (
+          <div style={{ padding: '12px 14px', background: '#fef3e7', border: '1px solid #f5cfa1', borderRadius: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#b4621f', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              🍴 식당 봉사 배정
+            </div>
+            {restaurantAssignments.map((asn) => {
+              const ev = calendarEvents.find((e) => e.id === asn.eventId)
+              return (
+                <div key={asn.id} style={{ fontSize: 13, color: 'var(--ink)', marginTop: 2 }}>
+                  <b>{asn.userName}</b>
+                  {ev ? <span style={{ color: 'var(--muted)' }}> · {ev.date} {ev.time} {ev.title}</span> : null}
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {/* 방문 이력 표 */}
         <div style={sectionStyle}>

@@ -80,7 +80,7 @@ type Props = {
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
   onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
-  onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
+  onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; unitId?: number | null; assignedBy: string }) => Promise<boolean>
   onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
   onCreateEvent?: (input: EventInput & { date: string }) => void
   onCreateRepeatEvents?: (dates: string[], input: EventInput) => void

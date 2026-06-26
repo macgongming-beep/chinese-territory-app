@@ -82,6 +82,7 @@ export type EventRestaurantAssignment = {
   eventId: number
   userName: string
   buildingId: number
+  unitId: number | null   // 세대 단위 배정 (null = 레거시 건물단위)
   assignedBy: string
   assignedAt: string
   memo: string

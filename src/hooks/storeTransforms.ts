@@ -141,6 +141,7 @@ export type RawEventRestaurantAssignment = {
   event_id: number
   user_name: string
   building_id: number
+  unit_id: number | null
   assigned_by: string | null
   assigned_at: string
   memo: string | null
@@ -383,6 +384,7 @@ export function toEventRestaurantAssignment(raw: RawEventRestaurantAssignment): 
     eventId: raw.event_id,
     userName: raw.user_name,
     buildingId: raw.building_id,
+    unitId: raw.unit_id ?? null,
     assignedBy: raw.assigned_by ?? '',
     assignedAt: raw.assigned_at,
     memo: raw.memo ?? '',

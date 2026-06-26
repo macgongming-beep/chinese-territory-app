@@ -35,7 +35,7 @@ type Props = {
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
   onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
-  onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
+  onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; unitId?: number | null; assignedBy: string }) => Promise<boolean>
   onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
   onBack: () => void
 }
@@ -181,61 +181,73 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     })
     return m
   }, [eventInformalAssignments, eventId])
+  // 식당은 세대 단위 — key = `${buildingId}:${unitId ?? 0}` (unitId 0 = 건물단위 레거시)
   const restaurantAssigns = useMemo(() => {
-    const m = new Map<number, Array<{ user: string; assignmentId: number }>>()
+    const m = new Map<string, Array<{ user: string; assignmentId: number }>>()
     eventRestaurantAssignments.filter((a) => a.eventId === eventId).forEach((a) => {
-      m.set(a.buildingId, [...(m.get(a.buildingId) ?? []), { user: a.userName, assignmentId: a.id }])
+      const k = `${a.buildingId}:${a.unitId ?? 0}`
+      m.set(k, [...(m.get(k) ?? []), { user: a.userName, assignmentId: a.id }])
     })
     return m
   }, [eventRestaurantAssignments, eventId])
 
-  // 탭하면 토글: 활성팀에 이미 배정돼 있으면 해제, 아니면 전원 배정
-  const toggleAssign = async (kind: 'informal' | 'restaurant', id: number, label: string) => {
+  // 비공식 토글: 활성팀에 이미 배정돼 있으면 해제, 아니면 전원 배정
+  const toggleInformal = async (assetId: number, label: string) => {
     if (!activeTeam || activeTeam.members.length === 0) {
       showToast('멤버가 있는 팀을 먼저 선택하세요', 'error')
       return
     }
     const members = activeTeam.members
-    const assigns = (kind === 'informal' ? informalAssigns : restaurantAssigns).get(id) ?? []
-    // 활성팀 멤버 중 이미 배정된 사람의 배정 id
-    const toRemove = assigns.filter((a) => members.includes(a.user))
-
+    const toRemove = (informalAssigns.get(assetId) ?? []).filter((a) => members.includes(a.user))
     if (toRemove.length > 0) {
-      // 해제
-      for (const a of toRemove) {
-        if (kind === 'informal') await onRemoveInformalAssignment?.(a.assignmentId)
-        else await onRemoveRestaurantAssignment?.(a.assignmentId)
-      }
+      for (const a of toRemove) await onRemoveInformalAssignment?.(a.assignmentId)
       showToast(`"${label}" → ${activeTeam.name} 배정 해제`)
       return
     }
-    // 배정 (아직 없는 멤버 전원)
     let ok = 0
     for (const member of members) {
-      const res = kind === 'informal'
-        ? await onAssignInformalToUser?.({ eventId, userName: member, assetId: id, assignedBy: currentVisitor })
-        : await onAssignRestaurantToUser?.({ eventId, userName: member, buildingId: id, assignedBy: currentVisitor })
-      if (res) ok += 1
+      if (await onAssignInformalToUser?.({ eventId, userName: member, assetId, assignedBy: currentVisitor })) ok += 1
     }
     if (ok > 0) showToast(`"${label}" → ${activeTeam.name}(${members.join('·')}) 배정`)
   }
+
+  // 식당 토글 (세대 단위)
+  const toggleRestaurant = async (buildingId: number, unitId: number | null, label: string) => {
+    if (!activeTeam || activeTeam.members.length === 0) {
+      showToast('멤버가 있는 팀을 먼저 선택하세요', 'error')
+      return
+    }
+    const members = activeTeam.members
+    const toRemove = (restaurantAssigns.get(`${buildingId}:${unitId ?? 0}`) ?? []).filter((a) => members.includes(a.user))
+    if (toRemove.length > 0) {
+      for (const a of toRemove) await onRemoveRestaurantAssignment?.(a.assignmentId)
+      showToast(`"${label}" → ${activeTeam.name} 배정 해제`)
+      return
+    }
+    let ok = 0
+    for (const member of members) {
+      if (await onAssignRestaurantToUser?.({ eventId, userName: member, buildingId, unitId, assignedBy: currentVisitor })) ok += 1
+    }
+    if (ok > 0) showToast(`"${label}" → ${activeTeam.name}(${members.join('·')}) 배정`)
+  }
+
+  // 공용 항목 타입 (비공식·식당). 식당은 unitId 세팅.
+  type SubItem = { key: string; id: number; unitId: number | null; name: string; address: string; assignedTo: string[]; isActive: boolean }
 
   // 비공식 — 그룹(미분류 + 그룹)별 묶음. 구역 비공식 화면과 동일한 구성.
   const informalGroupSections = useMemo(() => {
     const memberSet = new Set(teams.find((t) => t.id === activeTeamId)?.members ?? [])
     const q = query.trim()
     const visible = informalAssets.filter((a) => !a.archived && (!q || matchesName(a.name, q) || a.name.includes(q)))
-    type Item = { id: number; name: string; address: string; assignedTo: string[]; isActive: boolean }
-    const byGroup = new Map<number | 'null', Item[]>()
+    const byGroup = new Map<number | 'null', SubItem[]>()
     visible.forEach((a) => {
       const assigns = informalAssigns.get(a.id) ?? []
       if (unassignedOnly && assigns.length > 0) return
-      const item: Item = { id: a.id, name: a.name, address: '', assignedTo: assigns.map((x) => x.user), isActive: assigns.some((x) => memberSet.has(x.user)) }
+      const item: SubItem = { key: `inf-asset-${a.id}`, id: a.id, unitId: null, name: a.name, address: '', assignedTo: assigns.map((x) => x.user), isActive: assigns.some((x) => memberSet.has(x.user)) }
       const key = a.groupId ?? 'null'
       byGroup.set(key, [...(byGroup.get(key) ?? []), item])
     })
-    const sections: Array<{ key: string; title: string; items: Item[] }> = []
-    // 미분류 먼저
+    const sections: Array<{ key: string; title: string; items: SubItem[] }> = []
     if (byGroup.has('null')) sections.push({ key: 'inf-null', title: '미분류', items: byGroup.get('null')! })
     informalGroups.forEach((g) => {
       if (byGroup.has(g.id)) sections.push({ key: `inf-${g.id}`, title: g.name, items: byGroup.get(g.id)! })
@@ -243,7 +255,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     return sections
   }, [informalAssets, informalGroups, query, informalAssigns, unassignedOnly, teams, activeTeamId])
 
-  // 식당 — 구(區)별 묶음. 구역 식당 화면과 동일한 구성.
+  // 식당 — 구(區)별 + 세대 단위. 구역 식당 화면처럼 중국인 세대별 행.
   const cardRegionById = useMemo(() => {
     const m = new Map<number, string>()
     const source = allCards.length ? allCards : cards
@@ -253,16 +265,22 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
   const restaurantRegionSections = useMemo(() => {
     const memberSet = new Set(teams.find((t) => t.id === activeTeamId)?.members ?? [])
     const q = query.trim().toLowerCase()
-    const visible = buildings.filter((b) => b.isRestaurant &&
-      (!q || b.name.toLowerCase().includes(q) || (b.address ?? '').toLowerCase().includes(q)))
-    type Item = { id: number; name: string; address: string; assignedTo: string[]; isActive: boolean }
-    const byRegion = new Map<string, Item[]>()
-    visible.forEach((b) => {
-      const assigns = restaurantAssigns.get(b.id) ?? []
-      if (unassignedOnly && assigns.length > 0) return
-      const item: Item = { id: b.id, name: b.name || b.address, address: b.address, assignedTo: assigns.map((x) => x.user), isActive: assigns.some((x) => memberSet.has(x.user)) }
+    const byRegion = new Map<string, SubItem[]>()
+    buildings.forEach((b) => {
+      if (b.type !== '상가' || !b.isRestaurant) return
       const region = cardRegionById.get(b.cardId) || '기타'
-      byRegion.set(region, [...(byRegion.get(region) ?? []), item])
+      const chineseUnits = (b.units ?? []).filter((u) => u.isChinese)
+      // 중국인 세대 없으면 건물명 1행 (unitId null = 건물단위)
+      const rows: Array<{ unitId: number | null; name: string }> = chineseUnits.length === 0
+        ? [{ unitId: null, name: b.name || b.address }]
+        : chineseUnits.map((u) => ({ unitId: u.id, name: u.number || b.name || b.address }))
+      rows.forEach((row) => {
+        if (q && !row.name.toLowerCase().includes(q) && !(b.address ?? '').toLowerCase().includes(q)) return
+        const assigns = restaurantAssigns.get(`${b.id}:${row.unitId ?? 0}`) ?? []
+        if (unassignedOnly && assigns.length > 0) return
+        const item: SubItem = { key: `rest-${b.id}-${row.unitId ?? 0}`, id: b.id, unitId: row.unitId, name: row.name, address: b.address, assignedTo: assigns.map((x) => x.user), isActive: assigns.some((x) => memberSet.has(x.user)) }
+        byRegion.set(region, [...(byRegion.get(region) ?? []), item])
+      })
     })
     return Array.from(byRegion.entries())
       .sort(([a], [b]) => a.localeCompare(b, 'ko'))
@@ -474,10 +492,12 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {section.items.map((item) => (
                               <button
-                                key={item.id}
+                                key={item.key}
                                 type="button"
                                 disabled={!activeTeam}
-                                onClick={() => toggleAssign(mainTab === '비공식' ? 'informal' : 'restaurant', item.id, item.name)}
+                                onClick={() => mainTab === '비공식'
+                                  ? toggleInformal(item.id, item.name)
+                                  : toggleRestaurant(item.id, item.unitId, item.name)}
                                 style={{ display: 'block', width: '100%', textAlign: 'left', minHeight: 0, padding: '12px 14px', borderRadius: 12,
                                   border: item.isActive ? '1.5px solid var(--ink)' : '1px solid var(--line)',
                                   background: item.isActive ? 'var(--bg-subtle, #f4f4f2)' : 'var(--surface)',

@@ -676,10 +676,12 @@ export function MobileTerritory({
                               {myRestaurants.map((asn) => {
                                 const b = buildings.find((x) => x.id === asn.buildingId)
                                 if (!b) return null
+                                const unit = asn.unitId != null ? b.units.find((u) => u.id === asn.unitId) : null
+                                const restName = unit?.number || b.name || b.address
                                 return (
                                   <div className="mobile-today-card-row" key={`rest-${asn.id}`}>
                                     <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#d88a3e' }} />
-                                    <strong>{b.name || b.address}</strong>
+                                    <strong>{restName}{unit ? ` · ${b.name || b.address}` : ''}</strong>
                                     <em style={{ color: '#d88a3e' }}>식당</em>
                                     <button
                                       type="button"

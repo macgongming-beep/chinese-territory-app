@@ -154,12 +154,14 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     eventId: number
     userName: string
     buildingId: number
+    unitId?: number | null
     assignedBy: string
   }) => {
     const { error } = await supabase.from('event_restaurant_assignments').insert({
       event_id: input.eventId,
       user_name: input.userName,
       building_id: input.buildingId,
+      unit_id: input.unitId ?? null,
       assigned_by: input.assignedBy,
     })
     if (error) {

@@ -386,7 +386,7 @@ export function MobileHome({
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
   onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
   onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
-  onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
+  onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; unitId?: number | null; assignedBy: string }) => Promise<boolean>
   onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
@@ -664,6 +664,8 @@ export function MobileHome({
             buildings={mapBuildings}
             cardBoundaries={mapCardBoundaries}
             cards={mapCards}
+            eventRestaurantAssignments={eventRestaurantAssignments}
+            calendarEvents={calendarEvents}
             currentVisitor={currentVisitor}
             currentUserId={currentUser.id}
             actualRole={role}
