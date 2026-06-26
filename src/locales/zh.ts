@@ -238,7 +238,7 @@ export const zh = {
     'map.cumulativeAbsent': '累计不在',
     'map.memo': '备注',
     'map.memoPlaceholder': '请输入备注...',
-    'map.unitNumberPlaceholder': '房号（例：101号）',
+    'map.unitNumberPlaceholder': '房号（例：101）',
     'map.addUnit': '+ 添加住户',
     'map.address': '地址',
     'map.buildingName': '建筑名',

@@ -161,7 +161,7 @@ export function DesktopMap({
   const [showBoundaryActionMenu, setShowBoundaryActionMenu] = useState(false)
   const [editingPinMode, setEditingPinMode] = useState(false)
   const [showAddBuildingModal, setShowAddBuildingModal] = useState(false)
-  const [newUnitNumber, setNewUnitNumber] = useState('101호')
+  const [newUnitNumber, setNewUnitNumber] = useState('101')
   const [boundaryCardId, setBoundaryCardId] = useState<number>(cards[0]?.id ?? 1)
   const [visibleBoundarySelection, setVisibleBoundarySelection] = useState<number | '전체' | null>('전체')
   const [boundaryMultiSelectMode, setBoundaryMultiSelectMode] = useState(false)
@@ -2064,7 +2064,7 @@ export function DesktopMap({
 
                     {addingUnitToBuildingId === building.id ? (
                       <div className="inline-add-unit-form bld-add-unit-form">
-                        <input autoFocus placeholder="추가할 호수 (예: 101호)" value={newUnitNumber} onChange={(e) => setNewUnitNumber(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newUnitNumber.trim()) { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') } }} />
+                        <input autoFocus placeholder="추가할 호수 (예: 101)" value={newUnitNumber} onChange={(e) => setNewUnitNumber(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newUnitNumber.trim()) { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') } }} />
                         <button disabled={!newUnitNumber.trim()} onClick={() => { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') }}>{t(language, 'map.add')}</button>
                         <button onClick={() => setAddingUnitToBuildingId(null)} style={{ background: '#f1f5f9', color: 'var(--ink-500)' }}>✕</button>
                       </div>

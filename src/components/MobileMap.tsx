@@ -167,7 +167,7 @@ export function MobileMap({
     findActivePeriod(specialPeriods, dateStr)
   const [unitMemos, setUnitMemos] = useState<Record<number, string>>({})
   const [_absentTimestamps, _setAbsentTimestamps] = useState<Record<number, number>>({})
-  const [newUnitNumber, setNewUnitNumber] = useState('101호')
+  const [newUnitNumber, setNewUnitNumber] = useState('101')
   const [addingUnitToBuildingId, setAddingUnitToBuildingId] = useState<number | null>(null)
   const [bulkUnitBuildingId, setBulkUnitBuildingId] = useState<number | null>(null)
 
@@ -1732,7 +1732,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                 autoFocus
                 value={unitNumberDraft}
                 onChange={e => setUnitNumberDraft(e.target.value)}
-                placeholder="호수 (예: 101호)"
+                placeholder="호수 (예: 101)"
                 style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--line)', borderRadius: 7, fontSize: 13, background: 'var(--bg)', color: 'var(--ink)' }}
               />
               <button

@@ -1005,7 +1005,7 @@ export function DesktopTerritory({
       }
 
       // 세대 누산
-      const unitNumber = unitsValue.trim() || '101호'
+      const unitNumber = unitsValue.trim() || '101'
       if (!accum.units.has(unitNumber)) {
         accum.units.set(unitNumber, {
           status,
@@ -1053,7 +1053,7 @@ export function DesktopTerritory({
         lat: accum.lat,
         lng: accum.lng,
         warning: accum.warning || undefined,
-        units: builtUnits.length > 0 ? builtUnits : [{ number: '101호', status: '미방문', isChinese: false, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }],
+        units: builtUnits.length > 0 ? builtUnits : [{ number: '101', status: '미방문', isChinese: false, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }],
       })
     }
 

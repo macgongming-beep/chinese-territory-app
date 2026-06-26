@@ -238,7 +238,7 @@ export const ko = {
     'map.cumulativeAbsent': '누적 부재',
     'map.memo': '메모',
     'map.memoPlaceholder': '메모를 입력하세요...',
-    'map.unitNumberPlaceholder': '호수 (예: 101호)',
+    'map.unitNumberPlaceholder': '호수 (예: 101)',
     'map.addUnit': '+ 세대 추가',
     'map.address': '주소',
     'map.buildingName': '건물명',
