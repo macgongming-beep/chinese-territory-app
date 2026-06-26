@@ -646,7 +646,7 @@ export function MobileTerritory({
                                   <div className={`mobile-today-card-row${isActive ? ' is-active' : ''}`} key={`card-${card.id}`}>
                                     <span className={`mobile-today-card-dot${isActive ? ' is-active' : ''}`} aria-hidden="true" />
                                     <strong>
-                                      {card.name}
+                                      {translateKoreanAddress(card.name, language, translatePlaceNames)}
                                       {isActive && <span className="mobile-today-card-active-badge">봉사 중</span>}
                                     </strong>
                                     <em>{card.progress}%</em>
@@ -1625,9 +1625,9 @@ export function MobileTerritory({
             return (
               <div className="mobile-territory-card" key={card.id}>
                 <div className="mobile-territory-info">
-                  <h3 className="mobile-territory-name">{card.name}</h3>
+                  <h3 className="mobile-territory-name">{translateKoreanAddress(card.name, language, translatePlaceNames)}</h3>
                   <p className="mobile-territory-sub">
-                    {card.area} · 전체 {counts.total} · 주택 {counts.house} · 상가 {counts.shop}
+                    {translateKoreanAddress(card.area, language, translatePlaceNames)} · 전체 {counts.total} · 주택 {counts.house} · 상가 {counts.shop}
                   </p>
                   <div className="mobile-territory-progress">
                     <div className="mobile-territory-bar">

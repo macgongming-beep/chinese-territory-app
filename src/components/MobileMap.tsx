@@ -5,7 +5,7 @@ import { MapCanvas } from './MapCanvas'
 import type { MapAggregateMarker } from './MapCanvas'
 import type { Building, BuildingStatus, CardBoundary, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
-import { t } from '../i18n'
+import { t, translateKoreanAddress } from '../i18n'
 import { getBuildingStatus, findCardForCoordinates } from '../utils/mapUtils'
 import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 import { showToast } from '../lib/toast'
@@ -25,6 +25,7 @@ function shortenAddress(addr: string): string {
 
 export function MobileMap({
   language,
+  translatePlaceNames = false,
   buildings,
   cardBoundaries,
   cards,
@@ -57,6 +58,7 @@ export function MobileMap({
   onSetRegularVisitor,
 }: {
   language: AppLanguage
+  translatePlaceNames?: boolean
   buildings: Building[]
   cardBoundaries: CardBoundary[]
   cards: TerritoryCard[]
@@ -194,6 +196,7 @@ export function MobileMap({
   const [editingPinMode, setEditingPinMode] = useState(false)
   const [drawingBoundaryMode, setDrawingBoundaryMode] = useState(false)
   const [invitationPopupUnitId, setInvitationPopupUnitId] = useState<number | null>(null)
+  const placeLabel = (value: string) => translateKoreanAddress(value, language, translatePlaceNames)
   const today = getLocalDateString()
   const activePeriod = getActivePeriodForDate(today)
   const activeInvitation = activePeriod?.hasInvitation === true
@@ -492,12 +495,12 @@ export function MobileMap({
     mapBuildings.forEach((building) => {
       const card = cardMap.get(building.cardId)
       if (!card) return
-      const label = selectedArea ? card.area : String(card.region)
-      if (!label) return
-      const id = `${selectedArea ? 'area' : 'region'}:${label}`
+      const rawLabel = selectedArea ? card.area : String(card.region)
+      if (!rawLabel) return
+      const id = `${selectedArea ? 'area' : 'region'}:${rawLabel}`
       const current = groups.get(id) ?? {
         id,
-        label,
+        label: placeLabel(rawLabel),
         count: 0,
         unitCount: 0,
         houseCount: 0,
@@ -532,7 +535,7 @@ export function MobileMap({
         lng: group.lngSum / group.pointCount,
       }))
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'))
-  }, [cardMap, mapBuildings, selectedArea, shouldUseAggregateMap])
+  }, [cardMap, language, mapBuildings, selectedArea, shouldUseAggregateMap, translatePlaceNames])
 
   const aggregateScopeLabel = selectedArea ? '동' : '구'
 
@@ -618,9 +621,9 @@ export function MobileMap({
     [selectedCardId, focusedCardIdSet, selectedArea, selectedRegion, cardBoundaries, scopedCardIds])
 
   const drillBreadcrumb = navLevel === 'region'
-    ? selectedArea
+    ? selectedArea ? placeLabel(selectedArea) : selectedArea
     : navLevel === 'card'
-      ? [selectedArea, selectedRegion].filter(Boolean).join(' › ')
+      ? [selectedArea, selectedRegion].filter((part): part is string => Boolean(part)).map((part) => placeLabel(part)).join(' › ')
       : ''
   const drillTitle =
     navLevel === 'area' ? t(language, 'map.areaSelect')
@@ -748,7 +751,7 @@ export function MobileMap({
             <div className="mobile-map-title-copy">
               {navLevel === 'map' ? (
                 <>
-                  <h1>{selectedCardId ? (cards.find(c => c.id === selectedCardId)?.name ?? t(language, 'map.zoneMap')) : t(language, 'map.zoneMap')}</h1>
+                  <h1>{selectedCardId ? translateKoreanAddress(cards.find(c => c.id === selectedCardId)?.name ?? t(language, 'map.zoneMap'), language, translatePlaceNames) : t(language, 'map.zoneMap')}</h1>
                   <span className="mm-stats-sub" role="tablist">
                     <button
                       type="button"
@@ -883,7 +886,7 @@ export function MobileMap({
               type="button"
             >
               <div className="mm-drill-item-body">
-                <div className="mm-drill-item-title">{area}</div>
+                <div className="mm-drill-item-title">{placeLabel(area)}</div>
                 <div className="mm-drill-item-sub">{t(language, 'zone.cardCount')} {areaCardCount(area)}{t(language, 'calendar.countSuffix')}</div>
               </div>
               <span className="mm-drill-chevron">›</span>
@@ -903,7 +906,7 @@ export function MobileMap({
               type="button"
             >
               <div className="mm-drill-item-body">
-                <div className="mm-drill-item-title">{region}</div>
+                <div className="mm-drill-item-title">{placeLabel(region)}</div>
                 <div className="mm-drill-item-sub">{t(language, 'zone.cardCount')} {regionCardCount(region)}{t(language, 'calendar.countSuffix')}</div>
               </div>
               <span className="mm-drill-chevron">›</span>
@@ -925,7 +928,7 @@ export function MobileMap({
                 type="button"
               >
                 <div className="mm-drill-item-body">
-                  <div className="mm-drill-item-title">{card.name}</div>
+                  <div className="mm-drill-item-title">{translateKoreanAddress(card.name, language, translatePlaceNames)}</div>
                   <div className="mm-drill-item-sub">
                     {t(language, 'map.total')} {counts.total} · {t(language, 'map.house')} {counts.house} · {t(language, 'map.shop')} {counts.shop}
                   </div>
@@ -958,7 +961,7 @@ export function MobileMap({
                   className={selectedArea === area ? 'active' : ''}
                   onClick={() => { setSelectedArea(area); setSelectedRegion(null); setSelectedCardId(null) }}
                   type="button"
-                >{area} <em>{areaCardCount(area)}</em></button>
+                >{placeLabel(area)} <em>{areaCardCount(area)}</em></button>
               ))}
             </div>
           )}
@@ -993,8 +996,8 @@ export function MobileMap({
                       }}
                       type="button"
                     >
-                      <strong>{card.name}</strong>
-                      <small>{card.region} · {card.area}</small>
+                      <strong>{translateKoreanAddress(card.name, language, translatePlaceNames)}</strong>
+                      <small>{placeLabel(card.region)} · {placeLabel(card.area)}</small>
                     </button>
                   ))}
                 </div>
@@ -1257,9 +1260,9 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                         >
                           <span className="bld-chevron">{isExpanded ? '▾' : '▸'}</span>
                           <div className="bld-head-text">
-                            <strong>{building.name || shortenAddress(building.address)}</strong>
-                            {building.name && <span className="bld-sub-name">{shortenAddress(building.address)}</span>}
-                            {card && selectedCardId === null && <span className="bld-sub-name" style={{ color: '#94a3b8' }}>{card.name}</span>}
+                            <strong>{translateKoreanAddress(building.name || shortenAddress(building.address), language, translatePlaceNames)}</strong>
+                            {building.name && <span className="bld-sub-name">{translateKoreanAddress(shortenAddress(building.address), language, translatePlaceNames)}</span>}
+                            {card && selectedCardId === null && <span className="bld-sub-name" style={{ color: '#94a3b8' }}>{translateKoreanAddress(card.name, language, translatePlaceNames)}</span>}
                           </div>
                           <div className="bld-head-right">
                             <small>{handledUnits}/{building.units.length} · {completion}%</small>

@@ -660,6 +660,7 @@ export function MobileHome({
       <Route path="/map" element={
         <>
           <MobileMap language={language}
+            translatePlaceNames={translatePlaceNames}
             buildings={mapBuildings}
             cardBoundaries={mapCardBoundaries}
             cards={mapCards}
@@ -967,6 +968,7 @@ export function MobileHome({
                   admin: 모든 콜백 / leader: 식당 토글만 / user: 자료 관리 콜백 일체 차단 */}
               <AdminMobileZone
                 language={language}
+                translatePlaceNames={translatePlaceNames}
                 cards={cards}
                 buildings={buildings}
                 currentVisitor={currentVisitor}

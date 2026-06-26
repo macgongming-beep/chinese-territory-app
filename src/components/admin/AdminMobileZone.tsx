@@ -1,4 +1,4 @@
-import { t } from '../../i18n'
+import { t, translateKoreanAddress } from '../../i18n'
 import type { AppLanguage } from '../../i18n'
 // 관리자 모바일 구역 — design_handoff 04 화면 (구역 시·구 단위)
 // + 20 / 21 / 22 drill-down 일부
@@ -37,6 +37,7 @@ function extractDong(name: string, region: string): string {
 
 type Props = {
   language: AppLanguage
+  translatePlaceNames?: boolean
   cards: TerritoryCard[]
   buildings: Building[]
   currentVisitor: string
@@ -105,6 +106,7 @@ function SearchIcon({ size = 16 }: { size?: number }) {
 
 export function AdminMobileZone({
   language,
+  translatePlaceNames = false,
   cards,
   buildings,
   currentVisitor,
@@ -147,6 +149,7 @@ export function AdminMobileZone({
   const [typeFilter, setTypeFilter] = useState<'전체' | '주택' | '상가'>('전체')
   // 방문필요만 보기 — 켜면 방문필요 건물만 카운트/표시, 방문필요 없는 동·카드는 숨김
   const [onlyNeedsVisit, setOnlyNeedsVisit] = useState(false)
+  const placeLabel = (value: string) => translateKoreanAddress(value, language, translatePlaceNames)
 
   // 드릴 상태 + scope URL 동기화 (replace — 히스토리 오염 방지)
   useEffect(() => {
@@ -454,14 +457,14 @@ export function AdminMobileZone({
               <>
                 <span style={{ color: 'var(--muted-3)' }}>›</span>
                 <span style={{ color: level === 'dongs' ? 'var(--ink)' : 'var(--muted)', fontWeight: level === 'dongs' ? 600 : 500 }}>
-                  {selectedRegion}
+                  {placeLabel(selectedRegion)}
                 </span>
               </>
             )}
             {selectedDong && (
               <>
                 <span style={{ color: 'var(--muted-3)' }}>›</span>
-                <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{selectedDong}</span>
+                <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{placeLabel(selectedDong)}</span>
               </>
             )}
           </nav>
@@ -593,7 +596,7 @@ export function AdminMobileZone({
             </Card>
           ) : (
             regionList.map((r) => (
-              <GroupRow language={language} key={r.name} name={r.name} house={r.house} shop={r.shop} done={r.done} total={r.total} onClick={() => goToRegion(r.name)} />
+              <GroupRow language={language} translatePlaceNames={translatePlaceNames} key={r.name} name={r.name} house={r.house} shop={r.shop} done={r.done} total={r.total} onClick={() => goToRegion(r.name)} />
             ))
           )}
         </div>
@@ -609,7 +612,7 @@ export function AdminMobileZone({
             dongList
               .filter((d) => typeFilter === '전체' || (typeFilter === '주택' ? d.house > 0 : d.shop > 0))
               .map((d) => (
-                <GroupRow language={language} key={d.name} name={d.name} house={d.house} shop={d.shop} done={d.done} total={d.total} typeFilter={typeFilter} onClick={() => goToDong(d.name)} />
+                <GroupRow language={language} translatePlaceNames={translatePlaceNames} key={d.name} name={d.name} house={d.house} shop={d.shop} done={d.done} total={d.total} typeFilter={typeFilter} onClick={() => goToDong(d.name)} />
               ))
           )}
         </div>
@@ -631,7 +634,7 @@ export function AdminMobileZone({
                   return typeFilter === '주택' ? bc.house > 0 : bc.shop > 0
                 })
                 .map((c) => (
-                  <CardRow language={language} key={c.id} card={c} buildingCount={pickCounts(c.id)} typeFilter={typeFilter} onClick={() => onOpenMap(c.id)} />
+                  <CardRow language={language} translatePlaceNames={translatePlaceNames} key={c.id} card={c} buildingCount={pickCounts(c.id)} typeFilter={typeFilter} onClick={() => onOpenMap(c.id)} />
                 ))}
               {doneExcludedCards.length > 0 && (
                 <button
@@ -847,9 +850,11 @@ function ViewToggle({ language, value, onChange }: { language: AppLanguage; valu
 // ── 그룹 (시/구 OR 동) 행 ──────────────────────
 function GroupRow({
   language,
+  translatePlaceNames = false,
   name, house, shop, done, total, onClick, typeFilter = '전체',
 }: {
   language: AppLanguage
+  translatePlaceNames?: boolean
   name: string
   house: number
   shop: number
@@ -858,6 +863,7 @@ function GroupRow({
   onClick: () => void
   typeFilter?: '전체' | '주택' | '상가'
 }) {
+  const displayName = translateKoreanAddress(name, language, translatePlaceNames)
   const countText = typeFilter === '주택' ? `${t(language, 'map.house')} ${house}`
     : typeFilter === '상가' ? `${t(language, 'map.shop')} ${shop}`
     : `${t(language, 'map.house')} ${house} · ${t(language, 'map.shop')} ${shop}`
@@ -880,7 +886,7 @@ function GroupRow({
               fontSize: 15, fontWeight: 600,
               color: isUnassigned ? 'var(--muted)' : 'var(--ink)',
             }}>
-              {name}
+              {displayName}
             </span>
             <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
               {countText}
@@ -904,9 +910,11 @@ function GroupRow({
 // ── 카드 행 (drill-down 마지막 레벨) ────────────
 function CardRow({
   language,
+  translatePlaceNames = false,
   card, buildingCount, onClick, typeFilter = '전체',
 }: {
   language: AppLanguage
+  translatePlaceNames?: boolean
   card: TerritoryCard
   buildingCount: { house: number; shop: number }
   onClick: () => void
@@ -914,6 +922,7 @@ function CardRow({
 }) {
   const operationalState = getTerritoryCardOperationalState(card)
   const isEmptyTarget = operationalState === '대상없음'
+  const displayName = translateKoreanAddress(card.name, language, translatePlaceNames)
   const countText = typeFilter === '주택' ? `${t(language, 'map.house')} ${buildingCount.house}`
     : typeFilter === '상가' ? `${t(language, 'map.shop')} ${buildingCount.shop}`
     : `${t(language, 'map.house')} ${buildingCount.house} · ${t(language, 'map.shop')} ${buildingCount.shop}`
@@ -933,7 +942,7 @@ function CardRow({
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{card.name}</span>
+                <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{displayName}</span>
               </div>
               <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
                 {card.assignedLeader ? `${t(language, 'territory.assignedPrefix')} ${card.assignedLeader} · ` : ''}
