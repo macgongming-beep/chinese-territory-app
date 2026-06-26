@@ -264,9 +264,9 @@ export function normalizeCardType(): CardType {
 
 export function toCard(raw: RawCard, buildings: Building[]): TerritoryCard {
   const cardBuildings = buildings.filter((b) => b.cardId === raw.id)
-  // 식당봉사 건물은 진행률에서 제외 (식당봉사는 별도 통계)
-  const progressBuildings = cardBuildings.filter((b) => !b.isRestaurant)
-  const allUnits = progressBuildings.flatMap((b) => b.units)
+  // 식당도 상가의 일부(구역의 한 세대)이므로 진행률에 포함한다.
+  // ("식당봉사"라는 비공식 활동만 식당 탭/신청으로 분리, 세대 자체는 일반 취급)
+  const allUnits = cardBuildings.flatMap((b) => b.units)
   const completed = allUnits.filter((u) => u.status !== '미방문').length
   const total = allUnits.length
   const progress = total > 0 ? Math.round((completed / total) * 100) : 100
