@@ -7,7 +7,7 @@
 
 import { useMemo, useState } from 'react'
 import type { Dispatch } from 'react'
-import type { Building, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, TerritoryCard } from '../../types'
+import type { Building, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, TerritoryCard } from '../../types'
 import { matchesName } from '../../utils/koreanSearch'
 import { showToast } from '../../lib/toast'
 import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
@@ -28,11 +28,15 @@ type Props = {
   dispatch: Dispatch<DraftAction>
   eventId: number
   currentVisitor: string
+  allCards?: TerritoryCard[]        // 전체 카드 (식당 구 그룹용)
   informalAssets?: InformalAsset[]
+  informalGroups?: InformalGroup[]
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
   onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
   onBack: () => void
 }
 
@@ -41,7 +45,7 @@ type ViewMode = 'list' | 'map'
 
 
 
-export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBoundaries, canEdit, dispatch, eventId, currentVisitor, informalAssets = [], eventInformalAssignments = [], eventRestaurantAssignments = [], onAssignInformalToUser, onAssignRestaurantToUser, onBack }: Props) {
+export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBoundaries, canEdit, dispatch, eventId, currentVisitor, allCards = [], informalAssets = [], informalGroups = [], eventInformalAssignments = [], eventRestaurantAssignments = [], onAssignInformalToUser, onRemoveInformalAssignment, onAssignRestaurantToUser, onRemoveRestaurantAssignment, onBack }: Props) {
   const [view, setView] = useState<ViewMode>('list')
   const [mainTab, setMainTab] = useState<'카드' | '비공식' | '식당'>('카드')
   const [query, setQuery] = useState('')
@@ -49,6 +53,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
   const [buildingTypeFilter, setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [openCompletedGroups, setOpenCompletedGroups] = useState<Set<string>>(new Set())
+  const [expandedSubGroups, setExpandedSubGroups] = useState<Set<string>>(new Set())
 
   // 구(區) 목록 — 담당 카드가 여러 구에 걸치면 지도가 너무 줌아웃됨 → 한 구만 보기
   const regions = useMemo(() => {
@@ -167,53 +172,113 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     })
   }
 
-  // 비공식/식당 → 활성팀 멤버 전원에게 즉시 배정 (B안)
-  const assignToActiveTeam = async (kind: 'informal' | 'restaurant', id: number, label: string) => {
+  // 이 일정에 비공식 자료/식당이 누구에게 배정됐는지 + 배정 id (해제용)
+  // assetId/buildingId → [{ user, assignmentId }]
+  const informalAssigns = useMemo(() => {
+    const m = new Map<number, Array<{ user: string; assignmentId: number }>>()
+    eventInformalAssignments.filter((a) => a.eventId === eventId).forEach((a) => {
+      m.set(a.assetId, [...(m.get(a.assetId) ?? []), { user: a.userName, assignmentId: a.id }])
+    })
+    return m
+  }, [eventInformalAssignments, eventId])
+  const restaurantAssigns = useMemo(() => {
+    const m = new Map<number, Array<{ user: string; assignmentId: number }>>()
+    eventRestaurantAssignments.filter((a) => a.eventId === eventId).forEach((a) => {
+      m.set(a.buildingId, [...(m.get(a.buildingId) ?? []), { user: a.userName, assignmentId: a.id }])
+    })
+    return m
+  }, [eventRestaurantAssignments, eventId])
+
+  // 탭하면 토글: 활성팀에 이미 배정돼 있으면 해제, 아니면 전원 배정
+  const toggleAssign = async (kind: 'informal' | 'restaurant', id: number, label: string) => {
     if (!activeTeam || activeTeam.members.length === 0) {
       showToast('멤버가 있는 팀을 먼저 선택하세요', 'error')
       return
     }
+    const members = activeTeam.members
+    const assigns = (kind === 'informal' ? informalAssigns : restaurantAssigns).get(id) ?? []
+    // 활성팀 멤버 중 이미 배정된 사람의 배정 id
+    const toRemove = assigns.filter((a) => members.includes(a.user))
+
+    if (toRemove.length > 0) {
+      // 해제
+      for (const a of toRemove) {
+        if (kind === 'informal') await onRemoveInformalAssignment?.(a.assignmentId)
+        else await onRemoveRestaurantAssignment?.(a.assignmentId)
+      }
+      showToast(`"${label}" → ${activeTeam.name} 배정 해제`)
+      return
+    }
+    // 배정 (아직 없는 멤버 전원)
     let ok = 0
-    for (const member of activeTeam.members) {
+    for (const member of members) {
       const res = kind === 'informal'
         ? await onAssignInformalToUser?.({ eventId, userName: member, assetId: id, assignedBy: currentVisitor })
         : await onAssignRestaurantToUser?.({ eventId, userName: member, buildingId: id, assignedBy: currentVisitor })
       if (res) ok += 1
     }
-    if (ok > 0) showToast(`"${label}" → ${activeTeam.name}(${activeTeam.members.join('·')}) 배정`)
+    if (ok > 0) showToast(`"${label}" → ${activeTeam.name}(${members.join('·')}) 배정`)
   }
 
-  // 이 일정에 비공식 자료/식당이 누구에게 배정됐는지 (assetId/buildingId → 이름 목록)
-  const informalAssignedTo = useMemo(() => {
-    const m = new Map<number, string[]>()
-    eventInformalAssignments.filter((a) => a.eventId === eventId).forEach((a) => {
-      m.set(a.assetId, [...(m.get(a.assetId) ?? []), a.userName])
-    })
-    return m
-  }, [eventInformalAssignments, eventId])
-  const restaurantAssignedTo = useMemo(() => {
-    const m = new Map<number, string[]>()
-    eventRestaurantAssignments.filter((a) => a.eventId === eventId).forEach((a) => {
-      m.set(a.buildingId, [...(m.get(a.buildingId) ?? []), a.userName])
-    })
-    return m
-  }, [eventRestaurantAssignments, eventId])
-
-  const informalList = useMemo(() => {
+  // 비공식 — 그룹(미분류 + 그룹)별 묶음. 구역 비공식 화면과 동일한 구성.
+  const informalGroupSections = useMemo(() => {
+    const memberSet = new Set(teams.find((t) => t.id === activeTeamId)?.members ?? [])
     const q = query.trim()
-    return informalAssets
-      .filter((a) => !a.archived && (!q || matchesName(a.name, q) || a.name.includes(q)))
-      .map((a) => ({ id: a.id, name: a.name, kind: 'informal' as const, assignedTo: informalAssignedTo.get(a.id) ?? [] }))
-      .filter((item) => !unassignedOnly || item.assignedTo.length === 0)
-  }, [informalAssets, query, informalAssignedTo, unassignedOnly])
-  const restaurantList = useMemo(() => {
+    const visible = informalAssets.filter((a) => !a.archived && (!q || matchesName(a.name, q) || a.name.includes(q)))
+    type Item = { id: number; name: string; address: string; assignedTo: string[]; isActive: boolean }
+    const byGroup = new Map<number | 'null', Item[]>()
+    visible.forEach((a) => {
+      const assigns = informalAssigns.get(a.id) ?? []
+      if (unassignedOnly && assigns.length > 0) return
+      const item: Item = { id: a.id, name: a.name, address: '', assignedTo: assigns.map((x) => x.user), isActive: assigns.some((x) => memberSet.has(x.user)) }
+      const key = a.groupId ?? 'null'
+      byGroup.set(key, [...(byGroup.get(key) ?? []), item])
+    })
+    const sections: Array<{ key: string; title: string; items: Item[] }> = []
+    // 미분류 먼저
+    if (byGroup.has('null')) sections.push({ key: 'inf-null', title: '미분류', items: byGroup.get('null')! })
+    informalGroups.forEach((g) => {
+      if (byGroup.has(g.id)) sections.push({ key: `inf-${g.id}`, title: g.name, items: byGroup.get(g.id)! })
+    })
+    return sections
+  }, [informalAssets, informalGroups, query, informalAssigns, unassignedOnly, teams, activeTeamId])
+
+  // 식당 — 구(區)별 묶음. 구역 식당 화면과 동일한 구성.
+  const cardRegionById = useMemo(() => {
+    const m = new Map<number, string>()
+    const source = allCards.length ? allCards : cards
+    source.forEach((c) => m.set(c.id, c.region))
+    return m
+  }, [allCards, cards])
+  const restaurantRegionSections = useMemo(() => {
+    const memberSet = new Set(teams.find((t) => t.id === activeTeamId)?.members ?? [])
     const q = query.trim().toLowerCase()
-    return buildings
-      .filter((b) => b.isRestaurant)
-      .filter((b) => !q || b.name.toLowerCase().includes(q) || (b.address ?? '').toLowerCase().includes(q))
-      .map((b) => ({ id: b.id, name: b.name, address: b.address, kind: 'restaurant' as const, assignedTo: restaurantAssignedTo.get(b.id) ?? [] }))
-      .filter((item) => !unassignedOnly || item.assignedTo.length === 0)
-  }, [buildings, query, restaurantAssignedTo, unassignedOnly])
+    const visible = buildings.filter((b) => b.isRestaurant &&
+      (!q || b.name.toLowerCase().includes(q) || (b.address ?? '').toLowerCase().includes(q)))
+    type Item = { id: number; name: string; address: string; assignedTo: string[]; isActive: boolean }
+    const byRegion = new Map<string, Item[]>()
+    visible.forEach((b) => {
+      const assigns = restaurantAssigns.get(b.id) ?? []
+      if (unassignedOnly && assigns.length > 0) return
+      const item: Item = { id: b.id, name: b.name || b.address, address: b.address, assignedTo: assigns.map((x) => x.user), isActive: assigns.some((x) => memberSet.has(x.user)) }
+      const region = cardRegionById.get(b.cardId) || '기타'
+      byRegion.set(region, [...(byRegion.get(region) ?? []), item])
+    })
+    return Array.from(byRegion.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'ko'))
+      .map(([region, items]) => ({ key: `rest-${region}`, title: region, items }))
+  }, [buildings, query, restaurantAssigns, unassignedOnly, cardRegionById, teams, activeTeamId])
+
+  const subSections = mainTab === '비공식' ? informalGroupSections : restaurantRegionSections
+  const subTotal = subSections.reduce((n, s) => n + s.items.length, 0)
+  const toggleSubGroup = (key: string) => {
+    setExpandedSubGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   const toggleCard = (cardId: number) => {
     if (!canEdit || !activeTeam) return
@@ -373,45 +438,72 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
             })}
           </div>
 
-          {/* 비공식 / 식당 — 탭하면 활성팀 전원에게 즉시 배정 */}
+          {/* 비공식 / 식당 — 구역 화면과 동일한 그룹 구성. 탭=토글(배정↔해제) */}
           {mainTab !== '카드' && (
             <>
               {!activeTeam && <div className="asg-empty">먼저 위에서 팀을 선택하세요.</div>}
               {activeTeam && (
-                <div style={{ padding: '0 2px 4px', fontSize: 12, color: 'var(--muted)' }}>
-                  탭하면 <b style={{ color: 'var(--ink)' }}>{activeTeam.name}</b>({activeTeam.members.join('·') || '멤버 없음'})에게 바로 배정돼요.
+                <div style={{ padding: '0 2px 8px', fontSize: 12, color: 'var(--muted)' }}>
+                  탭하면 <b style={{ color: 'var(--ink)' }}>{activeTeam.name}</b>({activeTeam.members.join('·') || '멤버 없음'}) 배정 ↔ 다시 탭하면 해제
                 </div>
               )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {(mainTab === '비공식'
-                  ? informalList.map((a) => ({ id: a.id, name: a.name, sub: '비공식 자료', kind: 'informal' as const, assignedTo: a.assignedTo }))
-                  : restaurantList.map((b) => ({ id: b.id, name: b.name, sub: b.address || '식당', kind: 'restaurant' as const, assignedTo: b.assignedTo }))
-                ).map((item) => (
-                  <button
-                    key={`${item.kind}-${item.id}`}
-                    type="button"
-                    disabled={!activeTeam}
-                    onClick={() => assignToActiveTeam(item.kind, item.id, item.name)}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', minHeight: 0, padding: '12px 14px', borderRadius: 10,
-                      border: '1px solid var(--line)', background: 'var(--surface)', cursor: activeTeam ? 'pointer' : 'default', opacity: activeTeam ? 1 : 0.5 }}
-                  >
-                    <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)' }}>{item.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{item.sub}</div>
-                    {item.assignedTo.length > 0 && (
-                      <div style={{ fontSize: 11.5, color: 'var(--primary-600, #2563eb)', marginTop: 4, fontWeight: 600 }}>
-                        ✓ {item.assignedTo.join('·')} 배정됨
-                      </div>
-                    )}
-                  </button>
-                ))}
-                {(mainTab === '비공식' ? informalList : restaurantList).length === 0 && (
-                  <div className="asg-empty" style={{ color: 'var(--muted)' }}>
-                    {unassignedOnly
-                      ? (mainTab === '비공식' ? '미배정 비공식 자료가 없어요.' : '미배정 식당이 없어요.')
-                      : (mainTab === '비공식' ? '비공식 자료가 없어요.' : '식당이 없어요.')}
-                  </div>
-                )}
-              </div>
+              {subTotal === 0 ? (
+                <div className="asg-empty" style={{ color: 'var(--muted)' }}>
+                  {unassignedOnly
+                    ? (mainTab === '비공식' ? '미배정 비공식 자료가 없어요.' : '미배정 식당이 없어요.')
+                    : (mainTab === '비공식' ? '비공식 자료가 없어요.' : '식당이 없어요.')}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {subSections.map((section) => {
+                    const open = expandedSubGroups.has(section.key)
+                    return (
+                      <section key={section.key}>
+                        <div onClick={() => toggleSubGroup(section.key)}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 4px', marginBottom: 6, cursor: 'pointer', userSelect: 'none' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ display: 'flex', transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            </span>
+                            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{section.title}</span>
+                            <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>{section.items.length}</span>
+                          </div>
+                          <span style={{ fontSize: 12, color: 'var(--muted)' }}>{open ? '접기' : '열기'}</span>
+                        </div>
+                        {open && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {section.items.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                disabled={!activeTeam}
+                                onClick={() => toggleAssign(mainTab === '비공식' ? 'informal' : 'restaurant', item.id, item.name)}
+                                style={{ display: 'block', width: '100%', textAlign: 'left', minHeight: 0, padding: '12px 14px', borderRadius: 12,
+                                  border: item.isActive ? '1.5px solid var(--ink)' : '1px solid var(--line)',
+                                  background: item.isActive ? 'var(--bg-subtle, #f4f4f2)' : 'var(--surface)',
+                                  cursor: activeTeam ? 'pointer' : 'default', opacity: activeTeam ? 1 : 0.5 }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                                  {item.isActive && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: 'var(--ink)' }}>✓ 배정됨</span>}
+                                </div>
+                                {mainTab === '식당' && item.address && (
+                                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.address}</div>
+                                )}
+                                {item.assignedTo.length > 0 && (
+                                  <div style={{ fontSize: 11.5, color: 'var(--primary-600, #2563eb)', marginTop: 4, fontWeight: 600 }}>
+                                    {item.assignedTo.join('·')} 배정됨
+                                  </div>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    )
+                  })}
+                </div>
+              )}
             </>
           )}
 

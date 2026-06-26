@@ -290,9 +290,9 @@ export function MobileHome({
   onDeleteInformalGroup,
   onMoveAssetToGroup,
   onAssignInformalToUser,
-  onRemoveInformalAssignment: _onRemoveInformalAssignment,
+  onRemoveInformalAssignment,
   onAssignRestaurantToUser,
-  onRemoveRestaurantAssignment: _onRemoveRestaurantAssignment,
+  onRemoveRestaurantAssignment,
   onToggleBuildingRestaurant,
   onSetRegularVisitor,
   onAddRestaurantVisit,
@@ -833,10 +833,13 @@ export function MobileHome({
                   mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
                   onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
                   informalAssets={informalAssets}
+                  informalGroups={informalGroups}
                   eventInformalAssignments={eventInformalAssignments}
                   eventRestaurantAssignments={eventRestaurantAssignments}
                   onAssignInformalToUser={onAssignInformalToUser}
+                  onRemoveInformalAssignment={onRemoveInformalAssignment}
                   onAssignRestaurantToUser={onAssignRestaurantToUser}
+                  onRemoveRestaurantAssignment={onRemoveRestaurantAssignment}
                   /* 일정 생성: 관리자·개발자만. 인도자는 본인 일정 수정만 가능, user 는 신청만. */
                   onCreateEvent={(role === 'admin' || role === 'developer') ? onCreateCalendarEvent : undefined}
                   onCreateRepeatEvents={(role === 'admin' || role === 'developer') ? onCreateRepeatCalendarEvents : undefined}

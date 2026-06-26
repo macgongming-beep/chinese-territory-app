@@ -15,7 +15,7 @@ import { findActivePeriod } from '../../utils/specialPeriod'
 
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, Role, SpecialPeriod, TerritoryCard } from '../../types'
+import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, SpecialPeriod, TerritoryCard } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { AssignmentEditor } from '../assignment/AssignmentEditor'
 import { loadPlacePresets, savePlacePresets, normalizePlacePresets, PLACE_PRESETS_MAX } from '../../lib/placePresets'
@@ -75,10 +75,13 @@ type Props = {
     options?: { silentSuccess?: boolean; status?: 'confirmed' | 'shared'; expectedSharedAt?: string | null; onConflict?: (serverSharedAt: string | null) => void },
   ) => Promise<void> | void
   informalAssets?: InformalAsset[]
+  informalGroups?: InformalGroup[]
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
   onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
   onCreateEvent?: (input: EventInput & { date: string }) => void
   onCreateRepeatEvents?: (dates: string[], input: EventInput) => void
   onDeleteEvent?: (id: number) => void
@@ -221,10 +224,13 @@ export function AdminMobileCalendar({
   mentionUsers = [],
   onAssignCardsToEventParticipantsBulk,
   informalAssets = [],
+  informalGroups = [],
   eventInformalAssignments = [],
   eventRestaurantAssignments = [],
   onAssignInformalToUser,
+  onRemoveInformalAssignment,
   onAssignRestaurantToUser,
+  onRemoveRestaurantAssignment,
   onCreateEvent,
   onCreateRepeatEvents,
   onDeleteEvent,
@@ -653,11 +659,15 @@ export function AdminMobileCalendar({
             cardBoundaries={cardBoundaries}
             currentVisitor={currentVisitor}
             canEdit={canEdit}
+            allCards={cards}
             informalAssets={informalAssets}
+            informalGroups={informalGroups}
             eventInformalAssignments={eventInformalAssignments}
             eventRestaurantAssignments={eventRestaurantAssignments}
             onAssignInformalToUser={onAssignInformalToUser}
+            onRemoveInformalAssignment={onRemoveInformalAssignment}
             onAssignRestaurantToUser={onAssignRestaurantToUser}
+            onRemoveRestaurantAssignment={onRemoveRestaurantAssignment}
             onClose={() => setAssignEventId(null)}
             onShare={(eventId, assignments, opts) =>
               onAssignCardsToEventParticipantsBulk(eventId, assignments, {
