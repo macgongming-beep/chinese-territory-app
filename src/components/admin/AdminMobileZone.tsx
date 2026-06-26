@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { Building, InformalAsset, InformalGroup, Role, TerritoryCard } from '../../types'
 import { compareTerritoryCardsByOperationalPriority, getTerritoryCardOperationalState } from '../../utils/cardSearch'
+import { getBuildingStatus } from '../../utils/mapUtils'
 import { InformalCardsTab } from '../InformalCardsTab'
 import { RestaurantsTab } from '../RestaurantsTab'
 import { Card } from '../ui'
@@ -140,6 +141,8 @@ export function AdminMobileZone({
   const [showDoneExcludedCards, setShowDoneExcludedCards] = useState(false)
   // 동/카드 목록 타입 필터 (지도뷰처럼 전체/주택/상가) — 0개면 목록에서 숨김
   const [typeFilter, setTypeFilter] = useState<'전체' | '주택' | '상가'>('전체')
+  // 방문필요만 보기 — 켜면 방문필요 건물만 카운트/표시, 방문필요 없는 동·카드는 숨김
+  const [onlyNeedsVisit, setOnlyNeedsVisit] = useState(false)
 
   // 드릴 상태 + scope URL 동기화 (replace — 히스토리 오염 방지)
   useEffect(() => {
@@ -180,17 +183,24 @@ export function AdminMobileZone({
     })
   }, [cards, scope, currentVisitor])
 
-  // ── 건물 카운트 매핑 ─────────────────────────
+  // ── 건물 카운트 매핑 (전체 + 방문필요만) ─────────────────────────
   const cardBuildingCounts = useMemo(() => {
-    const map = new Map<number, { house: number; shop: number }>()
+    const map = new Map<number, { house: number; shop: number; houseNeed: number; shopNeed: number }>()
     for (const b of buildings) {
-      const prev = map.get(b.cardId) ?? { house: 0, shop: 0 }
-      if (b.type === '주택') prev.house += 1
-      else if (b.type === '상가') prev.shop += 1
+      const prev = map.get(b.cardId) ?? { house: 0, shop: 0, houseNeed: 0, shopNeed: 0 }
+      const need = getBuildingStatus(b) === '방문필요'
+      if (b.type === '주택') { prev.house += 1; if (need) prev.houseNeed += 1 }
+      else if (b.type === '상가') { prev.shop += 1; if (need) prev.shopNeed += 1 }
       map.set(b.cardId, prev)
     }
     return map
   }, [buildings])
+
+  // onlyNeedsVisit 여부에 따라 카드의 주택/상가 카운트를 골라준다
+  const pickCounts = (cardId: number): { house: number; shop: number } => {
+    const bc = cardBuildingCounts.get(cardId) ?? { house: 0, shop: 0, houseNeed: 0, shopNeed: 0 }
+    return onlyNeedsVisit ? { house: bc.houseNeed, shop: bc.shopNeed } : { house: bc.house, shop: bc.shop }
+  }
 
   // ── 상위 stats (전체/배정/미배정) ─────────────
   const topStats = useMemo(() => {
@@ -212,12 +222,14 @@ export function AdminMobileZone({
     let house = 0
     let shop = 0
     for (const c of cardsInScope) {
-      const bc = cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }
+      const bc = pickCounts(c.id)
       house += bc.house
       shop += bc.shop
     }
-    return { total: cardsInScope.length, house, shop }
-  }, [baseCards, cardBuildingCounts, level, selectedRegion, selectedDong])
+    // 방문필요 모드에선 전체 칩 = 방문필요 건물 합, 평소엔 카드 수
+    return { total: onlyNeedsVisit ? house + shop : cardsInScope.length, house, shop }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseCards, cardBuildingCounts, level, selectedRegion, selectedDong, onlyNeedsVisit])
 
   // ── 담당 view 의 state totals (미사용 / 사용중 / 완료·제외) ─────
   // 본인 담당 카드를 status 별 집계 — 어휘 매핑:
@@ -250,7 +262,7 @@ export function AdminMobileZone({
     const buildEntry = (name: string, cs: TerritoryCard[]) => {
       let house = 0, shop = 0, done = 0
       for (const c of cs) {
-        const bc = cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }
+        const bc = pickCounts(c.id)
         house += bc.house
         shop += bc.shop
         const operationalState = getTerritoryCardOperationalState(c)
@@ -262,8 +274,11 @@ export function AdminMobileZone({
       if (map.has(r)) out.push(buildEntry(r, map.get(r)!))
     }
     if (map.has('기타')) out.push(buildEntry('기타', map.get('기타')!))
-    return out.filter((e) => !query || e.name.includes(query))
-  }, [baseCards, cardBuildingCounts, query])
+    return out
+      .filter((e) => !query || e.name.includes(query))
+      .filter((e) => !onlyNeedsVisit || e.house + e.shop > 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseCards, cardBuildingCounts, query, onlyNeedsVisit])
 
   // ── 동 list ─────────────────────────────────
   const dongList = useMemo(() => {
@@ -282,7 +297,7 @@ export function AdminMobileZone({
     for (const [dong, cs] of map.entries()) {
       let house = 0, shop = 0, done = 0
       for (const c of cs) {
-        const bc = cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }
+        const bc = pickCounts(c.id)
         house += bc.house
         shop += bc.shop
         const operationalState = getTerritoryCardOperationalState(c)
@@ -292,12 +307,14 @@ export function AdminMobileZone({
     }
     return out
       .filter((e) => !query || e.name.includes(query))
+      .filter((e) => !onlyNeedsVisit || e.house + e.shop > 0)
       .sort((a, b) => {
         if (a.name === '기타') return 1
         if (b.name === '기타') return -1
         return a.name.localeCompare(b.name, 'ko')
       })
-  }, [baseCards, cardBuildingCounts, selectedRegion, query])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseCards, cardBuildingCounts, selectedRegion, query, onlyNeedsVisit])
 
   // ── 카드 list ───────────────────────────────
   const cardList = useMemo(() => {
@@ -497,6 +514,22 @@ export function AdminMobileZone({
               </button>
             )
           })}
+          {/* 방문필요만 보기 토글 — 오른쪽 끝 */}
+          <button
+            type="button"
+            onClick={() => setOnlyNeedsVisit((v) => !v)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              minHeight: 0, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', marginLeft: 'auto',
+              fontSize: 12, fontWeight: onlyNeedsVisit ? 700 : 500, lineHeight: 1.3,
+              border: onlyNeedsVisit ? '1px solid var(--status-danger)' : '1px solid var(--line)',
+              background: onlyNeedsVisit ? 'rgba(220,38,38,0.08)' : 'var(--surface)',
+              color: onlyNeedsVisit ? 'var(--status-danger)' : 'var(--muted)',
+            }}
+          >
+            <span style={{ width: 13, height: 13, borderRadius: 3, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${onlyNeedsVisit ? 'var(--status-danger)' : 'var(--line-2,#ccc)'}`, background: onlyNeedsVisit ? 'var(--status-danger)' : 'transparent', color: '#fff', fontSize: 10 }}>{onlyNeedsVisit ? '✓' : ''}</span>
+            방문필요
+          </button>
         </div>
       ) : (
         /* scope === 'mine' && level === 'regions' → 담당 state totals 행 (디자인 22) */
@@ -588,12 +621,13 @@ export function AdminMobileZone({
             <>
               {renderedCardList
                 .filter((c) => {
+                  const bc = pickCounts(c.id)
+                  if (onlyNeedsVisit && bc.house + bc.shop === 0) return false
                   if (typeFilter === '전체') return true
-                  const bc = cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }
                   return typeFilter === '주택' ? bc.house > 0 : bc.shop > 0
                 })
                 .map((c) => (
-                  <CardRow key={c.id} card={c} buildingCount={cardBuildingCounts.get(c.id) ?? { house: 0, shop: 0 }} typeFilter={typeFilter} onClick={() => onOpenMap(c.id)} />
+                  <CardRow key={c.id} card={c} buildingCount={pickCounts(c.id)} typeFilter={typeFilter} onClick={() => onOpenMap(c.id)} />
                 ))}
               {doneExcludedCards.length > 0 && (
                 <button

@@ -267,7 +267,8 @@ export function toCard(raw: RawCard, buildings: Building[]): TerritoryCard {
   // 식당도 상가의 일부(구역의 한 세대)이므로 진행률에 포함한다.
   // ("식당봉사"라는 비공식 활동만 식당 탭/신청으로 분리, 세대 자체는 일반 취급)
   const allUnits = cardBuildings.flatMap((b) => b.units)
-  const completed = allUnits.filter((u) => u.status !== '미방문').length
+  // "완료" 기준을 지도의 방문완료 판정과 동일하게 — 미방문·부재는 아직 방문필요로 본다.
+  const completed = allUnits.filter((u) => u.status !== '미방문' && u.status !== '부재').length
   const total = allUnits.length
   const progress = total > 0 ? Math.round((completed / total) * 100) : 100
   const regularVisitPoints = cardBuildings.flatMap((b) =>
