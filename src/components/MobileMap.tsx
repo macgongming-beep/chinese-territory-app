@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- 네이버 지도 SDK(window.naver)는 공식 TS 타입이 없어 any 사용이 불가피함 */
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { MapCanvas } from './MapCanvas'
 import type { MapAggregateMarker } from './MapCanvas'
@@ -200,7 +200,7 @@ export function MobileMap({
   const [editingPinMode, setEditingPinMode] = useState(false)
   const [drawingBoundaryMode, setDrawingBoundaryMode] = useState(false)
   const [invitationPopupUnitId, setInvitationPopupUnitId] = useState<number | null>(null)
-  const placeLabel = (value: string) => translateKoreanAddress(value, language, translatePlaceNames)
+  const placeLabel = useCallback((value: string) => translateKoreanAddress(value, language, translatePlaceNames), [language, translatePlaceNames])
   const today = getLocalDateString()
   const activePeriod = getActivePeriodForDate(today)
   const activeInvitation = activePeriod?.hasInvitation === true
@@ -539,7 +539,7 @@ export function MobileMap({
         lng: group.lngSum / group.pointCount,
       }))
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'))
-  }, [cardMap, language, mapBuildings, selectedArea, shouldUseAggregateMap, translatePlaceNames])
+  }, [cardMap, mapBuildings, selectedArea, shouldUseAggregateMap, placeLabel])
 
   const aggregateScopeLabel = selectedArea ? '동' : '구'
 
