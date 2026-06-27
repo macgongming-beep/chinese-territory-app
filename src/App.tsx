@@ -147,6 +147,7 @@ function App() {
     eventRestaurantAssignments,
     informalGroups,
     globalSettings,
+    upsertGlobalSetting,
     uploadInformalAsset,
     deleteInformalAsset,
     createInformalGroup,
@@ -392,6 +393,7 @@ function App() {
             onBulkSetRestaurant={bulkSetRestaurantFlag}
             restaurantRequests={restaurantRequests}
             globalSettings={globalSettings}
+            onUpsertGlobalSetting={upsertGlobalSetting}
             onApproveRestaurantRequest={approveRestaurantRequest}
             onRejectRestaurantRequest={rejectRestaurantRequest}
           />
@@ -482,6 +484,7 @@ function App() {
               onSetRegularVisitor={setRegularVisitor}
               restaurantRequests={restaurantRequests}
             globalSettings={globalSettings}
+            onUpsertGlobalSetting={upsertGlobalSetting}
               onAddRestaurantVisit={addRestaurantVisit}
               onSubmitRestaurantRequest={submitRestaurantRequest}
               onUpdateRestaurantRequestMemo={updateRestaurantRequestMemo}

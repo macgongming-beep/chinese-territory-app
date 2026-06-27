@@ -302,6 +302,7 @@ export function MobileHome({
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
   globalSettings = {},
+  onUpsertGlobalSetting,
 }: {
   leaderNames?: string[]
   buildings: Building[]
@@ -397,6 +398,7 @@ export function MobileHome({
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
   globalSettings?: Record<string, string>
+  onUpsertGlobalSetting?: (key: string, value: string) => Promise<boolean>
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -855,6 +857,7 @@ export function MobileHome({
                   onRemoveParticipantFromEvent={_onRemoveParticipantFromEvent}
                   specialPeriods={specialPeriods}
                   globalSettings={globalSettings}
+                  onUpsertGlobalSetting={onUpsertGlobalSetting}
                 />
               </>
             } />

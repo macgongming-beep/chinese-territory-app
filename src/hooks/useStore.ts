@@ -667,6 +667,17 @@ export function useStore() {
     rejectRestaurantRequest,
   } = makeRestaurantServiceMutations({ fetchAll: refetchRestaurantRequests, buildings })
 
+  // app_settings 키/값 서버 저장 (기기 간 공유). 캘린더 프리셋 등에 사용.
+  const upsertGlobalSetting = async (key: string, value: string): Promise<boolean> => {
+    setGlobalSettings((prev) => ({ ...prev, [key]: value }))  // optimistic
+    const { error } = await supabase.from('app_settings').upsert({ key, value }, { onConflict: 'key' })
+    if (error) {
+      console.warn('[app_settings] 저장 실패', error)
+      return false
+    }
+    return true
+  }
+
   return {
     refetchAll: fetchAll,
     refetchSlices: fetchSlices,
@@ -768,6 +779,7 @@ export function useStore() {
     removeRestaurantUnit,
     bulkSetRestaurantFlag,
     globalSettings,
+    upsertGlobalSetting,
     // 식당봉사
     restaurantRequests,
     addRestaurantVisit,

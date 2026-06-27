@@ -162,6 +162,7 @@ export function DesktopApp({
   onUpdateMyProfile,
   onFetchMyLoginLogs,
   globalSettings = {},
+  onUpsertGlobalSetting,
 }: {
   language: AppLanguage
   buildings: Building[]
@@ -305,6 +306,7 @@ export function DesktopApp({
   onUpdateMyProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
   onFetchMyLoginLogs: (limit?: number) => Promise<LoginLogRecord[]>
   globalSettings?: Record<string, string>
+  onUpsertGlobalSetting?: (key: string, value: string) => Promise<boolean>
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -564,6 +566,7 @@ export function DesktopApp({
             onRemoveParticipant={onRemoveParticipantFromEvent}
             onAddParticipant={onAddParticipantToEvent}
             globalSettings={globalSettings}
+            onUpsertGlobalSetting={onUpsertGlobalSetting}
           />
         } />
         {/* /territory → 나의봉사 (개인 봉사 현황) */}

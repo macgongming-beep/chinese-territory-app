@@ -18,13 +18,15 @@ import { useSearchParams } from 'react-router-dom'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, SpecialPeriod, TerritoryCard } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { AssignmentEditor } from '../assignment/AssignmentEditor'
-import { loadPlacePresets, savePlacePresets, normalizePlacePresets, PLACE_PRESETS_MAX } from '../../lib/placePresets'
+import { savePlacePresets, normalizePlacePresets, resolvePlacePresets, parsePlacePresetsValue, PLACE_PRESET_SETTING_KEY, PLACE_PRESETS_MAX } from '../../lib/placePresets'
 import type { PlacePreset } from '../../lib/placePresets'
 import {
   TIME_PRESETS_MAX,
+  TIME_PRESET_SETTING_KEY,
   addMinutesToTime,
   normalizeTimePresets,
-  loadTimePresets,
+  resolveTimePresets,
+  parseTimePresetsValue,
   saveTimePresets,
 } from '../../lib/timePresets'
 import type { TimePreset } from '../../lib/timePresets'
@@ -89,6 +91,7 @@ type Props = {
   onRemoveParticipantFromEvent?: (eventId: number, userName: string) => void
   specialPeriods?: SpecialPeriod[]
   globalSettings?: Record<string, string>
+  onUpsertGlobalSetting?: (key: string, value: string) => Promise<boolean>
 }
 
 function pad2(n: number) {
@@ -194,6 +197,7 @@ export function AdminMobileCalendar({
   onRemoveParticipantFromEvent,
   specialPeriods = [],
   globalSettings = {},
+  onUpsertGlobalSetting,
 }: Props) {
   const today = useMemo(() => new Date(), [])
   const [year, setYear] = useState(today.getFullYear())
@@ -515,6 +519,8 @@ export function AdminMobileCalendar({
           defaultDate={selectedDateStr}
           editingEvent={editingEvent}
           leaderNames={leaderNames}
+          globalSettings={globalSettings}
+          onUpsertGlobalSetting={onUpsertGlobalSetting}
           onClose={() => {
             setAddOpen(false)
             setEditingEventId(null)
@@ -949,16 +955,20 @@ function UpcomingEventCard({ language,  event, onClick }: { event: CalendarEvent
 }
 
 // ── 일정 추가/편집 바텀 시트 ────────────────
-function EventAddSheet({ language, 
+function EventAddSheet({ language,
   defaultDate,
   editingEvent,
   leaderNames,
+  globalSettings = {},
+  onUpsertGlobalSetting,
   onClose,
   onSubmit,
 }: {
   defaultDate: string
   editingEvent?: CalendarEvent | null
   leaderNames: string[]
+  globalSettings?: Record<string, string>
+  onUpsertGlobalSetting?: (key: string, value: string) => Promise<boolean>
   onClose: () => void
   onSubmit: (input: EventSheetInput) => void
 ; language: AppLanguage }) {
@@ -978,10 +988,23 @@ function EventAddSheet({ language,
   const [allowApplications, setAllowApplications] = useState(editingEvent?.allowApplications ?? true)
   const [repeat, setRepeat] = useState(false)
   const [repeatEnd, setRepeatEnd] = useState('')
-  const [timePresets, setTimePresets] = useState<TimePreset[]>(loadTimePresets)
+  const [timePresets, setTimePresets] = useState<TimePreset[]>(() => resolveTimePresets(globalSettings[TIME_PRESET_SETTING_KEY]))
   const [timeSettingsOpen, setTimeSettingsOpen] = useState(false)
-  const [placePresets, setPlacePresets] = useState<PlacePreset[]>(loadPlacePresets)
+  const [placePresets, setPlacePresets] = useState<PlacePreset[]>(() => resolvePlacePresets(globalSettings[PLACE_PRESET_SETTING_KEY]))
   const [placeSettingsOpen, setPlaceSettingsOpen] = useState(false)
+  // 다른 기기에서 바뀐 서버 프리셋이 fetch 되면 반영 (편집 중 아닐 때)
+  useEffect(() => {
+    if (timeSettingsOpen) return
+    const parsed = parseTimePresetsValue(globalSettings[TIME_PRESET_SETTING_KEY])
+    if (parsed) setTimePresets(parsed)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSettings[TIME_PRESET_SETTING_KEY]])
+  useEffect(() => {
+    if (placeSettingsOpen) return
+    const parsed = parsePlacePresetsValue(globalSettings[PLACE_PRESET_SETTING_KEY])
+    if (parsed) setPlacePresets(parsed)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSettings[PLACE_PRESET_SETTING_KEY]])
   const canSubmit = title.trim().length > 0
   const isEditing = !!editingEvent
   const repeatCount = repeat && repeatEnd ? getWeeklyDates(date, repeatEnd).length : 0
@@ -990,13 +1013,15 @@ function EventAddSheet({ language,
   const updateTimePresets = (next: TimePreset[]) => {
     const normalized = normalizeTimePresets(next)
     setTimePresets(normalized)
-    saveTimePresets(normalized)
+    saveTimePresets(normalized)  // 로컬 캐시
+    void onUpsertGlobalSetting?.(TIME_PRESET_SETTING_KEY, JSON.stringify(normalized))  // 서버 공유
   }
 
   const updatePlacePresets = (next: PlacePreset[]) => {
     const normalized = normalizePlacePresets(next)
     setPlacePresets(normalized)
-    savePlacePresets(normalized)
+    savePlacePresets(normalized)  // 로컬 캐시
+    void onUpsertGlobalSetting?.(PLACE_PRESET_SETTING_KEY, JSON.stringify(normalized))  // 서버 공유
   }
 
   const applyPlacePreset = (preset: PlacePreset) => {

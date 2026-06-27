@@ -7,9 +7,9 @@ import type { CalendarEvent, SpecialPeriod, TerritoryCard } from '../types'
 import { PERIOD_COLORS } from '../types'
 import { ChatRoom } from './ChatRoom'
 import { CommentSection, type MentionUser } from './CommentSection'
-import { loadPlacePresets, savePlacePresets, normalizePlacePresets } from '../lib/placePresets'
+import { savePlacePresets, normalizePlacePresets, resolvePlacePresets, parsePlacePresetsValue, PLACE_PRESET_SETTING_KEY } from '../lib/placePresets'
 import type { PlacePreset } from '../lib/placePresets'
-import { loadTimePresets, saveTimePresets, normalizeTimePresets, addMinutesToTime } from '../lib/timePresets'
+import { saveTimePresets, normalizeTimePresets, resolveTimePresets, parseTimePresetsValue, TIME_PRESET_SETTING_KEY, addMinutesToTime } from '../lib/timePresets'
 import type { TimePreset } from '../lib/timePresets'
 import { PlacePresetEditor, TimePresetEditor } from './admin/AdminMobileCalendar'
 import { ExportEventsModal } from './calendar/ExportEventsModal'
@@ -83,6 +83,7 @@ export function DesktopCalendar({
   onDeleteSpecialPeriod,
   specialPeriods,
   globalSettings = {},
+  onUpsertGlobalSetting,
 }: {
   currentVisitor: string
   currentUserId?: number | null
@@ -108,6 +109,7 @@ export function DesktopCalendar({
   onDeleteSpecialPeriod: (id: number) => void
   specialPeriods: SpecialPeriod[]
   globalSettings?: Record<string, string>
+  onUpsertGlobalSetting?: (key: string, value: string) => Promise<boolean>
 }) {
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
@@ -146,9 +148,9 @@ export function DesktopCalendar({
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newDate, setNewDate] = useState(() => toDateStr(today.getFullYear(), today.getMonth() + 1, today.getDate()))
   const [newTitle, setNewTitle] = useState('传道')
-  const [placePresets, setPlacePresets] = useState<PlacePreset[]>(loadPlacePresets)
+  const [placePresets, setPlacePresets] = useState<PlacePreset[]>(() => resolvePlacePresets(globalSettings[PLACE_PRESET_SETTING_KEY]))
   const [placeSettingsOpen, setPlaceSettingsOpen] = useState(false)
-  const [timePresets, setTimePresets] = useState<TimePreset[]>(loadTimePresets)
+  const [timePresets, setTimePresets] = useState<TimePreset[]>(() => resolveTimePresets(globalSettings[TIME_PRESET_SETTING_KEY]))
   const [timeSettingsOpen, setTimeSettingsOpen] = useState(false)
   const [newTime, setNewTime] = useState('10:00')
   const [newEndTime, setNewEndTime] = useState('12:00')
@@ -203,14 +205,30 @@ export function DesktopCalendar({
   const updatePlacePresets = (next: PlacePreset[]) => {
     const normalized = normalizePlacePresets(next)
     setPlacePresets(normalized)
-    savePlacePresets(normalized)
+    savePlacePresets(normalized)  // 로컬 캐시
+    void onUpsertGlobalSetting?.(PLACE_PRESET_SETTING_KEY, JSON.stringify(normalized))  // 서버 공유
   }
 
   const updateTimePresets = (next: TimePreset[]) => {
     const normalized = normalizeTimePresets(next)
     setTimePresets(normalized)
-    saveTimePresets(normalized)
+    saveTimePresets(normalized)  // 로컬 캐시
+    void onUpsertGlobalSetting?.(TIME_PRESET_SETTING_KEY, JSON.stringify(normalized))  // 서버 공유
   }
+
+  // 다른 기기에서 바뀐 서버 프리셋이 fetch 되면 반영 (편집 중 아닐 때)
+  useEffect(() => {
+    if (timeSettingsOpen) return
+    const parsed = parseTimePresetsValue(globalSettings[TIME_PRESET_SETTING_KEY])
+    if (parsed) setTimePresets(parsed)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSettings[TIME_PRESET_SETTING_KEY]])
+  useEffect(() => {
+    if (placeSettingsOpen) return
+    const parsed = parsePlacePresetsValue(globalSettings[PLACE_PRESET_SETTING_KEY])
+    if (parsed) setPlacePresets(parsed)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSettings[PLACE_PRESET_SETTING_KEY]])
 
   const applyPlacePreset = (preset: PlacePreset) => {
     setNewPlace(preset.name)
@@ -663,6 +681,7 @@ export function DesktopCalendar({
                       event={event}
                       events={events}
                       leaderNames={leaderNames}
+                      globalSettings={globalSettings}
                       onClearEdit={clearEdit}
                       onDelete={(id) => {
                         if (event.seriesId) {
@@ -1154,6 +1173,7 @@ function EditCard({
   event,
   events,
   leaderNames = [],
+  globalSettings = {},
   onClearEdit,
   onDelete,
   onLinkEventsToSeries,
@@ -1164,6 +1184,7 @@ function EditCard({
   event: CalendarEvent
   events: CalendarEvent[]
   leaderNames?: string[]
+  globalSettings?: Record<string, string>
   onClearEdit: () => void
   onDelete: (id: number) => void
   onLinkEventsToSeries: (ids: number[]) => void
@@ -1213,7 +1234,7 @@ function EditCard({
         <div className="cal-field">
           <label>시간</label>
           <div className="cal-time-presets" style={{ marginBottom: 8 }}>
-            {loadTimePresets().map((p) => (
+            {resolveTimePresets(globalSettings?.[TIME_PRESET_SETTING_KEY]).map((p) => (
               <button
                 key={`${p.label}-${p.time}`}
                 type="button"

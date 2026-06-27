@@ -2,6 +2,8 @@
 // localStorage 키를 공유하므로 같은 브라우저에서 PC↔모바일 화면 전환 시 동기화됨.
 
 export const TIME_PRESET_STORAGE_KEY = 'chs-admin-calendar-time-presets-v1'
+// 서버(app_settings) 공유 키 — 기기 간 동기화용
+export const TIME_PRESET_SETTING_KEY = 'calendar_time_presets'
 export const TIME_PRESETS_MAX = 5
 
 export type TimePreset = {
@@ -64,4 +66,19 @@ export function loadTimePresets(): TimePreset[] {
 export function saveTimePresets(presets: TimePreset[]) {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(TIME_PRESET_STORAGE_KEY, JSON.stringify(normalizeTimePresets(presets)))
+}
+
+// 서버 app_settings 값(JSON 문자열) → 프리셋. 비어있거나 깨지면 null.
+export function parseTimePresetsValue(value: string | undefined | null): TimePreset[] | null {
+  if (!value) return null
+  try {
+    return normalizeTimePresets(JSON.parse(value))
+  } catch {
+    return null
+  }
+}
+
+// 서버 우선, 없으면 로컬 → 초기 프리셋
+export function resolveTimePresets(serverValue: string | undefined | null): TimePreset[] {
+  return parseTimePresetsValue(serverValue) ?? loadTimePresets()
 }

@@ -1,4 +1,6 @@
 export const PLACE_PRESET_STORAGE_KEY = 'chs-admin-calendar-place-presets-v1'
+// 서버(app_settings) 공유 키 — 기기 간 동기화용
+export const PLACE_PRESET_SETTING_KEY = 'calendar_place_presets'
 export const PLACE_PRESETS_MAX = 10
 
 export type PlacePreset = {
@@ -38,4 +40,19 @@ export function loadPlacePresets(): PlacePreset[] {
 export function savePlacePresets(presets: PlacePreset[]) {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(PLACE_PRESET_STORAGE_KEY, JSON.stringify(normalizePlacePresets(presets)))
+}
+
+// 서버 app_settings 값(JSON 문자열) → 프리셋. 비어있거나 깨지면 null.
+export function parsePlacePresetsValue(value: string | undefined | null): PlacePreset[] | null {
+  if (!value) return null
+  try {
+    return normalizePlacePresets(JSON.parse(value))
+  } catch {
+    return null
+  }
+}
+
+// 서버 우선, 없으면 로컬 → 초기 프리셋
+export function resolvePlacePresets(serverValue: string | undefined | null): PlacePreset[] {
+  return parsePlacePresetsValue(serverValue) ?? loadPlacePresets()
 }
