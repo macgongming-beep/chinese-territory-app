@@ -9,7 +9,9 @@ import { ChatRoom } from './ChatRoom'
 import { CommentSection, type MentionUser } from './CommentSection'
 import { loadPlacePresets, savePlacePresets, normalizePlacePresets } from '../lib/placePresets'
 import type { PlacePreset } from '../lib/placePresets'
-import { PlacePresetEditor } from './admin/AdminMobileCalendar'
+import { loadTimePresets, saveTimePresets, normalizeTimePresets, addMinutesToTime } from '../lib/timePresets'
+import type { TimePreset } from '../lib/timePresets'
+import { PlacePresetEditor, TimePresetEditor } from './admin/AdminMobileCalendar'
 import { ExportEventsModal } from './calendar/ExportEventsModal'
 import { ImportEventsModal } from './calendar/ImportEventsModal'
 
@@ -47,24 +49,7 @@ function eventTimeClass(time: string) {
   return 'event-pill--eve'
 }
 
-function pad2(n: number) { return String(n).padStart(2, '0') }
-
-function addMinutesToTime(time: string, minutes: number): string {
-  const match = time.match(/^(\d{2}):(\d{2})$/)
-  if (!match) return ''
-  const total = (Number(match[1]) * 60 + Number(match[2]) + minutes) % (24 * 60)
-  return `${pad2(Math.floor(total / 60))}:${pad2(total % 60)}`
-}
-
-type TimePreset = { label: string; time: string; durationMinutes: number; title: string }
-
-const DEFAULT_TIME_PRESETS: TimePreset[] = [
-  { label: '오전', time: '10:00', durationMinutes: 120, title: '传道' },
-  { label: '오후', time: '13:00', durationMinutes: 120, title: '传道' },
-  { label: '늦은 오후', time: '15:00', durationMinutes: 120, title: '传道' },
-  { label: '저녁', time: '19:00', durationMinutes: 120, title: '传道' },
-]
-
+// TimePreset / addMinutesToTime / 기본 프리셋은 ../lib/timePresets 로 이동 (모바일 공용)
 
 type EventInput = { time: string; endTime?: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }
 type EditDraft = EventInput
@@ -163,6 +148,8 @@ export function DesktopCalendar({
   const [newTitle, setNewTitle] = useState('传道')
   const [placePresets, setPlacePresets] = useState<PlacePreset[]>(loadPlacePresets)
   const [placeSettingsOpen, setPlaceSettingsOpen] = useState(false)
+  const [timePresets, setTimePresets] = useState<TimePreset[]>(loadTimePresets)
+  const [timeSettingsOpen, setTimeSettingsOpen] = useState(false)
   const [newTime, setNewTime] = useState('10:00')
   const [newEndTime, setNewEndTime] = useState('12:00')
   const [newPlace, setNewPlace] = useState('')
@@ -217,6 +204,12 @@ export function DesktopCalendar({
     const normalized = normalizePlacePresets(next)
     setPlacePresets(normalized)
     savePlacePresets(normalized)
+  }
+
+  const updateTimePresets = (next: TimePreset[]) => {
+    const normalized = normalizeTimePresets(next)
+    setTimePresets(normalized)
+    saveTimePresets(normalized)
   }
 
   const applyPlacePreset = (preset: PlacePreset) => {
@@ -369,11 +362,18 @@ export function DesktopCalendar({
                   )}
                   {/* 시간 프리셋 */}
                   <div style={{ marginTop: 12 }}>
-                    <div className="cal-preset-label">자주 쓰는 시간</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div className="cal-preset-label">자주 쓰는 시간</div>
+                      <button type="button" className="cal-preset-edit-btn"
+                        onClick={() => setTimeSettingsOpen((v) => !v)}
+                        style={{ minHeight: 0, border: 'none', background: 'transparent', color: 'var(--ink)', fontSize: 12, fontWeight: 700, padding: '4px 2px', cursor: 'pointer' }}>
+                        {timeSettingsOpen ? '설정 닫기' : '시간 설정'}
+                      </button>
+                    </div>
                     <div className="cal-time-presets">
-                      {DEFAULT_TIME_PRESETS.map((p) => (
+                      {timePresets.map((p) => (
                         <button
-                          key={p.label}
+                          key={`${p.label}-${p.time}`}
                           type="button"
                           className={`cal-time-preset-btn${newTime === p.time ? ' active' : ''}`}
                           onClick={() => {
@@ -387,6 +387,11 @@ export function DesktopCalendar({
                         </button>
                       ))}
                     </div>
+                    {timeSettingsOpen && (
+                      <div style={{ marginTop: 8 }}>
+                        <TimePresetEditor language={'ko'} presets={timePresets} onChange={updateTimePresets} />
+                      </div>
+                    )}
                     <div style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 11, color: 'var(--gray-400)', marginBottom: 3 }}>시작</div>
@@ -1208,9 +1213,9 @@ function EditCard({
         <div className="cal-field">
           <label>시간</label>
           <div className="cal-time-presets" style={{ marginBottom: 8 }}>
-            {DEFAULT_TIME_PRESETS.map((p) => (
+            {loadTimePresets().map((p) => (
               <button
-                key={p.label}
+                key={`${p.label}-${p.time}`}
                 type="button"
                 className={`cal-time-preset-btn${draft.time === p.time ? ' active' : ''}`}
                 onClick={() => setDraft({ ...draft, time: p.time, title: p.title, endTime: addMinutesToTime(p.time, p.durationMinutes) })}
