@@ -14,11 +14,12 @@
 import { useMemo, useState } from 'react'
 import type { CalendarEvent, Role, TerritoryCard } from '../../types'
 import { confirmDialog } from '../../lib/confirm'
-import { t, type AppLanguage } from '../../i18n'
+import { t, translateKoreanAddress, type AppLanguage } from '../../i18n'
 import { CommentSection, type MentionUser } from '../CommentSection'
 
 type Props = {
   language?: AppLanguage
+  translatePlaceNames?: boolean
   event: CalendarEvent
   cards?: TerritoryCard[]
   role: Role
@@ -117,7 +118,17 @@ function buildSharedAssignmentTeams(event: CalendarEvent, cards: TerritoryCard[]
   }))
 }
 
-function SharedAssignmentTeams({ event, cards }: { event: CalendarEvent; cards: TerritoryCard[] }) {
+function SharedAssignmentTeams({
+  event,
+  cards,
+  language,
+  translatePlaceNames,
+}: {
+  event: CalendarEvent
+  cards: TerritoryCard[]
+  language: AppLanguage
+  translatePlaceNames: boolean
+}) {
   if (event.assignmentStatus !== 'shared') return null
 
   const teams = buildSharedAssignmentTeams(event, cards)
@@ -125,22 +136,24 @@ function SharedAssignmentTeams({ event, cards }: { event: CalendarEvent; cards: 
 
   return (
     <section className="shared-assignment-section">
-      <SectionHead title="확정된 팀" />
+      <SectionHead title={t(language, 'assignment.confirmedTeams')} />
       <div className="shared-assignment-list">
-        {teams.map((team) => {
-          const primaryCard = team.cardNames[0] ?? '카드 미배정'
+        {teams.map((team, index) => {
+          const primaryCard = team.cardNames[0]
+            ? translateKoreanAddress(team.cardNames[0], language, translatePlaceNames)
+            : t(language, 'assignment.unassignedCard')
           const extraCount = Math.max(0, team.cardNames.length - 1)
           return (
             <div className="shared-assignment-card" key={team.id}>
               <div className="shared-assignment-card__top">
                 <div className="shared-assignment-card__summary">
-                  <strong>{team.label}</strong>
-                  <span>{team.members.join(', ') || '팀원 없음'}</span>
+                  <strong>{t(language, 'assignment.teamNumber', { n: index + 1 })}</strong>
+                  <span>{team.members.join(', ') || t(language, 'assignment.noMembers')}</span>
                 </div>
-                <span>{team.members.length}명</span>
+                <span>{t(language, 'common.nPeople', { n: team.members.length })}</span>
               </div>
               <div className="shared-assignment-card__cards">
-                {primaryCard}{extraCount > 0 ? ` 외 ${extraCount}개` : ''}
+                {primaryCard}{extraCount > 0 ? ` ${t(language, 'assignment.extraCards', { n: extraCount })}` : ''}
               </div>
             </div>
           )
@@ -152,6 +165,7 @@ function SharedAssignmentTeams({ event, cards }: { event: CalendarEvent; cards: 
 
 export function AdminEventDetailSheet({
   language = 'ko',
+  translatePlaceNames = false,
   event,
   cards = [],
   role,
@@ -174,7 +188,7 @@ export function AdminEventDetailSheet({
   // 편집/삭제/참가자 관리 권한 (PC DesktopCalendar 와 통일된 정책)
   //  - 수정·참가자 관리: 관리자·개발자 또는 본인이 인도자인 일정
   //  - 삭제: 관리자·개발자만
-  const isLeaderOfThisEvent = role === 'leader' && event.leader === currentVisitor
+  const isLeaderOfThisEvent = role === 'leader' && event.leaders.includes(currentVisitor)
   const canEditEvent = role === 'admin' || role === 'developer' || isLeaderOfThisEvent
   const canDeleteEvent = role === 'admin' || role === 'developer'
   const canManageParticipants = canEditEvent
@@ -201,7 +215,11 @@ export function AdminEventDetailSheet({
 
   const handleRemoveParticipant = async (name: string) => {
     if (!onRemoveParticipant) return
-    const ok = await confirmDialog({ message: `${name}님을 이 일정에서 제외할까요?\n이미 팀이나 카드에 배정되어 있으면 배정에서도 제외됩니다.`, danger: true, confirmLabel: '제외' })
+    const ok = await confirmDialog({
+      message: t(language, 'calendar.removeParticipantConfirm', { name }),
+      danger: true,
+      confirmLabel: t(language, 'calendar.remove'),
+    })
     if (!ok) return
     onRemoveParticipant(name)
   }
@@ -255,7 +273,7 @@ export function AdminEventDetailSheet({
             <ChevL />
           </button>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.015em' }}>{language === 'ko' ? '일정' : language === 'zh' ? '日程' : 'Event'}</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.015em' }}>{t(language, 'calendar.detailTitle')}</span>
             <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--muted)' }}>{formatDateHeader(event.date, language)}</span>
           </div>
         </div>
@@ -276,7 +294,7 @@ export function AdminEventDetailSheet({
                 placeItems: 'center',
                 cursor: 'pointer',
               }}
-              aria-label="더보기"
+              aria-label={t(language, 'map.more')}
             >
               <DotsIcon />
             </button>
@@ -309,7 +327,7 @@ export function AdminEventDetailSheet({
                         fontSize: 13, color: 'var(--text)',
                         cursor: 'pointer', borderRadius: 6,
                       }}
-                    >{language === 'ko' ? '수정' : language === 'zh' ? '修改' : 'Edit'}</button>
+                    >{t(language, 'common.edit')}</button>
                   )}
                   {canDeleteEvent && onDelete && (
                     <button
@@ -322,7 +340,7 @@ export function AdminEventDetailSheet({
                         fontSize: 13, color: 'var(--status-danger)',
                         cursor: 'pointer', borderRadius: 6,
                       }}
-                    >{language === 'ko' ? '삭제' : language === 'zh' ? '删除' : 'Delete'}</button>
+                    >{t(language, 'common.delete')}</button>
                   )}
                 </div>
               </>
@@ -370,7 +388,7 @@ export function AdminEventDetailSheet({
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
               <Avatar name={event.leader} size={24} />
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{event.leader}</span>
-              <span style={{ fontSize: 12, color: 'var(--muted)' }}>{language === 'ko' ? '인도자' : language === 'zh' ? '带头人' : 'Conductor'}</span>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>{t(language, 'calendar.leader')}</span>
             </div>
           )}
         </section>
@@ -395,14 +413,14 @@ export function AdminEventDetailSheet({
               letterSpacing: '-0.005em',
             }}
           >
-            {isApplied ? (language === 'ko' ? '신청 취소' : language === 'zh' ? '取消申请' : 'Cancel') : (language === 'ko' ? '신청하기' : language === 'zh' ? '申请参与' : 'Apply')}
+            {isApplied ? t(language, 'calendar.cancelApply') : t(language, 'calendar.apply')}
           </button>
         )}
 
         {/* 상세 설명 */}
         {event.memo && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <SectionHead title={language === "ko" ? "상세 설명" : language === "zh" ? "详细说明" : "Details"} />
+            <SectionHead title={t(language, 'calendar.detailDescription')} />
             <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
               {event.memo}
             </div>
@@ -414,7 +432,7 @@ export function AdminEventDetailSheet({
             지도 썸네일 미리보기는 네이버 X-Frame-Options 차단으로 불가능. */}
         {event.place && event.mapLink && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <SectionHead title={language === "ko" ? "위치" : language === "zh" ? "位置" : "Location"} />
+            <SectionHead title={t(language, 'calendar.location')} />
             <a
               href={event.mapLink}
               target="_blank"
@@ -439,8 +457,8 @@ export function AdminEventDetailSheet({
                 <PinIcon size={16} />
               </span>
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{event.place}</span>
-                <span style={{ fontSize: 12, color: 'var(--muted)' }}>{language === 'ko' ? '네이버 지도에서 보기' : language === 'zh' ? '在 Naver 地图中查看' : 'View on Naver Map'}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{translateKoreanAddress(event.place, language, translatePlaceNames)}</span>
+                <span style={{ fontSize: 12, color: 'var(--muted)' }}>{t(language, 'calendar.viewOnNaverMap')}</span>
               </div>
               <span style={{ color: 'var(--muted-2)', flexShrink: 0 }}>
                 <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -453,7 +471,7 @@ export function AdminEventDetailSheet({
         )}
         {event.place && !event.mapLink && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <SectionHead title={language === "ko" ? "위치" : language === "zh" ? "位置" : "Location"} />
+            <SectionHead title={t(language, 'calendar.location')} />
             <div style={{
               display: 'flex', alignItems: 'center', gap: 12,
               padding: '14px 16px',
@@ -468,7 +486,7 @@ export function AdminEventDetailSheet({
               }}>
                 <PinIcon size={16} />
               </span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{event.place}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{translateKoreanAddress(event.place, language, translatePlaceNames)}</span>
             </div>
           </section>
         )}
@@ -507,7 +525,7 @@ export function AdminEventDetailSheet({
                       gap: 4
                     }}
                   >
-                    + 추가
+                    {t(language, 'calendar.addSelf')}
                   </button>
                 )}
                 {onRemoveParticipant && applicants.length > 0 && (
@@ -528,7 +546,7 @@ export function AdminEventDetailSheet({
                       gap: 4
                     }}
                   >
-                    {isRemoveParticipantMode ? '제외 닫기' : '- 제외'}
+                    {isRemoveParticipantMode ? t(language, 'calendar.closeRemoveMode') : t(language, 'calendar.removeShort')}
                   </button>
                 )}
               </div>
@@ -577,7 +595,7 @@ export function AdminEventDetailSheet({
                       cursor: 'pointer',
                     }}
                   >
-                    제외
+                    {t(language, 'calendar.remove')}
                   </button>
                 )}
               </span>
@@ -617,16 +635,16 @@ export function AdminEventDetailSheet({
               </svg>
             </span>
             <span style={{ flex: 1, textAlign: 'left' }}>
-              팀 구성 &amp; 배정
+              {t(language, 'assignment.teamBuildAndAssign')}
               <span style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--muted)', marginTop: 1 }}>
-                신청자를 팀으로 묶고 구역을 나눠요
+                {t(language, 'assignment.teamBuildHelp')}
               </span>
             </span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted-2, #94a3b8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         )}
 
-        <SharedAssignmentTeams event={event} cards={cards} />
+        <SharedAssignmentTeams event={event} cards={cards} language={language} translatePlaceNames={translatePlaceNames} />
 
         <CommentSection
           compact
@@ -666,13 +684,13 @@ export function AdminEventDetailSheet({
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} onClick={() => setIsAddParticipantModalOpen(false)} />
           <div style={{ background: 'var(--bg)', borderRadius: 16, width: '90%', maxWidth: 400, maxHeight: '80%', display: 'flex', flexDirection: 'column', zIndex: 1, overflow: 'hidden' }}>
             <div style={{ padding: 16, borderBottom: '1px solid var(--line-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>신청자 수동 추가</h3>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{t(language, 'calendar.manualAddApplicant')}</h3>
               <button onClick={() => setIsAddParticipantModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: 4 }}>×</button>
             </div>
             <div style={{ padding: 12, borderBottom: '1px solid var(--line-muted)' }}>
               <input 
                 type="text" 
-                placeholder="이름 검색..." 
+                placeholder={t(language, 'calendar.searchName')} 
                 value={participantSearchText}
                 onChange={e => setParticipantSearchText(e.target.value)}
                 style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--line-muted)', background: 'var(--surface)', fontSize: 14 }}
@@ -700,7 +718,7 @@ export function AdminEventDetailSheet({
               ))}
               {(mentionUsers || []).filter(u => !applicants.includes(u.name)).length === 0 && (
                 <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-                  추가할 수 있는 사용자가 없습니다.
+                  {t(language, 'calendar.noMembersToAdd')}
                 </div>
               )}
             </div>

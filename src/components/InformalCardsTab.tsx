@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import type { InformalAsset, InformalGroup, Role } from '../types'
 import { showToast } from '../lib/toast'
 import { compressImage } from '../lib/imageCompress'
+import type { AppLanguage } from '../i18n'
 
 const MAX_ORIGINAL_SIZE_MB = 30
 const TARGET_SIZE_MB = 0.5  // Phase 5: 1.5MB → 0.5MB (대역폭 절감, 폰 화면에 충분)
@@ -25,6 +26,144 @@ function isAdminLike(role: Role): boolean {
   return role === 'admin' || role === 'developer'
 }
 
+const informalCopy = {
+  ko: {
+    defaultAssetName: '비공식 증거 카드',
+    notImage: '이미지 아님',
+    overSize: (mb: number) => `${mb}MB 초과`,
+    rejectedTitle: '일부 파일 거부됨',
+    compressFailed: '압축 실패',
+    uploadFailed: '업로드 실패',
+    uploaded: (count: number) => `${count}개 자료를 등록했습니다`,
+    failed: (count: number) => `${count}개 실패`,
+    newGroupPrompt: '새 그룹 이름',
+    renameGroupPrompt: '그룹 이름 변경',
+    unclassified: '미분류',
+    cancel: '취소',
+    more: '더보기',
+    select: '선택',
+    renameGroup: '이름 변경',
+    deleteGroup: '그룹 삭제',
+    noAssets: '자료 없음',
+    countLine: (assets: number, groups: number) => `전체 ${assets}개 · 그룹 ${groups}`,
+    addAsset: '+ 자료 추가',
+    targetGroup: '대상 그룹',
+    remove: '제거',
+    clearDone: '완료 항목 비우기',
+    inProgress: '진행 중...',
+    uploadCount: (count: number) => `${count}개 업로드`,
+    addGroup: '+ 그룹 추가',
+    emptyAdmin: '아직 등록된 비공식 자료가 없습니다.',
+    emptyAdminHelp: '위 + 자료 추가로 시작하세요.',
+    emptyUser: '관리자가 자료를 등록하면 여기에 표시됩니다.',
+    deleteAssetTitle: '자료를 삭제하시겠어요?',
+    delete: '삭제',
+    deleteGroupTitle: '그룹을 삭제하시겠어요?',
+    deleteGroupHelp: '그룹 안의 자료는 "미분류" 로 이동됩니다.',
+    moveGroupTitle: (name: string) => `"${name}" 그룹 이동`,
+    selected: (count: number) => `${count}개 선택`,
+    selectAsset: '자료를 선택하세요',
+    moveGroup: '그룹 이동',
+    moveGroupSheet: '그룹으로 이동',
+    chooseGroup: (count: number) => `${count}개 자료를 이동할 그룹을 고르세요`,
+    movedUnclassified: (count: number) => `${count}개 자료를 미분류로 이동했습니다`,
+    movedGroup: (count: number, name: string) => `${count}개 자료를 "${name}" 으로 이동했습니다`,
+    deleteManyTitle: (count: number) => `${count}개 자료를 삭제할까요?`,
+    deleteManyHelp: '삭제한 자료는 되돌릴 수 없습니다.',
+    deletedMany: (count: number) => `${count}개 자료를 삭제했습니다`,
+  },
+  zh: {
+    defaultAssetName: '非正式证据卡',
+    notImage: '不是图片',
+    overSize: (mb: number) => `超过 ${mb}MB`,
+    rejectedTitle: '部分文件被拒绝',
+    compressFailed: '压缩失败',
+    uploadFailed: '上传失败',
+    uploaded: (count: number) => `已上传 ${count} 个资料`,
+    failed: (count: number) => `${count} 个失败`,
+    newGroupPrompt: '新分组名称',
+    renameGroupPrompt: '修改分组名称',
+    unclassified: '未分类',
+    cancel: '取消',
+    more: '更多',
+    select: '选择',
+    renameGroup: '重命名',
+    deleteGroup: '删除分组',
+    noAssets: '没有资料',
+    countLine: (assets: number, groups: number) => `共 ${assets} 个 · 分组 ${groups}`,
+    addAsset: '+ 添加资料',
+    targetGroup: '目标分组',
+    remove: '移除',
+    clearDone: '清除已完成',
+    inProgress: '处理中...',
+    uploadCount: (count: number) => `上传 ${count} 个`,
+    addGroup: '+ 添加分组',
+    emptyAdmin: '还没有登记非正式资料。',
+    emptyAdminHelp: '请用上方 + 添加资料开始。',
+    emptyUser: '管理员登记资料后会显示在这里。',
+    deleteAssetTitle: '要删除这个资料吗？',
+    delete: '删除',
+    deleteGroupTitle: '要删除这个分组吗？',
+    deleteGroupHelp: '分组内的资料会移到“未分类”。',
+    moveGroupTitle: (name: string) => `"${name}" 移动分组`,
+    selected: (count: number) => `已选 ${count} 个`,
+    selectAsset: '请选择资料',
+    moveGroup: '移动分组',
+    moveGroupSheet: '移动到分组',
+    chooseGroup: (count: number) => `请选择要移动 ${count} 个资料的分组`,
+    movedUnclassified: (count: number) => `已将 ${count} 个资料移到未分类`,
+    movedGroup: (count: number, name: string) => `已将 ${count} 个资料移到“${name}”`,
+    deleteManyTitle: (count: number) => `要删除 ${count} 个资料吗？`,
+    deleteManyHelp: '删除后无法恢复。',
+    deletedMany: (count: number) => `已删除 ${count} 个资料`,
+  },
+  en: {
+    defaultAssetName: 'Informal Evidence Card',
+    notImage: 'not an image',
+    overSize: (mb: number) => `over ${mb}MB`,
+    rejectedTitle: 'Some files were rejected',
+    compressFailed: 'Compression failed',
+    uploadFailed: 'Upload failed',
+    uploaded: (count: number) => `Uploaded ${count} items`,
+    failed: (count: number) => `${count} failed`,
+    newGroupPrompt: 'New group name',
+    renameGroupPrompt: 'Rename group',
+    unclassified: 'Unclassified',
+    cancel: 'Cancel',
+    more: 'More',
+    select: 'Select',
+    renameGroup: 'Rename',
+    deleteGroup: 'Delete group',
+    noAssets: 'No items',
+    countLine: (assets: number, groups: number) => `${assets} total · ${groups} groups`,
+    addAsset: '+ Add item',
+    targetGroup: 'Target group',
+    remove: 'Remove',
+    clearDone: 'Clear completed',
+    inProgress: 'Working...',
+    uploadCount: (count: number) => `Upload ${count}`,
+    addGroup: '+ Add group',
+    emptyAdmin: 'No informal items have been added yet.',
+    emptyAdminHelp: 'Start with + Add item above.',
+    emptyUser: 'Items will appear here after an admin adds them.',
+    deleteAssetTitle: 'Delete this item?',
+    delete: 'Delete',
+    deleteGroupTitle: 'Delete this group?',
+    deleteGroupHelp: 'Items in this group will move to “Unclassified”.',
+    moveGroupTitle: (name: string) => `Move "${name}" to group`,
+    selected: (count: number) => `${count} selected`,
+    selectAsset: 'Select items',
+    moveGroup: 'Move group',
+    moveGroupSheet: 'Move to group',
+    chooseGroup: (count: number) => `Choose a group for ${count} items`,
+    movedUnclassified: (count: number) => `Moved ${count} items to Unclassified`,
+    movedGroup: (count: number, name: string) => `Moved ${count} items to "${name}"`,
+    deleteManyTitle: (count: number) => `Delete ${count} items?`,
+    deleteManyHelp: 'Deleted items cannot be restored.',
+    deletedMany: (count: number) => `Deleted ${count} items`,
+  },
+}
+
 type Props = {
   role: Role
   currentVisitor: string
@@ -37,12 +176,15 @@ type Props = {
   onRenameGroup: (groupId: number, name: string) => Promise<void>
   onDeleteGroup: (groupId: number) => Promise<void>
   onMoveAsset: (assetId: number, groupId: number | null) => Promise<void>
+  language?: AppLanguage
 }
 
 export function InformalCardsTab({
   role, currentVisitor, informalAssets, informalGroups,
   onUpload, onDelete, onCreateGroup, onRenameGroup, onDeleteGroup, onMoveAsset,
+  language = 'ko',
 }: Props) {
+  const copy = informalCopy[language]
   const admin = isAdminLike(role)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadGroupId, setUploadGroupId] = useState<number | null>(null) // null = 미분류
@@ -105,25 +247,25 @@ export function InformalCardsTab({
     const rejected: string[] = []
     Array.from(files).forEach((file) => {
       if (file.type && !file.type.startsWith('image/')) {
-        rejected.push(`${file.name} (이미지 아님)`)
+        rejected.push(`${file.name} (${copy.notImage})`)
         return
       }
       if (file.size > MAX_ORIGINAL_SIZE_MB * 1024 * 1024) {
-        rejected.push(`${file.name} (${MAX_ORIGINAL_SIZE_MB}MB 초과)`)
+        rejected.push(`${file.name} (${copy.overSize(MAX_ORIGINAL_SIZE_MB)})`)
         return
       }
       const baseName = file.name.replace(/\.[^.]+$/, '').slice(0, 40)
       accepted.push({
         id: makeId(),
         originalFile: file,
-        name: baseName || '비공식 증거 카드',
+        name: baseName || copy.defaultAssetName,
         status: 'pending',
         originalSize: file.size,
         finalSize: file.size,
       })
     })
     if (rejected.length > 0) {
-      showToast(`일부 파일 거부됨:\n${rejected.join('\n')}`, 'error')
+      showToast(`${copy.rejectedTitle}:\n${rejected.join('\n')}`, 'error')
     }
     if (accepted.length > 0) {
       setQueue((prev) => [...prev, ...accepted])
@@ -157,7 +299,7 @@ export function InformalCardsTab({
           outputType: 'image/webp',  // JPEG→WebP (30~40% 더 작음)
         })
       } catch (e) {
-        updateQueueItem(item.id, { status: 'error', error: e instanceof Error ? e.message : '압축 실패' })
+        updateQueueItem(item.id, { status: 'error', error: e instanceof Error ? e.message : copy.compressFailed })
         failCount += 1
         continue
       }
@@ -169,7 +311,7 @@ export function InformalCardsTab({
       })
       const result = await onUpload({
         file: compressed.file,
-        name: item.name.trim() || '비공식 증거 카드',
+        name: item.name.trim() || copy.defaultAssetName,
         uploadedBy: currentVisitor,
         groupId: uploadGroupId,
       })
@@ -177,24 +319,24 @@ export function InformalCardsTab({
         updateQueueItem(item.id, { status: 'done' })
         okCount += 1
       } else {
-        updateQueueItem(item.id, { status: 'error', error: result.error ?? '업로드 실패' })
+        updateQueueItem(item.id, { status: 'error', error: result.error ?? copy.uploadFailed })
         failCount += 1
       }
     }
     setRunning(false)
-    if (okCount > 0) showToast(`${okCount}개 자료를 등록했습니다`, 'success')
-    if (failCount > 0) showToast(`${failCount}개 실패`, 'error')
+    if (okCount > 0) showToast(copy.uploaded(okCount), 'success')
+    if (failCount > 0) showToast(copy.failed(failCount), 'error')
   }
 
   // ── 그룹 액션 ────────────────────────────────────────
   const handleCreateGroup = async () => {
-    const name = prompt('새 그룹 이름', '')
+    const name = prompt(copy.newGroupPrompt, '')
     if (!name || !name.trim()) return
     await onCreateGroup({ name: name.trim(), createdBy: currentVisitor })
   }
 
   const handleRenameGroup = async (group: InformalGroup) => {
-    const next = prompt('그룹 이름 변경', group.name)
+    const next = prompt(copy.renameGroupPrompt, group.name)
     if (!next || !next.trim() || next.trim() === group.name) return
     await onRenameGroup(group.id, next.trim())
   }
@@ -212,7 +354,7 @@ export function InformalCardsTab({
   const renderGroupSection = (group: InformalGroup | null, assets: InformalAsset[]) => {
     const key: number | 'null' = group?.id ?? 'null'
     const isCollapsed = !expandedGroups.has(key)
-    const title = group?.name ?? '미분류'
+    const title = group?.name ?? copy.unclassified
     const sorted = [...assets].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return (
       <section key={`group-${key}`}>
@@ -250,7 +392,7 @@ export function InformalCardsTab({
                     color: 'var(--muted)', fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', borderRadius: 6,
                   }}
-                >취소</button>
+                >{copy.cancel}</button>
               ) : (
                 <>
                   <button
@@ -300,7 +442,7 @@ export function InformalCardsTab({
                             cursor: assets.length === 0 ? 'not-allowed' : 'pointer', borderRadius: 6,
                           }}
                         >
-                          선택
+                          {copy.select}
                         </button>
                         {group && (
                           <>
@@ -315,7 +457,7 @@ export function InformalCardsTab({
                                 cursor: 'pointer', borderRadius: 6,
                               }}
                             >
-                              이름 변경
+                              {copy.renameGroup}
                             </button>
                             <button
                               type="button"
@@ -328,7 +470,7 @@ export function InformalCardsTab({
                                 cursor: 'pointer', borderRadius: 6,
                               }}
                             >
-                              그룹 삭제
+                              {copy.deleteGroup}
                             </button>
                           </>
                         )}
@@ -353,7 +495,7 @@ export function InformalCardsTab({
                 background: 'var(--surface)', border: '1px dashed var(--line-2)',
                 borderRadius: 12, margin: 0,
               }}>
-                자료 없음
+                {copy.noAssets}
               </p>
             ) : (
               sorted.map((asset) => {
@@ -431,7 +573,7 @@ export function InformalCardsTab({
         padding: '0 4px',
       }}>
         <span style={{ fontSize: 13, color: 'var(--muted)' }}>
-          전체 {totalAssets}개 · 그룹 {informalGroups.length}
+          {copy.countLine(totalAssets, informalGroups.length)}
         </span>
         {admin && (
           <button
@@ -448,7 +590,7 @@ export function InformalCardsTab({
               cursor: running ? 'wait' : 'pointer',
               letterSpacing: '-0.005em',
             }}
-          >+ 자료 추가</button>
+          >{copy.addAsset}</button>
         )}
       </div>
 
@@ -471,7 +613,7 @@ export function InformalCardsTab({
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                 <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
-                  대상 그룹
+                  {copy.targetGroup}
                 </label>
                 <select
                   value={uploadGroupId ?? ''}
@@ -482,7 +624,7 @@ export function InformalCardsTab({
                     border: '1px solid #d8dbe0', fontSize: 13,
                   }}
                 >
-                  <option value="">미분류</option>
+                  <option value="">{copy.unclassified}</option>
                   {sortedGroups.map((g) => (
                     <option key={g.id} value={g.id}>{g.name}</option>
                   ))}
@@ -535,7 +677,7 @@ export function InformalCardsTab({
                         {item.status === 'done' || item.status === 'uploading'
                           ? `${Math.round(item.originalSize / 1024).toLocaleString()} KB → ${Math.round(item.finalSize / 1024).toLocaleString()} KB`
                           : item.status === 'error'
-                            ? item.error ?? '실패'
+                            ? item.error ?? copy.failed(1)
                             : `${Math.round(item.originalSize / 1024).toLocaleString()} KB · ${item.originalFile.name}`}
                       </p>
                     </div>
@@ -543,7 +685,7 @@ export function InformalCardsTab({
                       <button
                         type="button"
                         onClick={() => removeQueueItem(item.id)}
-                        aria-label="제거"
+                        aria-label={copy.remove}
                         style={{
                           background: 'none', border: 'none', color: '#94a3b8',
                           fontSize: 14, cursor: 'pointer', padding: 4,
@@ -563,7 +705,7 @@ export function InformalCardsTab({
                       fontSize: 12, color: '#64748b',
                       background: 'none', border: 'none', cursor: 'pointer',
                     }}
-                  >완료 항목 비우기</button>
+                  >{copy.clearDone}</button>
                 )}
                 <button
                   type="button"
@@ -578,8 +720,8 @@ export function InformalCardsTab({
                   }}
                 >
                   {running
-                    ? '진행 중...'
-                    : `${queue.filter((q) => q.status === 'pending' || q.status === 'error').length}개 업로드`}
+                    ? copy.inProgress
+                    : copy.uploadCount(queue.filter((q) => q.status === 'pending' || q.status === 'error').length)}
                 </button>
               </div>
             </div>
@@ -607,7 +749,7 @@ export function InformalCardsTab({
             cursor: 'pointer', minHeight: 0, width: '100%',
           }}
         >
-          + 그룹 추가
+          {copy.addGroup}
         </button>
       )}
 
@@ -619,8 +761,8 @@ export function InformalCardsTab({
           background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12,
         }}>
           {admin
-            ? <>아직 등록된 비공식 자료가 없습니다.<br />위 + 자료 추가로 시작하세요.</>
-            : <>관리자가 자료를 등록하면 여기에 표시됩니다.</>}
+            ? <>{copy.emptyAdmin}<br />{copy.emptyAdminHelp}</>
+            : <>{copy.emptyUser}</>}
         </div>
       )}
 
@@ -659,7 +801,7 @@ export function InformalCardsTab({
             width: '100%', maxWidth: 320, textAlign: 'center',
           }} onClick={(e) => e.stopPropagation()}>
             <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1e293b' }}>
-              자료를 삭제하시겠어요?
+              {copy.deleteAssetTitle}
             </p>
             <p style={{ margin: '6px 0 16px', fontSize: 13, color: '#64748b' }}>
               "{confirmDelete.name}"
@@ -673,7 +815,7 @@ export function InformalCardsTab({
                   border: '1px solid #e2e8f0', background: '#fff',
                   color: '#475569', fontSize: 14, fontWeight: 700, cursor: 'pointer',
                 }}
-              >취소</button>
+              >{copy.cancel}</button>
               <button
                 type="button"
                 onClick={async () => {
@@ -685,7 +827,7 @@ export function InformalCardsTab({
                   border: 'none', background: '#dc2626', color: '#fff',
                   fontSize: 14, fontWeight: 800, cursor: 'pointer',
                 }}
-              >삭제</button>
+              >{copy.delete}</button>
             </div>
           </div>
         </div>
@@ -703,12 +845,12 @@ export function InformalCardsTab({
             width: '100%', maxWidth: 320, textAlign: 'center',
           }} onClick={(e) => e.stopPropagation()}>
             <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1e293b' }}>
-              그룹을 삭제하시겠어요?
+              {copy.deleteGroupTitle}
             </p>
             <p style={{ margin: '6px 0 16px', fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
               "{confirmDeleteGroup.name}"<br />
               <span style={{ fontSize: 12, color: '#92400e' }}>
-                그룹 안의 자료는 "미분류" 로 이동됩니다.
+                {copy.deleteGroupHelp}
               </span>
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -720,7 +862,7 @@ export function InformalCardsTab({
                   border: '1px solid #e2e8f0', background: '#fff',
                   color: '#475569', fontSize: 14, fontWeight: 700, cursor: 'pointer',
                 }}
-              >취소</button>
+              >{copy.cancel}</button>
               <button
                 type="button"
                 onClick={async () => {
@@ -732,7 +874,7 @@ export function InformalCardsTab({
                   border: 'none', background: '#dc2626', color: '#fff',
                   fontSize: 14, fontWeight: 800, cursor: 'pointer',
                 }}
-              >삭제</button>
+              >{copy.delete}</button>
             </div>
           </div>
         </div>
@@ -753,7 +895,7 @@ export function InformalCardsTab({
               padding: '14px 16px', borderBottom: '1px solid #e2e8f0',
               fontSize: 14, fontWeight: 800, color: '#1e293b',
             }}>
-              "{moveTargetAsset.name}" 그룹 이동
+              {copy.moveGroupTitle(moveTargetAsset.name)}
             </div>
             <button
               type="button"
@@ -767,7 +909,7 @@ export function InformalCardsTab({
                 fontSize: 14, fontWeight: 600, color: '#1e293b', cursor: 'pointer',
               }}
             >
-              미분류
+              {copy.unclassified}
               {moveTargetAsset.groupId === null && (
                 <span style={{ marginLeft: 8, color: '#7c3aed' }}>✓</span>
               )}
@@ -809,7 +951,7 @@ export function InformalCardsTab({
           }}
         >
           <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
-            {selectedAssetIds.size > 0 ? `${selectedAssetIds.size}개 선택` : '자료를 선택하세요'}
+            {selectedAssetIds.size > 0 ? copy.selected(selectedAssetIds.size) : copy.selectAsset}
           </span>
           <button
             type="button"
@@ -824,7 +966,7 @@ export function InformalCardsTab({
               opacity: selectedAssetIds.size === 0 ? 0.5 : 1,
             }}
           >
-            그룹 이동
+            {copy.moveGroup}
           </button>
           <button
             type="button"
@@ -839,7 +981,7 @@ export function InformalCardsTab({
               opacity: selectedAssetIds.size === 0 ? 0.5 : 1,
             }}
           >
-            삭제
+            {copy.delete}
           </button>
         </div>
       )}
@@ -866,9 +1008,9 @@ export function InformalCardsTab({
           >
             <div style={{ width: 32, height: 4, borderRadius: 99, background: 'var(--line-2)', margin: '4px auto 14px' }} />
             <div style={{ marginBottom: 12 }}>
-              <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>그룹으로 이동</span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>{copy.moveGroupSheet}</span>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--muted)' }}>
-                {selectedAssetIds.size}개 자료를 이동할 그룹을 고르세요
+                {copy.chooseGroup(selectedAssetIds.size)}
               </p>
             </div>
             <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -879,7 +1021,7 @@ export function InformalCardsTab({
                   await Promise.all(ids.map((id) => onMoveAsset(id, null)))
                   setBulkMoveOpen(false)
                   clearSelection()
-                  showToast(`${ids.length}개 자료를 미분류로 이동했습니다`, 'success')
+                  showToast(copy.movedUnclassified(ids.length), 'success')
                 }}
                 style={{
                   width: '100%', textAlign: 'left',
@@ -889,7 +1031,7 @@ export function InformalCardsTab({
                   color: 'var(--text)', cursor: 'pointer',
                 }}
               >
-                미분류
+                {copy.unclassified}
               </button>
               {sortedGroups.map((g) => (
                 <button
@@ -900,7 +1042,7 @@ export function InformalCardsTab({
                     await Promise.all(ids.map((id) => onMoveAsset(id, g.id)))
                     setBulkMoveOpen(false)
                     clearSelection()
-                    showToast(`${ids.length}개 자료를 "${g.name}" 으로 이동했습니다`, 'success')
+                    showToast(copy.movedGroup(ids.length, g.name), 'success')
                   }}
                   style={{
                     width: '100%', textAlign: 'left',
@@ -937,10 +1079,10 @@ export function InformalCardsTab({
             }}
           >
             <p style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>
-              {selectedAssetIds.size}개 자료를 삭제할까요?
+              {copy.deleteManyTitle(selectedAssetIds.size)}
             </p>
             <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
-              삭제한 자료는 되돌릴 수 없습니다.
+              {copy.deleteManyHelp}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
@@ -951,7 +1093,7 @@ export function InformalCardsTab({
                   background: 'var(--surface)', color: 'var(--text)',
                   borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}
-              >취소</button>
+              >{copy.cancel}</button>
               <button
                 type="button"
                 onClick={async () => {
@@ -959,14 +1101,14 @@ export function InformalCardsTab({
                   setBulkDeleteConfirm(false)
                   await Promise.all(ids.map((id) => onDelete(id)))
                   clearSelection()
-                  showToast(`${ids.length}개 자료를 삭제했습니다`, 'success')
+                  showToast(copy.deletedMany(ids.length), 'success')
                 }}
                 style={{
                   flex: 1, height: 40, minHeight: 40, border: 'none',
                   background: 'var(--status-danger)', color: '#fff',
                   borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}
-              >삭제</button>
+              >{copy.delete}</button>
             </div>
           </div>
         </div>

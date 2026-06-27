@@ -384,6 +384,7 @@ export function AdminMobileZone({
           onRenameGroup={onRenameInformalGroup || (() => Promise.resolve())}
           onDeleteGroup={onDeleteInformalGroup || (() => Promise.resolve())}
           onMoveAsset={onMoveAssetToGroup || (() => Promise.resolve())}
+          language={language}
         />
       </div>
     )
@@ -403,6 +404,8 @@ export function AdminMobileZone({
           onApproveRestaurantRequest={onApproveRestaurantRequest}
           onRejectRestaurantRequest={onRejectRestaurantRequest}
           onOpenMap={(cardId) => onOpenMap(cardId)}
+          language={language}
+          translatePlaceNames={translatePlaceNames}
         />
       </div>
     )

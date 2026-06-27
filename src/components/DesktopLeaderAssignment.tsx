@@ -37,7 +37,7 @@ function canManageAssignment(event: CalendarEvent | null, currentVisitor: string
   if (!event) return false
   const effectiveRole = actualRole ?? role
   if (effectiveRole === 'admin' || effectiveRole === 'developer') return true
-  return event.leader === currentVisitor
+  return event.leaders.includes(currentVisitor)
 }
 
 // ── PC 전용 인도자 배정 뷰 ─────────────────────────────────────────

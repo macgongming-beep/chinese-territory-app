@@ -5,6 +5,7 @@ import type { Building, Unit, RestaurantRequest, Role, TerritoryCard } from '../
 import { RestaurantPickerModal } from './RestaurantPickerModal'
 import { confirmDialog } from '../lib/confirm'
 import { normalizeCardSearch } from '../utils/cardSearch'
+import { translateKoreanAddress, type AppLanguage } from '../i18n'
 import {
   SAMPLE_CSV_CONTENT,
   matchRestaurantsToBuildings,
@@ -14,6 +15,126 @@ import type { MatchResult } from '../utils/csvRestaurantImport'
 
 function isLeaderOrAdmin(role: Role): boolean {
   return role === 'leader' || role === 'admin' || role === 'developer'
+}
+
+const restaurantCopy = {
+  ko: {
+    other: '기타',
+    pendingTitle: '식당봉사 추가 신청',
+    total: (count: number) => `전체 ${count}개`,
+    csvBulk: 'CSV 일괄등록',
+    addRestaurant: '식당 추가',
+    searchPlaceholder: '식당 이름 또는 주소 검색',
+    emptyAdmin: '아직 등록된 식당이 없습니다.',
+    emptyAdminHelp: '위 + 식당 추가로 시작하세요.',
+    emptyUser: '아직 등록된 식당이 없습니다.',
+    noSearch: '검색 결과가 없습니다.',
+    open: '열기',
+    close: '접기',
+    map: '지도',
+    more: '더보기',
+    removeFromList: '식당 목록 제거',
+    confirmRemove: (name: string) => `"${name}" 식당 목록에서 제거할까요?`,
+    remove: '제거',
+    addNext: '다음 식당 추가하기',
+    restaurantName: '식당 이름',
+    address: '주소',
+    recheckAddress: '주소 재확인',
+    addressDirty: '주소를 수정했습니다. 오른쪽 버튼을 눌러 재확인하세요.',
+    requestBy: '신청',
+    checkingLocation: '주소 위치 확인 중...',
+    locationFound: '위치 확인됨',
+    locationNotFound: '위치를 찾지 못했습니다. 아래에서 건물을 직접 선택하세요.',
+    sameLocation: '같은 위치의 기존 건물',
+    directSearch: '건물 직접 검색',
+    buildingSearchPlaceholder: '건물 이름 또는 주소',
+    newBuilding: '새 건물로 추가',
+    newBuildingHelp: '미배정 건물 카드에 새로 생성',
+    willRegisterBuilding: (name: string) => `✓ ${name} 건물에 식당으로 등록됩니다`,
+    willCreateBuilding: '✓ 미배정 건물 카드에 새 건물로 추가됩니다',
+    processing: '처리 중...',
+    approve: '승인 확정',
+    reject: '거절',
+    units: (count: number) => `세대 ${count}개`,
+  },
+  zh: {
+    other: '其他',
+    pendingTitle: '餐厅传道申请',
+    total: (count: number) => `共 ${count} 个`,
+    csvBulk: 'CSV 批量登记',
+    addRestaurant: '添加餐厅',
+    searchPlaceholder: '搜索餐厅名称或地址',
+    emptyAdmin: '还没有登记餐厅。',
+    emptyAdminHelp: '请用上方 + 添加餐厅开始。',
+    emptyUser: '还没有登记餐厅。',
+    noSearch: '没有搜索结果。',
+    open: '打开',
+    close: '收起',
+    map: '地图',
+    more: '更多',
+    removeFromList: '从餐厅列表移除',
+    confirmRemove: (name: string) => `要从餐厅列表移除“${name}”吗？`,
+    remove: '移除',
+    addNext: '继续添加餐厅',
+    restaurantName: '餐厅名称',
+    address: '地址',
+    recheckAddress: '重新确认地址',
+    addressDirty: '地址已修改。请按右侧按钮重新确认。',
+    requestBy: '申请',
+    checkingLocation: '正在确认地址位置...',
+    locationFound: '位置已确认',
+    locationNotFound: '找不到位置。请在下方直接选择建筑。',
+    sameLocation: '同一位置的现有建筑',
+    directSearch: '直接搜索建筑',
+    buildingSearchPlaceholder: '建筑名称或地址',
+    newBuilding: '新增为新建筑',
+    newBuildingHelp: '在未分配建筑卡中新增',
+    willRegisterBuilding: (name: string) => `✓ 将登记到“${name}”建筑为餐厅`,
+    willCreateBuilding: '✓ 将在未分配建筑卡中新增建筑',
+    processing: '处理中...',
+    approve: '确认批准',
+    reject: '拒绝',
+    units: (count: number) => `${count} 户`,
+  },
+  en: {
+    other: 'Other',
+    pendingTitle: 'Restaurant service requests',
+    total: (count: number) => `${count} total`,
+    csvBulk: 'Bulk CSV',
+    addRestaurant: 'Add restaurant',
+    searchPlaceholder: 'Search restaurant name or address',
+    emptyAdmin: 'No restaurants have been added yet.',
+    emptyAdminHelp: 'Start with + Add restaurant above.',
+    emptyUser: 'No restaurants have been added yet.',
+    noSearch: 'No results.',
+    open: 'Open',
+    close: 'Close',
+    map: 'Map',
+    more: 'More',
+    removeFromList: 'Remove from restaurant list',
+    confirmRemove: (name: string) => `Remove "${name}" from the restaurant list?`,
+    remove: 'Remove',
+    addNext: 'Add another restaurant',
+    restaurantName: 'Restaurant name',
+    address: 'Address',
+    recheckAddress: 'Recheck address',
+    addressDirty: 'Address changed. Press the right button to recheck.',
+    requestBy: 'Requested by',
+    checkingLocation: 'Checking address location...',
+    locationFound: 'Location confirmed',
+    locationNotFound: 'Could not find the location. Select a building below.',
+    sameLocation: 'Existing building at same location',
+    directSearch: 'Search building',
+    buildingSearchPlaceholder: 'Building name or address',
+    newBuilding: 'Add as new building',
+    newBuildingHelp: 'Create under unassigned building card',
+    willRegisterBuilding: (name: string) => `✓ Will register as restaurant in ${name}`,
+    willCreateBuilding: '✓ Will create a new building under unassigned card',
+    processing: 'Processing...',
+    approve: 'Approve',
+    reject: 'Reject',
+    units: (count: number) => `${count} units`,
+  },
 }
 
 // Naver Maps 지오코딩 (Promise wrapping + 4초 타임아웃)
@@ -138,6 +259,8 @@ type VerifyStatus = 'idle' | 'loading' | 'done'
 function PendingRequestCard({
   req, buildings, cards, currentVisitor,
   onApprove, onReject,
+  language = 'ko',
+  translatePlaceNames = false,
 }: {
   req: RestaurantRequest
   buildings: Building[]
@@ -145,7 +268,11 @@ function PendingRequestCard({
   currentVisitor: string
   onApprove: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onReject: (id: number, reviewer: string) => Promise<void>
+  language?: AppLanguage
+  translatePlaceNames?: boolean
 }) {
+  const copy = restaurantCopy[language]
+  const placeLabel = (value: string) => translateKoreanAddress(value, language, translatePlaceNames)
   const [name, setName] = useState(req.name)
   const [address, setAddress] = useState(req.address)
   const [addressDirty, setAddressDirty] = useState(false)
@@ -219,7 +346,7 @@ function PendingRequestCard({
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="식당 이름"
+          placeholder={copy.restaurantName}
           autoComplete="new-password"
           style={sharedInputStyle}
         />
@@ -238,7 +365,7 @@ function PendingRequestCard({
         <input
           value={address}
           onChange={(e) => { setAddress(e.target.value); setAddressDirty(true) }}
-          placeholder="주소"
+          placeholder={copy.address}
           autoComplete="new-password"
           style={{
             flex: 1, minWidth: 0,
@@ -251,7 +378,7 @@ function PendingRequestCard({
           type="button"
           onClick={() => runVerify(address)}
           disabled={verifyStatus === 'loading'}
-          title="주소 재확인"
+          title={copy.recheckAddress}
           style={{
             flexShrink: 0, width: 28, height: 28,
             borderRadius: 6,
@@ -270,20 +397,20 @@ function PendingRequestCard({
       {/* 주소 수정 안내 */}
       {addressDirty && (
         <div style={{ fontSize: 11, color: '#d97706', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-          🔍 주소를 수정했습니다. 오른쪽 버튼을 눌러 재확인하세요.
+          🔍 {copy.addressDirty}
         </div>
       )}
 
       {/* 신청자 */}
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
-        신청: {req.requestedBy}
+        {copy.requestBy}: {req.requestedBy}
         {req.memo && <> · <em style={{ fontStyle: 'normal', color: 'var(--ink-light, #666)' }}>"{req.memo}"</em></>}
       </div>
 
       {/* 주소 검증 결과 */}
       {verifyStatus === 'loading' && (
         <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '8px 10px', background: 'var(--tint)', borderRadius: 8 }}>
-          <Spinner /> 주소 위치 확인 중...
+          <Spinner /> {copy.checkingLocation}
         </div>
       )}
 
@@ -292,12 +419,12 @@ function PendingRequestCard({
           {/* 위치 확인 결과 */}
           {coords ? (
             <div style={{ fontSize: 12, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600 }}>
-              <span>📍</span> 위치 확인됨
+              <span>📍</span> {copy.locationFound}
             </div>
           ) : (
             matchedBuildings.length === 0 && (
               <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span>📍</span> 위치를 찾지 못했습니다. 아래에서 건물을 직접 선택하세요.
+                <span>📍</span> {copy.locationNotFound}
               </div>
             )
           )}
@@ -306,7 +433,7 @@ function PendingRequestCard({
           {matchedBuildings.length > 0 && (
             <div>
               <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                같은 위치의 기존 건물
+                {copy.sameLocation}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {matchedBuildings.map((b) => {
@@ -315,9 +442,9 @@ function PendingRequestCard({
                     <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${selectedMatchId === b.id ? 'var(--ink)' : 'var(--line)'}`, cursor: 'pointer', background: selectedMatchId === b.id ? 'var(--bg-subtle)' : 'var(--surface)' }}>
                       <input type="radio" name={`match-${req.id}`} value={b.id} checked={selectedMatchId === b.id} onChange={() => setSelectedMatchId(b.id)} style={{ accentColor: 'var(--ink)', flexShrink: 0 }} />
                       <div style={{ minWidth: 0 }}>
-                        <strong style={{ fontSize: 13 }}>{b.name || b.address}</strong>
+                        <strong style={{ fontSize: 13 }}>{placeLabel(b.name || b.address)}</strong>
                         <div style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {cardName ? `${cardName} · ` : ''}{b.address} · 세대 {b.units.length}개
+                          {cardName ? `${placeLabel(cardName)} · ` : ''}{placeLabel(b.address)} · {copy.units(b.units.length)}
                         </div>
                       </div>
                     </label>
@@ -330,7 +457,7 @@ function PendingRequestCard({
           {/* 건물 직접 검색 */}
           <div>
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              건물 직접 검색
+              {copy.directSearch}
             </p>
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', display: 'flex', pointerEvents: 'none' }}>
@@ -339,7 +466,7 @@ function PendingRequestCard({
               <input
                 value={buildingSearch}
                 onChange={(e) => setBuildingSearch(e.target.value)}
-                placeholder="건물 이름 또는 주소"
+                placeholder={copy.buildingSearchPlaceholder}
                 autoComplete="off"
                 style={{ width: '100%', boxSizing: 'border-box', padding: '7px 10px 7px 26px', borderRadius: 8, border: '1.5px solid var(--line)', fontSize: 13, background: 'var(--surface)', color: 'var(--ink)', outline: 'none' }}
               />
@@ -352,9 +479,9 @@ function PendingRequestCard({
                     <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${selectedMatchId === b.id ? 'var(--ink)' : 'var(--line)'}`, cursor: 'pointer', background: selectedMatchId === b.id ? 'var(--bg-subtle)' : 'var(--surface)' }}>
                       <input type="radio" name={`match-${req.id}`} value={b.id} checked={selectedMatchId === b.id} onChange={() => setSelectedMatchId(b.id)} style={{ accentColor: 'var(--ink)', flexShrink: 0 }} />
                       <div style={{ minWidth: 0 }}>
-                        <strong style={{ fontSize: 13 }}>{b.name || b.address}</strong>
+                        <strong style={{ fontSize: 13 }}>{placeLabel(b.name || b.address)}</strong>
                         <div style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {cardName ? `${cardName} · ` : ''}{b.address}
+                          {cardName ? `${placeLabel(cardName)} · ` : ''}{placeLabel(b.address)}
                         </div>
                       </div>
                     </label>
@@ -368,20 +495,20 @@ function PendingRequestCard({
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${selectedMatchId === 'new' ? 'var(--ink)' : 'var(--line)'}`, cursor: 'pointer', background: selectedMatchId === 'new' ? 'var(--bg-subtle)' : 'var(--surface)' }}>
             <input type="radio" name={`match-${req.id}`} value="new" checked={selectedMatchId === 'new'} onChange={() => setSelectedMatchId('new')} style={{ accentColor: 'var(--ink)', flexShrink: 0 }} />
             <div>
-              <strong style={{ fontSize: 13 }}>새 건물로 추가</strong>
-              <div style={{ fontSize: 11, color: 'var(--muted)' }}>미배정 건물 카드에 새로 생성</div>
+              <strong style={{ fontSize: 13 }}>{copy.newBuilding}</strong>
+              <div style={{ fontSize: 11, color: 'var(--muted)' }}>{copy.newBuildingHelp}</div>
             </div>
           </label>
 
           {/* 선택 요약 */}
           {selectedMatchId !== 'new' && selectedBuilding && (
             <div style={{ fontSize: 11, color: 'var(--ink)', background: 'var(--bg-subtle)', borderRadius: 6, padding: '5px 8px', border: '1px solid var(--line)' }}>
-              ✓ {selectedBuilding.name || selectedBuilding.address} 건물에 식당으로 등록됩니다
+              {copy.willRegisterBuilding(placeLabel(selectedBuilding.name || selectedBuilding.address))}
             </div>
           )}
           {selectedMatchId === 'new' && (
             <div style={{ fontSize: 11, color: 'var(--ink)', background: 'var(--bg-subtle)', borderRadius: 6, padding: '5px 8px', border: '1px solid var(--line)' }}>
-              ✓ 미배정 건물 카드에 새 건물로 추가됩니다
+              {copy.willCreateBuilding}
             </div>
           )}
         </div>
@@ -395,7 +522,7 @@ function PendingRequestCard({
           disabled={!!processing || verifyStatus === 'loading'}
           style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: processing === 'approve' ? 'var(--muted)' : 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
         >
-          {processing === 'approve' ? '처리 중...' : '승인 확정'}
+          {processing === 'approve' ? copy.processing : copy.approve}
         </button>
         <button
           type="button"
@@ -403,7 +530,7 @@ function PendingRequestCard({
           disabled={!!processing}
           style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid #fca5a5', background: '#fff', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
         >
-          {processing === 'reject' ? '...' : '거절'}
+          {processing === 'reject' ? '...' : copy.reject}
         </button>
       </div>
     </div>
@@ -424,12 +551,18 @@ type Props = {
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
   onOpenMap: (cardId: number) => void
   onOpenBuildingMap?: (buildingId: number) => void
+  language?: AppLanguage
+  translatePlaceNames?: boolean
 }
 
 export function RestaurantsTab({
   role, buildings, cards, currentVisitor = '', restaurantRequests = [],
   onToggleRestaurantFlag, onRemoveRestaurantUnit, onBulkSetRestaurant, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap, onOpenBuildingMap,
+  language = 'ko',
+  translatePlaceNames = false,
 }: Props) {
+  const copy = restaurantCopy[language]
+  const placeLabel = (value: string) => translateKoreanAddress(value, language, translatePlaceNames)
   const canManage = isLeaderOrAdmin(role)
   const [search, setSearch] = useState('')
   const [expandedRegions, setExpandedRegions] = useState<Set<string>>(new Set())
@@ -573,13 +706,13 @@ export function RestaurantsTab({
     const map = new Map<string, RestaurantRow[]>()
     for (const row of filtered) {
       const card = cards.find((c) => c.id === row.building.cardId)
-      const region = (card?.region as string) || '기타'
+      const region = (card?.region as string) || copy.other
       const list = map.get(region) ?? []
       list.push(row)
       map.set(region, list)
     }
-    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, 'ko'))
-  }, [filtered, cards])
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, language === 'zh' ? 'zh-Hans-CN' : language))
+  }, [filtered, cards, copy.other, language])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -607,7 +740,7 @@ export function RestaurantsTab({
                 <path d="M15 9v-3"></path>
               </svg>
             </span>
-            <span style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 600 }}>식당봉사 추가 신청</span>
+            <span style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 600 }}>{copy.pendingTitle}</span>
             <span style={{
               marginLeft: 'auto',
               background: '#ef4444', color: '#fff',
@@ -623,6 +756,8 @@ export function RestaurantsTab({
               currentVisitor={currentVisitor}
               onApprove={async (id, opts) => { await onApproveRestaurantRequest?.(id, opts) }}
               onReject={async (id, reviewer) => { await onRejectRestaurantRequest?.(id, reviewer) }}
+              language={language}
+              translatePlaceNames={translatePlaceNames}
             />
           ))}
         </div>
@@ -630,19 +765,19 @@ export function RestaurantsTab({
 
       {/* 상단 카운트 + 추가 + CSV */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-        <span style={{ fontSize: 13, color: 'var(--muted)' }}>전체 {restaurants.length}개</span>
+        <span style={{ fontSize: 13, color: 'var(--muted)' }}>{copy.total(restaurants.length)}</span>
         {/* restaurants = 세대별 행 수 */}
         {canManage && (
           <div style={{ display: 'flex', gap: 8 }}>
             {onBulkSetRestaurant && (
               <button type="button" onClick={() => { setCsvPanelOpen((o) => !o); setCsvDone(false) }}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, minHeight: 32, padding: '0 12px', border: '1px solid var(--line-2)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                <UploadIcon /> CSV 일괄등록
+                <UploadIcon /> {copy.csvBulk}
               </button>
             )}
             <button type="button" onClick={() => setAddOpen(true)}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, minHeight: 32, padding: '0 12px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', letterSpacing: '-0.005em' }}>
-              <PlusIcon /> 식당 추가
+              <PlusIcon /> {copy.addRestaurant}
             </button>
           </div>
         )}
@@ -798,7 +933,7 @@ export function RestaurantsTab({
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="식당 이름 또는 주소 검색"
+          placeholder={copy.searchPlaceholder}
           style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', font: 'inherit', color: 'inherit', padding: 0 }}
         />
       </label>
@@ -806,10 +941,10 @@ export function RestaurantsTab({
       {/* 빈 상태 */}
       {restaurants.length === 0 ? (
         <div style={{ padding: '40px 16px', textAlign: 'center', fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
-          {canManage ? <>아직 등록된 식당이 없습니다.<br />위 + 식당 추가로 시작하세요.</> : <>아직 등록된 식당이 없습니다.</>}
+          {canManage ? <>{copy.emptyAdmin}<br />{copy.emptyAdminHelp}</> : <>{copy.emptyUser}</>}
         </div>
       ) : grouped.length === 0 ? (
-        <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>검색 결과가 없습니다.</div>
+        <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>{copy.noSearch}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {grouped.map(([region, list]) => (
@@ -822,11 +957,11 @@ export function RestaurantsTab({
                   <span style={{ display: 'flex', transform: expandedRegions.has(region) ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}>
                     <ChevD />
                   </span>
-                  <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{region}</span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{placeLabel(region)}</span>
                   <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>{list.length}</span>
                 </div>
                 <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                  {expandedRegions.has(region) ? '접기' : '열기'}
+                  {expandedRegions.has(region) ? copy.close : copy.open}
                 </span>
               </div>
               {expandedRegions.has(region) && (
@@ -841,22 +976,22 @@ export function RestaurantsTab({
                       </div>
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {restaurantName}
+                          {placeLabel(restaurantName)}
                         </span>
                         <span style={{ fontSize: 12.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {b.address}
+                          {placeLabel(b.address)}
                         </span>
                       </div>
                       <button type="button"
                         onClick={() => onOpenBuildingMap ? onOpenBuildingMap(b.id) : onOpenMap(b.cardId)}
                         style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 34, minHeight: 34, padding: '0 12px', fontSize: 13, fontWeight: 600, border: '1px solid var(--line-2)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }}>
-                        <MapIcon /> 지도
+                        <MapIcon /> {copy.map}
                       </button>
                       {canManage && (onToggleRestaurantFlag || onRemoveRestaurantUnit) && (
                         <div style={{ position: 'relative' }}>
                           <button type="button" onClick={() => setOpenMenuId(openMenuId === key ? null : key)}
                             style={{ width: 28, height: 28, minHeight: 28, display: 'grid', placeItems: 'center', background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', borderRadius: 6 }}
-                            aria-label="더보기">
+                            aria-label={copy.more}>
                             <DotsIcon />
                           </button>
                           {openMenuId === key && (
@@ -866,7 +1001,7 @@ export function RestaurantsTab({
                                 <button type="button"
                                   onClick={async () => {
                                     setOpenMenuId(null)
-                                    if (!(await confirmDialog({ message: `"${restaurantName}" 식당 목록에서 제거할까요?`, danger: true, confirmLabel: '제거' }))) return
+                                    if (!(await confirmDialog({ message: copy.confirmRemove(placeLabel(restaurantName)), danger: true, confirmLabel: copy.remove }))) return
                                     if (rowUnit && onRemoveRestaurantUnit) {
                                       const u = rowUnit
                                       // 세대 단위 해제 (마지막이면 건물도 자동 해제)
@@ -877,7 +1012,7 @@ export function RestaurantsTab({
                                     }
                                   }}
                                   style={{ width: '100%', textAlign: 'left', padding: '8px 10px', minHeight: 0, background: 'transparent', border: 'none', fontSize: 13, color: 'var(--status-danger)', cursor: 'pointer', borderRadius: 6 }}>
-                                  식당 목록 제거
+                                  {copy.removeFromList}
                                 </button>
                               </div>
                             </>
@@ -894,7 +1029,7 @@ export function RestaurantsTab({
           {canManage && (
             <button type="button" onClick={() => setAddOpen(true)}
               style={{ padding: '18px 14px', border: '1px dashed var(--line-2)', background: 'transparent', color: 'var(--muted)', borderRadius: 12, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', font: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', minHeight: 0 }}>
-              <PlusIcon /> 다음 식당 추가하기
+              <PlusIcon /> {copy.addNext}
             </button>
           )}
         </div>

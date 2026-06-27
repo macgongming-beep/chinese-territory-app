@@ -167,7 +167,8 @@ export function DesktopCalendar({
   const [newEndTime, setNewEndTime] = useState('12:00')
   const [newPlace, setNewPlace] = useState('')
   const [newMapLink, setNewMapLink] = useState('')
-  const [newLeader, setNewLeader] = useState('')
+  const [newLeaders, setNewLeaders] = useState<string[]>([])
+  const toggleNewLeader = (name: string) => setNewLeaders((prev) => prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name])
   const [newMemo, setNewMemo] = useState('')
   const [newHasMeeting, setNewHasMeeting] = useState(false)
   const [newAllowApplications, setNewAllowApplications] = useState(true)
@@ -225,13 +226,13 @@ export function DesktopCalendar({
 
   const resetCreateForm = () => {
     setNewDate(selectedDateStr); setNewTitle('传道'); setNewTime('10:00'); setNewEndTime('12:00'); setNewPlace('')
-    setNewMapLink(''); setNewLeader(''); setNewMemo(''); setNewHasMeeting(false); setNewAllowApplications(true)
+    setNewMapLink(''); setNewLeaders([]); setNewMemo(''); setNewHasMeeting(false); setNewAllowApplications(true)
     setIsRepeat(false); setRepeatEnd('')
   }
 
   const handleCreate = () => {
     if (!newTitle.trim()) return
-    const input: EventInput = { time: newTime, endTime: newEndTime || undefined, title: newTitle, place: newPlace, mapLink: newMapLink || undefined, leader: newLeader, memo: newMemo, hasMeeting: newHasMeeting, allowApplications: newAllowApplications }
+    const input: EventInput = { time: newTime, endTime: newEndTime || undefined, title: newTitle, place: newPlace, mapLink: newMapLink || undefined, leader: newLeaders.join(', '), memo: newMemo, hasMeeting: newHasMeeting, allowApplications: newAllowApplications }
     if (isRepeat) {
       // 반복 켰는데 종료일 없음 → 조용히 단일 생성되던 문제 방지
       if (!repeatEnd) { showToast('반복 종료일을 선택해 주세요', 'error'); return }
@@ -443,13 +444,22 @@ export function DesktopCalendar({
               </div>
 
 
-              {/* 인도자 */}
+              {/* 인도자 (다중 선택) */}
               <div className="cal-field">
                 <label>인도자</label>
-                <select className="cal-input" value={newLeader} onChange={(e) => setNewLeader(e.target.value)}>
-                  <option value="">선택 안함</option>
-                  {leaderNames.map((name) => <option key={name} value={name}>{name}</option>)}
-                </select>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {leaderNames.length === 0 && <span style={{ fontSize: 13, color: 'var(--muted)' }}>선택 안함</span>}
+                  {leaderNames.map((name) => {
+                    const on = newLeaders.includes(name)
+                    return (
+                      <button key={name} type="button" onClick={() => toggleNewLeader(name)}
+                        style={{ minHeight: 0, padding: '7px 14px', borderRadius: 999, fontSize: 13, fontWeight: on ? 700 : 500, cursor: 'pointer',
+                          border: on ? '1.5px solid var(--ink)' : '1px solid var(--line)', background: on ? 'var(--ink)' : 'var(--surface)', color: on ? '#fff' : 'var(--ink)' }}>
+                        {on ? '✓ ' : ''}{name}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
               {/* 상세설명 */}
@@ -637,7 +647,7 @@ export function DesktopCalendar({
                   role === 'leader' ||
                   event.applicants.includes(currentVisitor) ||
                   event.assigned.includes(currentVisitor) ||
-                  event.leader === currentVisitor
+                  event.leaders.includes(currentVisitor)
                 const isEditing = editingEventId === event.id
 
                 if (isEditing && editDraft) {
@@ -671,7 +681,7 @@ export function DesktopCalendar({
                 }
 
                 // 편집/참가자 관리: 관리자·개발자 또는 본인이 인도자인 일정만 (모바일 정책과 통일)
-                const canEdit = role === 'admin' || role === 'developer' || event.leader === currentVisitor
+                const canEdit = role === 'admin' || role === 'developer' || event.leaders.includes(currentVisitor)
                 const canManage = role === 'admin' || role === 'developer'
                 const canManageParticipants = canEdit
 
@@ -1228,13 +1238,24 @@ function EditCard({
           <input className="cal-input" placeholder="장소 입력" value={draft.place} onChange={(e) => setDraft({ ...draft, place: e.target.value })} style={{ marginBottom: 8 }} />
           <input className="cal-input" inputMode="url" placeholder="네이버 지도 링크 (선택)" value={draft.mapLink ?? ''} onChange={(e) => setDraft({ ...draft, mapLink: e.target.value })} />
         </div>
-        {/* 인도자 */}
+        {/* 인도자 (다중 선택) */}
         <div className="cal-field">
           <label>인도자</label>
-          <select className="cal-input" value={draft.leader} onChange={(e) => setDraft({ ...draft, leader: e.target.value })}>
-            <option value="">선택 안함</option>
-            {leaderNames.map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {leaderNames.length === 0 && <span style={{ fontSize: 13, color: 'var(--muted)' }}>선택 안함</span>}
+            {leaderNames.map((name) => {
+              const current = draft.leader.split(',').map((s) => s.trim()).filter(Boolean)
+              const on = current.includes(name)
+              return (
+                <button key={name} type="button"
+                  onClick={() => setDraft({ ...draft, leader: (on ? current.filter((n) => n !== name) : [...current, name]).join(', ') })}
+                  style={{ minHeight: 0, padding: '7px 14px', borderRadius: 999, fontSize: 13, fontWeight: on ? 700 : 500, cursor: 'pointer',
+                    border: on ? '1.5px solid var(--ink)' : '1px solid var(--line)', background: on ? 'var(--ink)' : 'var(--surface)', color: on ? '#fff' : 'var(--ink)' }}>
+                  {on ? '✓ ' : ''}{name}
+                </button>
+              )
+            })}
+          </div>
         </div>
         {/* 상세설명 */}
         <div className="cal-field">

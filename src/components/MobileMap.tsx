@@ -1094,7 +1094,7 @@ export function MobileMap({
                 const b = buildings.find(item => item.id === id)
                 if (b) {
                   onUpdateBuilding(id, b.name, b.address, lat, lng)
-                  showToast(`${b.name || b.address} ${t(language, 'map.pinSaved')}`, 'success')
+                  showToast(`${placeLabel(b.name || b.address)} ${t(language, 'map.pinSaved')}`, 'success')
                 }
               }}
               isMobile={true}
@@ -1688,7 +1688,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                 {liveFullScreenUnit.unit.isForbidden && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 4, background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}>{t(language, 'map.forbidden')}</span>}
               </div>
               <div style={{ margin: '0 0 4px', fontSize: 12.5, fontWeight: 500, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {shortenAddress(liveFullScreenUnit.building.address)}
+                {placeLabel(shortenAddress(liveFullScreenUnit.building.address))}
               </div>
             </div>
             {/* 헤더 ⋮ 메뉴 */}

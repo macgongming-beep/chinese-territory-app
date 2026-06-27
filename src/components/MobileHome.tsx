@@ -457,7 +457,7 @@ export function MobileHome({
   // 신청/배정자면 kind='join', 아무 관여 없으면 kind='avail' (신청 가능).
   const myTodayEvents = useMemo(() => {
     return todayEvents.map((event) => {
-      const isLeader = event.leader === currentVisitor
+      const isLeader = event.leaders.includes(currentVisitor)
       const isApplicant = event.applicants.includes(currentVisitor)
       const isAssigned = event.cardAssignments.some((a) => a.userName === currentVisitor)
         || (event.assigned ?? []).includes(currentVisitor)
@@ -824,6 +824,7 @@ export function MobileHome({
                 {/* 모든 역할이 AdminMobileCalendar 사용 — 권한별 콜백 가시성으로 차등 */}
                 <AdminMobileCalendar
                   language={language}
+                  translatePlaceNames={translatePlaceNames}
                   currentVisitor={currentVisitor}
                   currentUserId={currentUser.id}
                   role={role}
@@ -891,7 +892,7 @@ export function MobileHome({
                   subtitle={(() => {
                     const myEvents = calendarEvents.filter((e) =>
                       e.date === today && (
-                        e.leader === currentVisitor ||
+                        e.leaders.includes(currentVisitor) ||
                         e.assigned?.includes(currentVisitor) ||
                         e.applicants?.includes(currentVisitor)
                       )
@@ -1029,7 +1030,7 @@ export function MobileHome({
                 })() : (() => {
                   const myEvents = calendarEvents.filter((e) =>
                     e.date === today && (
-                      e.leader === currentVisitor ||
+                      e.leaders.includes(currentVisitor) ||
                       e.assigned?.includes(currentVisitor) ||
                       e.applicants?.includes(currentVisitor)
                     )

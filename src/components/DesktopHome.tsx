@@ -73,7 +73,7 @@ export function DesktopHome({
 
   const myTodayEvents = useMemo(() => {
     return todayEvents.map((event) => {
-      const isLeader = event.leader === currentVisitor
+      const isLeader = event.leaders.includes(currentVisitor)
       const isApplicant = event.applicants.includes(currentVisitor)
       const isAssigned = event.cardAssignments.some((a) => a.userName === currentVisitor)
         || (event.assigned ?? []).includes(currentVisitor)

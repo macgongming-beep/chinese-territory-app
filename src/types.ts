@@ -23,7 +23,8 @@ export type CalendarEvent = {
   type: ScheduleType
   place: string
   mapLink?: string
-  leader: string
+  leader: string          // 표시용 (여러 명이면 "오세창, 김민준")
+  leaders: string[]       // 인도자 목록 (다중). leader 를 콤마로 분해
   card: string
   hasMeeting: boolean
   allowApplications: boolean

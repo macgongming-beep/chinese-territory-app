@@ -60,6 +60,7 @@ type EventSheetInput = EventInput & {
 
 type Props = {
   language: AppLanguage
+  translatePlaceNames?: boolean
   currentVisitor: string
   currentUserId?: number | null
   role: Role
@@ -213,6 +214,7 @@ function CalendarEmptyIcon() { return <svg width="24" height="24" viewBox="0 0 2
 
 export function AdminMobileCalendar({
   language,
+  translatePlaceNames = false,
   events,
   cards = [],
   buildings = [],
@@ -599,6 +601,7 @@ export function AdminMobileCalendar({
       {detailEvent && (
         <AdminEventDetailSheet
           language={language}
+          translatePlaceNames={translatePlaceNames}
           event={detailEvent}
           cards={cards}
           role={role}
@@ -650,7 +653,7 @@ export function AdminMobileCalendar({
         const myCards = (role === 'admin' || role === 'developer')
           ? cards
           : cards.filter((c) => c.assignedLeader === currentVisitor || c.assignedLeaders?.includes(currentVisitor))
-        const canEdit = role === 'admin' || role === 'developer' || assignEvent.leader === currentVisitor
+        const canEdit = role === 'admin' || role === 'developer' || assignEvent.leaders.includes(currentVisitor)
         return (
           <AssignmentEditor
             event={assignEvent}
@@ -1016,7 +1019,11 @@ function EventAddSheet({ language,
   const [memo, setMemo] = useState(editingEvent?.memo ?? '')
   const [place, setPlace] = useState(editingEvent?.place ?? '')
   const [mapLink, setMapLink] = useState(editingEvent?.mapLink ?? '')
-  const [leader, setLeader] = useState(editingEvent?.leader ?? '')
+  const [leaders, setLeaders] = useState<string[]>(
+    editingEvent?.leaders?.length ? editingEvent.leaders : (editingEvent?.leader ? editingEvent.leader.split(',').map((s) => s.trim()).filter(Boolean) : []),
+  )
+  const toggleLeader = (name: string) => setLeaders((prev) => prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name])
+  const leader = leaders.join(', ')
   const [hasMeeting, setHasMeeting] = useState(editingEvent?.hasMeeting ?? false)
   const [allowApplications, setAllowApplications] = useState(editingEvent?.allowApplications ?? true)
   const [repeat, setRepeat] = useState(false)
@@ -1303,7 +1310,26 @@ function EventAddSheet({ language,
 
 
           <Field label={t(language, 'calendar.leader')}>
-            <Select value={leader} onChange={setLeader} options={['', ...leaderNames]} placeholder={t(language, 'common.selectNone')} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {leaderNames.length === 0 && (
+                <span style={{ fontSize: 13, color: 'var(--muted)' }}>{t(language, 'common.selectNone')}</span>
+              )}
+              {leaderNames.map((name) => {
+                const on = leaders.includes(name)
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => toggleLeader(name)}
+                    style={{ minHeight: 0, padding: '8px 14px', borderRadius: 999, fontSize: 13.5, fontWeight: on ? 700 : 500, cursor: 'pointer',
+                      border: on ? '1.5px solid var(--ink)' : '1px solid var(--line)',
+                      background: on ? 'var(--ink)' : 'var(--surface)', color: on ? '#fff' : 'var(--ink)' }}
+                  >
+                    {on ? '✓ ' : ''}{name}
+                  </button>
+                )
+              })}
+            </div>
           </Field>
 
           <Field label={t(language, 'calendar.settings')}>
@@ -1808,33 +1834,6 @@ function TextArea({ value, onChange, placeholder }: { value: string; onChange: (
         minHeight: 64,
       }}
     />
-  )
-}
-
-function Select({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--line)',
-        borderRadius: 10,
-        padding: '12px 14px',
-        fontSize: 14,
-        color: value ? 'var(--text)' : 'var(--muted-2)',
-        font: 'inherit',
-        outline: 'none',
-        width: '100%',
-        appearance: 'none',
-      }}
-    >
-      {options.map((opt) => (
-        <option key={opt} value={opt}>
-          {opt || placeholder || '선택 안함'}
-        </option>
-      ))}
-    </select>
   )
 }
 

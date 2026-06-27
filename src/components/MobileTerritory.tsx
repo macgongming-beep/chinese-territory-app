@@ -284,7 +284,7 @@ export function MobileTerritory({
       !!assignment ||
       event.applicants.includes(currentVisitor) ||
       event.assigned.includes(currentVisitor) ||
-      event.leader === currentVisitor
+      event.leaders.includes(currentVisitor)
     if (!isParticipant) return null
     const cardIds = assignmentCardIds(assignment)
     const assignedCards = cardIds
