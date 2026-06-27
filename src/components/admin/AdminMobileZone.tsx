@@ -948,7 +948,12 @@ function CardRow({
                 <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{displayName}</span>
               </div>
               <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
-                {card.assignedLeader ? `${t(language, 'territory.assignedPrefix')} ${card.assignedLeader} · ` : ''}
+                {(() => {
+                  const leaderCount = card.assignedLeaders?.length ?? (card.assignedLeader ? 1 : 0)
+                  return leaderCount > 0
+                    ? `${t(language, 'territory.assignedPrefix')} ${t(language, 'common.nPeople', { n: leaderCount })} · `
+                    : ''
+                })()}
                 {isEmptyTarget ? t(language, 'territory.statusDone') : countText}
               </span>
             </div>
