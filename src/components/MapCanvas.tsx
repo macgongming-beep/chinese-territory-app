@@ -257,27 +257,53 @@ function shortCardLabel(name: string): string {
   return name.replace(/^(처인구|기흥구|수지구|영통구|화성시)\s*/, '')
 }
 
-// 폴리곤 라벨 위치: 바운딩 박스 중심 (정점 쏠림에 강건, 대부분 내부에 위치)
-function boundaryLabelCenter(points: { lat: number; lng: number }[]): { lat: number; lng: number } | null {
-  const lats = points.map((p) => p.lat).filter((v) => typeof v === 'number' && !isNaN(v))
-  const lngs = points.map((p) => p.lng).filter((v) => typeof v === 'number' && !isNaN(v))
-  if (lats.length === 0 || lngs.length === 0) return null
-  return {
-    lat: (Math.min(...lats) + Math.max(...lats)) / 2,
-    lng: (Math.min(...lngs) + Math.max(...lngs)) / 2,
+// 점이 폴리곤 내부인지 (ring: [x=lng, y=lat][])
+function pointInRing(x: number, y: number, ring: [number, number][]): boolean {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [ax, ay] = ring[i]
+    const [bx, by] = ring[j]
+    if ((ay > y) !== (by > y) && x < ((bx - ax) * (y - ay)) / (by - ay) + ax) inside = !inside
   }
+  return inside
+}
+
+// 폴리곤 라벨 위치: 면적 가중 중심(centroid). 중심이 폴리곤 밖이면 bbox 중심으로 폴백.
+// → 삐뚤어진/사다리꼴 구역에서도 라벨이 안쪽에 들어옴.
+function boundaryLabelCenter(points: { lat: number; lng: number }[]): { lat: number; lng: number } | null {
+  const pts = points.filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number' && !isNaN(p.lat) && !isNaN(p.lng))
+  if (pts.length === 0) return null
+  const lats = pts.map((p) => p.lat)
+  const lngs = pts.map((p) => p.lng)
+  const bbox = { lat: (Math.min(...lats) + Math.max(...lats)) / 2, lng: (Math.min(...lngs) + Math.max(...lngs)) / 2 }
+  if (pts.length < 3) return bbox
+
+  const ring = pts.map((p) => [p.lng, p.lat] as [number, number])
+  let area = 0, cx = 0, cy = 0
+  for (let i = 0, n = ring.length; i < n; i++) {
+    const [x0, y0] = ring[i]
+    const [x1, y1] = ring[(i + 1) % n]
+    const cross = x0 * y1 - x1 * y0
+    area += cross
+    cx += (x0 + x1) * cross
+    cy += (y0 + y1) * cross
+  }
+  area *= 0.5
+  if (Math.abs(area) < 1e-12) return bbox
+  const centroid = { lng: cx / (6 * area), lat: cy / (6 * area) }
+  return pointInRing(centroid.lng, centroid.lat, ring) ? centroid : bbox
 }
 
 // 구역 라벨 칩 HTML (클릭 통과 → 아래 폴리곤/지도가 받음)
 function cardLabelHtml(text: string): string {
   const safe = text.replace(/</g, '&lt;').replace(/>/g, '&gt;')
   return `<div style="pointer-events:none;transform:translate(-50%,-50%);white-space:nowrap;
-    background:rgba(255,255,255,0.86);color:#1A1A18;font-size:11px;font-weight:700;letter-spacing:-0.01em;
-    padding:2px 7px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);
-    box-shadow:0 1px 4px rgba(0,0,0,0.12);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);">${safe}</div>`
+    background:rgba(255,255,255,0.66);color:#1A1A18;font-size:10px;font-weight:700;letter-spacing:-0.01em;
+    padding:1px 5px;border-radius:7px;border:1px solid rgba(0,0,0,0.06);
+    box-shadow:0 1px 3px rgba(0,0,0,0.10);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px);">${safe}</div>`
 }
 
-const CARD_LABEL_MIN_ZOOM = 14  // 이 줌 미만이면 라벨 숨김 (겹침 방지)
+const CARD_LABEL_MIN_ZOOM = 15  // 이 줌 미만이면 라벨 숨김 (겹침 방지)
 
 function previewPinHtml(): string {
   const infoColor = cssVar('--info-700', '#3b82f6')
