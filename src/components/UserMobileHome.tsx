@@ -61,7 +61,7 @@ export function UserMobileHome({
                 <button
                   key={event.id}
                   type="button"
-                  className={`mh-today-serving${kind === 'lead' ? ' is-lead' : ''}${kind === 'avail' ? ' is-avail' : ''}`}
+                  className={`mh-today-serving${kind === 'lead' ? ' is-lead' : ''}${kind === 'join' ? ' is-join' : ''}${kind === 'avail' ? ' is-avail' : ''}`}
                   onClick={() => onOpenEventDetail(event.id)}
                 >
                   <span className="mh-today-time" style={{ width: 'auto', minWidth: 64, padding: '0 12px', height: 50 }}>
@@ -76,6 +76,7 @@ export function UserMobileHome({
                     <span className="mh-today-title-row">
                       <span className="mh-today-title">{event.title}</span>
                       {kind === 'lead' && <span className="mh-today-pill-lead">{t(language, 'home.leadPill')}</span>}
+                      {kind === 'join' && <span className="mh-today-pill-join">{t(language, 'home.joinPill')}</span>}
                     </span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
                       {event.place && (

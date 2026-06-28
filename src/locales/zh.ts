@@ -388,6 +388,7 @@ export const zh = {
     'home.dateTomorrow': '明天',
     'home.dateDayAfter': '后天',
     'home.leadPill': '带领',
+    'home.joinPill': '参与',
     'home.noticePill': '公告',
     'home.leaderSuffix': '带头人',
     'home.joinedLabel': '参与',

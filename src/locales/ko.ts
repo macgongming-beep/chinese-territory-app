@@ -388,6 +388,7 @@ export const ko = {
     'home.dateTomorrow': '내일',
     'home.dateDayAfter': '모레',
     'home.leadPill': '인도',
+    'home.joinPill': '참여',
     'home.noticePill': '공지',
     'home.leaderSuffix': '인도자',
     'home.joinedLabel': '참여',

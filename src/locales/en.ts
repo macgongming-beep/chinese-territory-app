@@ -388,6 +388,7 @@ export const en = {
     'home.dateTomorrow': 'Tomorrow',
     'home.dateDayAfter': 'Day after',
     'home.leadPill': 'Leading',
+    'home.joinPill': 'Joined',
     'home.noticePill': 'Notice',
     'home.leaderSuffix': 'Leader',
     'home.joinedLabel': 'joined',
