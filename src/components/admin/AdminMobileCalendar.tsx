@@ -113,11 +113,6 @@ function getWeeklyDates(startDate: string, endDate: string): string[] {
   return dates
 }
 
-// 시간 범위 포맷: "13:00 — 15:00" 또는 "13:00"
-function formatTimeRange(start?: string, end?: string): string {
-  if (!start) return ''
-  return end ? `${start} — ${end}` : start
-}
 
 function buildCalendarDays(year: number, month: number): (number | null)[] {
   const firstDow = new Date(year, month - 1, 1).getDay()
@@ -284,14 +279,6 @@ export function AdminMobileCalendar({
         .sort((a, b) => a.time.localeCompare(b.time)),
     [events, selectedDateStr],
   )
-  const upcomingEvents = useMemo(() => {
-    const todayStr = toDateStr(today.getFullYear(), today.getMonth() + 1, today.getDate())
-    return events
-      .filter((e) => e.date > todayStr)
-      .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
-      .slice(0, 3)
-  }, [events, today])
-
   const prevMonth = () => {
     if (month === 1) {
       setYear(year - 1)
@@ -491,27 +478,6 @@ export function AdminMobileCalendar({
           </div>
         )}
       </section>
-
-      {/* ── 다가오는 일정 ──────────────── */}
-      {upcomingEvents.length > 0 && (
-        <section>
-          <SectionHead
-            title={
-              <div className="cal-upcoming-title">
-                {t(language, 'calendar.upcomingEvents')}
-                <span style={{ fontWeight: 500, color: 'var(--muted)', fontSize: 13, marginLeft: 6 }}>
-                  {upcomingEvents.length}
-                </span>
-              </div>
-            }
-          />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-            {upcomingEvents.map((event) => (
-              <UpcomingEventCard language={language} key={event.id} event={event} onClick={() => setDetailEventId(event.id)} />
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* ── 일정 추가/편집 시트 ─────────── */}
       {(addOpen || editingEvent) && (
@@ -910,49 +876,6 @@ function DayEventCard({ language, event, role, globalSettings, onClick }: { even
   )
 }
 
-// ── 다가오는 일정 카드 ─────────────────
-function UpcomingEventCard({ language,  event, onClick }: { event: CalendarEvent; onClick?: () => void ; language: AppLanguage }) {
-  const d = new Date(event.date)
-  const dStr = `${d.getMonth() + 1}/${d.getDate()}`
-  const dow = WEEKDAY_LABELS[language][d.getDay()]
-  const meta: string[] = []
-  if (event.time) meta.push(formatTimeRange(event.time, event.endTime))
-  if (event.place) meta.push(event.place)
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        display: 'block',
-        width: '100%',
-        padding: 0,
-        border: 'none',
-        background: 'transparent',
-        cursor: 'pointer',
-        textAlign: 'left',
-        minHeight: 0,
-      }}
-    >
-    <Card padding="12px 14px">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 42, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
-            {dStr}
-          </span>
-          <span style={{ fontSize: 12, color: 'var(--muted)' }}>{dow}</span>
-        </div>
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{event.title}</span>
-          {meta.length > 0 && (
-            <span style={{ fontSize: 12, color: 'var(--muted)' }}>{meta.join(' · ')}</span>
-          )}
-        </div>
-        <ChevR />
-      </div>
-    </Card>
-    </button>
-  )
-}
 
 // ── 일정 추가/편집 바텀 시트 ────────────────
 function EventAddSheet({ language,
