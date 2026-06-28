@@ -364,7 +364,8 @@ export function MobileMap({
     // 지도 레벨: 지도 안에서 드릴한 단계(구→동→카드)를 한 단계씩 복귀.
     // 진입 단계에 도달하면 이전 페이지(목록)로 나감.
     if (navLevel === 'map') {
-      if (enteredDirectly) { onBack(); return }  // 배정/카드 직접 진입은 바로 나감
+      // 단일 카드(나의봉사) / 배정 진입만 바로 이탈. 지역 범위 진입(focusedCardIds)은 드릴 복귀 허용.
+      if (focusedCardId != null || enteredFromAssignment) { onBack(); return }
       if (selectedCardId != null) {              // 카드 선택 → 카드 해제(이전 동 화면)
         setSelectedCardId(null)
         setSelectedBuildingId(null)
