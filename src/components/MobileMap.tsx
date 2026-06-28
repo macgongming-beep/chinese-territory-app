@@ -137,6 +137,9 @@ export function MobileMap({
   const [selectedCardId, setSelectedCardId] = useState<number | null>(
     focusedCardId ?? null
   )
+  // 진입 시점의 구/동 (뒤로가기 단계 복귀 기준 — 진입보다 깊게 드릴한 것만 단계 복귀)
+  const [entrySelectedArea] = useState<string | null>(initialMapRegion || null)
+  const [entrySelectedRegion] = useState<string | null>(initialMapDong || null)
   const [showCardFinder, setShowCardFinder] = useState(false)
   const [cardSearch, setCardSearch] = useState('')
 
@@ -358,15 +361,19 @@ export function MobileMap({
     if (navLevel === 'area') { onBack(); return }
     if (navLevel === 'region') { setNavLevel('area'); setSelectedArea(null); return }
     if (navLevel === 'card') { setNavLevel('region'); setSelectedRegion(null); return }
-    // 지도 레벨: 항상 이전 페이지로 (지역 선택 페이지로 떨어지지 않도록)
-    if (navLevel === 'map') { onBack(); return }
-    if (navLevel === 'map' && enteredDirectly) { onBack(); return }
-    if (navLevel === 'map' && isUserMap) { onBack(); return }
+    // 지도 레벨: 지도 안에서 드릴한 단계(구→동→카드)를 한 단계씩 복귀.
+    // 진입 단계에 도달하면 이전 페이지(목록)로 나감.
     if (navLevel === 'map') {
-      setSelectedCardId(null)
-      if (selectedRegion) { setNavLevel('card'); return }
-      if (selectedArea) { setNavLevel('region'); return }
-      setNavLevel('area')
+      if (enteredDirectly) { onBack(); return }  // 배정/카드 직접 진입은 바로 나감
+      if (selectedCardId != null) {              // 카드 선택 → 카드 해제(이전 동 화면)
+        setSelectedCardId(null)
+        setSelectedBuildingId(null)
+        setFullScreenUnit(null)
+        return
+      }
+      if (selectedRegion && selectedRegion !== entrySelectedRegion) { setSelectedRegion(null); return }  // 동 → 구 묶음
+      if (selectedArea && selectedArea !== entrySelectedArea) { setSelectedArea(null); return }          // 구 → 전체
+      onBack()
       return
     }
   }

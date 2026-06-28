@@ -298,9 +298,9 @@ function boundaryLabelCenter(points: { lat: number; lng: number }[]): { lat: num
 function cardLabelHtml(text: string): string {
   const safe = text.replace(/</g, '&lt;').replace(/>/g, '&gt;')
   return `<div style="pointer-events:none;transform:translate(-50%,-50%);white-space:nowrap;
-    background:rgba(255,255,255,0.66);color:#1A1A18;font-size:10px;font-weight:700;letter-spacing:-0.01em;
-    padding:1px 5px;border-radius:7px;border:1px solid rgba(0,0,0,0.06);
-    box-shadow:0 1px 3px rgba(0,0,0,0.10);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px);">${safe}</div>`
+    background:rgba(255,255,255,0.45);color:#1A1A18;font-size:10px;font-weight:700;letter-spacing:-0.01em;
+    padding:1px 5px;border-radius:7px;border:1px solid rgba(0,0,0,0.05);
+    box-shadow:0 1px 2px rgba(0,0,0,0.08);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px);">${safe}</div>`
 }
 
 const CARD_LABEL_MIN_ZOOM = 15  // 이 줌 미만이면 라벨 숨김 (겹침 방지)
