@@ -2427,6 +2427,8 @@ export function DesktopTerritory({
                 const chineseHeavyCount = cardChineseHeavyCount(card.id)
                 const hasBoundary = cardBoundaries.some((b) => b.cardId === card.id)
                 const leaders = getCardLeaderList(card)
+                // 인도자가 많아 이름을 다 나열하면 길어짐 → 인원수만 표시 (미배정/N명)
+                const leaderLabel = leaders.length > 0 ? `${leaders.length}명` : '미배정'
                 return (
                   <tr key={card.id} onClick={() => setSelectedCardId(card.id)} style={{ cursor: 'pointer' }}>
                     {isAdmin && (
@@ -2450,7 +2452,7 @@ export function DesktopTerritory({
                       {isAdmin ? (
                         <details style={{ position: 'relative' }}>
                           <summary style={{ listStyle: 'none', cursor: 'pointer', fontSize: 13, color: leaders.length > 0 ? 'var(--gray-900)' : '#B45309', fontWeight: leaders.length > 0 ? 500 : 600 }}>
-                            {leaders.length > 0 ? leaders.join(', ') : '미배정'}
+                            {leaderLabel}
                           </summary>
                           <div style={{ position: 'absolute', zIndex: 15, top: 'calc(100% + 4px)', left: 0, minWidth: 200, maxHeight: 200, overflow: 'auto', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', background: '#fff', padding: 8, boxShadow: 'var(--shadow-md)' }}>
                             {leaderOptions.map((name) => (
@@ -2464,7 +2466,7 @@ export function DesktopTerritory({
                         </details>
                       ) : (
                         <span style={{ fontSize: 13, color: leaders.length > 0 ? 'var(--gray-900)' : '#B45309', fontWeight: leaders.length > 0 ? 500 : 600 }}>
-                          {leaders.length > 0 ? leaders.join(', ') : '미배정'}
+                          {leaderLabel}
                         </span>
                       )}
                     </td>
