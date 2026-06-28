@@ -252,6 +252,33 @@ function virtualPinHtml(label: string): string {
   </div>`
 }
 
+// 구역선 중앙 카드 라벨 — 짧은 이름(구/시 접두어 제거)
+function shortCardLabel(name: string): string {
+  return name.replace(/^(처인구|기흥구|수지구|영통구|화성시)\s*/, '')
+}
+
+// 폴리곤 라벨 위치: 바운딩 박스 중심 (정점 쏠림에 강건, 대부분 내부에 위치)
+function boundaryLabelCenter(points: { lat: number; lng: number }[]): { lat: number; lng: number } | null {
+  const lats = points.map((p) => p.lat).filter((v) => typeof v === 'number' && !isNaN(v))
+  const lngs = points.map((p) => p.lng).filter((v) => typeof v === 'number' && !isNaN(v))
+  if (lats.length === 0 || lngs.length === 0) return null
+  return {
+    lat: (Math.min(...lats) + Math.max(...lats)) / 2,
+    lng: (Math.min(...lngs) + Math.max(...lngs)) / 2,
+  }
+}
+
+// 구역 라벨 칩 HTML (클릭 통과 → 아래 폴리곤/지도가 받음)
+function cardLabelHtml(text: string): string {
+  const safe = text.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return `<div style="pointer-events:none;transform:translate(-50%,-50%);white-space:nowrap;
+    background:rgba(255,255,255,0.86);color:#1A1A18;font-size:11px;font-weight:700;letter-spacing:-0.01em;
+    padding:2px 7px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);
+    box-shadow:0 1px 4px rgba(0,0,0,0.12);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);">${safe}</div>`
+}
+
+const CARD_LABEL_MIN_ZOOM = 14  // 이 줌 미만이면 라벨 숨김 (겹침 방지)
+
 function previewPinHtml(): string {
   const infoColor = cssVar('--info-700', '#3b82f6')
   return `<div style="position:relative; width:40px; height:40px; display:flex; justify-content:center;">
@@ -418,6 +445,7 @@ function NaverMapCanvas({
   const markersRef = useRef<any[]>([])
   const boundaryRef = useRef<any>(null)
   const cardPolygonsRef = useRef<Map<number, any>>(new Map())
+  const cardLabelsRef = useRef<Map<number, any>>(new Map())  // 구역선 중앙 카드 라벨
   const draftBoundaryRef = useRef<any>(null)
   const draftPointMarkerRefs = useRef<any[]>([])
   const draftMidpointMarkerRefs = useRef<any[]>([])
@@ -636,6 +664,8 @@ function NaverMapCanvas({
   // Stable ref so zoom_changed listener always calls the latest version
   const rebuildMarkersCallbackRef = useRef(doRebuildMarkers)
   rebuildMarkersCallbackRef.current = doRebuildMarkers
+  // 카드 라벨 줌 토글용 stable ref (정의는 아래, 할당은 매 렌더)
+  const updateCardLabelVisibilityRef = useRef<() => void>(() => {})
 
   const rebuildMarkers = () => rebuildMarkersCallbackRef.current()
  
@@ -891,12 +921,20 @@ function NaverMapCanvas({
     const palette = getMapPalette()
 
     const currentMap = cardPolygonsRef.current
+    const labelMap = cardLabelsRef.current
     const boundaryIds = new Set(cardBoundaries.map((b) => b.cardId))
 
     currentMap.forEach((polygon, cardId) => {
       if (!boundaryIds.has(cardId)) {
         polygon.setMap(null)
         currentMap.delete(cardId)
+      }
+    })
+    // 사라진 경계의 라벨 제거
+    labelMap.forEach((label, cardId) => {
+      if (!boundaryIds.has(cardId)) {
+        label.setMap(null)
+        labelMap.delete(cardId)
       }
     })
 
@@ -934,10 +972,44 @@ function NaverMapCanvas({
           console.error(`Error creating polygon for card ${boundary.cardId}:`, err)
         }
       }
+
+      // 라벨 (없으면 생성). 카드명 → 짧은 이름
+      if (!labelMap.has(boundary.cardId)) {
+        const center = boundaryLabelCenter(boundary.points)
+        const card = cardsRef.current.find((c) => c.id === boundary.cardId)
+        const text = card ? shortCardLabel(card.name) : ''
+        if (center && text) {
+          try {
+            const labelMarker = new naver.maps.Marker({
+              position: new naver.maps.LatLng(center.lat, center.lng),
+              map: mapInstanceRef.current.getZoom() >= CARD_LABEL_MIN_ZOOM ? mapInstanceRef.current : null,
+              icon: { content: cardLabelHtml(text), anchor: new naver.maps.Point(0, 0) },
+              clickable: false,
+              zIndex: 50,
+            })
+            labelMap.set(boundary.cardId, labelMarker)
+          } catch (err) {
+            console.error(`Error creating label for card ${boundary.cardId}:`, err)
+          }
+        }
+      }
     })
 
     updatePolygonStyles()
+    updateCardLabelVisibility()
   }
+
+  // 줌 레벨에 따라 카드 라벨 표시/숨김 (겹침 방지)
+  const updateCardLabelVisibility = () => {
+    if (!mapInstanceRef.current) return
+    const show = mapInstanceRef.current.getZoom() >= CARD_LABEL_MIN_ZOOM
+    cardLabelsRef.current.forEach((label) => {
+      const onMap = !!label.getMap()
+      if (show && !onMap) label.setMap(mapInstanceRef.current)
+      else if (!show && onMap) label.setMap(null)
+    })
+  }
+  updateCardLabelVisibilityRef.current = updateCardLabelVisibility
 
   const rebuildDraftBoundary = () => {
     const naver = (window as any).naver
@@ -1151,6 +1223,7 @@ function NaverMapCanvas({
       // Re-cluster when zoom changes
       naver.maps.Event.addListener(mapInstanceRef.current, 'zoom_changed', () => {
         rebuildMarkersCallbackRef.current()
+        updateCardLabelVisibilityRef.current()
       })
     }
 
