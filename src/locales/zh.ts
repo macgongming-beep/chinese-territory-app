@@ -295,7 +295,7 @@ export const zh = {
     'territory.noDongs': '没有洞',
     'territory.assignedShort': '已安排',
     'territory.assignedPrefix': '负责',
-    'map.settings': '设置',
+    'map.settings': '修改',
     'app.collapse': '收起',
     'app.expand': '展开',
     'territory.assignedService': '已安排的传道',

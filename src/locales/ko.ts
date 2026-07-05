@@ -295,7 +295,7 @@ export const ko = {
     'territory.noDongs': '동이 없습니다',
     'territory.assignedShort': '배정',
     'territory.assignedPrefix': '담당',
-    'map.settings': '설정',
+    'map.settings': '수정',
     'app.collapse': '접기',
     'app.expand': '펼치기',
     'territory.assignedService': '배정된 봉사',

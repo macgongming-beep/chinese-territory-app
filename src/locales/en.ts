@@ -295,7 +295,7 @@ export const en = {
     'territory.noDongs': 'No neighborhoods',
     'territory.assignedShort': 'Assigned',
     'territory.assignedPrefix': 'Assigned to',
-    'map.settings': 'Settings',
+    'map.settings': 'Edit',
     'app.collapse': 'Collapse',
     'app.expand': 'Expand',
     'territory.assignedService': 'Assigned Service',
