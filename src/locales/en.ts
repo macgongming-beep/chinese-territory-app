@@ -209,6 +209,7 @@ export const en = {
     'zone.cardCount': 'cards',
     'zone.householdCount': 'households',
     'zone.lastNone': 'No records',
+    'zone.recentService': 'Last service',
     'zone.allCards': 'All cards',
     'zone.assigned': 'Assigned',
     'zone.unassigned': 'Unassigned',

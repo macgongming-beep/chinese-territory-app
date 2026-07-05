@@ -14,7 +14,7 @@ import type { AppLanguage } from '../../i18n'
 
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import type { Building, InformalAsset, InformalGroup, Role, TerritoryCard } from '../../types'
+import type { Building, InformalAsset, InformalGroup, Role, TerritoryCard, VisitHistory } from '../../types'
 import { compareTerritoryCardsByOperationalPriority, getTerritoryCardOperationalState } from '../../utils/cardSearch'
 import { getBuildingStatus } from '../../utils/mapUtils'
 import { InformalCardsTab } from '../InformalCardsTab'
@@ -40,6 +40,7 @@ type Props = {
   translatePlaceNames?: boolean
   cards: TerritoryCard[]
   buildings: Building[]
+  visitHistories?: VisitHistory[]
   currentVisitor: string
   role: Role
   informalAssets?: InformalAsset[]
@@ -109,6 +110,7 @@ export function AdminMobileZone({
   translatePlaceNames = false,
   cards,
   buildings,
+  visitHistories = [],
   currentVisitor,
   role,
   informalAssets = [],
@@ -202,6 +204,20 @@ export function AdminMobileZone({
     }
     return map
   }, [buildings])
+
+  // 카드별 최근 봉사(방문) 날짜 — visit_histories 최신 visited_at
+  const cardLastVisit = useMemo(() => {
+    const unitCard = new Map<number, number>()  // unitId → cardId
+    for (const b of buildings) for (const u of b.units ?? []) unitCard.set(u.id, b.cardId)
+    const map = new Map<number, string>()  // cardId → 최신 visited_at
+    for (const h of visitHistories) {
+      const cardId = unitCard.get(h.unitId)
+      if (cardId == null) continue
+      const prev = map.get(cardId)
+      if (!prev || (h.visitedAt ?? '') > prev) map.set(cardId, h.visitedAt)
+    }
+    return map
+  }, [buildings, visitHistories])
 
   // onlyNeedsVisit 여부에 따라 카드의 주택/상가 카운트를 골라준다
   const pickCounts = (cardId: number): { house: number; shop: number } => {
@@ -637,7 +653,7 @@ export function AdminMobileZone({
                   return typeFilter === '주택' ? bc.house > 0 : bc.shop > 0
                 })
                 .map((c) => (
-                  <CardRow language={language} translatePlaceNames={translatePlaceNames} key={c.id} card={c} buildingCount={pickCounts(c.id)} typeFilter={typeFilter} onClick={() => onOpenMap(c.id)} />
+                  <CardRow language={language} translatePlaceNames={translatePlaceNames} key={c.id} card={c} buildingCount={pickCounts(c.id)} lastVisit={cardLastVisit.get(c.id)} typeFilter={typeFilter} onClick={() => onOpenMap(c.id)} />
                 ))}
               {doneExcludedCards.length > 0 && (
                 <button
@@ -914,15 +930,22 @@ function GroupRow({
 function CardRow({
   language,
   translatePlaceNames = false,
-  card, buildingCount, onClick, typeFilter = '전체',
+  card, buildingCount, lastVisit, onClick, typeFilter = '전체',
 }: {
   language: AppLanguage
   translatePlaceNames?: boolean
   card: TerritoryCard
   buildingCount: { house: number; shop: number }
+  lastVisit?: string
   onClick: () => void
   typeFilter?: '전체' | '주택' | '상가'
 }) {
+  // "최근 봉사 M/D" (없으면 —)
+  const lastVisitText = (() => {
+    if (!lastVisit) return '—'
+    const m = lastVisit.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    return m ? `${Number(m[2])}/${Number(m[3])}` : lastVisit
+  })()
   const operationalState = getTerritoryCardOperationalState(card)
   const isEmptyTarget = operationalState === '대상없음'
   const displayName = translateKoreanAddress(card.name, language, translatePlaceNames)
@@ -978,6 +1001,9 @@ function CardRow({
             </div>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', minWidth: 32, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
               {card.progress}%
+            </span>
+            <span style={{ fontSize: 11.5, color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+              {t(language, 'zone.recentService')} {lastVisitText}
             </span>
           </div>
         </div>

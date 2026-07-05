@@ -209,6 +209,7 @@ export const zh = {
     'zone.cardCount': '卡片',
     'zone.householdCount': '户',
     'zone.lastNone': '无记录',
+    'zone.recentService': '最近传道',
     'zone.allCards': '全部卡片',
     'zone.assigned': '已安排',
     'zone.unassigned': '未安排',

@@ -985,6 +985,7 @@ export function MobileHome({
                 translatePlaceNames={translatePlaceNames}
                 cards={cards}
                 buildings={buildings}
+                visitHistories={visitHistories}
                 currentVisitor={currentVisitor}
                 role={role}
                 informalAssets={informalAssets}

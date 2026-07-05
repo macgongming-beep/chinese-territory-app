@@ -209,6 +209,7 @@ export const ko = {
     'zone.cardCount': '카드',
     'zone.householdCount': '세대',
     'zone.lastNone': '기록 없음',
+    'zone.recentService': '최근 봉사',
     'zone.allCards': '전체 카드',
     'zone.assigned': '배정완료',
     'zone.unassigned': '미배정',
