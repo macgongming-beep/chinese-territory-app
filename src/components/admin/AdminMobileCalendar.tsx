@@ -15,7 +15,7 @@ import { findActivePeriod } from '../../utils/specialPeriod'
 
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, SpecialPeriod, TerritoryCard } from '../../types'
+import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, SpecialPeriod, TerritoryCard, VisitHistory } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { AssignmentEditor } from '../assignment/AssignmentEditor'
 import { savePlacePresets, normalizePlacePresets, resolvePlacePresets, parsePlacePresetsValue, PLACE_PRESET_SETTING_KEY, PLACE_PRESETS_MAX } from '../../lib/placePresets'
@@ -64,6 +64,7 @@ type Props = {
   events: CalendarEvent[]
   cards?: TerritoryCard[]
   buildings?: Building[]
+  visitHistories?: VisitHistory[]
   cardBoundaries?: CardBoundary[]
   leaderNames?: string[]
   mentionUsers?: MentionUser[]
@@ -166,6 +167,7 @@ export function AdminMobileCalendar({
   events,
   cards = [],
   buildings = [],
+  visitHistories = [],
   cardBoundaries = [],
   role,
   currentVisitor,
@@ -581,6 +583,7 @@ export function AdminMobileCalendar({
             event={assignEvent}
             cards={myCards}
             buildings={buildings}
+            visitHistories={visitHistories}
             cardBoundaries={cardBoundaries}
             currentVisitor={currentVisitor}
             canEdit={canEdit}

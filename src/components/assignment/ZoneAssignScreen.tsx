@@ -7,7 +7,7 @@
 
 import { useMemo, useState } from 'react'
 import type { Dispatch } from 'react'
-import type { Building, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, TerritoryCard } from '../../types'
+import type { Building, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, TerritoryCard, VisitHistory } from '../../types'
 import { matchesName } from '../../utils/koreanSearch'
 import { showToast } from '../../lib/toast'
 import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
@@ -23,6 +23,7 @@ type Props = {
   activeTeamId: string | null
   cards: TerritoryCard[]           // 인도자 담당 카드 (배정 대상)
   buildings: Building[]
+  visitHistories?: VisitHistory[]
   cardBoundaries: CardBoundary[]
   canEdit: boolean
   dispatch: Dispatch<DraftAction>
@@ -45,7 +46,7 @@ type ViewMode = 'list' | 'map'
 
 
 
-export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBoundaries, canEdit, dispatch, eventId, currentVisitor, allCards = [], informalAssets = [], informalGroups = [], eventInformalAssignments = [], eventRestaurantAssignments = [], onAssignInformalToUser, onRemoveInformalAssignment, onAssignRestaurantToUser, onRemoveRestaurantAssignment, onBack }: Props) {
+export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitHistories = [], cardBoundaries, canEdit, dispatch, eventId, currentVisitor, allCards = [], informalAssets = [], informalGroups = [], eventInformalAssignments = [], eventRestaurantAssignments = [], onAssignInformalToUser, onRemoveInformalAssignment, onAssignRestaurantToUser, onRemoveRestaurantAssignment, onBack }: Props) {
   const [view, setView] = useState<ViewMode>('list')
   const [mainTab, setMainTab] = useState<'카드' | '비공식' | '식당'>('카드')
   const [query, setQuery] = useState('')
@@ -111,6 +112,27 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
     })
     return m
   }, [buildings])
+
+  // 카드별 최근 봉사(방문) 날짜 — visit_histories 최신 visited_at
+  const cardLastVisit = useMemo(() => {
+    const unitCard = new Map<number, number>()  // unitId → cardId
+    for (const b of buildings) for (const u of b.units ?? []) unitCard.set(u.id, b.cardId)
+    const m = new Map<number, string>()  // cardId → 최신 visited_at
+    for (const h of visitHistories) {
+      const cardId = unitCard.get(h.unitId)
+      if (cardId == null) continue
+      const prev = m.get(cardId)
+      if (!prev || (h.visitedAt ?? '') > prev) m.set(cardId, h.visitedAt)
+    }
+    return m
+  }, [buildings, visitHistories])
+  // "M/D" (없으면 —)
+  const lastVisitLabel = (cardId: number) => {
+    const v = cardLastVisit.get(cardId)
+    if (!v) return '—'
+    const mm = v.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    return mm ? `${Number(mm[2])}/${Number(mm[3])}` : v
+  }
 
   const activeTeam = teams.find((t) => t.id === activeTeamId) ?? null
 
@@ -591,8 +613,8 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                         {owner.name}
                       </span>
                     ) : (
-                      <span className={`asg-state-pill ${card.progress >= 100 ? 'done' : card.progress > 0 ? 'used' : 'unused'}`}>
-                        {card.progress >= 100 ? '완료됨' : card.progress > 0 ? '사용중' : '미사용'}
+                      <span style={{ fontSize: 11.5, color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        최근 봉사 {lastVisitLabel(card.id)}
                       </span>
                     )}
                   </button>
@@ -647,8 +669,8 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, cardBo
                         {owner.name}
                       </span>
                     ) : (
-                      <span className={`asg-state-pill ${card.progress >= 100 ? 'done' : card.progress > 0 ? 'used' : 'unused'}`}>
-                        {card.progress >= 100 ? '완료됨' : card.progress > 0 ? '사용중' : '미사용'}
+                      <span style={{ fontSize: 11.5, color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        최근 봉사 {lastVisitLabel(card.id)}
                       </span>
                     )}
                   </button>
