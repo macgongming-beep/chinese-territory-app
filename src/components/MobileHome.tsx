@@ -1097,7 +1097,7 @@ export function MobileHome({
                     onOpenMenu={() => navigate('/settings')}
                   />
                   <div style={{ padding: '0 16px', marginTop: 16 }}>
-                    <ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={role} isEmbedded />
+                    <ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={role} isEmbedded visitHistories={visitHistories} buildings={buildings} />
                   </div>
                 </div>
               ) : <Navigate to="/settings" replace />

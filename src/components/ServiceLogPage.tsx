@@ -4,14 +4,17 @@
 // - CSV 다운로드
 import { useMemo, useState } from 'react'
 import { useServiceLogs, getActionMeta, logsToCSV, downloadCSV, type ServiceLog } from '../hooks/useServiceLogs'
-import type { CalendarEvent, TerritoryCard, Role } from '../types'
+import type { Building, CalendarEvent, TerritoryCard, Role, VisitHistory } from '../types'
 import { getLocalDateString } from '../utils/dateUtils'
+import { buildVisitRecordsCsv } from '../utils/visitRecordsCsv'
 
 type ServiceLogPageProps = {
   cards: TerritoryCard[]
   calendarEvents: CalendarEvent[]
   role: Role
   isEmbedded?: boolean
+  visitHistories?: VisitHistory[]
+  buildings?: Building[]
 }
 
 function formatDateTime(iso: string): string {
@@ -48,7 +51,7 @@ function useContextMaps(cards: TerritoryCard[], calendarEvents: CalendarEvent[])
   }, [cards, calendarEvents])
 }
 
-export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: ServiceLogPageProps) {
+export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded, visitHistories = [], buildings = [] }: ServiceLogPageProps) {
   const [selectedCardId, setSelectedCardId] = useState<number | null>(null)
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
 
@@ -75,6 +78,13 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
       ? `_event${selectedEventId}`
       : '_all'
     downloadCSV(`service-logs_${today}${filterPart}.csv`, logsToCSV(logs))
+  }
+
+  // 방문 기록 전용 CSV — visit_histories 기반(누락 없음, 최근 12개월)
+  const handleVisitCSV = () => {
+    if (visitHistories.length === 0) return
+    const today = getLocalDateString()
+    downloadCSV(`visit-records_${today}.csv`, buildVisitRecordsCsv(visitHistories, buildings, cards))
   }
 
   // 권한 안내 — developer 전용
@@ -176,6 +186,19 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
         <span style={{ flex: 1 }} />
 
         <button
+          onClick={handleVisitCSV}
+          disabled={visitHistories.length === 0}
+          title="만남/부재 등 방문 기록만 (누락 없음)"
+          style={{
+            padding: '7px 14px', borderRadius: 7, border: '1px solid var(--ink)',
+            background: '#fff', color: 'var(--ink)', fontSize: 13, fontWeight: 700,
+            cursor: visitHistories.length === 0 ? 'not-allowed' : 'pointer',
+            opacity: visitHistories.length === 0 ? 0.5 : 1,
+          }}
+          type="button"
+        >방문 기록 CSV</button>
+
+        <button
           onClick={handleCSV}
           disabled={logs.length === 0}
           style={{
@@ -185,7 +208,7 @@ export function ServiceLogPage({ cards, calendarEvents, role, isEmbedded }: Serv
             opacity: logs.length === 0 ? 0.5 : 1,
           }}
           type="button"
-        >CSV 다운로드</button>
+        >봉사 로그 CSV</button>
       </div>
 
       {/* 결과 카운트 */}
