@@ -182,6 +182,8 @@ function clusterMarkerHtml(count: number): string {
     width:${size}px;
     height:${size}px;
     place-items:center;
+    transform:translateZ(0);
+    backface-visibility:hidden;
     border:3px solid #ffffff;
     border-radius:999px;
     background:${clusterColor};
@@ -206,6 +208,8 @@ function aggregateMarkerHtml(marker: MapAggregateMarker): string {
     max-width:128px;
     height:38px;
     padding:0 10px 0 12px;
+    transform:translateZ(0);
+    backface-visibility:hidden;
     border:1.5px solid rgba(0,0,0,0.10);
     border-radius:999px;
     background:rgba(255,255,255,0.92);
@@ -359,7 +363,8 @@ function markerHtml(
         position: relative;
         cursor: pointer;
         opacity: ${opacity};
-        transform: scale(${scale});
+        transform: scale(${scale}) translateZ(0);
+        backface-visibility: hidden;
         line-height: normal;
         width: 40px;
         height: 40px;
