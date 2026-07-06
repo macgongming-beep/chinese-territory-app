@@ -29534,7 +29534,7 @@ button:focus-visible {
 .asg-region-pill { display: inline-flex; align-items: center; gap: 4px; }
 .asg-region-cnt { font-size: 12px; opacity: 0.65; font-variant-numeric: tabular-nums; font-weight: 500; }
 .asg-zone-toggle button { display: flex; align-items: center; justify-content: center; gap: 6px; }
-.asg-zone-map-hint { position: absolute; bottom: 0; left: 0; right: 0; z-index: 10; margin: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); border-top: 1px solid var(--line); pointer-events: none; }
+.asg-zone-map-hint { position: absolute; bottom: 0; left: 0; right: 0; z-index: 10; margin: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: rgba(255, 255, 255, 0.95); border-top: 1px solid var(--line); pointer-events: none; }
 .asg-zone-map-hint-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text, #475569); }
 .asg-zone-map-hint-row b { color: var(--ink); }
 .asg-zone-map-hint-swatch { width: 13px; height: 13px; border-radius: 3px; border: 1.5px solid; flex-shrink: 0; }

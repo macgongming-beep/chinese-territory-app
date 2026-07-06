@@ -1474,8 +1474,9 @@ function NaverMapCanvas({
           width: 44px;
           height: 44px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.85);
-          backdrop-filter: blur(8px);
+          /* 성능: backdrop-filter 는 지도 드래그 시 매 프레임 리페인트(안드로이드 렉).
+             지도 위 고정 버튼이라 블러 제거 + 배경 불투명↑ 로 대체 */
+          background: rgba(255, 255, 255, 0.96);
           border: 1px solid rgba(0, 0, 0, 0.05);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
           display: flex;
