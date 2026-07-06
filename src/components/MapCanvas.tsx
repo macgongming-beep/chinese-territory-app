@@ -297,10 +297,12 @@ function boundaryLabelCenter(points: { lat: number; lng: number }[]): { lat: num
 // 구역 라벨 칩 HTML (클릭 통과 → 아래 폴리곤/지도가 받음)
 function cardLabelHtml(text: string): string {
   const safe = text.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  // 성능: backdrop-filter/box-shadow 는 안드로이드에서 드래그 시 매 프레임 리페인트 → 제거.
+  // 대신 텍스트 그림자(halo)로 지도 위 가독성 확보 (리페인트 저렴).
   return `<div style="pointer-events:none;transform:translate(-50%,-50%);white-space:nowrap;
-    background:rgba(255,255,255,0.45);color:#1A1A18;font-size:10px;font-weight:700;letter-spacing:-0.01em;
-    padding:1px 5px;border-radius:7px;border:1px solid rgba(0,0,0,0.05);
-    box-shadow:0 1px 2px rgba(0,0,0,0.08);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px);">${safe}</div>`
+    background:rgba(255,255,255,0.5);color:#1A1A18;font-size:10px;font-weight:700;letter-spacing:-0.01em;
+    padding:1px 5px;border-radius:7px;border:1px solid rgba(0,0,0,0.06);
+    text-shadow:0 0 2px rgba(255,255,255,0.9);">${safe}</div>`
 }
 
 const CARD_LABEL_MIN_ZOOM = 15  // 이 줌 미만이면 라벨 숨김 (겹침 방지)
@@ -1249,6 +1251,15 @@ function NaverMapCanvas({
       // Re-cluster when zoom changes
       naver.maps.Event.addListener(mapInstanceRef.current, 'zoom_changed', () => {
         rebuildMarkersCallbackRef.current()
+        updateCardLabelVisibilityRef.current()
+      })
+
+      // 성능: 드래그 중엔 카드 라벨 숨김 → 멈추면(idle) 다시 표시.
+      // (안드로이드에서 라벨 오버레이 리페인트가 드래그를 느리게 하는 것 방지)
+      naver.maps.Event.addListener(mapInstanceRef.current, 'dragstart', () => {
+        cardLabelsRef.current.forEach((label) => { if (label.getMap()) label.setMap(null) })
+      })
+      naver.maps.Event.addListener(mapInstanceRef.current, 'idle', () => {
         updateCardLabelVisibilityRef.current()
       })
     }
