@@ -338,7 +338,40 @@ function previewPinHtml(): string {
           </div>`
 }
 
-// ── Individual marker HTML ─────────────────────────────────────────────────
+// ── Individual marker (SVG image) ──────────────────────────────────────────
+// 성능: HTML DOM 오버레이 대신 이미지 마커 → 안드로이드 드래그 시 리페인트 없이
+// GPU 합성만. 모양은 markerHtml 의 CSS 핀과 픽셀 동일 (14px 티어드롭, 흰 테두리,
+// 동일 그림자). 상태(color × dimmed)별 data URI 캐시.
+const markerIconCache = new Map<string, string>()
+
+function markerIconUrl(color: string, isDimmed: boolean): string {
+  const key = `${color}|${isDimmed ? 1 : 0}`
+  const cached = markerIconCache.get(key)
+  if (cached) return cached
+  // CSS: 14x14 박스 + border 2px(inside) = 외곽 14 → SVG: 12x12 path + stroke 2(centered) = 외곽 14
+  // border-radius 50% 50% 50% 0 + rotate(-45deg) → 아래로 뾰족한 티어드롭 (rotate 로 동일 재현)
+  // box-shadow 0 2px 6px rgba(15,23,42,0.26) → feDropShadow dy=2 stdDeviation=3
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">` +
+    `<defs><filter id="s" x="-50%" y="-50%" width="200%" height="200%">` +
+    `<feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.26"/>` +
+    `</filter></defs>` +
+    `<g transform="rotate(-45 20 20)"${isDimmed ? ' opacity="0.38"' : ''} filter="url(#s)">` +
+    `<path d="M14 26 L14 20 A6 6 0 0 1 20 14 A6 6 0 0 1 26 20 A6 6 0 0 1 20 26 Z" ` +
+    `fill="${color}" stroke="#ffffff" stroke-width="2"/></g></svg>`
+  const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+  markerIconCache.set(key, url)
+  return url
+}
+
+function markerTitle(building: Building, cards: TerritoryCard[]): string {
+  const status = getBuildingStatus(building)
+  const cardName = getCardName(cards, building.cardId)
+  const hasRegularVisit = building.units.some((unit) => unit.isRegularVisit)
+  const hasChineseNeedsReview = building.units.some((unit) => unit.isChinese && !unit.isRegularVisit)
+  return `${building.name} · ${status} · ${cardName}${hasChineseNeedsReview ? ' · 중국어 사용자' : hasRegularVisit ? ' · 정기방문 있음' : ''}`
+}
+
+// ── Individual marker HTML (선택된 핀 전용 — 1개뿐이라 DOM 비용 무관) ────────
 
 function markerHtml(
   building: Building,
@@ -592,13 +625,23 @@ function NaverMapCanvas({
           selectedCardIdRef.current !== null &&
           selectedCardIdRef.current !== '전체' &&
           building.cardId !== selectedCardIdRef.current
+        // 성능: 일반 핀은 SVG 이미지(GPU 합성, 안드로이드 드래그 부드러움),
+        // 선택된 핀(최대 1개)만 HTML 유지 (선택 링/확대 표현 동일 재현)
         const marker = new naver.maps.Marker({
           map: mapInstanceRef.current,
           position: new naver.maps.LatLng(building.lat, building.lng),
-          icon: {
-            content: markerHtml(building, cardsRef.current, isSelected, isDimmed),
-            anchor: new naver.maps.Point(20, 30),
-          },
+          title: markerTitle(building, cardsRef.current),
+          icon: isSelected
+            ? {
+                content: markerHtml(building, cardsRef.current, isSelected, isDimmed),
+                anchor: new naver.maps.Point(20, 30),
+              }
+            : {
+                url: markerIconUrl(STATUS_COLORS[getBuildingStatus(building)], isDimmed),
+                size: new naver.maps.Size(40, 40),
+                scaledSize: new naver.maps.Size(40, 40),
+                anchor: new naver.maps.Point(20, 30),
+              },
           zIndex: isSelected ? 10 : isDimmed ? 0 : 1,
           draggable: !!editingBuildingLocationRef.current,
         })
