@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { confirmDialog, alertDialog } from '../lib/confirm'
+import { DataRoundTrip } from './DataRoundTrip'
 
 export function DesktopDataManagement() {
   
@@ -164,6 +165,8 @@ export function DesktopDataManagement() {
     <div className="desk-settings-subpage" style={{ maxWidth: 640 }}>
       <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gray-900)', marginBottom: 24 }}>데이터 관리</h2>
       <div className="desktop-profile-stack" style={{ display: 'grid', gap: 24 }}>
+        {/* 방문 기록 / 세대 속성 엑셀 왕복 편집 */}
+        <DataRoundTrip />
         {resetSettingsLoaded && (
           <section className="desk-card ds-card">
             <h2 className="desk-card__title" style={{ marginBottom: 12 }}>만남 자동 초기화</h2>
