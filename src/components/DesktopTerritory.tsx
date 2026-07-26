@@ -761,14 +761,32 @@ export function DesktopTerritory({
   const startBuildingEdit = (building: Building) => {
     setEditingBuildingId(building.id)
   }
-  const saveBuildingEdit = (building: Building, draft: BuildingEditDraft) => {
+  const saveBuildingEdit = async (building: Building, draft: BuildingEditDraft) => {
     const nextCardId = draft.cardId || building.cardId
+    const nextAddress = draft.address.trim()
+    const addressChanged = nextAddress !== (building.address ?? '').trim()
+
+    // 주소를 고쳤으면 핀 좌표도 새 주소로 다시 찍는다.
+    // (전에는 주소만 바뀌고 핀은 그대로여서, 잘못 찍힌 핀이 계속 남았음)
+    let lat: number | undefined
+    let lng: number | undefined
+    if (addressChanged && nextAddress) {
+      setEditingBuildingId(null)
+      const geocoded = await geocodeAddress(nextAddress)
+      if (geocoded) {
+        lat = geocoded.lat
+        lng = geocoded.lng
+      } else {
+        showToast('주소로 위치를 찾지 못해 핀은 그대로 둡니다. 지도에서 핀을 직접 옮겨 주세요.', 'info')
+      }
+    }
+
     onUpdateBuilding(
       building.id,
       draft.name.trim(),
-      draft.address.trim(),
-      undefined,
-      undefined,
+      nextAddress,
+      lat,
+      lng,
       draft.type,
       draft.memo,
     )
@@ -796,6 +814,12 @@ export function DesktopTerritory({
   const totalUnits = cards.reduce((sum, card) => sum + card.units, 0)
   const completedUnits = cards.reduce((sum, card) => sum + card.completed, 0)
 
+  // 구(區) → 상위 시. 구만 적힌 주소는 동명 도로가 타 지역에 있으면 엉뚱한 곳에
+  // 찍히므로 시까지 붙인 후보를 함께 시도한다.
+  const GU_TO_CITY: Record<string, string> = {
+    처인구: '용인시', 기흥구: '용인시', 수지구: '용인시', 영통구: '수원시',
+  }
+
   const getGeocodeCandidates = (address: string) => {
     const normalized = address.replace(/\s+/g, ' ').trim()
     const tokens = normalized.split(' ')
@@ -807,8 +831,21 @@ export function DesktopTerritory({
     const withoutGyeonggiDo = normalized.replace(/^경기도\s+/, '경기 ')
     const withoutGyeonggiDoAndDong = withoutDongBeforeRoad.replace(/^경기도\s+/, '경기 ')
 
+    // 시/도가 없고 구만 있는 주소 → '경기도 <시> <구> …' 형태 보강
+    const hasCity = /(시|도)\s/.test(normalized) || /^(경기|서울)/.test(normalized)
+    const guToken = tokens.find((token) => token in GU_TO_CITY)
+    const cityQualified: string[] = []
+    if (!hasCity && guToken) {
+      const city = GU_TO_CITY[guToken]
+      cityQualified.push(`경기도 ${city} ${normalized}`, `경기 ${city} ${normalized}`)
+    } else if (!hasCity && !guToken) {
+      // 구도 없는 주소(도로명만) → 용인시 기준으로 보강
+      cityQualified.push(`경기도 용인시 ${normalized}`)
+    }
+
     return Array.from(
       new Set([
+        ...cityQualified,
         normalized,
         withoutDongBeforeRoad,
         withoutGyeonggiDo,
@@ -2624,7 +2661,9 @@ export function DesktopTerritory({
                         >
                           {building.name || '건물명 없음'}
                         </button>
-                        <span title={building.address}>{formatDisplayAddress(building.address)}</span>
+                        {/* 건물관리는 주소 편집 화면이라 저장한 그대로 보여준다
+                            (요약 표시는 수정 결과가 반영 안 된 것처럼 보임) */}
+                        <span title={building.address}>{building.address}</span>
                         <span>
                           {card?.name ?? '카드 없음'}
                           {recommendationBadge && (
