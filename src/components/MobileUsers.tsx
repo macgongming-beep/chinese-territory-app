@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth, type LoginLogRecord } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
+import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
+import {
+  DEFAULT_USER_GROUPS,
+  USER_GROUPS_SETTING_KEY,
+  parseUserGroups,
+  serializeUserGroups,
+} from '../utils/userGroups'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
 import { AppHeader } from './AppHeader'
@@ -48,6 +56,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
     updateUserRole,
     resetUserPin,
     deleteUser,
+    updateUsersGroup,
     fetchUserLoginLogs,
   } = useAuth()
 
@@ -65,6 +74,14 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
   const [loginLogs, setLoginLogs] = useState<LoginLogRecord[]>([])
   const [loadingLoginLogs, setLoadingLoginLogs] = useState(false)
   const [loginLogsExpanded, setLoginLogsExpanded] = useState(false)
+  // 집단(처인/신갈/동백/동탄 …) — app_settings.user_groups 에서 로드, 앱에서 편집 가능
+  const [groups, setGroups] = useState<string[]>(DEFAULT_USER_GROUPS)
+  const [groupFilter, setGroupFilter] = useState<string>('all')
+  const [groupEditOpen, setGroupEditOpen] = useState(false)
+  const [newGroupName, setNewGroupName] = useState('')
+  const [selectMode, setSelectMode] = useState(false)
+  const [checkedIds, setCheckedIds] = useState<Set<number>>(new Set())
+  const [bulkGroup, setBulkGroup] = useState<string>('')
 
   const isAdminLike = currentUser?.role === 'admin' || currentUser?.role === 'developer'
 
@@ -72,6 +89,20 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
     if (isAdminLike) void fetchAllUsers()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminLike, currentUser?.role])
+
+  // 집단 목록 로드 (서버 공유 — 관리자가 바꾸면 모두에게 반영)
+  useEffect(() => {
+    if (!isAdminLike) return
+    void supabase.from('app_settings').select('value').eq('key', USER_GROUPS_SETTING_KEY).maybeSingle()
+      .then(({ data }) => setGroups(parseUserGroups(data?.value)))
+  }, [isAdminLike])
+
+  const saveGroups = async (next: string[]) => {
+    const serialized = serializeUserGroups(next)
+    setGroups(parseUserGroups(serialized))
+    const { error } = await supabase.from('app_settings').upsert({ key: USER_GROUPS_SETTING_KEY, value: serialized }, { onConflict: 'key' })
+    if (error) showToast('집단 목록 저장에 실패했습니다.', 'error')
+  }
 
   const users = useMemo(() => {
     return allUsers
@@ -88,13 +119,39 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
     const query = search.trim().toLowerCase()
     return users.filter((item) => {
       const matchesRole = roleFilter === 'all' || item.role === roleFilter
+      const matchesGroup =
+        groupFilter === 'all' ||
+        (groupFilter === '__none__' ? !item.groupName : item.groupName === groupFilter)
       const matchesSearch =
         !query ||
         item.name.toLowerCase().includes(query) ||
         item.loginId.toLowerCase().includes(query)
-      return matchesRole && matchesSearch
+      return matchesRole && matchesGroup && matchesSearch
     })
-  }, [roleFilter, search, users])
+  }, [roleFilter, groupFilter, search, users])
+
+  // 집단별 인원수 (미지정 포함)
+  const groupCounts = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const u of users) m.set(u.groupName || '__none__', (m.get(u.groupName || '__none__') ?? 0) + 1)
+    return m
+  }, [users])
+
+  const toggleChecked = (id: number) => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const applyBulkGroup = async () => {
+    if (checkedIds.size === 0) return
+    const target = bulkGroup === '__none__' ? null : bulkGroup
+    if (!target && bulkGroup !== '__none__') { showToast('지정할 집단을 선택해 주세요', 'error'); return }
+    const ok = await updateUsersGroup([...checkedIds], target)
+    if (ok) { setCheckedIds(new Set()); setSelectMode(false); setBulkGroup('') }
+  }
 
   const selectedUser = users.find((item) => item.id === selectedUserId) ?? null
   const adminCount = users.filter((item) => item.role === 'admin' || item.role === 'developer').length
@@ -245,6 +302,37 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
           </section>
         )}
 
+        <section className="mobile-user-manage-card">
+          <h2>집단</h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+            {groups.map((g) => {
+              const on = selectedUser.groupName === g
+              return (
+                <button
+                  key={g}
+                  onClick={() => void updateUsersGroup([selectedUser.id], on ? null : g)}
+                  type="button"
+                  style={{ minHeight: 0, padding: '8px 14px', borderRadius: 999, fontSize: 13.5, fontWeight: on ? 700 : 500, cursor: 'pointer',
+                    border: on ? '1.5px solid var(--ink)' : '1px solid var(--line)',
+                    background: on ? 'var(--ink)' : 'var(--surface)', color: on ? '#fff' : 'var(--ink)' }}
+                >
+                  {on ? '✓ ' : ''}{g}
+                </button>
+              )
+            })}
+            <button
+              onClick={() => void updateUsersGroup([selectedUser.id], null)}
+              type="button"
+              style={{ minHeight: 0, padding: '8px 14px', borderRadius: 999, fontSize: 13.5, fontWeight: !selectedUser.groupName ? 700 : 500, cursor: 'pointer',
+                border: !selectedUser.groupName ? '1.5px solid var(--ink)' : '1px solid var(--line)',
+                background: !selectedUser.groupName ? 'var(--ink)' : 'var(--surface)', color: !selectedUser.groupName ? '#fff' : 'var(--muted)' }}
+            >
+              {!selectedUser.groupName ? '✓ ' : ''}미지정
+            </button>
+          </div>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>한 사용자는 하나의 집단에만 속합니다.</p>
+        </section>
+
         <section className="mobile-user-manage-card mobile-user-role-card">
           <h2>사용자 권한</h2>
           <div className="mobile-user-role-select">
@@ -350,11 +438,106 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
               <option value="user">봉사자</option>
             </select>
           </label>
+          <label className="mobile-users-filter-box">
+            <select
+              aria-label="집단 필터"
+              value={groupFilter}
+              onChange={(event) => setGroupFilter(event.target.value)}
+            >
+              <option value="all">집단 전체</option>
+              {groups.map((g) => (
+                <option key={g} value={g}>{g} ({groupCounts.get(g) ?? 0})</option>
+              ))}
+              <option value="__none__">미지정 ({groupCounts.get('__none__') ?? 0})</option>
+            </select>
+          </label>
         </div>
-        <button className="mobile-users-add-toggle" onClick={() => setShowAddForm((value) => !value)} type="button">
-          + 사용자 추가
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="mobile-users-add-toggle" onClick={() => setShowAddForm((value) => !value)} type="button">
+            + 사용자 추가
+          </button>
+          <button
+            className="mobile-users-add-toggle"
+            onClick={() => { setSelectMode((v) => !v); setCheckedIds(new Set()) }}
+            type="button"
+          >
+            {selectMode ? '선택 취소' : '집단 일괄 지정'}
+          </button>
+          <button className="mobile-users-add-toggle" onClick={() => setGroupEditOpen((v) => !v)} type="button">
+            집단 편집
+          </button>
+        </div>
       </section>
+
+      {/* 집단 이름 편집 */}
+      {groupEditOpen && (
+        <section className="mobile-user-manage-card">
+          <h2>집단 관리</h2>
+          <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 10px' }}>
+            집단 이름을 추가하거나 삭제합니다. 삭제해도 사용자 정보는 유지되며 해당 집단은 '미지정'으로 표시됩니다.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            {groups.map((g) => (
+              <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 999, border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 13 }}>
+                {g}
+                <button
+                  aria-label={`${g} 삭제`}
+                  onClick={async () => {
+                    if (await confirmDialog({ message: `'${g}' 집단을 목록에서 삭제할까요?`, danger: true, confirmLabel: '삭제' })) {
+                      void saveGroups(groups.filter((x) => x !== g))
+                    }
+                  }}
+                  style={{ minHeight: 0, border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 14 }}
+                  type="button"
+                >×</button>
+              </span>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              aria-label="새 집단 이름"
+              placeholder="새 집단 이름"
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              style={{ flex: 1, minWidth: 0, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8, fontSize: 13, background: 'var(--surface)', color: 'var(--ink)' }}
+            />
+            <button
+              disabled={!newGroupName.trim()}
+              onClick={() => { void saveGroups([...groups, newGroupName]); setNewGroupName('') }}
+              type="button"
+              style={{ minHeight: 0, padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+            >추가</button>
+          </div>
+        </section>
+      )}
+
+      {/* 선택 모드: 일괄 집단 지정 바 */}
+      {selectMode && (
+        <section className="mobile-user-manage-card">
+          <h2>집단 일괄 지정</h2>
+          <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 10px' }}>
+            아래 목록에서 사용자를 선택한 뒤 집단을 지정하세요. (선택 {checkedIds.size}명)
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <select
+              aria-label="지정할 집단"
+              value={bulkGroup}
+              onChange={(e) => setBulkGroup(e.target.value)}
+              style={{ flex: 1, minWidth: 120, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8, fontSize: 13, background: 'var(--surface)', color: 'var(--ink)' }}
+            >
+              <option value="">집단 선택…</option>
+              {groups.map((g) => <option key={g} value={g}>{g}</option>)}
+              <option value="__none__">미지정으로 해제</option>
+            </select>
+            <button
+              disabled={checkedIds.size === 0 || !bulkGroup}
+              onClick={() => void applyBulkGroup()}
+              type="button"
+              style={{ minHeight: 0, padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: checkedIds.size === 0 || !bulkGroup ? 0.5 : 1 }}
+            >{checkedIds.size}명 지정</button>
+          </div>
+        </section>
+      )}
 
       {showAddForm && (
         <section className="mobile-user-manage-card mobile-users-add-card">
@@ -415,16 +598,34 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
           <div className="mobile-users-empty">검색 결과가 없습니다.</div>
         ) : (
           filteredUsers.map((item) => (
-            <button className="mobile-users-list-card" key={item.id} onClick={() => setSelectedUserId(item.id)} type="button">
-              <span className={`mobile-user-avatar ${roleClass(item.role)}`}>{item.name.slice(0, 1)}</span>
+            <button
+              className="mobile-users-list-card"
+              key={item.id}
+              onClick={() => (selectMode ? toggleChecked(item.id) : setSelectedUserId(item.id))}
+              type="button"
+            >
+              {selectMode ? (
+                <input
+                  type="checkbox"
+                  checked={checkedIds.has(item.id)}
+                  onChange={() => toggleChecked(item.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ width: 17, height: 17, accentColor: 'var(--ink)', flexShrink: 0 }}
+                />
+              ) : (
+                <span className={`mobile-user-avatar ${roleClass(item.role)}`}>{item.name.slice(0, 1)}</span>
+              )}
               <span className="mobile-users-row-main">
                 <strong>{item.name}{currentUser?.id === item.id ? <small> (나)</small> : null}</strong>
-                <small>{item.loginId} · {formatLastLogin(item.lastLoginAt)}</small>
+                <small>
+                  {item.loginId} · {formatLastLogin(item.lastLoginAt)}
+                  {item.groupName ? ` · ${item.groupName}` : ''}
+                </small>
               </span>
               <span className={`mobile-user-role-badge ${roleClass(item.role)}`}>
                 {displayRole(item.role)}
               </span>
-              <span className="mobile-users-chevron" aria-hidden="true">›</span>
+              {!selectMode && <span className="mobile-users-chevron" aria-hidden="true">›</span>}
             </button>
           ))
         )}

@@ -28,6 +28,7 @@ export type AppUserRecord = {
   phone?: string | null
   role: Role
   approvalStatus?: 'pending' | 'approved' | 'blocked'
+  groupName?: string | null
   created_at: string
   lastLoginAt?: string | null
 }
@@ -369,11 +370,11 @@ export function useAuth() {
     if (!user) return
     const { data, error } = await supabase
       .from('app_users')
-      .select('id, name, phone, login_id, role, approval_status, created_at, last_login_at')
+      .select('id, name, phone, login_id, role, approval_status, group_name, created_at, last_login_at')
       .order('created_at', { ascending: false })
 
     if (!error && data) {
-      const rows = data as Array<{ id: number; name: string; phone?: string | null; login_id: string | null; role: Role; approval_status?: AppUserRecord['approvalStatus'] | null; created_at: string; last_login_at?: string | null }>
+      const rows = data as Array<{ id: number; name: string; phone?: string | null; login_id: string | null; role: Role; approval_status?: AppUserRecord['approvalStatus'] | null; group_name?: string | null; created_at: string; last_login_at?: string | null }>
       setAllUsers(rows
         .filter((item) => user.role === 'developer' || !isDeveloperAccount(item))
         .map((item) => ({
@@ -383,6 +384,7 @@ export function useAuth() {
           phone: item.phone ?? null,
           role: isDeveloperAccount(item) ? 'developer' : item.role,
           approvalStatus: item.approval_status ?? 'approved',
+          groupName: item.group_name ?? null,
           created_at: item.created_at,
           lastLoginAt: item.last_login_at ?? null,
         })))
@@ -393,6 +395,7 @@ export function useAuth() {
       error?.message?.includes('login_id') ||
       error?.message?.includes('phone') ||
       error?.message?.includes('approval_status') ||
+      error?.message?.includes('group_name') ||
       error?.message?.includes('permission denied')
     ) {
       const fallback = await supabase
@@ -444,6 +447,32 @@ export function useAuth() {
       return false
     }
     showToast(`비밀번호가 '${newPin}'(으)로 초기화되었습니다.`, 'success')
+    return true
+  }
+
+  /** 사용자 집단 지정 (한 명 = 한 집단, null/'' = 미지정). userIds 여러 개면 일괄 */
+  const updateUsersGroup = async (userIds: number[], groupName: string | null) => {
+    if (!isAdminLike(user?.role)) return false
+    if (userIds.length === 0) return false
+    const { error } = await supabase
+      .from('app_users')
+      .update({ group_name: groupName && groupName.trim() ? groupName.trim() : null })
+      .in('id', userIds)
+
+    if (error) {
+      if (error.message?.includes('group_name')) {
+        showToast('DB에 group_name 컬럼이 없습니다. supabase/add_app_users_group.sql 을 먼저 실행해 주세요.', 'error')
+      } else {
+        showToast('집단 지정에 실패했습니다.', 'error')
+      }
+      return false
+    }
+    showToast(
+      groupName ? `${userIds.length}명을 '${groupName}' 집단으로 지정했습니다.` : `${userIds.length}명의 집단을 해제했습니다.`,
+      'success',
+    )
+    await fetchAllUsers()
+    notifyUsersChanged()
     return true
   }
 
@@ -710,6 +739,7 @@ export function useAuth() {
     fetchAllUsers,
     resetUserPin,
     updateUserRole,
+    updateUsersGroup,
     deleteUser,
     createUser,
     updateUserIdentity,
