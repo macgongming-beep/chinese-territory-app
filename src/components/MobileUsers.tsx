@@ -494,7 +494,8 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
         <section className="mobile-user-manage-card">
           <h2>집단 관리</h2>
           <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 10px' }}>
-            집단 이름을 추가하거나 삭제합니다. 삭제해도 사용자 정보는 유지되며 해당 집단은 '미지정'으로 표시됩니다.
+            집단 이름을 누르면 수정할 수 있고, ×로 삭제합니다. 이름을 바꾸면 소속된 사용자도 함께 옮겨집니다.
+            삭제해도 사용자 정보는 유지되며 해당 집단은 '미지정'으로 표시됩니다.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
             {groups.map((g) => (
@@ -525,9 +526,15 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
                     aria-label={`${g} 이름 변경`}
                     title="이름 변경"
                     onClick={() => { setEditingGroup(g); setEditingGroupName(g) }}
-                    style={{ minHeight: 0, border: 'none', background: 'transparent', color: 'var(--ink)', cursor: 'pointer', padding: 0, fontSize: 13, fontWeight: 600 }}
+                    style={{ minHeight: 0, border: 'none', background: 'transparent', color: 'var(--ink)', cursor: 'pointer', padding: 0, fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                     type="button"
-                  >{g}</button>
+                  >
+                    {g}
+                    {/* 이름을 눌러 수정할 수 있음을 알리는 연필 아이콘 */}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                  </button>
                   <button
                     aria-label={`${g} 삭제`}
                     onClick={async () => {

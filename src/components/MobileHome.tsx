@@ -322,7 +322,7 @@ export function MobileHome({
   onChangeLanguage: (language: AppLanguage) => void
   onSetCardLeaders: (cardId: number, leaderNames: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
   onAddUnit: (buildingId: number, unitNumber: string) => void
-  allUsers?: Array<{ id: number; name: string; phone?: string | null; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked' }>
+  allUsers?: Array<{ id: number; name: string; phone?: string | null; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked'; groupName?: string | null }>
   onChangePin: (newPin: string) => Promise<boolean>
   onUpdateMyProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
   onFetchMyLoginLogs: (limit?: number) => Promise<LoginLogRecord[]>
@@ -613,6 +613,8 @@ export function MobileHome({
     ? focusedMapCardIds.filter((cardId) => userVisibleMapCardIds.has(cardId))
     : focusedMapCardIds
   const roleLabel = role === 'admin' ? t(language, 'role.admin') : role === 'leader' ? t(language, 'role.leader') : t(language, 'role.user')
+  // 내 소속 집단 (사용자 관리에서 지정) — 설정 프로필 카드에 표시
+  const myGroupName = allUsers.find((item) => item.id === currentUser.id)?.groupName ?? null
   const pendingSignupCount = useMemo(
     () => allUsers.filter((item) => item.approvalStatus === 'pending').length,
     [allUsers],
@@ -1267,7 +1269,10 @@ export function MobileHome({
                   </div>
                   <div className="mobile-settings-profile-text">
                     <strong>{currentVisitor}</strong>
-                    <span>{t(language, 'settings.currentRole')} · {roleLabel}</span>
+                    <span>
+                      {t(language, 'settings.currentRole')} · {roleLabel}
+                      {myGroupName ? ` · ${myGroupName}` : ''}
+                    </span>
                   </div>
                   <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                 </button>
