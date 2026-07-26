@@ -29,6 +29,7 @@ import {
   downloadCsvExample,
 } from '../utils/csvBuildingImport'
 import { AddUnitRow } from './AddUnitRow'
+import { useSessionState } from '../hooks/useSessionState'
 import { BuildingEditCells, UnitEditForm, type BuildingEditDraft } from './BuildingEditRows'
 import { CardCreateModal } from './DesktopTerritoryCardModal'
 
@@ -193,42 +194,43 @@ export function DesktopTerritory({
   const [cardMergeTargetId, setCardMergeTargetId] = useState<number | null>(null)
   const [cardMergeUndo, setCardMergeUndo] = useState<CardMergeUndoSnapshot | null>(null)
   const [detailPaneOpen, setDetailPaneOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'카드 관리' | '건물 관리'>('카드 관리')
+  // 탭·필터는 세션에 보존 — 지도 등 다른 화면 갔다 뒤로 와도 보던 상태 유지
+  const [activeTab, setActiveTab] = useSessionState<'카드 관리' | '건물 관리'>('dt.activeTab', '카드 관리')
   // v2: 종류 sub-tab
   type ZoneKind = 'territory' | 'informal' | 'restaurant'
-  const [zoneKind, setZoneKind] = useState<ZoneKind>('territory')
+  const [zoneKind, setZoneKind] = useSessionState<ZoneKind>('dt.zoneKind', 'territory')
   const informalCount = informalAssets.length
   const restaurantCount = buildings.reduce((acc, b) => {
     if (b.type !== '상가' || !b.isRestaurant) return acc
     const chineseUnits = b.units.filter((u) => u.isChinese)
     return acc + (chineseUnits.length === 0 ? 1 : chineseUnits.length)
   }, 0)
-  const [buildingSubTab, setBuildingSubTab] = useState<'건물 목록' | '중국어 포인트'>('건물 목록')
+  const [buildingSubTab, setBuildingSubTab] = useSessionState<'건물 목록' | '중국어 포인트'>('dt.buildingSubTab', '건물 목록')
   const [showCardModal, setShowCardModal] = useState(false)
   const [pendingBoundaryCard, setPendingBoundaryCard] = useState<{ id: number; name: string } | null>(null)
-  const [regionFilter, setRegionFilter] = useState<TerritoryRegion | '전체'>('전체')
-  const [areaFilter, setAreaFilter] = useState('전체')
+  const [regionFilter, setRegionFilter] = useSessionState<TerritoryRegion | '전체'>('dt.regionFilter', '전체')
+  const [areaFilter, setAreaFilter] = useSessionState('dt.areaFilter', '전체')
   const [areaExpanded, setAreaExpanded] = useState(false)
   const AREA_CHIP_LIMIT = 10
-  const [assignmentFilter, setAssignmentFilter] = useState<'전체' | '배정' | '미배정'>('전체')
-  const [leaderFilter, setLeaderFilter] = useState('전체')
-  const [regularVisitFilter, setRegularVisitFilter] = useState<'전체' | '있음' | '없음'>('전체')
-  const [cardChineseHeavyFilter, setCardChineseHeavyFilter] = useState<'전체' | '있음' | '없음'>('전체')
-  const [cardStatusFilter, setCardStatusFilter] = useState<CardStatusFilter>('전체')
+  const [assignmentFilter, setAssignmentFilter] = useSessionState<'전체' | '배정' | '미배정'>('dt.assignmentFilter', '전체')
+  const [leaderFilter, setLeaderFilter] = useSessionState('dt.leaderFilter', '전체')
+  const [regularVisitFilter, setRegularVisitFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.regularVisitFilter', '전체')
+  const [cardChineseHeavyFilter, setCardChineseHeavyFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.cardChineseHeavyFilter', '전체')
+  const [cardStatusFilter, setCardStatusFilter] = useSessionState<CardStatusFilter>('dt.cardStatusFilter', '전체')
   const [doneExcludedOpen, setDoneExcludedOpen] = useState(false)
   const [cardFilterPanelOpen, setCardFilterPanelOpen] = useState(false)
   const [buildingFilterPanelOpen, setBuildingFilterPanelOpen] = useState(false)
   const [pointFilterPanelOpen, setPointFilterPanelOpen] = useState(false)
-  const [buildingCardFilter, setBuildingCardFilter] = useState<number | '전체'>('전체')
-  const [buildingTypeFilter, setBuildingTypeFilter] = useState<Building['type'] | '전체'>('전체')
-  const [pointStatusFilter, setPointStatusFilter] = useState<UnitStatus | '전체'>('전체')
-  const [buildingRegularFilter, setBuildingRegularFilter] = useState<'전체' | '있음' | '없음'>('전체')
-  const [buildingMemoFilter, setBuildingMemoFilter] = useState<'전체' | '있음' | '없음'>('전체')
-  const [buildingChineseHeavyFilter, setBuildingChineseHeavyFilter] = useState<'전체' | '있음' | '없음'>('전체')
-  const [pointRegularFilter, setPointRegularFilter] = useState<'전체' | '있음' | '없음'>('전체')
-  const [pointMemoFilter, setPointMemoFilter] = useState<'전체' | '있음' | '없음'>('전체')
+  const [buildingCardFilter, setBuildingCardFilter] = useSessionState<number | '전체'>('dt.buildingCardFilter', '전체')
+  const [buildingTypeFilter, setBuildingTypeFilter] = useSessionState<Building['type'] | '전체'>('dt.buildingTypeFilter', '전체')
+  const [pointStatusFilter, setPointStatusFilter] = useSessionState<UnitStatus | '전체'>('dt.pointStatusFilter', '전체')
+  const [buildingRegularFilter, setBuildingRegularFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingRegularFilter', '전체')
+  const [buildingMemoFilter, setBuildingMemoFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingMemoFilter', '전체')
+  const [buildingChineseHeavyFilter, setBuildingChineseHeavyFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingChineseHeavyFilter', '전체')
+  const [pointRegularFilter, setPointRegularFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.pointRegularFilter', '전체')
+  const [pointMemoFilter, setPointMemoFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.pointMemoFilter', '전체')
   type BuildingSortKey = '카드' | '건물' | '주소' | '유형'
-  const [buildingSort, setBuildingSort] = useState<{ key: BuildingSortKey; dir: 'asc' | 'desc' }>({ key: '카드', dir: 'asc' })
+  const [buildingSort, setBuildingSort] = useSessionState<{ key: BuildingSortKey; dir: 'asc' | 'desc' }>('dt.buildingSort', { key: '카드', dir: 'asc' })
   const [editingBuildingId, setEditingBuildingId] = useState<number | null>(null)
   const [editingUnitId, setEditingUnitId] = useState<number | null>(null)
   // 건물/세대 편집 draft 는 BuildingEditRows 의 자식 컴포넌트가 로컬로 보유.
