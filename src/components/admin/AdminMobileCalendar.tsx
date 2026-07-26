@@ -1,6 +1,7 @@
 // 관리자 모바일 캘린더 — design_handoff 02 / 02b / 03 화면
 import { t, weekdayShortLabels } from '../../i18n'
 import { confirmDialog } from '../../lib/confirm'
+import { pushBackHandler } from '../../lib/backStack'
 import { showToast } from '../../lib/toast'
 import { findActivePeriod } from '../../utils/specialPeriod'
 //
@@ -262,20 +263,11 @@ export function AdminMobileCalendar({
   overlayIdsRef.current = { detailEventId, assignEventId }
   useEffect(() => {
     if (!overlayOpen) return
-    let poppedByGesture = false
-    window.history.pushState({ mobileOverlay: true }, '')
-    const onPop = () => {
-      poppedByGesture = true
+    return pushBackHandler(() => {
       // 위에 떠 있는 것부터 닫는다 (배정 에디터 → 일정 상세)
       if (overlayIdsRef.current.assignEventId !== null) setAssignEventId(null)
       else setDetailEventId(null)
-    }
-    window.addEventListener('popstate', onPop)
-    return () => {
-      window.removeEventListener('popstate', onPop)
-      // 좌상단 버튼 등 코드로 닫힌 경우엔 우리가 넣은 더미 히스토리를 정리
-      if (!poppedByGesture) window.history.back()
-    }
+    })
   }, [overlayOpen])
 
   const cells = useMemo(() => buildCalendarDays(year, month), [year, month])

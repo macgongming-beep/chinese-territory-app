@@ -16,6 +16,7 @@ import {
 import { TeamBuildScreen } from './TeamBuildScreen'
 import { ZoneAssignScreen } from './ZoneAssignScreen'
 import { showToast } from '../../lib/toast'
+import { pushBackHandler } from '../../lib/backStack'
 
 // "5/29 (금) 10:00 · 봉사 모임" 형식
 function formatEventDateTime(event: CalendarEvent): string {
@@ -103,19 +104,11 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
   }
 
   // 구역 배분 화면에서 OS·스와이프 뒤로가기를 가로채 팀짓기로 한 단계만 복귀.
-  // (에디터 자체의 더미 히스토리 위에 하나 더 쌓는 구조 — 팀짓기에서 다시
-  //  스와이프하면 에디터가 닫혀 캘린더로 나간다)
+  // (에디터 오버레이 위에 한 층 더 쌓임 — backStack 이 최상단 한 층만 닫아준다.
+  //  팀짓기에서 다시 스와이프하면 에디터가 닫혀 캘린더로 나간다)
   useEffect(() => {
     if (screen !== 'zones') return
-    let poppedByGesture = false
-    window.history.pushState({ asgZoneScreen: true }, '')
-    const onPop = () => { poppedByGesture = true; setScreen('teams') }
-    window.addEventListener('popstate', onPop)
-    return () => {
-      window.removeEventListener('popstate', onPop)
-      // 헤더 뒤로가기 등 코드로 돌아간 경우엔 넣어둔 더미 히스토리를 정리
-      if (!poppedByGesture) window.history.back()
-    }
+    return pushBackHandler(() => setScreen('teams'))
   }, [screen])
 
   // 구역 없는 팀 (멤버는 있는데 카드 0)
