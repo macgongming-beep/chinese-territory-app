@@ -3,6 +3,7 @@ import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
 import { alertDialog } from '../lib/confirm'
+import { supabase } from '../lib/supabase'
 import { t, type AppLanguage } from '../i18n'
 
 export function DesktopProfileSettings({
@@ -27,6 +28,17 @@ export function DesktopProfileSettings({
   const [savingPin, setSavingPin] = useState(false)
   const [loginLogs, setLoginLogs] = useState<LoginLogRecord[]>([])
   const [loadingLoginLogs, setLoadingLoginLogs] = useState(false)
+  const [groupName, setGroupName] = useState<string | null>(null)
+
+  // 내 소속 집단 (사용자 관리에서 지정됨 — 여기선 표시만)
+  useEffect(() => {
+    let cancelled = false
+    void supabase.from('app_users').select('group_name').eq('id', user.id).maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setGroupName((data as { group_name?: string | null } | null)?.group_name ?? null)
+      })
+    return () => { cancelled = true }
+  }, [user.id])
   const [loginLogsExpanded, setLoginLogsExpanded] = useState(false)
 
   useEffect(() => {
@@ -71,6 +83,11 @@ export function DesktopProfileSettings({
               <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-500)', background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 999 }}>
                 {roleLabel}
               </span>
+              {groupName && (
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-500)', background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 999 }}>
+                  {groupName}
+                </span>
+              )}
             </div>
             <span style={{ fontSize: 13, color: 'var(--gray-500)' }}>{user.loginId}</span>
           </div>

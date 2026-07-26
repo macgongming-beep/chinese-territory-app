@@ -4,6 +4,7 @@ import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
 import { alertDialog } from '../lib/confirm'
+import { supabase } from '../lib/supabase'
 import { t, type AppLanguage } from '../i18n'
 import { AppHeader } from './AppHeader'
 
@@ -30,6 +31,17 @@ export function MobileProfileSettings({
   const [loginLogs, setLoginLogs] = useState<LoginLogRecord[]>([])
   const [loadingLoginLogs, setLoadingLoginLogs] = useState(false)
   const [loginLogsExpanded, setLoginLogsExpanded] = useState(false)
+  const [groupName, setGroupName] = useState<string | null>(null)
+
+  // 내 소속 집단 (사용자 관리에서 지정됨 — 여기선 표시만)
+  useEffect(() => {
+    let cancelled = false
+    void supabase.from('app_users').select('group_name').eq('id', user.id).maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setGroupName((data as { group_name?: string | null } | null)?.group_name ?? null)
+      })
+    return () => { cancelled = true }
+  }, [user.id])
 
   useEffect(() => {
     setName(user.name)
@@ -80,6 +92,7 @@ export function MobileProfileSettings({
           <span>{user.loginId}</span>
         </div>
         <span className="mobile-profile-role-badge">• {roleLabel}</span>
+        {groupName && <span className="mobile-profile-role-badge">• {groupName}</span>}
       </section>
 
       <section className="mobile-profile-card">

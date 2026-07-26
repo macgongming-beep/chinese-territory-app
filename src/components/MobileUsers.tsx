@@ -57,6 +57,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
     resetUserPin,
     deleteUser,
     updateUsersGroup,
+    renameUserGroup,
     fetchUserLoginLogs,
   } = useAuth()
 
@@ -79,6 +80,8 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
   const [groupFilter, setGroupFilter] = useState<string>('all')
   const [groupEditOpen, setGroupEditOpen] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
+  const [editingGroup, setEditingGroup] = useState<string | null>(null)
+  const [editingGroupName, setEditingGroupName] = useState('')
   const [selectMode, setSelectMode] = useState(false)
   const [checkedIds, setCheckedIds] = useState<Set<number>>(new Set())
   const [bulkGroup, setBulkGroup] = useState<string>('')
@@ -96,6 +99,23 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
     void supabase.from('app_settings').select('value').eq('key', USER_GROUPS_SETTING_KEY).maybeSingle()
       .then(({ data }) => setGroups(parseUserGroups(data?.value)))
   }, [isAdminLike])
+
+  // 집단 이름 변경 — 목록과 소속 사용자의 group_name 을 함께 갱신
+  const commitGroupRename = async () => {
+    const from = editingGroup
+    const to = editingGroupName.trim()
+    if (!from) return
+    if (!to || to === from) { setEditingGroup(null); setEditingGroupName(''); return }
+    if (groups.includes(to)) { showToast('같은 이름의 집단이 이미 있습니다.', 'error'); return }
+
+    const ok = await renameUserGroup(from, to)
+    if (!ok) return
+    await saveGroups(groups.map((g) => (g === from ? to : g)))
+    if (groupFilter === from) setGroupFilter(to)
+    setEditingGroup(null)
+    setEditingGroupName('')
+    showToast(`'${from}' → '${to}' 로 변경했습니다.`, 'success')
+  }
 
   const saveGroups = async (next: string[]) => {
     const serialized = serializeUserGroups(next)
@@ -478,19 +498,48 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
             {groups.map((g) => (
-              <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 999, border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 13 }}>
-                {g}
-                <button
-                  aria-label={`${g} 삭제`}
-                  onClick={async () => {
-                    if (await confirmDialog({ message: `'${g}' 집단을 목록에서 삭제할까요?`, danger: true, confirmLabel: '삭제' })) {
-                      void saveGroups(groups.filter((x) => x !== g))
-                    }
-                  }}
-                  style={{ minHeight: 0, border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 14 }}
-                  type="button"
-                >×</button>
-              </span>
+              editingGroup === g ? (
+                <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <input
+                    aria-label={`${g} 이름 변경`}
+                    value={editingGroupName}
+                    autoFocus
+                    onChange={(e) => setEditingGroupName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') void commitGroupRename() }}
+                    style={{ width: 110, padding: '6px 10px', border: '1px solid var(--ink)', borderRadius: 999, fontSize: 13, background: 'var(--surface)', color: 'var(--ink)' }}
+                  />
+                  <button
+                    onClick={() => void commitGroupRename()}
+                    style={{ minHeight: 0, padding: '6px 10px', borderRadius: 999, border: 'none', background: 'var(--ink)', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}
+                    type="button"
+                  >저장</button>
+                  <button
+                    onClick={() => { setEditingGroup(null); setEditingGroupName('') }}
+                    style={{ minHeight: 0, padding: '6px 8px', borderRadius: 999, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer' }}
+                    type="button"
+                  >취소</button>
+                </span>
+              ) : (
+                <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 999, border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 13 }}>
+                  <button
+                    aria-label={`${g} 이름 변경`}
+                    title="이름 변경"
+                    onClick={() => { setEditingGroup(g); setEditingGroupName(g) }}
+                    style={{ minHeight: 0, border: 'none', background: 'transparent', color: 'var(--ink)', cursor: 'pointer', padding: 0, fontSize: 13, fontWeight: 600 }}
+                    type="button"
+                  >{g}</button>
+                  <button
+                    aria-label={`${g} 삭제`}
+                    onClick={async () => {
+                      if (await confirmDialog({ message: `'${g}' 집단을 목록에서 삭제할까요?`, danger: true, confirmLabel: '삭제' })) {
+                        void saveGroups(groups.filter((x) => x !== g))
+                      }
+                    }}
+                    style={{ minHeight: 0, border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 14 }}
+                    type="button"
+                  >×</button>
+                </span>
+              )
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>

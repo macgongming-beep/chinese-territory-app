@@ -490,6 +490,27 @@ export function useAuth() {
     return true
   }
 
+  /** 집단 이름 변경 — 그 집단에 속한 사용자들의 group_name 도 함께 이관 */
+  const renameUserGroup = async (oldName: string, newName: string) => {
+    if (!isAdminLike(user?.role)) return false
+    const from = oldName.trim()
+    const to = newName.trim()
+    if (!from || !to || from === to) return false
+
+    const { error } = await supabase
+      .from('app_users')
+      .update({ group_name: to })
+      .eq('group_name', from)
+
+    if (error) {
+      showToast('집단 이름 변경에 실패했습니다.', 'error')
+      return false
+    }
+    await fetchAllUsers()
+    notifyUsersChanged()
+    return true
+  }
+
   const updateUserRole = async (userId: number, newRole: Role) => {
     if (!isAdminLike(user?.role)) return false
     const { error } = await supabase
@@ -754,6 +775,7 @@ export function useAuth() {
     resetUserPin,
     updateUserRole,
     updateUsersGroup,
+    renameUserGroup,
     deleteUser,
     createUser,
     updateUserIdentity,
