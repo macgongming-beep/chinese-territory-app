@@ -343,7 +343,9 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
             </button>
             <div className="asg-editor-titles">
               <strong>구역 배분</strong>
-              <span>{activeTeam ? `${activeTeam.name} · ${activeTeam.members.join(' · ')}` : ''}</span>
+              <span title={activeTeam ? activeTeam.members.join(' · ') : ''}>
+                {activeTeam ? `${activeTeam.name} · ${activeTeam.members.join(' · ')}` : ''}
+              </span>
             </div>
           </div>
         </header>
