@@ -29441,7 +29441,9 @@ button:focus-visible {
 
 /* 화면2 */
 .asg-zone { display: flex; flex-direction: column; }
-.asg-zone-sticky { position: sticky; top: 0; z-index: 6; background: var(--bg, #f8f8f7); border-bottom: 1px solid var(--line); }
+.asg-zone-sticky { position: sticky; top: 0; z-index: 6; background: var(--bg, #f8f8f7); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top); }
+/* 부모(.asg-zone-sticky)가 safe-area 를 확보하므로 내부 헤더는 기본 여백만 */
+.asg-zone-sticky .asg-editor-head { padding-top: 8px; }
 
 
 .asg-zone-undo { padding: 5px 12px; border: 1px solid var(--line-2, #e2e8f0); border-radius: 7px; background: var(--surface, #fff); font-size: 12px; font-weight: 700; color: var(--ink); cursor: pointer; }
@@ -29562,8 +29564,9 @@ button:focus-visible {
 
 /* 공통 배정 헤더 (일정상세 스타일 통일) */
 .asg-editor-head {
-  height: 56px;
-  padding: 0 12px;
+  /* 노치/다이나믹 아일랜드에 헤더(뒤로가기)가 가리지 않도록 safe-area 확보 */
+  min-height: 56px;
+  padding: max(8px, env(safe-area-inset-top)) 12px 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;

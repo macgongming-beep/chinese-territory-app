@@ -13,7 +13,7 @@ import { findActivePeriod } from '../../utils/specialPeriod'
 //
 // 헤더는 상위 MobileHome.tsx 의 AppHeader 가 그림.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, SpecialPeriod, TerritoryCard, VisitHistory } from '../../types'
 import type { AppLanguage } from '../../i18n'
@@ -253,20 +253,30 @@ export function AdminMobileCalendar({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, events])
 
-  // 일정 상세 시트가 열린 동안 OS/스와이프 뒤로가기를 가로채 "시트만 닫기".
-  // (시트는 풀스크린이라 열린 채 다른 탭으로 이동 불가 → unmount 충돌 없음)
+  // 풀스크린 오버레이(일정 상세 / 배정 에디터)가 열린 동안 OS·스와이프 뒤로가기를
+  // 가로채 "오버레이만 닫기" (홈으로 튕기지 않도록).
+  // 상세 → 배정 전환 때는 오버레이가 계속 열린 상태라 더미 히스토리를 그대로 재사용한다.
+  // (각각 push/back 하면 서로 경쟁해 배정 화면이 즉시 닫히는 문제가 생김)
+  const overlayOpen = detailEventId !== null || assignEventId !== null
+  const overlayIdsRef = useRef({ detailEventId, assignEventId })
+  overlayIdsRef.current = { detailEventId, assignEventId }
   useEffect(() => {
-    if (detailEventId === null) return
+    if (!overlayOpen) return
     let poppedByGesture = false
-    window.history.pushState({ mobileEventSheet: true }, '')
-    const onPop = () => { poppedByGesture = true; setDetailEventId(null) }
+    window.history.pushState({ mobileOverlay: true }, '')
+    const onPop = () => {
+      poppedByGesture = true
+      // 위에 떠 있는 것부터 닫는다 (배정 에디터 → 일정 상세)
+      if (overlayIdsRef.current.assignEventId !== null) setAssignEventId(null)
+      else setDetailEventId(null)
+    }
     window.addEventListener('popstate', onPop)
     return () => {
       window.removeEventListener('popstate', onPop)
-      // 좌상단 버튼/전환 등 코드로 닫힌 경우엔 우리가 넣은 더미 히스토리를 정리
+      // 좌상단 버튼 등 코드로 닫힌 경우엔 우리가 넣은 더미 히스토리를 정리
       if (!poppedByGesture) window.history.back()
     }
-  }, [detailEventId])
+  }, [overlayOpen])
 
   const cells = useMemo(() => buildCalendarDays(year, month), [year, month])
   const selectedDateStr = toDateStr(year, month, selectedDay)
