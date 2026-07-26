@@ -454,17 +454,31 @@ export function useAuth() {
   const updateUsersGroup = async (userIds: number[], groupName: string | null) => {
     if (!isAdminLike(user?.role)) return false
     if (userIds.length === 0) return false
-    const { error } = await supabase
+    const nextGroup = groupName && groupName.trim() ? groupName.trim() : null
+    // select() 로 갱신된 행을 되받아 검증 — app_users 는 컬럼 단위 권한이라
+    // group_name SELECT 권한이 없으면 에러 없이 조용히 반영 안 되는 것처럼 보임
+    const { data, error } = await supabase
       .from('app_users')
-      .update({ group_name: groupName && groupName.trim() ? groupName.trim() : null })
+      .update({ group_name: nextGroup })
       .in('id', userIds)
+      .select('id, group_name')
 
     if (error) {
       if (error.message?.includes('group_name')) {
-        showToast('DB에 group_name 컬럼이 없습니다. supabase/add_app_users_group.sql 을 먼저 실행해 주세요.', 'error')
+        showToast('DB에 group_name 컬럼/권한이 없습니다. supabase/add_app_users_group.sql 을 실행해 주세요.', 'error')
       } else {
         showToast('집단 지정에 실패했습니다.', 'error')
       }
+      return false
+    }
+
+    const rows = (data ?? []) as Array<{ id: number; group_name?: string | null }>
+    if (rows.length === 0) {
+      showToast('집단이 저장되지 않았습니다. supabase/add_app_users_group.sql 의 grant 구문을 실행해 주세요.', 'error')
+      return false
+    }
+    if (rows.some((row) => (row.group_name ?? null) !== nextGroup)) {
+      showToast('집단 값이 반영되지 않았습니다. DB 권한(grant select … group_name)을 확인해 주세요.', 'error')
       return false
     }
     showToast(
