@@ -29,6 +29,7 @@ import {
   downloadCsvExample,
 } from '../utils/csvBuildingImport'
 import { AddUnitRow } from './AddUnitRow'
+import { BuildingEditCells, UnitEditForm, type BuildingEditDraft } from './BuildingEditRows'
 import { CardCreateModal } from './DesktopTerritoryCardModal'
 
 // 상대 날짜 표시: "오늘", "어제", "N일 전", "N주 전", "N개월 전", "YYYY-MM-DD"
@@ -230,14 +231,8 @@ export function DesktopTerritory({
   const [buildingSort, setBuildingSort] = useState<{ key: BuildingSortKey; dir: 'asc' | 'desc' }>({ key: '카드', dir: 'asc' })
   const [editingBuildingId, setEditingBuildingId] = useState<number | null>(null)
   const [editingUnitId, setEditingUnitId] = useState<number | null>(null)
-  const [unitEditDraft, setUnitEditDraft] = useState<{ number: string; status: UnitStatus; memo: string; isChinese: boolean; isRegularVisit: boolean; isForbidden: boolean }>({ number: '', status: '미방문', memo: '', isChinese: false, isRegularVisit: false, isForbidden: false })
-  const [buildingEditDraft, setBuildingEditDraft] = useState({
-    name: '',
-    address: '',
-    type: '주택' as Building['type'],
-    cardId: 0,
-    memo: '',
-  })
+  // 건물/세대 편집 draft 는 BuildingEditRows 의 자식 컴포넌트가 로컬로 보유.
+  // (여기 두면 타이핑마다 이 거대 페이지 전체가 재렌더돼 입력이 끊김)
   const [showCsvModal, setShowCsvModal] = useState(false)
   // 중복 주소 합치기 이름 선택 모달
   const [mergeModalGroups, setMergeModalGroups] = useState<Array<{ primaryId: number; address: string; cardName: string; buildingCount: number; unitCount: number; names: string[] }> | null>(null)
@@ -659,6 +654,27 @@ export function DesktopTerritory({
     return 0
   })
 
+  // 미배정 필터의 추천 카드 배지 — 구역선 폴리곤 판정이라 렌더마다 돌면 무거움.
+  // (건물/구역선이 바뀔 때만 계산 → 편집 중 타이핑 시 재계산 없음)
+  const recommendationBadges = useMemo(() => {
+    const map = new Map<number, { label: string; color: string; bg: string }>()
+    if (buildingCardFilter !== unassignedCardId || unassignedCardId === null) return map
+    for (const building of filteredBuildings) {
+      const lat = Number(building.lat); const lng = Number(building.lng)
+      if (!isValidMapCoordinate(lat, lng)) {
+        map.set(building.id, { label: '좌표없음', color: '#d97706', bg: '#fffbeb' })
+        continue
+      }
+      const cId = findCardForCoordinates(lat, lng, cardBoundaries)
+      if (!cId) {
+        map.set(building.id, { label: '구역선밖', color: '#dc2626', bg: '#fef2f2' })
+        continue
+      }
+      map.set(building.id, { label: `→ ${cardMap.get(cId)?.name ?? `카드${cId}`}`, color: '#16a34a', bg: '#f0fdf4' })
+    }
+    return map
+  }, [filteredBuildings, buildingCardFilter, unassignedCardId, cardBoundaries, cardMap])
+
   // const buildingUnitsTotal = filteredBuildings.reduce((sum, building) => sum + building.units.length, 0)
 
   // 중복 주소 그룹 탐지 (필터된 건물 기준)
@@ -744,24 +760,17 @@ export function DesktopTerritory({
   // const regularPointTotal = pointRows.filter(({ unit }) => unit.isRegularVisit).length
   const startBuildingEdit = (building: Building) => {
     setEditingBuildingId(building.id)
-    setBuildingEditDraft({
-      name: building.name,
-      address: building.address,
-      type: building.type,
-      cardId: building.cardId,
-      memo: building.memo ?? '',
-    })
   }
-  const saveBuildingEdit = (building: Building) => {
-    const nextCardId = buildingEditDraft.cardId || building.cardId
+  const saveBuildingEdit = (building: Building, draft: BuildingEditDraft) => {
+    const nextCardId = draft.cardId || building.cardId
     onUpdateBuilding(
       building.id,
-      buildingEditDraft.name.trim(),
-      buildingEditDraft.address.trim(),
+      draft.name.trim(),
+      draft.address.trim(),
       undefined,
       undefined,
-      buildingEditDraft.type,
-      buildingEditDraft.memo,
+      draft.type,
+      draft.memo,
     )
     if (nextCardId !== building.cardId) {
       onMoveBuildingToCard(building.id, nextCardId)
@@ -2585,18 +2594,7 @@ export function DesktopTerritory({
               const chineseCount = building.units.filter((unit) => unit.isChinese).length
               const isEditing = editingBuildingId === building.id
               const isDuplicate = duplicateBuildingIds.has(building.id)
-              // 미배정 필터 활성 시 추천 카드 계산
-              const showRecommendation = buildingCardFilter === unassignedCardId && unassignedCardId !== null
-              const recommendationBadge = showRecommendation
-                ? (() => {
-                    const lat = Number(building.lat); const lng = Number(building.lng)
-                    if (!isValidMapCoordinate(lat, lng)) return { label: '좌표없음', color: '#d97706', bg: '#fffbeb' }
-                    const cId = findCardForCoordinates(lat, lng, cardBoundaries)
-                    if (!cId) return { label: '구역선밖', color: '#dc2626', bg: '#fef2f2' }
-                    const cName = cardMap.get(cId)?.name ?? `카드${cId}`
-                    return { label: `→ ${cName}`, color: '#16a34a', bg: '#f0fdf4' }
-                  })()
-                : null
+              const recommendationBadge = recommendationBadges.get(building.id) ?? null
               return (
                 <div className={`building-management-block${isDuplicate ? ' dup-address-row' : ''}`} key={building.id}>
                   <div className={`building-management-row${isEditing ? ' is-editing' : ''}`} role="row">
@@ -2608,48 +2606,15 @@ export function DesktopTerritory({
                       />
                     </div>
                     {isEditing ? (
-                      <>
-                        <input
-                          aria-label="건물명"
-                          value={buildingEditDraft.name}
-                          onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, name: event.target.value }))}
-                        />
-                        <input
-                          aria-label="주소"
-                          value={buildingEditDraft.address}
-                          onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, address: event.target.value }))}
-                        />
-                        <select
-                          aria-label="카드 재배정"
-                          value={buildingEditDraft.cardId}
-                          onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, cardId: Number(event.target.value) }))}
-                        >
-                          {cards.map((item) => (
-                            <option key={item.id} value={item.id}>{item.name}</option>
-                          ))}
-                        </select>
-                        <select
-                          aria-label="건물 유형"
-                          value={buildingEditDraft.type}
-                          onChange={(event) => setBuildingEditDraft((draft) => ({ ...draft, type: event.target.value as Building['type'] }))}
-                        >
-                          <option value="상가">상가</option>
-                          <option value="주택">주택</option>
-                        </select>
-                        <span>{building.units.length}개</span>
-                        <span>{chineseCount}건</span>
-                        <button
-                          className={`building-heavy-toggle${building.isChineseHeavy ? ' active' : ''}`}
-                          onClick={() => toggleChineseHeavyBuilding(building)}
-                          type="button"
-                        >
-                          {building.isChineseHeavy ? '다수' : '-'}
-                        </button>
-                        <span className="building-row-actions">
-                          <button onClick={() => saveBuildingEdit(building)} type="button">저장</button>
-                          <button onClick={() => setEditingBuildingId(null)} type="button">취소</button>
-                        </span>
-                      </>
+                      <BuildingEditCells
+                        key={building.id}
+                        building={building}
+                        cards={cards}
+                        chineseCount={chineseCount}
+                        onSave={(draft) => saveBuildingEdit(building, draft)}
+                        onCancel={() => setEditingBuildingId(null)}
+                        onToggleHeavy={() => toggleChineseHeavyBuilding(building)}
+                      />
                     ) : (
                       <>
                         <button
@@ -2701,74 +2666,21 @@ export function DesktopTerritory({
                           return (
                             <div className="building-unit-row" key={unit.id}>
                               {isEditingThisUnit ? (
-                                <div className="unit-edit-layout">
-                                  <div className="unit-edit-row1">
-                                    <input
-                                      aria-label="호수"
-                                      className="unit-number-input"
-                                      value={unitEditDraft.number}
-                                      onChange={(e) => setUnitEditDraft((d) => ({ ...d, number: e.target.value }))}
-                                    />
-                                    <select
-                                      aria-label="상태"
-                                      value={unitEditDraft.status}
-                                      onChange={(e) => setUnitEditDraft((d) => ({ ...d, status: e.target.value as UnitStatus }))}
-                                    >
-                                      {(['미방문', '만남', '부재', '대상외'] as UnitStatus[]).map((s) => (
-                                        <option key={s} value={s}>{s}</option>
-                                      ))}
-                                    </select>
-                                    <input
-                                      aria-label="메모"
-                                      className="unit-memo-input"
-                                      placeholder="메모"
-                                      value={unitEditDraft.memo}
-                                      onChange={(e) => setUnitEditDraft((d) => ({ ...d, memo: e.target.value }))}
-                                    />
-                                    <span className="unit-row-actions">
-                                      <button
-                                        onClick={() => {
-                                          onUpdateUnitStatus(building.id, unit.id, unitEditDraft.status, unitEditDraft.memo)
-                                          onUpdateUnitFlags(unit.id, {
-                                            isChinese: unitEditDraft.isChinese,
-                                            isRegularVisit: unitEditDraft.isRegularVisit,
-                                            isForbidden: unitEditDraft.isForbidden,
-                                            memo: unitEditDraft.memo,
-                                          })
-                                          setEditingUnitId(null)
-                                        }}
-                                        type="button"
-                                      >저장</button>
-                                      <button onClick={() => setEditingUnitId(null)} type="button">취소</button>
-                                    </span>
-                                  </div>
-                                  <div className="unit-edit-flags">
-                                    <label className="unit-flag-label">
-                                      <input
-                                        type="checkbox"
-                                        checked={unitEditDraft.isForbidden}
-                                        onChange={(e) => setUnitEditDraft((d) => ({ ...d, isForbidden: e.target.checked }))}
-                                      />
-                                      방문금지
-                                    </label>
-                                    <label className="unit-flag-label">
-                                      <input
-                                        type="checkbox"
-                                        checked={unitEditDraft.isRegularVisit}
-                                        onChange={(e) => setUnitEditDraft((d) => ({ ...d, isRegularVisit: e.target.checked }))}
-                                      />
-                                      정기방문
-                                    </label>
-                                    <label className="unit-flag-label">
-                                      <input
-                                        type="checkbox"
-                                        checked={unitEditDraft.isChinese}
-                                        onChange={(e) => setUnitEditDraft((d) => ({ ...d, isChinese: e.target.checked }))}
-                                      />
-                                      중국어
-                                    </label>
-                                  </div>
-                                </div>
+                                <UnitEditForm
+                                  key={unit.id}
+                                  unit={unit}
+                                  onSave={(draft) => {
+                                    onUpdateUnitStatus(building.id, unit.id, draft.status, draft.memo)
+                                    onUpdateUnitFlags(unit.id, {
+                                      isChinese: draft.isChinese,
+                                      isRegularVisit: draft.isRegularVisit,
+                                      isForbidden: draft.isForbidden,
+                                      memo: draft.memo,
+                                    })
+                                    setEditingUnitId(null)
+                                  }}
+                                  onCancel={() => setEditingUnitId(null)}
+                                />
                               ) : (
                                 <>
                                   <span className="unit-number">{unit.number}{/^\d+$/.test(unit.number) ? '호' : ''}</span>
@@ -2781,17 +2693,7 @@ export function DesktopTerritory({
                                   <span className="unit-memo">{unit.memo || '-'}</span>
                                   <span className="unit-row-actions">
                                     <button
-                                      onClick={() => {
-                                        setEditingUnitId(unit.id)
-                                        setUnitEditDraft({
-                                          number: unit.number,
-                                          status: unit.status,
-                                          memo: unit.memo ?? '',
-                                          isChinese: unit.isChinese ?? false,
-                                          isRegularVisit: unit.isRegularVisit ?? false,
-                                          isForbidden: unit.isForbidden ?? false,
-                                        })
-                                      }}
+                                      onClick={() => setEditingUnitId(unit.id)}
                                       type="button"
                                     >수정</button>
                                     <button
