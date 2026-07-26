@@ -130,7 +130,7 @@ function AssignmentStatusModal({
 }
 
 export function DesktopAdminAssignment({
-  cards,
+  cards: rawCards,
   currentVisitor,
   leaderNames = [],
   onSetCardLeaders,
@@ -140,6 +140,17 @@ export function DesktopAdminAssignment({
   leaderNames?: string[]
   onSetCardLeaders: (cardId: number, leaders: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
 }) {
+  // 담당자 이름 정제: 현재 존재하는 인도자/관리자(leaderNames)만 남김.
+  // → 삭제·개명된 계정 잔재와 개발자 계정(leaderNames 에 원래 미포함)이 배정 탭에서 사라짐.
+  const cards = useMemo(() => {
+    if (leaderNames.length === 0) return rawCards
+    const valid = new Set(leaderNames)
+    return rawCards.map((card) => {
+      const filtered = getCardLeaders(card).filter((name) => valid.has(name))
+      if (filtered.length === getCardLeaders(card).length) return card
+      return { ...card, assignedLeaders: filtered, assignedLeader: filtered[0] ?? null }
+    })
+  }, [rawCards, leaderNames])
   const [leaderSearch, setLeaderSearch] = useState('')
   const [selectedLeader, setSelectedLeader] = useState<string | null>(null)
   const [cardQuery, setCardQuery] = useState('')

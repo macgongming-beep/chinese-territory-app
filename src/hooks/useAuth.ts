@@ -471,6 +471,8 @@ export function useAuth() {
       return false
     }
 
+    const targetName = allUsers.find((item) => item.id === userId)?.name ?? null
+
     const { error } = await supabase
       .from('app_users')
       .delete()
@@ -479,6 +481,17 @@ export function useAuth() {
     if (error) {
       showToast('사용자 제거에 실패했습니다.', 'error')
       return false
+    }
+
+    // 배정 잔재 정리: 카드 담당/배정, 정기방문 담당에서 이름 제거 (best-effort)
+    // (이름 텍스트로 저장돼 있어 계정 삭제만으로는 배정 화면에 이름이 남음)
+    if (targetName) {
+      const cleanups = await Promise.all([
+        supabase.from('card_leader_assignments').delete().eq('user_name', targetName),
+        supabase.from('card_assignments').delete().eq('user_name', targetName),
+        supabase.from('regular_visits').delete().eq('visitor_name', targetName),
+      ])
+      cleanups.forEach((r) => { if (r.error) console.warn('[deleteUser] 배정 정리 실패', r.error) })
     }
 
     showToast('사용자가 제거되었습니다.', 'success')
@@ -633,6 +646,19 @@ export function useAuth() {
       }
       showToast('아이디/닉네임 변경에 실패했습니다.', 'error')
       return false
+    }
+
+    // 닉네임 변경 시 이름 텍스트로 저장된 배정/참여 데이터도 새 이름으로 이관 (best-effort)
+    // (안 하면 옛 이름이 배정 화면에 잔재로 남고, 본인 배정을 잃어버림)
+    if (target.name !== trimmedName) {
+      const renames = await Promise.all([
+        supabase.from('card_leader_assignments').update({ user_name: trimmedName }).eq('user_name', target.name),
+        supabase.from('card_assignments').update({ user_name: trimmedName }).eq('user_name', target.name),
+        supabase.from('regular_visits').update({ visitor_name: trimmedName }).eq('visitor_name', target.name),
+        supabase.from('event_participants').update({ user_name: trimmedName }).eq('user_name', target.name),
+        supabase.from('event_card_assignments').update({ user_name: trimmedName }).eq('user_name', target.name),
+      ])
+      renames.forEach((r) => { if (r.error) console.warn('[updateUserIdentity] 배정 이름 이관 실패', r.error) })
     }
 
     if (user.id === userId) {

@@ -64,7 +64,7 @@ function SearchIcon({ size = 16 }: { size?: number }) {
 
 
 export function MobileAdminAssignment({
-  cards,
+  cards: rawCards,
   buildings = [],
   leaderNames = [],
   currentVisitor = '',
@@ -78,6 +78,18 @@ export function MobileAdminAssignment({
   onSetCardLeaders: (cardId: number, leaders: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
   onOpenMapView?: (cardIds?: number[]) => void
 }) {
+  // 담당자 이름 정제: 현재 존재하는 인도자/관리자(leaderNames)만 남김.
+  // → 삭제·개명된 계정 잔재와 개발자 계정(leaderNames 에 원래 미포함)이 배정 탭에서 사라짐.
+  const cards = useMemo(() => {
+    if (leaderNames.length === 0) return rawCards
+    const valid = new Set(leaderNames)
+    return rawCards.map((card) => {
+      const filtered = getCardLeaders(card).filter((name) => valid.has(name))
+      if (filtered.length === getCardLeaders(card).length) return card
+      return { ...card, assignedLeaders: filtered, assignedLeader: filtered[0] ?? null }
+    })
+  }, [rawCards, leaderNames])
+
   const [step, setStep] = useState<1 | 2>(1)
 
   // 언마운트(탭 전환) 감지 — 아래 step2 효과가 그때는 history 정리를 건너뛰게
