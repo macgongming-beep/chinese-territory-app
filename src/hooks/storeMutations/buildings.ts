@@ -21,7 +21,11 @@ export function makeBuildingMutations(deps: {
   }) => {
     if (!input.address.trim()) {
       showToast('주소를 입력해 주세요.', 'error')
-      return
+      return false
+    }
+    if (!cards.some((card) => card.id === input.cardId)) {
+      showToast('건물을 추가할 카드를 찾지 못했습니다. 카드를 직접 선택해 주세요.', 'error')
+      return false
     }
     // 이름이 없으면 주소에서 자동 추출 (예: "언동로 213")
     const autoName = input.name.trim() || (() => {
@@ -41,7 +45,7 @@ export function makeBuildingMutations(deps: {
     })
     if (result.error) {
       reportMutationError('건물을 추가하지 못했습니다.', result.error)
-      return
+      return false
     }
     const card = cards.find((c) => c.id === input.cardId)
     await logServiceAction({
@@ -52,6 +56,7 @@ export function makeBuildingMutations(deps: {
     })
     await fetchAll()
     showToast(`"${autoName}" 건물이 추가됐습니다`)
+    return true
   }
 
   const importBuildings = async (inputs: CsvBuildingImport[]) => {

@@ -152,17 +152,28 @@ export function useStore() {
       case 'buildings': {
         // Phase 5 projection: 필요한 컬럼만 명시. created_at 등 메타 제외.
         // (is_forbidden은 DB 컬럼 미존재, 타입상 optional이라 제외 안전)
-        const buildingsRes = await supabase
-          .from('buildings')
-          .select('id, card_id, name, address, type, lat, lng, warning, memo, is_chinese_heavy, is_restaurant, units(id, building_id, number, status, is_chinese, memo, regular_visits(visitor_name, registered_at))')
-          .order('id')
+        // Supabase/PostgREST는 기본적으로 최대 1,000행만 반환한다.
+        // 건물이 1,000개를 넘으면 새로 추가한 건물이 저장만 되고 지도에 나타나지 않으므로
+        // 부모 행을 페이지 단위로 끝까지 조회한다.
+        const pageSize = 1000
+        const buildingRows: RawBuilding[] = []
+        for (let from = 0; ; from += pageSize) {
+          const buildingsRes = await supabase
+            .from('buildings')
+            .select('id, card_id, name, address, type, lat, lng, warning, memo, is_chinese_heavy, is_restaurant, units(id, building_id, number, status, is_chinese, memo, regular_visits(visitor_name, registered_at))')
+            .order('id')
+            .range(from, from + pageSize - 1)
 
-        if (buildingsRes.error) {
-          setError('건물 데이터를 불러오지 못했습니다.')
-          return 0
+          if (buildingsRes.error) {
+            setError('건물 데이터를 불러오지 못했습니다.')
+            return 0
+          }
+          const page = (buildingsRes.data ?? []) as RawBuilding[]
+          buildingRows.push(...page)
+          if (page.length < pageSize) break
         }
-        measure(buildingsRes.data)
-        const transformedBuildings = (buildingsRes.data as RawBuilding[]).map(toBuilding)
+        measure(buildingRows)
+        const transformedBuildings = buildingRows.map(toBuilding)
         setBuildings(transformedBuildings)
         buildingsRef.current = transformedBuildings  // ref 동기 갱신 (cards transform용)
 

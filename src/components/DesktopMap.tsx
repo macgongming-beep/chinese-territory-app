@@ -97,7 +97,7 @@ export function DesktopMap({
     type: Building['type']
     lat: number
     lng: number
-  }) => void
+  }) => Promise<boolean | void> | boolean | void
   onDeleteBuilding: (buildingId: number) => void
   onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => void
   onDeleteCardBoundary: (cardId: number) => void
@@ -155,6 +155,8 @@ export function DesktopMap({
   const [newBuildingLat, setNewBuildingLat] = useState<number | null>(null)
   const [newBuildingLng, setNewBuildingLng] = useState<number | null>(null)
   const [geocoding, setGeocoding] = useState(false)
+  const [creatingBuilding, setCreatingBuilding] = useState(false)
+  const creatingBuildingRef = useRef(false)
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'ok' | 'fail'>('idle')
   const [addingBuilding, setAddingBuilding] = useState(false)
   const [showMapActionMenu, setShowMapActionMenu] = useState(false)
@@ -329,20 +331,6 @@ export function DesktopMap({
   }
 
 
-  const createBuildingAt = (lat: number, lng: number) => {
-    onCreateBuilding({
-      cardId: newBuildingCardId,
-      name: newBuildingName.trim(),
-      address: newBuildingAddress.trim(),
-      type: newBuildingType,
-      lat,
-      lng,
-    })
-    setCardFilter(newBuildingCardId)
-    closeAddBuildingModal()
-  }
-
-
   useEffect(() => {
     const naver = (window as any).naver
     if (!naver?.maps?.Service) {
@@ -371,26 +359,59 @@ export function DesktopMap({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildings, coordinateRepairTick])
 
-  const handleConfirmAddBuilding = () => {
-    if (!newBuildingName.trim()) return
+  const revealAddedBuildingCard = (cardId: number) => {
+    const card = cards.find((item) => item.id === cardId)
+    if (card) {
+      setRegionFilter(
+        territoryRegions.includes(card.region as TerritoryRegion)
+          ? (card.region as TerritoryRegion)
+          : '전체',
+      )
+      setAreaFilter(card.area)
+    }
+    setRegionAllCards(false)
+    setCardFilter(cardId)
+    setBoundaryCardId(cardId)
+    setVisibleBoundarySelection(cardId)
+    setTargetTypeFilter('전체')
+    setStatusFilter('전체')
+    setChineseOnlyFilter(false)
+    setVisitResultFilter('전체')
+  }
+
+  const handleConfirmAddBuilding = async () => {
+    if (!newBuildingName.trim() || creatingBuildingRef.current) return
 
     // 좌표 있음 → 바로 건물 생성
     if (newBuildingLat != null && newBuildingLng != null) {
       const matchedCardId = findCardForCoordinates(newBuildingLat, newBuildingLng, cardBoundaries)
-      if (matchedCardId) {
-        setNewBuildingCardId(matchedCardId)
-        onCreateBuilding({ cardId: matchedCardId, name: newBuildingName.trim(), address: newBuildingAddress.trim(), type: newBuildingType, lat: newBuildingLat, lng: newBuildingLng })
-        setCardFilter(matchedCardId)
-        const matchedCard = cards.find(c => c.id === matchedCardId)
-        showToast(`구역 "${matchedCard?.name}" 카드에 자동 배정됐습니다`, 'success')
-      } else if (unassignedCard) {
-        onCreateBuilding({ cardId: unassignedCard.id, name: newBuildingName.trim(), address: newBuildingAddress.trim(), type: newBuildingType, lat: newBuildingLat, lng: newBuildingLng })
-        setCardFilter(unassignedCard.id)
-        showToast('구역선 밖 — "미배정 건물" 카드에 배정됐습니다', 'info')
-      } else {
-        createBuildingAt(newBuildingLat, newBuildingLng)
+      const targetCardId = matchedCardId ?? unassignedCard?.id ?? newBuildingCardId
+      creatingBuildingRef.current = true
+      setCreatingBuilding(true)
+      try {
+        const created = await onCreateBuilding({
+          cardId: targetCardId,
+          name: newBuildingName.trim(),
+          address: newBuildingAddress.trim(),
+          type: newBuildingType,
+          lat: newBuildingLat,
+          lng: newBuildingLng,
+        })
+        if (created === false) return
+
+        setNewBuildingCardId(targetCardId)
+        revealAddedBuildingCard(targetCardId)
+        if (matchedCardId) {
+          const matchedCard = cards.find((card) => card.id === matchedCardId)
+          showToast(`구역 "${matchedCard?.name}" 카드에 자동 배정됐습니다`, 'success')
+        } else if (unassignedCard) {
+          showToast('구역선 밖 — "미배정 건물" 카드에 배정됐습니다', 'info')
+        }
+        closeAddBuildingModal()
+      } finally {
+        creatingBuildingRef.current = false
+        setCreatingBuilding(false)
       }
-      closeAddBuildingModal()
       return
     }
 
@@ -2184,10 +2205,10 @@ export function DesktopMap({
                 <button
                   className="cal-save-btn"
                   type="button"
-                  disabled={!newBuildingName.trim() || geocoding || (newBuildingLat == null && !newBuildingAddress.trim())}
+                  disabled={creatingBuilding || !newBuildingName.trim() || geocoding || (newBuildingLat == null && !newBuildingAddress.trim())}
                   onClick={handleConfirmAddBuilding}
                 >
-                  {geocoding ? t(language, 'map.checkingAddress') + '...' : newBuildingLat == null ? t(language, 'map.checkLocation') : t(language, 'map.add')}
+                  {creatingBuilding ? '추가 중...' : geocoding ? t(language, 'map.checkingAddress') + '...' : newBuildingLat == null ? t(language, 'map.checkLocation') : t(language, 'map.add')}
                 </button>
               </div>
             </div>

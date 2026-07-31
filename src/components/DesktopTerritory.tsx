@@ -167,7 +167,7 @@ export function DesktopTerritory({
     index: number
     pinCount: number
   }) => Promise<number | null> | number | null
-  onCreateBuilding?: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => Promise<void> | void
+  onCreateBuilding?: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => Promise<boolean | void> | boolean | void
   onSwitchToMap?: () => void
   currentVisitor?: string
   informalAssets?: InformalAsset[]
@@ -617,7 +617,7 @@ export function DesktopTerritory({
       cardId = findCardForAddress(addBuildingForm.address) ?? cards[0]?.id ?? 0
     }
 
-    await onCreateBuilding({
+    const created = await onCreateBuilding({
       cardId,
       name: addBuildingForm.name,
       address: addBuildingForm.address,
@@ -625,6 +625,10 @@ export function DesktopTerritory({
       lat: latLng?.lat ?? 0,
       lng: latLng?.lng ?? 0,
     })
+    if (created === false) {
+      setAddBuildingSubmitting(false)
+      return
+    }
     setAddBuildingOpen(false)
     setAddBuildingForm({ name: '', address: '', type: '주택', cardId: 'auto' })
     setAddBuildingLatLng(null)

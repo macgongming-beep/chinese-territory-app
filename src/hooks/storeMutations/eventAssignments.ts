@@ -144,10 +144,15 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
         user_name: item.userName,
         assigned_card_id: item.cardId as number,
         assigned_by: getCurrentVisitor(),
+        team_key: item.teamKey,
       }))
 
     if (rows.length > 0) {
-      const insertResult = await supabase.from('event_card_assignments').insert(rows)
+      let insertResult = await supabase.from('event_card_assignments').insert(rows)
+      if (insertResult.error && String(insertResult.error.message ?? '').includes('team_key')) {
+        const legacyRows = rows.map(({ team_key: _teamKey, ...row }) => row)
+        insertResult = await supabase.from('event_card_assignments').insert(legacyRows)
+      }
       if (insertResult.error) {
         reportMutationError('참여자 카드 일괄 배정을 저장하지 못했습니다. event_card_assignments SQL을 먼저 실행해 주세요.', insertResult.error)
         return
