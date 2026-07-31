@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { showToast } from '../lib/toast'
 import { t, type AppLanguage } from '../i18n'
 import type { Role } from '../types'
+import { LinkifiedText } from './LinkifiedText'
 
 export type MentionUser = {
   id: number
@@ -274,7 +275,7 @@ export function CommentSection({
                     </div>
                   </div>
                 ) : (
-                  <p>{comment.content}</p>
+                  <p><LinkifiedText text={comment.content} /></p>
                 )}
               </div>
             </article>

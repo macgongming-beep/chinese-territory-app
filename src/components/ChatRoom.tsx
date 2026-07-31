@@ -7,6 +7,7 @@ import { getActiveChatEventId, setActiveChatEventId } from '../lib/activeChat'
 import { t, type AppLanguage } from '../i18n'
 import type { MentionUser } from './CommentSection'
 import type { Role } from '../types'
+import { LinkifiedText } from './LinkifiedText'
 
 type ChatMessage = {
   id: number
@@ -579,7 +580,7 @@ export function ChatRoom({
                       )}
                     </div>
                   )}
-                  {message.content && <p>{message.message_type === 'system' ? translateSystemContent(message.content, lang) : message.content}</p>}
+                  {message.content && <p>{message.message_type === 'system' ? translateSystemContent(message.content, lang) : <LinkifiedText text={message.content} />}</p>}
                 </div>
               </article>
             )
