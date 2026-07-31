@@ -25,6 +25,43 @@ function draft(teams: AssignmentDraft['teams']): AssignmentDraft {
   return { mode: 'card', status: 'draft', updatedAt: null, teams }
 }
 
+describe('공유 배정 (여러 팀이 같은 구역) 왕복', () => {
+  it('두 팀이 같은 카드를 맡아도 저장 형식에 각자 보존된다', () => {
+    const d = draft([
+      { id: 'a', name: '팀 1', color: 'blue', order: 0, cardIds: [10, 11], members: ['김민준'] },
+      { id: 'b', name: '팀 2', color: 'green', order: 1, cardIds: [10], members: ['이영희'] },
+    ])
+    expect(draftToAssignments(d)).toEqual([
+      { userName: '김민준', cardIds: [10, 11] },
+      { userName: '이영희', cardIds: [10] },
+    ])
+  })
+
+  it('서버 복원 시에도 공유 배정이 유지된다 (카드 구성이 다르면 다른 팀)', () => {
+    const restored = buildDraftFromServer(ev({
+      cardAssignments: [
+        { userName: '김민준', assignedCardIds: [10, 11] },
+        { userName: '이영희', assignedCardIds: [10] },
+      ],
+    } as Partial<CalendarEvent>))
+    const teamOf = (name: string) => restored.teams.find((t) => t.members.includes(name))!
+    expect(teamOf('김민준').cardIds).toEqual([10, 11])
+    expect(teamOf('이영희').cardIds).toEqual([10])
+    expect(teamOf('김민준').id).not.toBe(teamOf('이영희').id)
+  })
+
+  it('카드 구성이 완전히 같으면 한 팀으로 묶인다 (기존 동작 유지)', () => {
+    const restored = buildDraftFromServer(ev({
+      cardAssignments: [
+        { userName: '김민준', assignedCardIds: [10] },
+        { userName: '이영희', assignedCardIds: [10] },
+      ],
+    } as Partial<CalendarEvent>))
+    expect(restored.teams).toHaveLength(1)
+    expect(restored.teams[0].members).toEqual(['김민준', '이영희'])
+  })
+})
+
 describe('draftToAssignments', () => {
   it('각 팀원이 그 팀의 cardIds 를 받는다', () => {
     const d = draft([

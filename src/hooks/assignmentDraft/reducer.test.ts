@@ -67,7 +67,7 @@ describe('draftReducer — 멤버', () => {
   })
 })
 
-describe('draftReducer — 구역 카드 (한 카드 한 팀)', () => {
+describe('draftReducer — 구역 카드 (여러 팀이 함께 맡을 수 있음)', () => {
   it('ASSIGN_CARD: 활성팀에 추가 + undo 스냅샷', () => {
     const s = makeState([team({ id: 'a' })])
     const next = draftReducer(s, { type: 'ASSIGN_CARD', teamId: 'a', cardId: 10 })
@@ -75,7 +75,33 @@ describe('draftReducer — 구역 카드 (한 카드 한 팀)', () => {
     expect(next.undo).toBe(s.draft) // 직전 스냅샷
   })
 
-  it('MOVE_CARD: 카드가 다른 팀에 있으면 그 팀에서 빠지고 대상 팀으로', () => {
+  it('ASSIGN_CARD: 다른 팀이 맡은 카드도 뺏지 않고 함께 배정 (큰 구역 공동 배정)', () => {
+    const s = makeState([
+      team({ id: 'a', cardIds: [10] }),
+      team({ id: 'b', cardIds: [] }),
+    ])
+    const next = draftReducer(s, { type: 'ASSIGN_CARD', teamId: 'b', cardId: 10 })
+    expect(next.draft.teams.find((t) => t.id === 'a')!.cardIds).toEqual([10])
+    expect(next.draft.teams.find((t) => t.id === 'b')!.cardIds).toEqual([10])
+  })
+
+  it('ASSIGN_CARD: 같은 카드를 두 번 넣어도 중복되지 않음', () => {
+    const s = makeState([team({ id: 'a', cardIds: [10] })])
+    const next = draftReducer(s, { type: 'ASSIGN_CARD', teamId: 'a', cardId: 10 })
+    expect(next.draft.teams[0].cardIds).toEqual([10])
+  })
+
+  it('UNASSIGN_CARD: 공유 중이어도 해당 팀에서만 빠진다', () => {
+    const s = makeState([
+      team({ id: 'a', cardIds: [10] }),
+      team({ id: 'b', cardIds: [10] }),
+    ])
+    const next = draftReducer(s, { type: 'UNASSIGN_CARD', teamId: 'b', cardId: 10 })
+    expect(next.draft.teams.find((t) => t.id === 'a')!.cardIds).toEqual([10])
+    expect(next.draft.teams.find((t) => t.id === 'b')!.cardIds).toEqual([])
+  })
+
+  it('MOVE_CARD: 카드가 다른 팀에 있으면 그 팀에서 빠지고 대상 팀으로 (단독 이동)', () => {
     const s = makeState([
       team({ id: 'a', cardIds: [10] }),
       team({ id: 'b', cardIds: [] }),

@@ -69,10 +69,10 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
     [cards, selectedRegion],
   )
 
-  // cardId → teamId 역인덱스 (어느 카드가 어느 팀인지)
-  const cardTeam = useMemo(() => {
-    const m = new Map<number, DraftTeam>()
-    teams.forEach((t) => t.cardIds.forEach((id) => m.set(id, t)))
+  // cardId → 이 카드를 맡은 팀들 (한 카드를 여러 팀이 함께 맡을 수 있음)
+  const cardTeams = useMemo(() => {
+    const m = new Map<number, DraftTeam[]>()
+    teams.forEach((t) => t.cardIds.forEach((id) => m.set(id, [...(m.get(id) ?? []), t])))
     return m
   }, [teams])
 
@@ -157,7 +157,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
     const q = query.trim().toLowerCase()
     const filtered = regionCards.filter((c) => {
       if (q && !c.name.toLowerCase().includes(q)) return false
-      if (unassignedOnly && cardTeam.has(c.id)) return false
+      if (unassignedOnly && cardTeams.has(c.id)) return false
       if (buildingTypeFilter !== '전체') {
         const stats = unitStats.get(c.id) ?? { house: 0, shop: 0 }
         if (buildingTypeFilter === '주택' && stats.house === 0) return false
@@ -174,7 +174,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
     })
     const result = Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0], 'ko'))
     return result.map(([groupName, groupCards]) => [groupName, sortTerritoryCardsByOperationalPriority(groupCards)] as [string, TerritoryCard[]])
-  }, [regionCards, query, unassignedOnly, cardTeam, buildingTypeFilter, unitStats])
+  }, [regionCards, query, unassignedOnly, cardTeams, buildingTypeFilter, unitStats])
 
   const toggleGroup = (groupName: string) => {
     setCollapsedGroups((prev) => {
@@ -322,11 +322,10 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
 
   const toggleCard = (cardId: number) => {
     if (!canEdit || !activeTeam) return
-    const owner = cardTeam.get(cardId)
-    if (owner?.id === activeTeam.id) {
+    // 활성팀 기준 토글. 다른 팀이 이미 맡고 있어도 뺏지 않고 함께 배정한다
+    // (큰 구역은 여러 팀이 나눠 도는 경우가 있음)
+    if (activeTeam.cardIds.includes(cardId)) {
       dispatch({ type: 'UNASSIGN_CARD', teamId: activeTeam.id, cardId })
-    } else if (owner) {
-      dispatch({ type: 'MOVE_CARD', cardId, toTeamId: activeTeam.id }) // 다른 팀 → 활성팀 이동
     } else {
       dispatch({ type: 'ASSIGN_CARD', teamId: activeTeam.id, cardId })
     }
@@ -438,9 +437,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
             onSelectBuilding={() => undefined}
             onSelectCardBoundary={(cardId) => {
               if (!canEdit || !activeTeam) return
-              const owner = cardTeam.get(cardId)
-              if (owner?.id === activeTeam.id) dispatch({ type: 'UNASSIGN_CARD', teamId: activeTeam.id, cardId })
-              else if (owner) dispatch({ type: 'MOVE_CARD', cardId, toTeamId: activeTeam.id })
+              if (activeTeam.cardIds.includes(cardId)) dispatch({ type: 'UNASSIGN_CARD', teamId: activeTeam.id, cardId })
               else dispatch({ type: 'ASSIGN_CARD', teamId: activeTeam.id, cardId })
             }}
           />
@@ -585,8 +582,9 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
               {!isCollapsed && activeCards.length > 0 && (
                 <div className="asg-zone-card-list">
                   {activeCards.map((card) => {
-                const owner = cardTeam.get(card.id)
-                const isActiveTeamCard = owner?.id === activeTeamId
+                const owners = cardTeams.get(card.id) ?? []
+                const isActiveTeamCard = owners.some((t) => t.id === activeTeamId)
+                const otherOwners = owners.filter((t) => t.id !== activeTeamId)
                 const stats = unitStats.get(card.id) ?? { house: 0, shop: 0 }
                 return (
                   <button
@@ -610,9 +608,13 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
                         {` · ${card.progress}%`}
                       </small>
                     </span>
-                    {owner && !isActiveTeamCard ? (
-                      <span className="asg-zone-owner-pill" style={{ background: `${teamHex(owner.color)}22`, color: teamHex(owner.color) }}>
-                        {owner.name}
+                    {otherOwners.length > 0 ? (
+                      <span style={{ display: 'inline-flex', gap: 4, flexShrink: 0 }}>
+                        {otherOwners.map((t) => (
+                          <span key={t.id} className="asg-zone-owner-pill" style={{ background: `${teamHex(t.color)}22`, color: teamHex(t.color) }}>
+                            {t.name}
+                          </span>
+                        ))}
                       </span>
                     ) : (
                       <span style={{ fontSize: 11.5, color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
@@ -641,8 +643,9 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
                   {isCompletedOpen && (
                     <div className="asg-zone-card-list">
                       {completedCards.map((card) => {
-                const owner = cardTeam.get(card.id)
-                const isActiveTeamCard = owner?.id === activeTeamId
+                const owners = cardTeams.get(card.id) ?? []
+                const isActiveTeamCard = owners.some((t) => t.id === activeTeamId)
+                const otherOwners = owners.filter((t) => t.id !== activeTeamId)
                 const stats = unitStats.get(card.id) ?? { house: 0, shop: 0 }
                 return (
                   <button
@@ -666,9 +669,13 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
                         {` · ${card.progress}%`}
                       </small>
                     </span>
-                    {owner && !isActiveTeamCard ? (
-                      <span className="asg-zone-owner-pill" style={{ background: `${teamHex(owner.color)}22`, color: teamHex(owner.color) }}>
-                        {owner.name}
+                    {otherOwners.length > 0 ? (
+                      <span style={{ display: 'inline-flex', gap: 4, flexShrink: 0 }}>
+                        {otherOwners.map((t) => (
+                          <span key={t.id} className="asg-zone-owner-pill" style={{ background: `${teamHex(t.color)}22`, color: teamHex(t.color) }}>
+                            {t.name}
+                          </span>
+                        ))}
                       </span>
                     ) : (
                       <span style={{ fontSize: 11.5, color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>

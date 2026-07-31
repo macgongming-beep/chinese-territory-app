@@ -35,7 +35,17 @@ function touch(draft: AssignmentDraft): AssignmentDraft {
   return { ...draft, updatedAt: new Date().toISOString() }
 }
 
-// 한 카드는 한 팀에만 → 다른 팀에서 제거 후 대상 팀에 추가
+// 카드는 여러 팀이 함께 맡을 수 있다 (큰 구역을 나눠 도는 경우)
+// → 대상 팀에만 추가하고, 다른 팀의 배정은 건드리지 않는다.
+function addCardToTeam(teams: DraftTeam[], cardId: number, toTeamId: string): DraftTeam[] {
+  return teams.map((team) =>
+    team.id === toTeamId && !team.cardIds.includes(cardId)
+      ? { ...team, cardIds: [...team.cardIds, cardId] }
+      : team,
+  )
+}
+
+// 카드를 한 팀에서만 맡게 옮긴다 (다른 팀에서는 제거)
 function reassignCard(teams: DraftTeam[], cardId: number, toTeamId: string): DraftTeam[] {
   return teams.map((team) => {
     if (team.id === toTeamId) {
@@ -132,8 +142,8 @@ export function draftReducer(state: DraftState, action: DraftAction): DraftState
     }
 
     case 'ASSIGN_CARD': {
-      // undo 스냅샷 남김
-      const teams = reassignCard(state.draft.teams, action.cardId, action.teamId)
+      // undo 스냅샷 남김. 다른 팀 배정은 유지 (같은 구역 공동 배정 허용)
+      const teams = addCardToTeam(state.draft.teams, action.cardId, action.teamId)
       return { ...state, undo: state.draft, draft: touch({ ...state.draft, teams }) }
     }
 
