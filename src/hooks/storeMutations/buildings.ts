@@ -184,19 +184,32 @@ export function makeBuildingMutations(deps: {
     return { inserted, skipped }
   }
 
-  const addUnitToBuilding = async (buildingId: number, unitNumber: string) => {
-    if (!unitNumber.trim()) return
-    const result = await supabase.from('units').insert({
-      building_id: buildingId,
-      number: unitNumber.trim(),
-      status: '미방문',
-    })
+  const addUnitToBuilding = async (buildingId: number, unitNumber: string | string[]) => {
+    const unitNumbers = [...new Set(
+      (Array.isArray(unitNumber) ? unitNumber : [unitNumber])
+        .map((number) => number.trim())
+        .filter(Boolean),
+    )]
+    if (unitNumbers.length === 0) return false
+
+    const result = await supabase.from('units').insert(
+      unitNumbers.map((number) => ({
+        building_id: buildingId,
+        number,
+        status: '미방문',
+      })),
+    )
     if (result.error) {
       reportMutationError('호수를 추가하지 못했습니다.', result.error)
-      return
+      return false
     }
     await fetchAll()
-    showToast(`${unitNumber.trim()} 호수가 추가됐습니다`)
+    showToast(
+      unitNumbers.length === 1
+        ? `${unitNumbers[0]} 호수가 추가됐습니다`
+        : `${unitNumbers.length}개 호수가 추가됐습니다`,
+    )
+    return true
   }
 
   const deleteUnitFromBuilding = async (_buildingId: number, unitId: number) => {

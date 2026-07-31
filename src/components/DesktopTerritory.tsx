@@ -136,7 +136,7 @@ export function DesktopTerritory({
   onToggleChinese: (buildingId: number, unitId: number) => void
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
-  onAddUnit: (buildingId: number, unitNumber: string) => void
+  onAddUnit: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void>
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
   onUpdateUnitStatus: (buildingId: number, unitId: number, status: UnitStatus, memo?: string) => void

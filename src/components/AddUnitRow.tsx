@@ -12,7 +12,7 @@ export function AddUnitRow({
 }: {
   buildingId: number
   existingNumbers: Set<string>
-  onAdd: (buildingId: number, unitNumber: string) => void
+  onAdd: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void>
 }) {
   const [value, setValue] = useState('')
   const [showBulk, setShowBulk] = useState(false)
@@ -39,14 +39,12 @@ export function AddUnitRow({
   const handleBulkAdd = async () => {
     if (newOnes.length === 0) return
     setAdding(true)
-    for (const num of newOnes) {
-      await new Promise<void>((resolve) => {
-        onAdd(buildingId, num)
-        setTimeout(resolve, 30)
-      })
+    try {
+      const added = await onAdd(buildingId, newOnes)
+      if (added !== false) setShowBulk(false)
+    } finally {
+      setAdding(false)
     }
-    setAdding(false)
-    setShowBulk(false)
   }
 
   return (

@@ -75,7 +75,7 @@ export function MobileMap({
   focusedScopeLabel?: string
   onOpenLocationSettings?: () => void
   onBack: () => void
-  onAddUnit: (buildingId: number, unitNumber: string) => void
+  onAddUnit: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void>
   onCreateBuilding: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => void
   onDeleteBuilding: (buildingId: number) => void
   onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number) => void

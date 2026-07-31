@@ -13,7 +13,7 @@ export function MobileBulkUnitSheet({
   buildingId: number
   buildingName: string
   existingNumbers: Set<string>
-  onAdd: (buildingId: number, unitNumber: string) => void
+  onAdd: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void>
   onClose: () => void
 }) {
   const [startFloor, setStartFloor] = useState(1)
@@ -47,14 +47,12 @@ export function MobileBulkUnitSheet({
   const handleAdd = async () => {
     if (newOnes.length === 0 || adding) return
     setAdding(true)
-    for (const num of newOnes) {
-      await new Promise<void>((resolve) => {
-        onAdd(buildingId, num)
-        setTimeout(resolve, 25)
-      })
+    try {
+      const added = await onAdd(buildingId, newOnes)
+      if (added !== false) onClose()
+    } finally {
+      setAdding(false)
     }
-    setAdding(false)
-    onClose()
   }
 
   const renderStepper = (label: string, value: number, set: (n: number) => void, min = 1) => (
