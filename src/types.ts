@@ -44,6 +44,7 @@ export type EventCardAssignment = {
   userName: string
   assignedCardId: number
   assignedCardIds?: number[]
+  teamKey?: string | null   // 팀 구분 (같은 구역을 여러 팀이 맡을 때 필요)
   assignedBy: string
   assignedAt: string
   memo: string

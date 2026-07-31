@@ -25,7 +25,12 @@ export function buildDraftFromServer(event: CalendarEvent): AssignmentDraft {
       : assignment.assignedCardId != null
         ? [assignment.assignedCardId]
         : []
-    const key = cardIds.slice().sort((a, b) => a - b).join(',') || `member:${assignment.userName}`
+    // teamKey 가 저장돼 있으면 그걸로 팀을 나눈다.
+    // (없던 시절 데이터는 예전처럼 "같은 카드 구성 = 같은 팀"으로 폴백 —
+    //  다만 그 경우 서로 다른 팀이 같은 구역만 맡았다면 한 팀으로 합쳐진다)
+    const key = assignment.teamKey
+      ? `team:${assignment.teamKey}`
+      : cardIds.slice().sort((a, b) => a - b).join(',') || `member:${assignment.userName}`
     const current = grouped.get(key) ?? { cardIds, members: [] }
     current.members.push(assignment.userName)
     grouped.set(key, current)
@@ -56,11 +61,13 @@ export function buildEmptyDraft(): AssignmentDraft {
 // draft → 서버 bulk 배정 형식 (각 멤버가 자기 팀의 cardIds를 받음)
 export function draftToAssignments(
   draft: AssignmentDraft,
-): Array<{ userName: string; cardIds: number[] }> {
-  const out: Array<{ userName: string; cardIds: number[] }> = []
+): Array<{ userName: string; cardIds: number[]; teamKey: string }> {
+  const out: Array<{ userName: string; cardIds: number[]; teamKey: string }> = []
   draft.teams.forEach((team) => {
     team.members.forEach((userName) => {
-      out.push({ userName, cardIds: team.cardIds })
+      // teamKey 를 함께 저장해야 복원 시 팀이 그대로 나뉜다
+      // (같은 구역을 맡은 다른 팀과 합쳐지지 않도록)
+      out.push({ userName, cardIds: team.cardIds, teamKey: team.id })
     })
   })
   return out

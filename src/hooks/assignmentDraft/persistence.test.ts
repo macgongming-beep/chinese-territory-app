@@ -26,15 +26,28 @@ function draft(teams: AssignmentDraft['teams']): AssignmentDraft {
 }
 
 describe('공유 배정 (여러 팀이 같은 구역) 왕복', () => {
-  it('두 팀이 같은 카드를 맡아도 저장 형식에 각자 보존된다', () => {
+  it('두 팀이 같은 카드를 맡아도 저장 형식에 각자 보존된다 (teamKey 포함)', () => {
     const d = draft([
       { id: 'a', name: '팀 1', color: 'blue', order: 0, cardIds: [10, 11], members: ['김민준'] },
       { id: 'b', name: '팀 2', color: 'green', order: 1, cardIds: [10], members: ['이영희'] },
     ])
     expect(draftToAssignments(d)).toEqual([
-      { userName: '김민준', cardIds: [10, 11] },
-      { userName: '이영희', cardIds: [10] },
+      { userName: '김민준', cardIds: [10, 11], teamKey: 'a' },
+      { userName: '이영희', cardIds: [10], teamKey: 'b' },
     ])
+  })
+
+  it('카드 구성이 완전히 같은 두 팀도 teamKey 로 나뉘어 복원된다 (합쳐지지 않음)', () => {
+    // 실제 사례: 1팀·2팀이 똑같이 풍덕천12 만 맡았는데 한 팀으로 합쳐지던 문제
+    const restored = buildDraftFromServer(ev({
+      cardAssignments: [
+        { userName: '김민준', assignedCardIds: [10], teamKey: 'a' },
+        { userName: '이영희', assignedCardIds: [10], teamKey: 'b' },
+      ],
+    } as Partial<CalendarEvent>))
+    expect(restored.teams).toHaveLength(2)
+    expect(restored.teams.find((t) => t.members.includes('김민준'))!.cardIds).toEqual([10])
+    expect(restored.teams.find((t) => t.members.includes('이영희'))!.cardIds).toEqual([10])
   })
 
   it('서버 복원 시에도 공유 배정이 유지된다 (카드 구성이 다르면 다른 팀)', () => {
@@ -50,7 +63,7 @@ describe('공유 배정 (여러 팀이 같은 구역) 왕복', () => {
     expect(teamOf('김민준').id).not.toBe(teamOf('이영희').id)
   })
 
-  it('카드 구성이 완전히 같으면 한 팀으로 묶인다 (기존 동작 유지)', () => {
+  it('teamKey 없는 옛 데이터는 카드 구성으로 묶인다 (하위호환 폴백)', () => {
     const restored = buildDraftFromServer(ev({
       cardAssignments: [
         { userName: '김민준', assignedCardIds: [10] },
@@ -69,9 +82,9 @@ describe('draftToAssignments', () => {
       { id: 'b', name: '팀 2', color: 'green', order: 1, cardIds: [30], members: ['박상철'] },
     ])
     expect(draftToAssignments(d)).toEqual([
-      { userName: '김민준', cardIds: [10, 20] },
-      { userName: '이영희', cardIds: [10, 20] },
-      { userName: '박상철', cardIds: [30] },
+      { userName: '김민준', cardIds: [10, 20], teamKey: 'a' },
+      { userName: '이영희', cardIds: [10, 20], teamKey: 'a' },
+      { userName: '박상철', cardIds: [30], teamKey: 'b' },
     ])
   })
 

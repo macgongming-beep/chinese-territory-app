@@ -102,6 +102,7 @@ export type RawEventCardAssignment = {
   event_id: number
   user_name: string
   assigned_card_id: number
+  team_key?: string | null
   assigned_by: string | null
   assigned_at: string
   memo: string | null
@@ -338,6 +339,7 @@ export function toEventCardAssignment(raw: RawEventCardAssignment): EventCardAss
     userName: raw.user_name,
     assignedCardId: raw.assigned_card_id,
     assignedCardIds: [raw.assigned_card_id],
+    teamKey: raw.team_key ?? null,
     assignedBy: raw.assigned_by ?? '',
     assignedAt: raw.assigned_at,
     memo: raw.memo ?? '',

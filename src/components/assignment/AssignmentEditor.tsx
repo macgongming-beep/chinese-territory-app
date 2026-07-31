@@ -50,7 +50,7 @@ type Props = {
   onClose: () => void
   onShare: (
     eventId: number,
-    assignments: Array<{ userName: string; cardIds: number[] }>,
+    assignments: Array<{ userName: string; cardIds: number[]; teamKey?: string }>,
     options: { expectedSharedAt: string | null; onConflict: (serverSharedAt: string | null) => void },
   ) => Promise<void> | void
 }

@@ -62,7 +62,7 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
 
   const assignCardsToEventParticipantsBulk = async (
     eventId: number,
-    assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
+    assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null; teamKey?: string | null }>,
     options?: {
       silentSuccess?: boolean
       status?: 'confirmed' | 'shared'
@@ -87,6 +87,7 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
               userName: item.userName.trim(),
               cardId: cardIds[0] ?? null,
               cardIds,
+              teamKey: item.teamKey ?? null,
             }
           })
           .filter((item) => item.userName.length > 0)
@@ -97,7 +98,7 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
     // ── 1순위: 트랜잭션 RPC (원자적 + 충돌 감지) ──
     const rpcPayload = normalizedAssignments
       .filter((item) => item.cardIds.length > 0)
-      .map((item) => ({ userName: item.userName, cardIds: item.cardIds }))
+      .map((item) => ({ userName: item.userName, cardIds: item.cardIds, teamKey: item.teamKey }))
     const token = (await import('../../lib/authToken')).getAuthToken()
     if (token) {
       const rpcRes = await supabase.rpc('assign_cards_bulk_tx', {
