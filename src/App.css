@@ -29802,3 +29802,16 @@ button:focus-visible {
 .mbu-footer { padding: 12px 18px calc(14px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
 .mbu-add-btn { width: 100%; padding: 15px; background: var(--ink); color: #fff; border: none; border-radius: 11px; font-size: 15px; font-weight: 700; cursor: pointer; }
 .mbu-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── iOS time 입력 넘침 방지 ─────────────────────────────
+   iOS Safari 의 input[type=time] 은 "오후 10:00" 같은 로컬 표기를 담으려
+   고유 최소 너비가 크게 잡혀, 좁은 카드 안에서 옆 칸과 겹치거나 카드를
+   삐져나온다. 컨테이너에 맞춰 줄어들도록 강제한다. */
+input[type="time"] {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: center;
+}

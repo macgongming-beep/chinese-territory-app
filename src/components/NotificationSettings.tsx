@@ -164,7 +164,9 @@ export function NotificationSettings({
   }
 
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 16, border: '1px solid var(--line)' }}>
+    // 바깥 카드 없이 평평하게 — 페이지(모바일) / desk-card(PC) 가 이미 감싸므로
+    // 카드를 또 두면 좌우 여백이 3중으로 겹쳐 시간 입력칸이 눌린다
+    <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <span style={{
@@ -209,10 +211,11 @@ export function NotificationSettings({
       {canManageGlobalQuiet && (
         <div style={{
           marginBottom: 16,
-          padding: '13px 14px',
+          padding: '13px 12px',
           borderRadius: 12,
           border: '1px solid var(--line)',
           background: 'var(--paper)',
+          minWidth: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ minWidth: 0 }}>
@@ -246,7 +249,7 @@ export function NotificationSettings({
                 style={{
                   // iOS Safari 는 time 입력의 기본 너비가 커서 box-sizing 없이는 칸이 겹침
                   width: '100%', minWidth: 0, boxSizing: 'border-box',
-                  padding: '8px 10px', borderRadius: 8,
+                  padding: '8px 6px', borderRadius: 8,
                   border: '1px solid var(--line)', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
                   background: globalQuiet.enabled ? 'var(--surface)' : 'var(--tint)',
                 }}
@@ -264,7 +267,7 @@ export function NotificationSettings({
                 style={{
                   // iOS Safari 는 time 입력의 기본 너비가 커서 box-sizing 없이는 칸이 겹침
                   width: '100%', minWidth: 0, boxSizing: 'border-box',
-                  padding: '8px 10px', borderRadius: 8,
+                  padding: '8px 6px', borderRadius: 8,
                   border: '1px solid var(--line)', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
                   background: globalQuiet.enabled ? 'var(--surface)' : 'var(--tint)',
                 }}
