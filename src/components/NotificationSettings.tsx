@@ -233,7 +233,7 @@ export function NotificationSettings({
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 10, marginTop: 12 }}>
             <div>
               <label style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: 'var(--muted)', marginBottom: 5 }}>
                 {lang === 'zh' ? '开始' : lang === 'en' ? 'Start' : '시작'}
@@ -244,7 +244,9 @@ export function NotificationSettings({
                 disabled={!globalQuiet.enabled || globalQuietLoading || globalQuietSaving}
                 onChange={(e) => saveGlobalQuiet({ ...globalQuiet, quiet_start: e.target.value })}
                 style={{
-                  width: '100%', padding: '8px 10px', borderRadius: 8,
+                  // iOS Safari 는 time 입력의 기본 너비가 커서 box-sizing 없이는 칸이 겹침
+                  width: '100%', minWidth: 0, boxSizing: 'border-box',
+                  padding: '8px 10px', borderRadius: 8,
                   border: '1px solid var(--line)', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
                   background: globalQuiet.enabled ? 'var(--surface)' : 'var(--tint)',
                 }}
@@ -260,7 +262,9 @@ export function NotificationSettings({
                 disabled={!globalQuiet.enabled || globalQuietLoading || globalQuietSaving}
                 onChange={(e) => saveGlobalQuiet({ ...globalQuiet, quiet_end: e.target.value })}
                 style={{
-                  width: '100%', padding: '8px 10px', borderRadius: 8,
+                  // iOS Safari 는 time 입력의 기본 너비가 커서 box-sizing 없이는 칸이 겹침
+                  width: '100%', minWidth: 0, boxSizing: 'border-box',
+                  padding: '8px 10px', borderRadius: 8,
                   border: '1px solid var(--line)', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
                   background: globalQuiet.enabled ? 'var(--surface)' : 'var(--tint)',
                 }}
@@ -392,7 +396,7 @@ export function NotificationSettings({
             display: 'flex', gap: 12, marginTop: 8, padding: '12px 14px',
             background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 10,
           }}>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: 'var(--muted)', marginBottom: 5 }}>{lang === 'zh' ? '开始' : lang === 'en' ? 'Start' : '시작'}</label>
               <input
                 type="time"
@@ -402,13 +406,14 @@ export function NotificationSettings({
                   update({ quietHoursStart: e.target.value })
                 }}
                 style={{
-                  width: '100%', padding: '8px 10px', borderRadius: 8,
+                  width: '100%', minWidth: 0, boxSizing: 'border-box',
+                  padding: '8px 10px', borderRadius: 8,
                   border: '1px solid var(--line)', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
                   background: 'var(--surface)',
                 }}
               />
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: 'var(--muted)', marginBottom: 5 }}>{lang === 'zh' ? '结束' : lang === 'en' ? 'End' : '종료'}</label>
               <input
                 type="time"
@@ -418,7 +423,8 @@ export function NotificationSettings({
                   update({ quietHoursEnd: e.target.value })
                 }}
                 style={{
-                  width: '100%', padding: '8px 10px', borderRadius: 8,
+                  width: '100%', minWidth: 0, boxSizing: 'border-box',
+                  padding: '8px 10px', borderRadius: 8,
                   border: '1px solid var(--line)', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
                   background: 'var(--surface)',
                 }}

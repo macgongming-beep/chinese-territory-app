@@ -307,15 +307,20 @@ button:focus-visible {
 }
 
 /* 하위 페이지 wrapper 안의 헤더도 똑같이 풀-bleed.
-   wrapper padding(14 또는 16) + app-shell padding 16 둘 다 상쇄. */
+   wrapper padding(14 또는 16) + app-shell padding 16 둘 다 상쇄.
+   ⚠ 위쪽 음수 마진은 헤더를 끌어올려 safe-area(노치·다이나믹 아일랜드)
+     여백까지 깎으므로, 상쇄한 만큼 padding-top 으로 되돌려 준다.
+     (아이폰 16 Pro 등 아일랜드가 큰 기기에서 제목이 가려지던 문제) */
 .mobile-settings-page > .app-header--mobile {
   margin: -24px -30px 12px;
+  padding-top: calc(10px + 24px + var(--safe-top));
 }
 
 .mobile-signup-requests-page > .app-header--mobile,
 .mobile-profile-page > .app-header--mobile,
 .mobile-users-page > .app-header--mobile {
   margin: -18px -30px 12px;
+  padding-top: calc(10px + 18px + var(--safe-top));
 }
 
 .desktop-header-actions {
