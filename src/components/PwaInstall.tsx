@@ -1,15 +1,6 @@
 import { useEffect, useState } from 'react'
 import { t, type AppLanguage } from '../i18n'
 import { isPWAInstalled, isMobile, isIOS, isAndroid } from '../lib/pwa'
-import { alertDialog } from '../lib/confirm'
-import {
-  isPushSupported,
-  isCurrentDeviceSubscribed,
-  requestNotificationPermission,
-  subscribeToPush,
-  unsubscribeFromPush,
-} from '../lib/push'
-import { useAuth } from '../hooks/useAuth'
 
 const SNOOZE_KEY = 'pwa_install_snoozed_until'
 const SNOOZE_DAYS = 7
@@ -301,68 +292,20 @@ export function PwaInstallModal({ language = 'ko', onClose }: { language?: strin
  * 설정 페이지에서 보여줄 PWA 상태 + 설치 안내 버튼
  */
 export function PwaInstallSection({ language = 'ko' }: { language?: string } = {}) {
+  // 이 섹션은 PWA 설치 안내만 담당한다.
+  // 기기 푸시 on/off 는 '알림 설정' 화면의 DevicePushToggle 로 이동 (한 곳에서만 관리)
   const lang = (language ?? 'ko') as AppLanguage
-  const { user } = useAuth()
   const [installed, setInstalled] = useState(isPWAInstalled())
   const [showModal, setShowModal] = useState(false)
-  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(
-    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
-  )
-  const [subscribed, setSubscribed] = useState(false)
-  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => setInstalled(isPWAInstalled()), 3000)
     return () => clearInterval(interval)
   }, [])
 
-  useEffect(() => {
-    isCurrentDeviceSubscribed().then(setSubscribed)
-  }, [notifPermission])
-
-  async function handleEnablePush() {
-    if (!user) return
-    setBusy(true)
-    try {
-      // 권한 먼저
-      let perm = notifPermission as NotificationPermission
-      if (perm !== 'granted') {
-        perm = await requestNotificationPermission()
-        setNotifPermission(perm)
-        if (perm !== 'granted') return
-      }
-      // 구독 등록
-      const result = await subscribeToPush(user.id)
-      if (result.ok) {
-        setSubscribed(true)
-      } else {
-        console.warn('[push] subscribe failed:', result.reason)
-        void alertDialog({ message: '알림 등록에 실패했습니다: ' + (result.reason ?? 'unknown') })
-      }
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function handleDisablePush() {
-    setBusy(true)
-    try {
-      await unsubscribeFromPush()
-      setSubscribed(false)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const pushOn = isPushSupported() && subscribed
   const installSub = installed
     ? (lang === 'zh' ? '已作为主屏幕应用使用' : lang === 'en' ? 'Using as home screen app' : '홈 화면 앱으로 사용 중')
     : (lang === 'zh' ? '需要安装 PWA 才能接收通知' : lang === 'en' ? 'PWA installation required for notifications' : '알림을 받으려면 PWA 설치 필요')
-  const pushSub =
-    !isPushSupported() ? (lang === 'zh' ? '设备不支持推送通知' : lang === 'en' ? 'Device push not supported' : '기기에서 푸시 알림 미지원')
-    : notifPermission === 'denied' ? (lang === 'zh' ? '需要在浏览器设置中允许' : lang === 'en' ? 'Need permission in browser' : '브라우저 설정에서 허용 필요')
-    : pushOn ? (lang === 'zh' ? '此设备通知已开启' : lang === 'en' ? 'Notifications on' : '이 기기 알림 켜짐')
-    : (lang === 'zh' ? '此设备通知已关闭' : lang === 'en' ? 'Notifications off' : '이 기기 알림 꺼짐')
 
   return (
     <>
@@ -406,57 +349,8 @@ export function PwaInstallSection({ language = 'ko' }: { language?: string } = {
         </div>
       </div>
 
-      {/* ── 푸시 알림 카드 ───────────────── */}
-      <div style={{
-        padding: '12px 16px', marginBottom: 8,
-        background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{lang === 'zh' ? '推送通知' : lang === 'en' ? 'Push notifications' : '푸시 알림'}</span>
-            <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{pushSub}</span>
-          </div>
-          {isPushSupported() && user && notifPermission !== 'denied' && (
-            pushOn ? (
-              <button
-                onClick={handleDisablePush}
-                disabled={busy}
-                type="button"
-                style={{
-                  height: 32, minHeight: 32, padding: '0 12px',
-                  border: '1px solid var(--line-2)', borderRadius: 8,
-                  background: 'var(--surface)', color: 'var(--text)',
-                  fontSize: 13, fontWeight: 600,
-                  cursor: busy ? 'wait' : 'pointer',
-                  opacity: busy ? 0.6 : 1,
-                }}
-              >
-                {busy ? '...' : t(lang, 'pwa.off')}
-              </button>
-            ) : (
-              <button
-                onClick={handleEnablePush}
-                disabled={busy}
-                type="button"
-                style={{
-                  height: 32, minHeight: 32, padding: '0 12px',
-                  border: 'none', borderRadius: 8,
-                  background: busy ? 'var(--tint)' : 'var(--ink)',
-                  color: busy ? 'var(--muted-2)' : '#fff',
-                  fontSize: 13, fontWeight: 600,
-                  cursor: busy ? 'wait' : 'pointer',
-                  letterSpacing: '-0.005em',
-                }}
-              >
-                {busy ? '...' : t(lang, 'pwa.on')}
-              </button>
-            )
-          )}
-          {notifPermission === 'denied' && (
-            <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--status-danger)' }}>{lang === 'zh' ? '需要设置' : lang === 'en' ? 'Setup needed' : '설정 필요'}</span>
-          )}
-        </div>
-      </div>
+      {/* 푸시 알림 카드는 '알림 설정' 화면으로 이동 (알림을 두 곳에서 만지면 헷갈림)
+          → 설정 첫 화면의 '이 기기'는 PWA 설치 안내만 담당한다 */}
 
       {showModal && <PwaInstallModal language={language} onClose={() => setShowModal(false)} />}
     </>

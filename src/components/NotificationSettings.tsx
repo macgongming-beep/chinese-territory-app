@@ -1,6 +1,8 @@
 // 알림 설정 (종류별 on/off + 방해금지 시간)
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNotificationPrefs } from '../hooks/useNotificationPrefs'
+import { DevicePushToggle, type DevicePushState } from './DevicePushToggle'
+import { PwaInstallModal } from './PwaInstall'
 import type { AppLanguage } from '../i18n'
 import { getAuthToken } from '../lib/authToken'
 import { supabase } from '../lib/supabase'
@@ -82,6 +84,12 @@ export function NotificationSettings({
   const dndEnabled = prefs.quietHoursStart !== null && prefs.quietHoursEnd !== null
   const [localStart, setLocalStart] = useState(prefs.quietHoursStart ?? '22:00')
   const [localEnd, setLocalEnd] = useState(prefs.quietHoursEnd ?? '07:00')
+  // 이 기기 알림 상태 — 꺼져 있으면 아래 종류별 설정이 무시되므로 흐리게 표시
+  const [devicePush, setDevicePush] = useState<DevicePushState>('off')
+  const [showInstallGuide, setShowInstallGuide] = useState(false)
+  const handleDeviceState = useCallback((next: DevicePushState) => setDevicePush(next), [])
+  const deviceOff = devicePush !== 'on'
+
   const [expandedGroup, setExpandedGroup] = useState<Group['id'] | null>(null)
   const canManageGlobalQuiet = role === 'admin' || role === 'developer'
   const [globalQuiet, setGlobalQuiet] = useState<GlobalQuietSettings>({
@@ -188,6 +196,16 @@ export function NotificationSettings({
         )}
       </div>
 
+      {/* 이 기기 알림 (대문) — 설정 첫 화면에 흩어져 있던 것을 여기로 통합 */}
+      <DevicePushToggle
+        language={lang}
+        onStateChange={handleDeviceState}
+        onOpenInstallGuide={() => setShowInstallGuide(true)}
+      />
+      {showInstallGuide && (
+        <PwaInstallModal language={lang} onClose={() => setShowInstallGuide(false)} />
+      )}
+
       {canManageGlobalQuiet && (
         <div style={{
           marginBottom: 16,
@@ -257,8 +275,8 @@ export function NotificationSettings({
         </div>
       )}
 
-      {/* 그룹 토글 + 세부 펼침 */}
-      <div style={{ marginBottom: 16 }}>
+      {/* 그룹 토글 + 세부 펼침 — 기기 알림이 꺼져 있으면 무시되므로 흐리게 */}
+      <div style={{ marginBottom: 16, opacity: deviceOff ? 0.45 : 1 }}>
         <p style={{
           margin: '0 0 8px', fontSize: 12.5, fontWeight: 500, color: 'var(--muted)',
         }}>{lang === 'zh' ? '接收通知类型' : lang === 'en' ? 'Notification types' : '받을 알림 종류'}</p>
