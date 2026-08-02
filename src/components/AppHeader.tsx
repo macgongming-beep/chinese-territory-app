@@ -123,9 +123,11 @@ function IconBadge({ count }: { count?: number }) {
 }
 
 function HeaderActionIcon({ name }: { name: 'notification' | 'chat' | 'menu' }) {
+  // width/height 속성을 명시한다 — iOS Safari 는 고유 크기가 없는 SVG 를
+  // flex 컨테이너 안에서 축소해 버려 아이콘이 작게 보인다 (CSS 크기만으로는 부족)
   if (name === 'notification') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M18 9a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
         <path d="M10 21a2 2 0 0 0 4 0" />
       </svg>
@@ -133,14 +135,14 @@ function HeaderActionIcon({ name }: { name: 'notification' | 'chat' | 'menu' }) 
   }
   if (name === 'chat') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.4-4.2A8 8 0 1 1 21 12Z" />
         <path d="M8 12h.01M12 12h.01M16 12h.01" />
       </svg>
     )
   }
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M12 5h.01M12 12h.01M12 19h.01" />
     </svg>
   )
