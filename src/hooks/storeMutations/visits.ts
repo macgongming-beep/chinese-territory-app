@@ -2,6 +2,7 @@ import type { Building, ServiceSession, TerritoryCard, TimeSlot, Unit, UnitStatu
 import { getCurrentTimeSlot } from '../../utils/timeUtils'
 import { supabase, showToast, reportMutationError, getLocalDateString, requireVisitor } from './shared'
 import { logServiceAction } from './serviceLog'
+import { t, currentLang } from '../../i18n'
 
 export function makeVisitMutations(deps: {
   fetchAll: () => Promise<void>
@@ -12,8 +13,14 @@ export function makeVisitMutations(deps: {
   getRecordServiceSession: (buildingId?: number, visitedAt?: string) => ServiceSession | undefined
   /** 활성 특별봉사 시즌 ID 반환 */
   getActiveSpecialPeriodIdForDate: (dateStr: string) => number | null
+  /**
+   * 저장 성공한 세대 변경을 화면 상태에 바로 반영한다.
+   * 이게 없으면 건물 전체(1,000여 개 · 440KB)를 매번 다시 받아야 해서
+   * 기록 하나 남길 때마다 눈에 띄게 느려진다.
+   */
+  patchUnit: (unitId: number, patch: Partial<Unit>) => void
 }) {
-  const { fetchAll, visitHistories, buildings, cards, getRecordServiceSession, getActiveSpecialPeriodIdForDate } = deps
+  const { fetchAll, visitHistories, buildings, cards, getRecordServiceSession, getActiveSpecialPeriodIdForDate, patchUnit } = deps
 
   /** buildingId 로 카드·건물 컨텍스트 반환 */
   function getBuildingContext(buildingId: number) {
@@ -41,6 +48,7 @@ export function makeVisitMutations(deps: {
       reportMutationError('호수 상태를 저장하지 못했습니다.', statusResult.error)
       return
     }
+    patchUnit(unitId, { status })
 
     const visitedAt = getLocalDateString()
     const visitor = requireVisitor()
@@ -89,7 +97,7 @@ export function makeVisitMutations(deps: {
     }
     // 봉사 로그: 상태 직접 변경
     const ctxUs = getBuildingContext(buildingId)
-    await logServiceAction({
+    void logServiceAction({
       sessionId: recordSession?.id ?? null,
       cardId: ctxUs.cardId,
       action: 'visit_recorded',
@@ -194,6 +202,7 @@ export function makeVisitMutations(deps: {
       reportMutationError('세대 상태를 업데이트하지 못했습니다.', unitUpdate.error)
       return
     }
+    patchUnit(unitId, { status: result })
 
     const existingResult = await supabase
       .from('visit_histories')
@@ -248,7 +257,7 @@ export function makeVisitMutations(deps: {
 
     // 봉사 로그: 퀵 방문 기록
     const ctx = getBuildingContext(buildingId)
-    await logServiceAction({
+    void logServiceAction({
       sessionId: recordSession?.id ?? null,
       cardId: ctx.cardId,
       action: 'visit_recorded',
@@ -280,6 +289,7 @@ export function makeVisitMutations(deps: {
         reportMutationError('세대 정보를 수정하지 못했습니다.', result.error)
         return
       }
+      patchUnit(unitId, flags)
     }
 
     if (flags.isForbidden !== undefined) {
@@ -291,12 +301,13 @@ export function makeVisitMutations(deps: {
         reportMutationError('방문금지 상태를 수정하지 못했습니다.', statusResult.error)
         return
       }
+      patchUnit(unitId, { isForbidden: flags.isForbidden, status: flags.isForbidden ? '거절' : '미방문' })
     }
 
     // 봉사 로그: 호수 플래그 변경
     const buildingForFlag = buildings.find((b) => b.units.some((u) => u.id === unitId))
     const ctxFlag = buildingForFlag ? getBuildingContext(buildingForFlag.id) : { cardId: null, cardName: null, buildingName: null }
-    await logServiceAction({
+    void logServiceAction({
       cardId: ctxFlag.cardId,
       action: 'unit_flag_changed',
       targetType: 'unit',
@@ -329,10 +340,11 @@ export function makeVisitMutations(deps: {
       reportMutationError('방문 이력은 취소됐지만 호수 상태를 되돌리지 못했습니다.', statusResult.error)
       return
     }
+    patchUnit(unitId, { status: restoreStatus })
 
     // 봉사 로그: 최근 방문 취소
     const ctx = getBuildingContext(buildingId)
-    await logServiceAction({
+    void logServiceAction({
       cardId: ctx.cardId,
       action: 'visit_deleted',
       targetType: 'visit_history',
@@ -378,6 +390,7 @@ export function makeVisitMutations(deps: {
         reportMutationError('방문 이력은 수정됐지만 호수 대표 상태를 맞추지 못했습니다.', statusResult.error)
         return
       }
+      patchUnit(unitId, { status: input.result })
     }
 
     // 봉사 로그: 방문 기록 수정 (건물은 units 테이블 경유 → 기존 로그에서 building_id 역추적)
@@ -386,7 +399,7 @@ export function makeVisitMutations(deps: {
       ? buildings.find((b) => b.id === prevLog.buildingId)
       : undefined
     const cardForUpdate = buildingForUpdate ? cards.find((c) => c.id === buildingForUpdate.cardId) : undefined
-    await logServiceAction({
+    void logServiceAction({
       cardId: cardForUpdate?.id ?? null,
       action: 'visit_updated',
       targetType: 'visit_history',
@@ -440,11 +453,12 @@ export function makeVisitMutations(deps: {
         reportMutationError('방문 이력은 추가됐지만 호수 대표 상태를 맞추지 못했습니다.', statusResult.error)
         return
       }
+      patchUnit(unitId, { status: input.result })
     }
 
     // 봉사 로그: 방문 기록 추가
     const ctx = getBuildingContext(buildingId)
-    await logServiceAction({
+    void logServiceAction({
       sessionId: recordSession?.id ?? null,
       cardId: ctx.cardId,
       action: 'visit_recorded',
@@ -480,12 +494,14 @@ export function makeVisitMutations(deps: {
     const statusUpdate = await supabase.from('units').update({ status: newStatus }).eq('id', unitId)
     if (statusUpdate.error) {
       reportMutationError('호수 상태 동기화에 실패했습니다.', statusUpdate.error)
+    } else {
+      patchUnit(unitId, { status: newStatus })
     }
 
     // 봉사 로그: 방문 기록 삭제
     if (prevLog) {
       const ctx = getBuildingContext(prevLog.buildingId)
-      await logServiceAction({
+      void logServiceAction({
         cardId: ctx.cardId,
         action: 'visit_deleted',
         targetType: 'visit_history',
@@ -501,7 +517,7 @@ export function makeVisitMutations(deps: {
     }
 
     await fetchAll()
-    showToast('방문 기록이 삭제되었습니다.')
+    showToast(t(currentLang(), 'toast.deleted'))
   }
 
   return {

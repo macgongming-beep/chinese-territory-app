@@ -19,6 +19,7 @@ import type {
   ServiceSession,
   SpecialPeriod,
   TerritoryCard,
+  Unit,
   VisitHistory,
 } from '../types'
 import {
@@ -144,7 +145,10 @@ export function useStore() {
   // 각 slice를 독립적으로 fetch. 페이로드 크기 누적 반환.
   const fetchSlice = useCallback(async (slice: Slice): Promise<number> => {
     let approxBytes = 0
+    // ⚠ 운영에서는 측정하지 않는다 — 숫자 하나 얻으려고 440KB 를 통째로
+    //   문자열로 바꾸는 비용이 구형 기기에서 그대로 체감된다
     const measure = (data: unknown) => {
+      if (!import.meta.env.DEV) return
       try { approxBytes += JSON.stringify(data ?? null).length } catch { /* ignore */ }
     }
 
@@ -516,10 +520,20 @@ export function useStore() {
   // 결과: mutation 파일 손대지 않고 부분 refetch 적용.
   // Phase 5 hotfix: territory 분할에 따라 mutation별로 정밀 매핑
   const refetchVisits = useCallback(
-    // 방문 기록은 units.status 갱신되므로 buildings도 함께
-    () => fetchSlices(['visits', 'buildings'], { triggeredBy: 'mutation:visits' }),
+    // buildings 는 다시 받지 않는다 — 바뀐 세대 한 줄만 patchUnit 으로 반영한다
+    // (건물 1,000여 개 · 440KB 재다운로드가 기록할 때마다의 지연 원인이었다)
+    () => fetchSlices(['visits'], { triggeredBy: 'mutation:visits' }),
     [fetchSlices],
   )
+
+  // 저장에 성공한 세대 변경을 화면 상태에 즉시 반영 (전체 재조회 대체)
+  const patchUnit = useCallback((unitId: number, patch: Partial<Unit>) => {
+    setBuildings((prev) => prev.map((building) => (
+      building.units.some((u) => u.id === unitId)
+        ? { ...building, units: building.units.map((u) => (u.id === unitId ? { ...u, ...patch } : u)) }
+        : building
+    )))
+  }, [])
   const refetchCards = useCallback(
     // 카드 추가·수정·인도자 배정 — buildings 안 건드림 (가벼움)
     () => fetchSlices(['cards'], { triggeredBy: 'mutation:cards' }),
@@ -594,7 +608,7 @@ export function useStore() {
     updateVisitHistory,
     addVisitHistory,
     deleteVisitHistory,
-  } = makeVisitMutations({ fetchAll: refetchVisits, visitHistories, buildings, cards, getRecordServiceSession, getActiveSpecialPeriodIdForDate })
+  } = makeVisitMutations({ fetchAll: refetchVisits, visitHistories, buildings, cards, getRecordServiceSession, getActiveSpecialPeriodIdForDate, patchUnit })
 
   const {
     createBuilding,
