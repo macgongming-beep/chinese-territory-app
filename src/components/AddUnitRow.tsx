@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { generateBulkUnits } from '../utils/bulkUnits'
+import { t, currentLang } from '../i18n'
 
 /**
  * 건물 상세 패널에서 호수를 추가하는 행 컴포넌트.
@@ -53,19 +54,19 @@ export function AddUnitRow({
       <div className="building-unit-row building-unit-add-row">
         <input
           className="unit-number-input"
-          placeholder="호수 입력"
+          placeholder={t(currentLang(), 'unit.unitInputPlaceholder')}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleAdd() }}
         />
         <span className="unit-row-actions">
-          <button onClick={handleAdd} type="button">+ 추가</button>
+          <button onClick={handleAdd} type="button">+ {t(currentLang(), 'map.addUnit', { defaultValue: '추가' })}</button>
           <button
             className={`unit-bulk-toggle${showBulk ? ' active' : ''}`}
             onClick={() => setShowBulk((v) => !v)}
             type="button"
           >
-            일괄 추가 {showBulk ? '▴' : '▾'}
+            {t(currentLang(), 'unit.bulkAddToggle')} {showBulk ? '▴' : '▾'}
           </button>
         </span>
       </div>
@@ -74,26 +75,26 @@ export function AddUnitRow({
       {showBulk && (
         <div className="unit-bulk-panel">
           {/* 지상층 설정 */}
-          <div className="unit-bulk-section-label">지상</div>
+          <div className="unit-bulk-section-label">{t(currentLang(), 'unit.ground')}</div>
           <div className="unit-bulk-fields">
             <label className="unit-bulk-field">
-              <span>시작층</span>
+              <span>{t(currentLang(), 'unit.startFloor')}</span>
               <input type="number" min={1} value={startFloor}
                 onChange={(e) => setStartFloor(Number(e.target.value))} />
             </label>
             <span className="unit-bulk-sep">~</span>
             <label className="unit-bulk-field">
-              <span>끝층</span>
+              <span>{t(currentLang(), 'unit.endFloor')}</span>
               <input type="number" min={startFloor} value={endFloor}
                 onChange={(e) => setEndFloor(Number(e.target.value))} />
             </label>
             <label className="unit-bulk-field">
-              <span>층당 호수</span>
+              <span>{t(currentLang(), 'unit.unitsPerFloor')}</span>
               <input type="number" min={1} value={unitsPerFloor}
                 onChange={(e) => setUnitsPerFloor(Number(e.target.value))} />
             </label>
             <label className="unit-bulk-field">
-              <span>시작 호번호</span>
+              <span>{t(currentLang(), 'unit.startUnitNum')}</span>
               <input type="number" min={1} value={startUnit}
                 onChange={(e) => setStartUnit(Number(e.target.value))} />
             </label>
@@ -107,12 +108,12 @@ export function AddUnitRow({
                 checked={hasBasement}
                 onChange={(e) => setHasBasement(e.target.checked)}
               />
-              지하 포함
+              {t(currentLang(), 'unit.includeBasement')}
             </label>
             {hasBasement && (
               <>
                 <label className="unit-bulk-field">
-                  <span>지하 층수</span>
+                  <span>{t(currentLang(), 'unit.basementFloors')}</span>
                   <input type="number" min={1} value={basementFloors}
                     onChange={(e) => setBasementFloors(Number(e.target.value))} />
                 </label>
@@ -127,10 +128,10 @@ export function AddUnitRow({
           {/* 미리보기 */}
           <div className="unit-bulk-preview">
             <div className="unit-bulk-preview-label">
-              미리보기 &nbsp;
-              <strong>총 {newOnes.length}개 추가</strong>
+              {t(currentLang(), 'unit.previewAdd').replace('{count}', '')} &nbsp;
+              <strong>{t(currentLang(), 'unit.previewAdd', { count: newOnes.length })}</strong>
               {skipped > 0 && (
-                <span className="unit-bulk-skip"> · {skipped}개 이미 있어 자동 스킵</span>
+                <span className="unit-bulk-skip"> {t(currentLang(), 'unit.skipped', { count: skipped })}</span>
               )}
             </div>
             <div className="unit-bulk-preview-grid">
@@ -149,7 +150,7 @@ export function AddUnitRow({
               onClick={handleBulkAdd}
               type="button"
             >
-              {adding ? '추가 중...' : `${newOnes.length}개 추가하기`}
+              {adding ? t(currentLang(), 'unit.adding') : t(currentLang(), 'unit.addCount', { count: newOnes.length })}
             </button>
           </div>
         </div>

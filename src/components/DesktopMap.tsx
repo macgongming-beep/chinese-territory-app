@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- 네이버 지도 SDK(window.naver)는 공식 TS 타입이 없어 any 사용이 불가피함 */
-import { t, type AppLanguage } from '../i18n';
+import { t, type AppLanguage, currentLang } from '../i18n';
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { MapCanvas } from './MapCanvas'
 import type { MapAggregateMarker } from './MapCanvas'
@@ -1935,13 +1935,13 @@ export function DesktopMap({
                               <div style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: unitHistories.length > 0 ? 6 : 0 }}>
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>방문 기록</span>
+                                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{t(currentLang(), 'territory.visitHistory', { defaultValue: '방문 기록' })}</span>
                                   <button
                                     className="history-add-btn"
                                     onClick={() => openHistoryEditorForAdd(building.id, unit.id)}
                                     style={{ marginLeft: 'auto' }}
                                     type="button"
-                                  >+ 기록</button>
+                                  >+ {t(currentLang(), 'map.addRecord')}</button>
                                 </div>
                                 <div className="ugd-history-stack">
                                   {unitHistories.slice(0, 5).map((history) => {
@@ -1957,20 +1957,20 @@ export function DesktopMap({
                                         </button>
                                         {isMenuOpen && (
                                           <div className="history-admin-menu">
-                                            <button onClick={() => openHistoryEditorForEdit(building.id, history)} type="button">✎ 수정</button>
+                                            <button onClick={() => openHistoryEditorForEdit(building.id, history)} type="button">{t(currentLang(), 'map.edit')}</button>
                                             <button onClick={async () => {
                                               if (!requireRecordAccess()) return
                                               if (await confirmDialog({ message: '이 방문 기록을 삭제할까요?', danger: true, confirmLabel: '삭제' })) {
                                                 onDeleteVisitHistory(history.id, unit.id)
                                               }
                                               setEditingHistoryId(null)
-                                            }} className="delete" type="button">✕ 삭제</button>
+                                            }} className="delete" type="button">{t(currentLang(), 'map.delete')}</button>
                                           </div>
                                         )}
                                       </div>
                                     )
                                   })}
-                                  {unitHistories.length === 0 && <span className="ugd-value" style={{ fontSize: 12, color: '#cbd5e1' }}>기록 없음</span>}
+                                  {unitHistories.length === 0 && <span className="ugd-value" style={{ fontSize: 12, color: '#cbd5e1' }}>{t(currentLang(), 'map.noRecords')}</span>}
                                 </div>
                               </div>
 
@@ -2089,12 +2089,12 @@ export function DesktopMap({
 
                     {addingUnitToBuildingId === building.id ? (
                       <div className="inline-add-unit-form bld-add-unit-form">
-                        <input autoFocus placeholder="추가할 호수 (예: 101)" value={newUnitNumber} onChange={(e) => setNewUnitNumber(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newUnitNumber.trim()) { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') } }} />
+                        <input autoFocus placeholder={t(currentLang(), 'unit.addUnitPlaceholder')} value={newUnitNumber} onChange={(e) => setNewUnitNumber(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newUnitNumber.trim()) { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') } }} />
                         <button disabled={!newUnitNumber.trim()} onClick={() => { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') }}>{t(language, 'map.add')}</button>
                         <button onClick={() => setAddingUnitToBuildingId(null)} style={{ background: '#f1f5f9', color: 'var(--ink-500)' }}>✕</button>
                       </div>
                     ) : (
-                      <button className="bld-add-unit-btn" onClick={() => setAddingUnitToBuildingId(building.id)} type="button">+ 세대 추가</button>
+                      <button className="bld-add-unit-btn" onClick={() => setAddingUnitToBuildingId(building.id)} type="button">{t(currentLang(), 'map.addUnit')}</button>
                     )}
                   </div>
                 )}
@@ -2110,7 +2110,7 @@ export function DesktopMap({
           <div className="building-add-overlay">
             <div className="building-add-panel">
               <div className="building-add-panel-head">
-                <span>건물 추가</span>
+                <span>{t(currentLang(), 'map.addBuilding')}</span>
                 <button
                   type="button"
                   onClick={closeAddBuildingModal}
@@ -2125,18 +2125,18 @@ export function DesktopMap({
                 {newBuildingLat && (
                   <p className="building-add-coords">
                     {newBuildingLat.toFixed(5)}, {newBuildingLng?.toFixed(5)}
-                    {geocodeStatus === 'ok' && <span className="building-add-geocode-ok">주소 자동 입력</span>}
-                    {geocoding && <span> 주소 조회 중...</span>}
+                    {geocodeStatus === 'ok' && <span className="building-add-geocode-ok">{t(currentLang(), 'map.autoAddress')}</span>}
+                    {geocoding && <span> {t(currentLang(), 'map.searchingAddress')}</span>}
                   </p>
                 )}
                 {!newBuildingLat && (
                   <p className="building-add-coords">
-                    주소로 추가하거나 지도에서 위치를 클릭할 수 있습니다
+                    {t(currentLang(), 'map.addBuildingDesc')}
                   </p>
                 )}
                 {geocodeStatus === 'fail' && (
                   <p className="building-add-coords building-add-geocode-fail">
-                    주소 좌표를 찾지 못했습니다. 주소를 더 자세히 입력하거나 지도에서 위치를 클릭해 주세요
+                    {t(currentLang(), 'map.addressNotFoundExt')}
                   </p>
                 )}
                 <div className="cal-field">
@@ -2152,10 +2152,10 @@ export function DesktopMap({
                   </select>
                 </div>
                 <div className="cal-field">
-                  <label>건물명 *</label>
+                  <label>{t(currentLang(), 'map.buildingNameReq')}</label>
                   <input
                     className="cal-input"
-                    placeholder="예: 고림 우성빌라 A동"
+                    placeholder={t(currentLang(), 'map.buildingNamePlaceholder')}
                     value={newBuildingName}
                     onChange={(e) => setNewBuildingName(e.target.value)}
                     autoFocus
@@ -2166,7 +2166,7 @@ export function DesktopMap({
                   display: 'flex',
                   flexDirection: 'column'
                 }}>
-                  <label>주소</label>
+                  <label>{t(currentLang(), 'map.addressLabel')}</label>
                   <textarea
                     className="cal-input"
                     placeholder="경기 용인시 처인구 고림동"
@@ -2242,7 +2242,7 @@ export function DesktopMap({
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
           }}>
             <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700 }}>{t(language, 'map.registerRegularVisit')}</h3>
-            <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#666' }}>정기 방문자의 이름을 입력해 주세요.</p>
+            <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#666' }}>{t(currentLang(), 'modal.enterRegularVisitorName')}</p>
             <input
               autoFocus
               className="modal-input"
@@ -2321,7 +2321,7 @@ export function DesktopMap({
           }}>
             <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700 }}>{t(language, 'map.unregisterRegularVisit')}</h3>
             <p style={{ margin: '0 0 20px', fontSize: '15px', color: '#4b5563', lineHeight: '1.5' }}>
-              정기방문을 해제하시겠습니까?
+              {t(currentLang(), 'modal.removeRegularVisit')}
             </p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button
@@ -2376,7 +2376,7 @@ export function DesktopMap({
           }}>
             <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700, color: 'var(--danger-600)' }}>{t(language, 'map.deleteBuilding')}</h3>
             <p style={{ margin: '0 0 20px', fontSize: '15px', color: '#4b5563', lineHeight: '1.5' }}>
-              정말 이 건물을 삭제하시겠습니까? 모든 호수와 방문 이력이 영구적으로 삭제됩니다.
+              {t(currentLang(), 'modal.confirmDeleteBuilding')}
             </p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button

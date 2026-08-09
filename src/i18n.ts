@@ -12,6 +12,15 @@ export const languageLabels: Record<AppLanguage, string> = {
 
 const dictionary = { ko, zh, en } satisfies Record<AppLanguage, Record<string, string>>
 
+/**
+ * 저장된 언어 설정을 읽는다 — 컴포넌트 밖(이벤트 핸들러·mutation)에서 t() 를 부를 때.
+ * localStorage 값을 그대로 넘기면 타입이 맞지 않아 as any 로 뭉개게 되므로 여기서 좁힌다.
+ */
+export function currentLang(): AppLanguage {
+  const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('language') : null
+  return saved === 'zh' || saved === 'en' ? saved : 'ko'
+}
+
 export function t(language: AppLanguage, key: keyof typeof dictionary.ko, vars?: Record<string, string | number>): string {
   const raw = dictionary[language][key] ?? dictionary.ko[key] ?? key
   if (!vars) return raw

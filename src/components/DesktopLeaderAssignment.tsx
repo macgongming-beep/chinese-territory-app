@@ -6,6 +6,7 @@ import { isEmptyTerritoryCard, sortTerritoryCardsByOperationalPriority } from '.
 import { getLocalDateString } from '../utils/dateUtils'
 import { InformalPickerModal } from './InformalPickerModal'
 import { RestaurantPickerModal } from './RestaurantPickerModal'
+import { t, currentLang } from '../i18n'
 
 // ── 공유 타입 ──────────────────────────────────────────────────────
 type AssignmentStatus = 'draft' | 'confirmed' | 'shared'
@@ -274,9 +275,9 @@ function DesktopLeaderAssignmentView({
     setSaving(true)
     const next = persistDraft(draft, status)
     if (!next) { setSaving(false); return }
-    if (status === 'shared') { await persistShared(next, 'shared'); showToast('배정이 공유되었습니다.', 'success') }
-    else if (status === 'confirmed') { await persistShared(next, 'confirmed'); showToast('배정이 확정되었습니다.', 'success') }
-    else showToast('임시 저장되었습니다.')
+    if (status === 'shared') { await persistShared(next, 'shared'); showToast(t(currentLang(), 'toast.assignmentShared'), 'success') }
+    else if (status === 'confirmed') { await persistShared(next, 'confirmed'); showToast(t(currentLang(), 'toast.assignmentConfirmed'), 'success') }
+    else showToast(t(currentLang(), 'toast.tempSaved'))
     setSaving(false)
   }
 
@@ -286,8 +287,8 @@ function DesktopLeaderAssignmentView({
     const action = pendingAction; setPendingAction(null); setSaving(true)
     const next = persistDraft(draft, action)
     if (!next) { setSaving(false); return }
-    if (action === 'shared') { await persistShared(next, 'shared'); showToast('배정이 공유되었습니다.', 'success') }
-    else { await persistShared(next, 'confirmed'); showToast('배정이 확정되었습니다.', 'success') }
+    if (action === 'shared') { await persistShared(next, 'shared'); showToast(t(currentLang(), 'toast.assignmentShared'), 'success') }
+    else { await persistShared(next, 'confirmed'); showToast(t(currentLang(), 'toast.assignmentConfirmed'), 'success') }
     setSaving(false)
   }
 
@@ -385,7 +386,7 @@ function DesktopLeaderAssignmentView({
 
       {/* ── 3컬럼 본문 ── */}
       {!selectedEvent ? (
-        <div className="dla-empty-state"><p>오늘 봉사 일정이 없습니다.<br />캘린더에서 일정을 추가하세요.</p></div>
+        <div className="dla-empty-state"><p>{t(currentLang(), 'assign.noEvents', { defaultValue: '오늘 봉사 일정이 없습니다.' })}<br />캘린더에서 일정을 추가하세요.</p></div>
       ) : (
         <div className="dla-grid">
 
@@ -446,7 +447,7 @@ function DesktopLeaderAssignmentView({
                   </button>
                 )
               })}
-              {filteredCards.length === 0 && <p className="dla-empty-msg">조건에 맞는 카드가 없습니다</p>}
+              {filteredCards.length === 0 && <p className="dla-empty-msg">{t(currentLang(), 'assign.noCardsMatching')}</p>}
             </div>
           </div>
 
@@ -765,7 +766,7 @@ function DesktopLeaderAssignmentView({
             {/* 참가자 목록 */}
             <div className="dla-participant-list">
               {participants.length === 0 && (
-                <div className="dla-empty-panel"><p>신청자가 없습니다</p></div>
+                <div className="dla-empty-panel"><p>{t(currentLang(), 'assign.noApplicants')}</p></div>
               )}
               {participants.map((p) => {
                 const team = (draft?.teams ?? []).find((t) => t.members.includes(p.name))
@@ -1286,7 +1287,7 @@ export function DesktopLeaderAssignment({
           </div>
           <div className="la-leader-list">
             {filteredLeaders.length === 0 && (
-              <p className="la-empty-msg">인도자가 없습니다</p>
+              <p className="la-empty-msg">{t(currentLang(), 'assign.noLeaders')}</p>
             )}
             {filteredLeaders.map((leader) => {
               const count = getLeaderCardCount(leader)
@@ -1320,7 +1321,7 @@ export function DesktopLeaderAssignment({
           {!selectedLeader ? (
             <div className="la-empty-panel"><p>왼쪽에서 인도자를 선택하면<br />담당 구역 목록이 표시됩니다.</p></div>
           ) : leaderCards.length === 0 ? (
-            <div className="la-empty-panel"><p>담당 구역이 없습니다.<br />오른쪽 목록에서 카드를 배정하세요.</p></div>
+            <div className="la-empty-panel"><p>{t(currentLang(), 'assign.noUnassignedZones')}<br />오른쪽 목록에서 카드를 배정하세요.</p></div>
           ) : (
             <div className="la-assigned-list">
               {leaderCards.map((card) => (
@@ -1457,7 +1458,7 @@ export function DesktopLeaderAssignment({
               )
             })}
             {filteredCards.length === 0 && (
-              <div className="la-empty-panel"><p>조건에 맞는 카드가 없습니다</p></div>
+              <div className="la-empty-panel"><p>{t(currentLang(), 'assign.noCardsMatching')}</p></div>
             )}
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { confirmDialog, alertDialog } from '../lib/confirm'
 import { DataRoundTrip } from './DataRoundTrip'
+import { t, currentLang } from '../i18n'
 
 export function DesktopDataManagement() {
   
@@ -73,7 +74,7 @@ export function DesktopDataManagement() {
     ])
     setRetSaving(false)
     setRetPreview(null)
-    void alertDialog({ message: '자동 정리 설정이 저장되었습니다.' })
+    void alertDialog({ message: t(currentLang(), 'toast.saved') })
   }
 
   const loadRetentionPreview = async () => {
@@ -121,7 +122,7 @@ export function DesktopDataManagement() {
       { key: 'hide_participants_from_users', value: String(hideParticipants) },
     ])
     setResetSaving(false)
-    void alertDialog({ message: '설정이 저장되었습니다.' })
+    void alertDialog({ message: t(currentLang(), 'toast.saved') })
   }
 
   const runManualReset = async () => {
@@ -323,7 +324,7 @@ export function DesktopDataManagement() {
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
                     <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                   </div>
-                  <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: 'var(--gray-900)' }}>삭제할 기록이 없습니다</p>
+                  <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: 'var(--gray-900)' }}>{t(currentLang(), 'toast.noRecords')}</p>
                   <p style={{ fontSize: 13, color: 'var(--gray-500)', margin: 0 }}>{purgeCutoffStr} 이전 방문기록이 없어요</p>
                 </div>
               ) : (

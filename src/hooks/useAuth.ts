@@ -11,6 +11,7 @@ import {
 } from '../lib/authToken'
 import { setSentryUser, clearSentryUser } from '../lib/sentry'
 import type { Role } from '../types'
+import { t, currentLang } from '../i18n'
 
 export type AuthUser = {
   id: number
@@ -193,7 +194,7 @@ export function useAuth() {
       }
 
       if (row.approval_status === 'blocked') {
-        showToast('가입 신청이 차단되었습니다. 관리자에게 문의해 주세요.', 'error')
+        showToast(t(currentLang(), 'auth.signupBlocked'), 'error')
         return false
       }
 
@@ -277,7 +278,7 @@ export function useAuth() {
         return false
       }
 
-      showToast('가입 신청이 접수되었습니다. 관리자 승인 후 로그인할 수 있습니다.', 'success')
+      showToast(t(currentLang(), 'auth.signupRequested'), 'success')
       return true
     } catch (err) {
       console.error(err)
@@ -291,7 +292,7 @@ export function useAuth() {
     clearSentryUser()
     clearAuthStorage()
     localStorage.removeItem('currentVisitor')
-    showToast('로그아웃 되었습니다.')
+    showToast(t(currentLang(), 'auth.loggedOut'))
   }
 
   // 비밀번호 변경 (본인용)
@@ -306,7 +307,7 @@ export function useAuth() {
       showToast('비밀번호 변경에 실패했습니다.', 'error')
       return false
     }
-    showToast('비밀번호가 변경되었습니다.', 'success')
+    showToast(t(currentLang(), 'auth.pwChanged'), 'success')
     return true
   }
 
@@ -354,7 +355,7 @@ export function useAuth() {
     setUser(nextUser)
     localStorage.setItem('currentVisitor', nextUser.name)
     setAuthSession(nextUser, isPersistentAuthSession())
-    showToast('개인 정보가 변경되었습니다.', 'success')
+    showToast(t(currentLang(), 'auth.infoChanged'), 'success')
     await fetchAllUsers()
     return true
   }
@@ -446,7 +447,7 @@ export function useAuth() {
       showToast('비밀번호 초기화에 실패했습니다.', 'error')
       return false
     }
-    showToast(`비밀번호가 '${newPin}'(으)로 초기화되었습니다.`, 'success')
+    showToast(t(currentLang(), 'auth.pwChanged') + ` (${newPin})`, 'success')
     return true
   }
 
@@ -522,7 +523,7 @@ export function useAuth() {
       showToast('권한 변경에 실패했습니다.', 'error')
       return false
     }
-    showToast('권한이 변경되었습니다.', 'success')
+    showToast(t(currentLang(), 'auth.permissionChanged'), 'success')
     await fetchAllUsers()
     notifyUsersChanged()
     return true
@@ -558,7 +559,7 @@ export function useAuth() {
       cleanups.forEach((r) => { if (r.error) console.warn('[deleteUser] 배정 정리 실패', r.error) })
     }
 
-    showToast('사용자가 제거되었습니다.', 'success')
+    showToast(t(currentLang(), 'auth.userRemoved'), 'success')
     await fetchAllUsers()
     notifyUsersChanged()
     return true
@@ -619,7 +620,7 @@ export function useAuth() {
           .from('app_users')
           .insert({ login_id: trimmedLoginId, name: trimmedName, pin: trimmedPin, role })
         if (!fallback.error) {
-          showToast('사용자가 추가되었습니다.', 'success')
+          showToast(t(currentLang(), 'auth.userAdded'), 'success')
           await fetchAllUsers()
           notifyUsersChanged()
           return true
@@ -629,7 +630,7 @@ export function useAuth() {
       return false
     }
 
-    showToast('사용자가 추가되었습니다.', 'success')
+    showToast(t(currentLang(), 'auth.userAdded'), 'success')
     await fetchAllUsers()
     notifyUsersChanged()
     return true
@@ -732,7 +733,7 @@ export function useAuth() {
       setAuthSession(nextUser, isPersistentAuthSession())
     }
 
-    showToast('아이디/닉네임이 변경되었습니다.', 'success')
+    showToast(t(currentLang(), 'auth.idChanged'), 'success')
     await fetchAllUsers()
     notifyUsersChanged()
     return true

@@ -2,6 +2,7 @@
 // 층 범위 + 층당 호수 + 시작 호번호 (+ 지하) → 미리보기 → 일괄 추가
 import { useState } from 'react'
 import { generateBulkUnits } from '../utils/bulkUnits'
+import { t, currentLang } from '../i18n'
 
 export function MobileBulkUnitSheet({
   buildingId,
@@ -77,7 +78,7 @@ export function MobileBulkUnitSheet({
         <div className="mbu-handle" />
         <div className="mbu-head">
           <div>
-            <strong>호수 일괄 추가</strong>
+            <strong>{t(currentLang(), 'unit.bulkAdd')}</strong>
             <span>{buildingName}</span>
           </div>
           <button className="mbu-close" onClick={onClose} type="button" aria-label="닫기">
@@ -86,28 +87,28 @@ export function MobileBulkUnitSheet({
         </div>
 
         <div className="mbu-body">
-          <div className="mbu-section-label">지상</div>
+          <div className="mbu-section-label">{t(currentLang(), 'unit.ground')}</div>
           <div className="mbu-grid">
-            {renderStepper('시작층', startFloor, setStartFloor)}
-            {renderStepper('끝층', endFloor, setEndFloor, startFloor)}
-            {renderStepper('층당 호수', unitsPerFloor, setUnitsPerFloor)}
-            {renderStepper('시작 호번호', startUnit, setStartUnit)}
+            {renderStepper(t(currentLang(), 'unit.startFloor'), startFloor, setStartFloor)}
+            {renderStepper(t(currentLang(), 'unit.endFloor'), endFloor, setEndFloor, startFloor)}
+            {renderStepper(t(currentLang(), 'unit.unitsPerFloor'), unitsPerFloor, setUnitsPerFloor)}
+            {renderStepper(t(currentLang(), 'unit.startUnitNum'), startUnit, setStartUnit)}
           </div>
 
           <label className="mbu-basement-toggle">
             <input type="checkbox" checked={hasBasement} onChange={(e) => setHasBasement(e.target.checked)} />
-            지하 포함
+            {t(currentLang(), 'unit.includeBasement')}
           </label>
           {hasBasement && (
             <div className="mbu-grid">
-              {renderStepper('지하 층수', basementFloors, setBasementFloors)}
+              {renderStepper(t(currentLang(), 'unit.basementFloors'), basementFloors, setBasementFloors)}
             </div>
           )}
 
           {/* 미리보기 */}
           <div className="mbu-preview-label">
-            미리보기 <strong>총 {newOnes.length}개 추가</strong>
-            {skipped > 0 && <span className="mbu-skip"> · {skipped}개 이미 있어 스킵</span>}
+            {t(currentLang(), 'unit.previewAdd').replace('{count}', '')} <strong>{t(currentLang(), 'unit.previewAdd', { count: newOnes.length })}</strong>
+            {skipped > 0 && <span className="mbu-skip"> {t(currentLang(), 'unit.skipped', { count: skipped })}</span>}
           </div>
           <div className="mbu-preview-grid">
             {floorRanges.map((r) => (
@@ -120,7 +121,7 @@ export function MobileBulkUnitSheet({
 
         <div className="mbu-footer">
           <button className="mbu-add-btn" disabled={newOnes.length === 0 || adding} onClick={handleAdd} type="button">
-            {adding ? '추가 중...' : `${newOnes.length}개 추가하기`}
+            {adding ? t(currentLang(), 'unit.adding') : t(currentLang(), 'unit.addCount', { count: newOnes.length })}
           </button>
         </div>
       </div>

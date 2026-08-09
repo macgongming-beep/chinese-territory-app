@@ -2,9 +2,12 @@ import { useState } from 'react'
 import type { TimeSlot, UnitStatus, VisitHistory } from '../types'
 import type { SlotCell, SlotMatrix } from '../utils/visitStrategy'
 import { getSlotMatrix, isAllSlotsAbsent } from '../utils/visitStrategy'
+import { t, currentLang } from '../i18n'
 
-const DAY_LABELS = ['평일', '주말'] as const
-const SLOT_LABELS: TimeSlot[] = ['오전', '오후', '저녁']
+// 표시용 라벨 — 값 비교에 쓰지 말 것 (번역되면 문자열이 달라진다)
+const DAY_LABELS = [t(currentLang(), 'time.weekday'), t(currentLang(), 'time.weekend')]
+const SLOT_LABELS: string[] = [t(currentLang(), 'time.morning'), t(currentLang(), 'time.afternoon'), t(currentLang(), 'time.evening')]
+const WEEKEND_ROW = 1  // SlotMatrix 는 [평일, 주말] 순
 
 // ── 셀 색상 계산 ──────────────────────────────────────────────
 function cellStyle(cell: SlotCell): { bg: string; color: string; border: string } {
@@ -92,7 +95,7 @@ function SlotPopover({
             </span>
             {cell.total > 0 && (
               <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 8 }}>
-                총 {cell.total}회 방문
+                {t(currentLang(), 'map.visitTotal', { count: cell.total })}
               </span>
             )}
           </div>
@@ -237,7 +240,8 @@ export function UnitSlotGrid({
           histories={histories}
           canRecord={canRecord}
           onRecord={async (result) => {
-            const weekend = DAY_LABELS[activeCell.row] === '주말'
+            // 번역된 라벨과 비교하면 한국어가 아닐 때 항상 false 가 된다 — 행 번호로 판단
+            const weekend = activeCell.row === WEEKEND_ROW
             await onRecordVisit(result, activeCellData.slot, weekend)
           }}
           onClose={() => setActiveCell(null)}

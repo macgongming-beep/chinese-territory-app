@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { AppLanguage } from '../i18n'
+import { t, currentLang } from '../i18n'
 
 type LocationPermissionState = PermissionState | 'unsupported' | 'unknown'
 
@@ -26,7 +27,7 @@ const copy = {
     grantedDesc: '지도에서 현재 위치 표시와 GPS 이동을 사용할 수 있습니다.',
     promptDesc: '아직 위치 권한을 정하지 않았습니다. 아래 버튼으로 다시 요청할 수 있습니다.',
     unsupportedDesc: '이 브라우저는 권한 상태 확인을 지원하지 않습니다. 위치 요청 버튼으로 확인해 주세요.',
-    success: '위치 권한이 허용되었습니다.',
+    success: t(currentLang(), 'toast.locationPermitted'),
     failed: '위치 정보를 가져오지 못했습니다.',
   },
   zh: {

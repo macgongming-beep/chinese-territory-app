@@ -5,7 +5,7 @@ import { MapCanvas } from './MapCanvas'
 import type { MapAggregateMarker } from './MapCanvas'
 import type { Building, BuildingStatus, CalendarEvent, CardBoundary, EventRestaurantAssignment, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
-import { t, translateKoreanAddress } from '../i18n'
+import { t, translateKoreanAddress, currentLang } from '../i18n'
 import { getBuildingStatus, findCardForCoordinates } from '../utils/mapUtils'
 import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 import { showToast } from '../lib/toast'
@@ -2096,7 +2096,7 @@ function UnitDetailScreen({
                             }
                             if (e.key === 'Escape') setInlineMemoHistoryId(null)
                           }}
-                          placeholder="메모 입력…"
+                          placeholder={t(currentLang(), 'map.memoPlaceholder')}
                           style={{ flex: 1, padding: '5px 8px', border: `1px solid ${c}40`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', background: 'var(--bg)', color: 'var(--ink)', outline: 'none' }}
                         />
                         <button
@@ -2174,12 +2174,12 @@ function UnitDetailScreen({
             <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {unit.regularVisitor && (
                 <span style={{ fontSize: 11, color: '#B8862A', fontWeight: 600 }}>
-                  담당: {unit.regularVisitor}
+                  {t(currentLang(), 'app.manager', { defaultValue: '담당' })}: {unit.regularVisitor}
                 </span>
               )}
               {unit.regularVisitStart && (
                 <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-                  시작: {unit.regularVisitStart.slice(0, 10).replace(/-/g, '/')}
+                  {t(currentLang(), 'app.start', { defaultValue: '시작' })}: {unit.regularVisitStart.slice(0, 10).replace(/-/g, '/')}
                 </span>
               )}
               {canRecordVisits && (
@@ -2213,7 +2213,7 @@ function UnitDetailScreen({
                 autoFocus
                 value={regularNameDraft}
                 onChange={e => setRegularNameDraft(e.target.value)}
-                placeholder="이름 검색"
+                placeholder={t(currentLang(), 'map.searchName')}
                 style={{
                   width: '100%', padding: '9px 12px', border: '1px solid var(--line)',
                   borderRadius: 8, fontSize: 13, background: 'var(--bg)', color: 'var(--ink)',
