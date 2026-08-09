@@ -14,6 +14,7 @@ const TYPE_LABEL: Record<NotificationType, { icon: NotificationIconName; color: 
   service_started: { icon: 'play', color: '#059669', bg: '#ecfdf5' },
   service_ended: { icon: 'stop', color: '#64748b', bg: '#f3f4f6' },
   assignment: { icon: 'mention', color: '#0d9488', bg: '#ccfbf1' },
+  daily_service: { icon: 'calendar', color: '#0d9488', bg: '#ccfbf1' },
 }
 
 // 채팅 알림 → 카톡 스타일 그룹 (event_id 기준)

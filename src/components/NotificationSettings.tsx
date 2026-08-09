@@ -10,7 +10,7 @@ import type { Role } from '../types'
 
 type PrefKey =
   | 'pushNewNotice' | 'pushEventChange' | 'pushComment'
-  | 'pushChat' | 'pushMention' | 'pushServiceStatus'
+  | 'pushChat' | 'pushMention' | 'pushServiceStatus' | 'pushDailyService'
 
 type SubItem = { key: PrefKey; labelKo: string; descKo: string; labelZh: string; descZh: string; labelEn: string; descEn: string }
 
@@ -25,9 +25,10 @@ const GROUPS: Group[] = [
   {
     id: 'activity',
     labelKo: '봉사 활동', labelZh: '传道活动', labelEn: 'Service',
-    descKo: '일정 변경 · 카드 배정 · 봉사 시작/종료', descZh: '日程变更 · 卡片分配 · 传道开始/结束', descEn: 'Event changes · Card assignment · Service start/end',
+    descKo: '오늘의 마련 · 일정 변경 · 봉사 시작/종료', descZh: '今日安排 · 日程变更 · 传道开始/结束', descEn: "Today's plan · Event changes · Service start/end",
     items: [
       { key: 'pushEventChange', labelKo: '일정 변경', descKo: '봉사 시간/장소가 바뀔 때 (참여한 일정만)', labelZh: '日程变更', descZh: '传道时间/地点变更时（仅参与日程）', labelEn: 'Event update', descEn: 'When time/place changes (joined events only)' },
+      { key: 'pushDailyService', labelKo: '오늘의 봉사 마련', descKo: '봉사가 있는 날 아침에 그날 마련 안내', labelZh: '今日传道安排', descZh: '有传道的日子早上发送当天安排', labelEn: "Today's arrangements", descEn: "Morning summary on days with service" },
       { key: 'pushServiceStatus', labelKo: '봉사 시작/종료', descKo: '참여 봉사가 시작되거나 종료될 때', labelZh: '传道开始/结束', descZh: '参与的传道开始或结束时', labelEn: 'Service start/end', descEn: 'When your joined service starts or ends' },
     ],
   },
@@ -64,6 +65,11 @@ function id_(i: SubItem, lang: AppLanguage) {
   return lang === 'zh' ? i.descZh : lang === 'en' ? i.descEn : i.descKo
 }
 
+type DailyServiceSettings = {
+  enabled: boolean
+  send_time: string
+}
+
 type GlobalQuietSettings = {
   enabled: boolean
   quiet_start: string
@@ -97,6 +103,9 @@ export function NotificationSettings({
     quiet_start: '22:00',
     quiet_end: '07:00',
   })
+  const [daily, setDaily] = useState<DailyServiceSettings>({ enabled: true, send_time: '09:00' })
+  const [dailyBusy, setDailyBusy] = useState(false)
+  const [dailyMessage, setDailyMessage] = useState<string | null>(null)
   const [globalQuietLoading, setGlobalQuietLoading] = useState(false)
   const [globalQuietSaving, setGlobalQuietSaving] = useState(false)
   const [globalQuietMessage, setGlobalQuietMessage] = useState<string | null>(null)
@@ -127,9 +136,47 @@ export function NotificationSettings({
       }
     }
 
+    async function loadDaily() {
+      const token = getAuthToken()
+      if (!token) return
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 생성된 supabase 타입에 없는 RPC
+      const { data, error } = await supabase.rpc('get_daily_service_settings' as any, { p_token: token })
+      if (!alive || error) return
+      const row = Array.isArray(data) ? data[0] : data
+      if (row) {
+        setDaily({ enabled: !!row.enabled, send_time: String(row.send_time ?? '09:00').slice(0, 5) })
+      }
+    }
+
     loadGlobalQuiet()
+    loadDaily()
     return () => { alive = false }
   }, [canManageGlobalQuiet, lang])
+
+  // 오늘의 봉사 마련 알림 (관리자) — 발송 시각/사용 여부
+  async function saveDaily(next: DailyServiceSettings) {
+    const token = getAuthToken()
+    if (!token) return
+    setDaily(next)
+    setDailyBusy(true)
+    setDailyMessage(null)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 생성된 supabase 타입에 없는 RPC
+    const { data, error } = await supabase.rpc('update_daily_service_settings' as any, {
+      p_token: token,
+      p_enabled: next.enabled,
+      p_send_time: next.send_time,
+    })
+    setDailyBusy(false)
+    if (error) {
+      setDailyMessage(lang === 'zh' ? '保存失败' : lang === 'en' ? 'Save failed' : '저장하지 못했습니다')
+      return
+    }
+    const row = Array.isArray(data) ? data[0] : data
+    if (row) {
+      setDaily({ enabled: !!row.enabled, send_time: String(row.send_time ?? next.send_time).slice(0, 5) })
+    }
+    setDailyMessage(lang === 'zh' ? '已保存' : lang === 'en' ? 'Saved' : '저장되었습니다')
+  }
 
   async function saveGlobalQuiet(next: GlobalQuietSettings) {
     const token = getAuthToken()
@@ -206,6 +253,60 @@ export function NotificationSettings({
       />
       {showInstallGuide && (
         <PwaInstallModal language={lang} onClose={() => setShowInstallGuide(false)} />
+      )}
+
+      {canManageGlobalQuiet && (
+        <div style={{
+          marginBottom: 16,
+          padding: '13px 12px',
+          borderRadius: 12,
+          border: '1px solid var(--line)',
+          background: 'var(--paper)',
+          minWidth: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 650, color: 'var(--ink)', lineHeight: 1.35 }}>
+                {lang === 'zh' ? '今日传道安排通知' : lang === 'en' ? "Today's arrangements alert" : '오늘의 봉사 마련 알림'}
+              </p>
+              <p style={{ margin: '3px 0 0', fontSize: 12.5, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.45 }}>
+                {lang === 'zh'
+                  ? '有传道安排的日子，早上向全体发送当天安排。没有安排的日子不发送。'
+                  : lang === 'en'
+                    ? "On days with service, everyone gets a morning summary. Nothing is sent on empty days."
+                    : '봉사 마련이 있는 날 아침에 전체에게 그날 마련을 보냅니다. 일정이 없는 날은 보내지 않습니다.'}
+              </p>
+            </div>
+            <Toggle
+              checked={daily.enabled}
+              onChange={(enabled) => saveDaily({ ...daily, enabled })}
+            />
+          </div>
+
+          <div style={{ marginTop: 12, maxWidth: 200 }}>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: 'var(--muted)', marginBottom: 5 }}>
+              {lang === 'zh' ? '发送时间' : lang === 'en' ? 'Send at' : '보내는 시각'}
+            </label>
+            <input
+              type="time"
+              value={daily.send_time}
+              disabled={!daily.enabled || dailyBusy}
+              onChange={(e) => saveDaily({ ...daily, send_time: e.target.value })}
+              style={{
+                // iOS Safari 는 time 입력의 기본 너비가 커서 box-sizing 없이는 칸이 겹침
+                width: '100%', minWidth: 0, boxSizing: 'border-box',
+                padding: '8px 6px', borderRadius: 8,
+                border: '1px solid var(--line)', fontSize: 13, fontWeight: 600, color: 'var(--ink)',
+                background: daily.enabled ? 'var(--surface)' : 'var(--tint)',
+              }}
+            />
+          </div>
+          {(dailyBusy || dailyMessage) && (
+            <p style={{ margin: '9px 0 0', fontSize: 12, fontWeight: 500, color: 'var(--muted)' }}>
+              {dailyBusy ? (lang === 'zh' ? '保存中...' : lang === 'en' ? 'Saving...' : '저장 중...') : dailyMessage}
+            </p>
+          )}
+        </div>
       )}
 
       {canManageGlobalQuiet && (

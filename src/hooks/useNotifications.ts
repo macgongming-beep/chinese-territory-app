@@ -14,6 +14,7 @@ export type NotificationType =
   | 'service_started'
   | 'service_ended'
   | 'assignment'
+  | 'daily_service'
 
 export type AppNotification = {
   id: number

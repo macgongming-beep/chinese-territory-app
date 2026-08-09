@@ -10,6 +10,7 @@ export type NotificationPrefs = {
   pushChat: boolean
   pushMention: boolean
   pushServiceStatus: boolean
+  pushDailyService: boolean
   quietHoursStart: string | null  // "HH:MM" or null
   quietHoursEnd: string | null
 }
@@ -21,6 +22,7 @@ const DEFAULT_PREFS: NotificationPrefs = {
   pushChat: true,
   pushMention: true,
   pushServiceStatus: true,
+  pushDailyService: true,
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
 }
@@ -33,6 +35,7 @@ type RawPrefs = {
   push_chat: boolean
   push_mention: boolean
   push_service_status: boolean
+  push_daily_service: boolean | null
   quiet_hours_start: string | null
   quiet_hours_end: string | null
 }
@@ -45,6 +48,8 @@ function toPrefs(raw: RawPrefs): NotificationPrefs {
     pushChat: raw.push_chat,
     pushMention: raw.push_mention,
     pushServiceStatus: raw.push_service_status,
+    // 컬럼 추가 전 서버와도 호환 (없으면 켜짐으로 본다)
+    pushDailyService: raw.push_daily_service ?? true,
     quietHoursStart: raw.quiet_hours_start ? raw.quiet_hours_start.slice(0, 5) : null,
     quietHoursEnd: raw.quiet_hours_end ? raw.quiet_hours_end.slice(0, 5) : null,
   }
@@ -100,6 +105,7 @@ export function useNotificationPrefs(userId: number | null | undefined) {
         p_push_service_status: next.pushServiceStatus,
         p_quiet_hours_start: next.quietHoursStart,
         p_quiet_hours_end: next.quietHoursEnd,
+        p_push_daily_service: next.pushDailyService,
       })
 
       setSaving(false)
