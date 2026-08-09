@@ -2030,13 +2030,17 @@ export function DesktopMap({
                                 </div>
                               </div>
 
-                              {/* ── 메모 (클릭 편집 → 저장/취소) ── */}
+                              {/* ── 세대 메모 (클릭 편집 → 저장/취소) ──
+                                   방문 기록의 메모와 다른 것 — 이 세대에 계속 남는 정보 */}
                               <div style={{ padding: '8px 12px' }}>
+                                <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: '#94a3b8' }}>
+                                  {t(language, 'map.unitMemoLabel')}
+                                </p>
                                 {unitMemoEdits[unit.id] !== undefined ? (
                                   <>
                                     <textarea
                                       className="ugd-memo-textarea"
-                                      placeholder="메모를 입력하세요..."
+                                      placeholder={t(language, 'map.addMemo') + '...'}
                                       rows={3}
                                       autoFocus
                                       value={unitMemoEdits[unit.id] ?? ''}
@@ -2074,7 +2078,7 @@ export function DesktopMap({
                                       cursor: canRecordVisits ? 'pointer' : 'default', whiteSpace: 'pre-wrap', lineHeight: 1.5,
                                     }}
                                     type="button"
-                                  >{(unitMemos[unit.id] ?? unit.memo) || '메모를 입력하세요...'}</button>
+                                  >{(unitMemos[unit.id] ?? unit.memo) || t(language, 'map.addMemo') + '...'}</button>
                                 )}
                               </div>
                             </div>

@@ -336,7 +336,9 @@ export function DesktopTerritory({
       result: history?.result ?? unit.status,
       timeSlot: history?.timeSlot ?? getDefaultTimeSlot(),
       visitedAt: history?.visitedAt?.slice(0, 10) ?? getTodayDateInputValue(),
-      memo: history?.memo ?? unit.memo ?? '',
+      // 세대 메모를 방문 기록 메모에 미리 채우지 않는다 —
+      // 그대로 저장되면 같은 문장이 방문할 때마다 기록에 복제된다
+      memo: history?.memo ?? '',
     })
   }
 

@@ -1616,8 +1616,8 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               </div>
             </div>
 
-            {/* 메모 */}
-            <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{t(language, 'map.memoLabel')}</p>
+            {/* 메모 (그날 방문에 대한 것 — 세대 메모와 구분되게 라벨을 다르게) */}
+            <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{t(language, 'map.visitMemoLabel')}</p>
             <textarea
               value={historyToEdit.memo || ''}
               onChange={e => setHistoryToEdit({ ...historyToEdit, memo: e.target.value })}
@@ -1914,6 +1914,60 @@ function UnitDetailScreen({
           </div>
         )}
 
+        {/* 메모 */}
+        <div style={sectionStyle}>
+          <h3 style={{ ...sectionTitleStyle, marginBottom: 2 }}>{t(language, 'map.unitMemoLabel')}</h3>
+          <p style={{ margin: '0 0 10px', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.4 }}>
+            {t(language, 'map.unitMemoHint')}
+          </p>
+          {memoEditing ? (
+            <div>
+              <textarea
+                autoFocus
+                value={memoDraft ?? ''}
+                onChange={e => setMemoDraft(e.target.value)}
+                style={{
+                  width: '100%', minHeight: 72, padding: '8px 10px',
+                  border: '1px solid var(--line)', borderRadius: 8,
+                  background: 'var(--bg)', color: 'var(--ink)',
+                  fontSize: 13, lineHeight: 1.5, fontFamily: 'inherit',
+                  resize: 'none', boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <button
+                  onClick={() => {
+                    // ⚠ 예전에는 화면 상태만 바꿔 새로고침하면 메모가 사라졌다 — DB 에도 저장한다
+                    const next = memoDraft ?? ''
+                    onUpdateUnitFlags(unit.id, { memo: next })
+                    setUnitMemos(prev => ({ ...prev, [unit.id]: next }))
+                    setMemoEditing(false)
+                  }}
+                  style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                  type="button"
+                >{t(language, 'map.save')}</button>
+                <button
+                  onClick={() => { setMemoEditing(false); setMemoDraft(null) }}
+                  style={{ flex: 1, padding: '8px', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                  type="button"
+                >{t(language, 'map.cancel')}</button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => { if (!requireRecordAccess()) return; setMemoDraft(memo); setMemoEditing(true) }}
+              style={{
+                width: '100%', textAlign: 'left', background: 'var(--bg)',
+                border: '1px solid var(--line)', borderRadius: 8,
+                padding: '8px 10px', fontSize: 13, color: memo ? 'var(--ink)' : 'var(--muted)',
+                cursor: canRecordVisits ? 'pointer' : 'default',
+                whiteSpace: 'pre-wrap', lineHeight: 1.5, fontFamily: 'inherit',
+              }}
+              type="button"
+            >{memo || t(language, 'map.addMemo') + '...'}</button>
+          )}
+        </div>
+
         {/* 방문 이력 표 */}
         <div style={sectionStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -2000,25 +2054,6 @@ function UnitDetailScreen({
                         </div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-                          {canRecordVisits && onUpdateVisitHistory && (
-                            <button
-                              onClick={() => {
-                                if (isMemoOpen) {
-                                  setInlineMemoHistoryId(null)
-                                } else {
-                                  setInlineMemoHistoryId(h.id)
-                                  setInlineMemoDraft(h.memo ?? '')
-                                }
-                              }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', lineHeight: 1, color: h.memo ? c : 'var(--muted)', opacity: isMemoOpen ? 1 : 0.7 }}
-                              title="메모" type="button"
-                            >
-                              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M2 12.5V14h1.5l7-7L9 5.5l-7 7z"/>
-                                <path d="M11.5 3l1.5 1.5-1 1L10.5 4l1-1z"/>
-                              </svg>
-                            </button>
-                          )}
                           {canRecordVisits && (
                             <button onClick={() => setEditingHistoryId(h.id)}
                               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 15, padding: '0 2px', lineHeight: 1 }}
@@ -2027,9 +2062,24 @@ function UnitDetailScreen({
                         </div>
                       )}
                     </div>
-                    {/* 기존 메모 표시 (인라인 편집 중 아닐 때) */}
-                    {h.memo && !isMemoOpen && (
-                      <p style={{ margin: '3px 0 0', fontSize: 11, color: 'var(--muted)', lineHeight: 1.4, paddingRight: 4 }}>{h.memo}</p>
+                    {/* 메모 줄은 항상 보인다 — 아이콘만 두면 메모가 있는지조차 모른다.
+                        내용이 있으면 그대로, 없으면 '메모 추가...' 자리표시 (세대 메모와 같은 방식) */}
+                    {!isMemoOpen && (
+                      canRecordVisits && onUpdateVisitHistory ? (
+                        <button
+                          onClick={() => { setInlineMemoHistoryId(h.id); setInlineMemoDraft(h.memo ?? '') }}
+                          style={{
+                            display: 'block', width: '100%', textAlign: 'left',
+                            margin: '3px 0 0', padding: 0, border: 'none', background: 'none',
+                            fontSize: 11, lineHeight: 1.4, fontFamily: 'inherit', cursor: 'pointer',
+                            color: h.memo ? 'var(--muted)' : 'var(--line)',
+                            whiteSpace: 'pre-wrap',
+                          }}
+                          type="button"
+                        >{h.memo || t(language, 'map.addMemo') + '...'}</button>
+                      ) : h.memo ? (
+                        <p style={{ margin: '3px 0 0', fontSize: 11, color: 'var(--muted)', lineHeight: 1.4, paddingRight: 4 }}>{h.memo}</p>
+                      ) : null
                     )}
                     {/* 인라인 메모 입력 */}
                     {isMemoOpen && (
@@ -2235,54 +2285,6 @@ function UnitDetailScreen({
             </div>
           </div>
         )}
-
-        {/* 메모 */}
-        <div style={sectionStyle}>
-          <h3 style={sectionTitleStyle}>{t(language, 'map.memoLabel')}</h3>
-          {memoEditing ? (
-            <div>
-              <textarea
-                autoFocus
-                value={memoDraft ?? ''}
-                onChange={e => setMemoDraft(e.target.value)}
-                style={{
-                  width: '100%', minHeight: 72, padding: '8px 10px',
-                  border: '1px solid var(--line)', borderRadius: 8,
-                  background: 'var(--bg)', color: 'var(--ink)',
-                  fontSize: 13, lineHeight: 1.5, fontFamily: 'inherit',
-                  resize: 'none', boxSizing: 'border-box',
-                }}
-              />
-              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                <button
-                  onClick={() => {
-                    setUnitMemos(prev => ({ ...prev, [unit.id]: memoDraft ?? '' }))
-                    setMemoEditing(false)
-                  }}
-                  style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-                  type="button"
-                >{t(language, 'map.save')}</button>
-                <button
-                  onClick={() => { setMemoEditing(false); setMemoDraft(null) }}
-                  style={{ flex: 1, padding: '8px', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                  type="button"
-                >{t(language, 'map.cancel')}</button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => { if (!requireRecordAccess()) return; setMemoDraft(memo); setMemoEditing(true) }}
-              style={{
-                width: '100%', textAlign: 'left', background: 'var(--bg)',
-                border: '1px solid var(--line)', borderRadius: 8,
-                padding: '8px 10px', fontSize: 13, color: memo ? 'var(--ink)' : 'var(--muted)',
-                cursor: canRecordVisits ? 'pointer' : 'default',
-                whiteSpace: 'pre-wrap', lineHeight: 1.5, fontFamily: 'inherit',
-              }}
-              type="button"
-            >{memo || t(language, 'map.addMemo') + '...'}</button>
-          )}
-        </div>
 
       </div>
     </div>
