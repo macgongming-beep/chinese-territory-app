@@ -111,12 +111,11 @@ export function DesktopMyService({
           .map((id) => cards.find((card) => card.id === id))
           .filter(Boolean) as TerritoryCard[]
         const assignedCardIds = new Set(assignedCards.map((card) => card.id))
+        // 같은 카드를 맡은 팀원 목록 — 본인도 포함해서 팀 전체가 보이게 (본인 먼저)
         const teammates = event.cardAssignments
-          .filter((item) =>
-            item.userName !== currentVisitor &&
-            (assignedCardIds.size === 0 || assignmentCardIds(item).some((id) => assignedCardIds.has(id)))
-          )
+          .filter((item) => assignedCardIds.size === 0 || assignmentCardIds(item).some((id) => assignedCardIds.has(id)))
           .map((item) => item.userName)
+          .sort((a, b) => (a === currentVisitor ? -1 : b === currentVisitor ? 1 : 0))
 
         return { event, cards: assignedCards, teammates }
       })
@@ -238,10 +237,8 @@ export function DesktopMyService({
                         <span>{isOpen ? '⌄' : '›'}</span>
                         <div>
                           <strong>{event.time} {event.title}</strong>
-                          <small>
-                            인도자 {event.leader || '미정'}
-                            {teammates.length > 0 ? ` · 팀원 ${teammates.join(', ')}` : ''}
-                          </small>
+                          {/* 인도자는 생략 — 같이 도는 팀원 이름만 보이면 충분하다 */}
+                          {teammates.length > 0 && <small>팀원 {teammates.join(', ')}</small>}
                         </div>
                         <b>{assignedCards.length}개 카드</b>
                       </button>

@@ -291,12 +291,11 @@ export function MobileTerritory({
       .map((id) => cards.find((c) => c.id === id))
       .filter(Boolean) as TerritoryCard[]
     const cardIdSet = new Set(assignedCards.map((card) => card.id))
+    // 같은 카드를 맡은 팀원 목록 — 본인도 포함해서 팀 전체가 보이게 (본인 먼저)
     const teammates = event.cardAssignments
-      .filter((item) =>
-        item.userName !== currentVisitor &&
-        (cardIdSet.size === 0 || assignmentCardIds(item).some((id) => cardIdSet.has(id)))
-      )
+      .filter((item) => cardIdSet.size === 0 || assignmentCardIds(item).some((id) => cardIdSet.has(id)))
       .map((item) => item.userName)
+      .sort((a, b) => (a === currentVisitor ? -1 : b === currentVisitor ? 1 : 0))
     return { event, cards: assignedCards, teammates }
   }
 
@@ -632,10 +631,10 @@ export function MobileTerritory({
                       </button>
                       {isOpen && (
                         <div className="mobile-today-service-body">
-                          <p>
-                            {event.leader ? `${t(language, 'territory.leader')} ${event.leader}` : t(language, 'territory.leaderTbd')}
-                            {teammates.length > 0 ? ` · ${t(language, 'territory.members')} ${teammates.join(', ')}` : ''}
-                          </p>
+                          {/* 인도자는 생략 — 같이 도는 팀원 이름만 보이면 충분하다 */}
+                          {teammates.length > 0 && (
+                            <p>{t(language, 'territory.members')} {teammates.join(', ')}</p>
+                          )}
                           {totalCount === 0 ? (
                             <div className="mobile-territory-empty compact">{t(language, 'territory.noAssignedCards')}</div>
                           ) : (
