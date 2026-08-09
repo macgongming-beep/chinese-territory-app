@@ -156,10 +156,15 @@ Deno.serve(async (req: Request) => {
 
   // 5b. 방해금지 시간 필터 — quiet_hours 안의 사용자는 발송 제외
   // KST(UTC+9) 기준 HH:MM 비교. start <= end (same day) 또는 start > end (자정 넘김)
-  const { data: prefsRows } = await supabase
-    .from('user_notification_prefs')
+  // ⚠ 조회 실패를 무시하면 방해금지가 조용히 무시된다 (실제로 그런 적 있음:
+  //   없는 테이블 user_notification_prefs 를 보고 있었다) — 반드시 로그를 남긴다
+  const { data: prefsRows, error: prefsError } = await supabase
+    .from('notification_preferences')
     .select('user_id, quiet_hours_start, quiet_hours_end')
     .in('user_id', payload.recipient_ids)
+  if (prefsError) {
+    console.error('[send-push] quiet-hours lookup failed:', prefsError.message)
+  }
   const prefsByUser = new Map<number, { start: string | null; end: string | null }>()
   for (const row of prefsRows ?? []) {
     prefsByUser.set(row.user_id, { start: row.quiet_hours_start, end: row.quiet_hours_end })
