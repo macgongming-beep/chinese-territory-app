@@ -208,7 +208,7 @@ export function DesktopMap({
 
   const requireRecordAccess = () => {
     if (canRecordVisits) return true
-    showToast('봉사 시작 후 방문 기록을 입력할 수 있습니다.', 'info')
+    showToast(t(language, 'map.viewOnlyDesc'), 'info')
     return false
   }
 
@@ -1707,16 +1707,16 @@ export function DesktopMap({
 
         {!canRecordVisits && (
           <div className="record-lock-banner">
-            <strong>보기 전용 상태</strong>
-            <span>봉사 시작 후 방문 기록을 입력할 수 있습니다.</span>
+            <strong>{t(language, 'map.viewOnly')}</strong>
+            <span>{t(language, 'map.viewOnlyDesc')}</span>
           </div>
         )}
 
         <div className="building-accordion-list">
           {panelBuildings.length === 0 && (
             <div className="map-empty-state panel-empty">
-              <p>표시할 건물이 없습니다</p>
-              <small>필터를 변경하거나 건물을 추가해 주세요</small>
+              <p>{t(language, 'map.noBuildings')}</p>
+              <small>{t(language, 'map.noBuildingsHint')}</small>
             </div>
           )}
           {panelBuildingGroups.map(({ status, label, buildings: groupedBuildings }) => {
@@ -1735,7 +1735,7 @@ export function DesktopMap({
                     {label}
                   </span>
                   <span className="building-status-meta">
-                    {isHiddenOnMap && <em>지도 숨김</em>}
+                    {isHiddenOnMap && <em>{t(language, 'map.hideOnMap')}</em>}
                     <b className="tnum">{groupedBuildings.length}</b>
                     <span>{isGroupCollapsed ? '펼치기' : '접기'}</span>
                   </span>
@@ -1779,15 +1779,15 @@ export function DesktopMap({
                         setEditAddress(building.address)
                         setEditType(building.type)
                       }}
-                      title="건물 정보 수정"
+                      title={t(language, 'map.editBuilding')}
                       type="button"
                     >⋮</button>
                   </div>
                 ) : (
                   <div className="building-edit-mode">
                     <div className="edit-input-group">
-                      <input className="modern-edit-address" onChange={(e) => setEditAddress(e.target.value)} placeholder="건물 주소" value={editAddress} />
-                      <input className="modern-edit-name" onChange={(e) => setEditName(e.target.value)} placeholder="건물명 (선택)" value={editName} />
+                      <input className="modern-edit-address" onChange={(e) => setEditAddress(e.target.value)} placeholder={t(language, 'map.buildingAddressPlaceholder')} value={editAddress} />
+                      <input className="modern-edit-name" onChange={(e) => setEditName(e.target.value)} placeholder={t(language, 'map.buildingNameOptional')} value={editName} />
                       <select value={editType} onChange={e => setEditType(e.target.value as Building['type'])} style={{ padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid #e2e8f0', fontSize: '12px', background: '#f8fafc' }}>
                         <option value="주택">{t(language, 'map.house')}</option>
                         <option value="상가">{t(language, 'map.shop')}</option>
@@ -1810,11 +1810,11 @@ export function DesktopMap({
                     </div>
 
                     <div className={`unit-col-header${getActivePeriodForDate(getLocalDateString())?.hasInvitation ? ' with-invitation' : ''}`}>
-                      <span>세대 정보</span>
-                      {getActivePeriodForDate(getLocalDateString())?.hasInvitation && <span style={{ color: '#f59e0b' }}>초대장</span>}
+                      <span>{t(language, 'map.unitInfo')}</span>
+                      {getActivePeriodForDate(getLocalDateString())?.hasInvitation && <span style={{ color: '#f59e0b' }}>{t(language, 'map.invitation')}</span>}
                       <span>{t(language, 'map.met')}</span>
                       <span>{t(language, 'map.absent')}</span>
-                      <span>한국</span>
+                      <span>{t(language, 'map.notTarget')}</span>
                     </div>
 
                     {(chineseOnlyFilter || visitResultFilter !== '전체'
@@ -1833,7 +1833,7 @@ export function DesktopMap({
                               <span className="unit-number-text">{unit.number}</span>
                               {unit.isChinese && <span className="unit-chinese-badge">中</span>}
                               {unit.isForbidden && <span className="unit-forbidden-badge">{t(language, 'map.forbidden')}</span>}
-                              {unit.isRegularVisit && <span className="unit-regular-badge">재방</span>}
+                              {unit.isRegularVisit && <span className="unit-regular-badge">{t(language, 'map.revisitShort')}</span>}
                               {latestHistory && (
                                 <span className="unit-recent-visit">
                                   [{latestHistory.visitedAt.slice(5).replace('-', '/')} {latestHistory.timeSlot}]
@@ -1864,21 +1864,21 @@ export function DesktopMap({
                                   >{todayInvitation ? '✓' : ''}</button>
                                   {isPopupOpen && (
                                     <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 200, marginTop: 4, background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', padding: '10px 8px', width: 160, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                      <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--gray-500)', textAlign: 'center', fontWeight: 600 }}>초대장 전달 방식</p>
+                                      <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--gray-500)', textAlign: 'center', fontWeight: 600 }}>{t(language, 'map.invitationMethod')}</p>
                                       <button type="button"
                                         onClick={() => { onToggleInvitationLeft?.(building.id, unit.id, 'direct'); setInvitationPopupUnitId(null) }}
                                         style={{ padding: '7px 10px', border: 0, borderRadius: 7, background: '#4F7A4B', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                                        직접 만나서 전달
+                                        {t(language, 'map.invitationDirect')}
                                       </button>
                                       <button type="button"
                                         onClick={() => { onToggleInvitationLeft?.(building.id, unit.id, 'door'); setInvitationPopupUnitId(null) }}
                                         style={{ padding: '7px 10px', border: 0, borderRadius: 7, background: '#C44536', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                                        문 앞에 남김
+                                        {t(language, 'map.invitationDoor')}
                                       </button>
                                       <button type="button"
                                         onClick={() => setInvitationPopupUnitId(null)}
                                         style={{ padding: '5px', border: 0, borderRadius: 6, background: 'none', color: 'var(--gray-400)', fontSize: 11, cursor: 'pointer' }}>
-                                        취소
+                                        {t(language, 'common.cancel')}
                                       </button>
                                     </div>
                                   )}
@@ -2472,7 +2472,7 @@ export function DesktopMap({
                       onChange={(e) => setHistoryEditor({ ...historyEditor, invitationLeft: e.target.checked })}
                       style={{ width: '15px', height: '15px', accentColor: '#f59e0b', cursor: 'pointer' }}
                     />
-                    초대장 남김
+                    {t(language, 'map.invitationLeft')}
                   </label>
                 </div>
               )}
