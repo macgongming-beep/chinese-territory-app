@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { MouseEvent } from 'react'
 import type { Building, BuildingStatus, CardBoundary, GeoPoint, TerritoryCard } from '../types'
+import { clusterByGrid, getClusterThresholdKm } from '../utils/mapClustering'
 import { getBuildingStatus, getCardName, getMockPosition, isValidMapCoordinate } from '../utils/mapUtils'
 import { TERRITORY_BOUNDARY } from '../data/territoryBoundary'
 import { showToast } from '../lib/toast'
@@ -114,26 +115,9 @@ function escapeAttr(value: string): string {
 }
 
 // ── Clustering ─────────────────────────────────────────────────────────────
-
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLng = (lng2 - lng1) * Math.PI / 180
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
-function getClusterThresholdKm(zoom: number): number {
-  if (zoom >= 17) return 0
-  if (zoom >= 16) return 0.05
-  if (zoom >= 15) return 0.1
-  if (zoom >= 14) return 0.2
-  if (zoom >= 13) return 0.4
-  if (zoom >= 12) return 0.8
-  return 1.5
-}
+// 묶는 계산은 utils/mapClustering 으로 옮겼다.
+// (예전엔 모든 건물 쌍의 거리를 재느라 1,000개 기준 약 50만 번 계산이 들어갔고,
+//  줌을 한 칸 옮길 때마다 그걸 다시 했다 — 지도 진입이 느리던 주된 원인)
 
 type BuildingCluster = { buildings: Building[]; lat: number; lng: number }
 export type MapAggregateMarker = {
@@ -149,28 +133,8 @@ export type MapAggregateMarker = {
 
 function clusterBuildings(buildings: Building[], zoom: number): BuildingCluster[] {
   const validBuildings = buildings.filter((building) => isValidMapCoordinate(Number(building.lat), Number(building.lng)))
-  const threshold = getClusterThresholdKm(zoom)
-  if (threshold === 0) {
-    return validBuildings.map((b) => ({ buildings: [b], lat: b.lat, lng: b.lng }))
-  }
-  const used = new Set<number>()
-  const clusters: BuildingCluster[] = []
-  for (let i = 0; i < validBuildings.length; i++) {
-    if (used.has(i)) continue
-    const group: Building[] = [validBuildings[i]]
-    used.add(i)
-    for (let j = i + 1; j < validBuildings.length; j++) {
-      if (used.has(j)) continue
-      if (haversineKm(validBuildings[i].lat, validBuildings[i].lng, validBuildings[j].lat, validBuildings[j].lng) < threshold) {
-        group.push(validBuildings[j])
-        used.add(j)
-      }
-    }
-    const lat = group.reduce((s, b) => s + b.lat, 0) / group.length
-    const lng = group.reduce((s, b) => s + b.lng, 0) / group.length
-    clusters.push({ buildings: group, lat, lng })
-  }
-  return clusters
+  return clusterByGrid(validBuildings, getClusterThresholdKm(zoom))
+    .map((cluster) => ({ buildings: cluster.items, lat: cluster.lat, lng: cluster.lng }))
 }
 
 function clusterMarkerHtml(count: number): string {
@@ -740,6 +704,22 @@ function NaverMapCanvas({
   // Stable ref so zoom_changed listener always calls the latest version
   const rebuildMarkersCallbackRef = useRef(doRebuildMarkers)
   rebuildMarkersCallbackRef.current = doRebuildMarkers
+
+  // 줌은 한 번 조작에 여러 단계가 연속으로 들어온다 — 단계마다 마커를 전부
+  // 지웠다 다시 만들면 화면이 멈춘다. 마지막 단계에서 한 번만 다시 그린다.
+  const rebuildTimerRef = useRef<number | null>(null)
+  const scheduleRebuildMarkers = () => {
+    if (rebuildTimerRef.current !== null) window.clearTimeout(rebuildTimerRef.current)
+    rebuildTimerRef.current = window.setTimeout(() => {
+      rebuildTimerRef.current = null
+      rebuildMarkersCallbackRef.current()
+    }, 120)
+  }
+  const scheduleRebuildMarkersRef = useRef(scheduleRebuildMarkers)
+  scheduleRebuildMarkersRef.current = scheduleRebuildMarkers
+  useEffect(() => () => {
+    if (rebuildTimerRef.current !== null) window.clearTimeout(rebuildTimerRef.current)
+  }, [])
   // 카드 라벨 줌 토글용 stable ref (정의는 아래, 할당은 매 렌더)
   const updateCardLabelVisibilityRef = useRef<() => void>(() => {})
 
@@ -1298,7 +1278,7 @@ function NaverMapCanvas({
 
       // Re-cluster when zoom changes
       naver.maps.Event.addListener(mapInstanceRef.current, 'zoom_changed', () => {
-        rebuildMarkersCallbackRef.current()
+        scheduleRebuildMarkersRef.current()
         updateCardLabelVisibilityRef.current()
       })
 
