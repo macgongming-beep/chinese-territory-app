@@ -2,6 +2,7 @@ import type { CalendarEvent } from '../../types'
 import { supabase, showToast, reportMutationError, getCurrentVisitor } from './shared'
 import { createSystemChatMessage } from './chatSystem'
 import { logServiceAction } from './serviceLog'
+import { msg } from '../../lib/msg'
 
 /** 일정 입력 공통 타입 */
 export type CalendarEventInput = {
@@ -44,18 +45,18 @@ export function makeCalendarMutations(deps: {
     const payload = { ...buildEventPayload(input), event_date: input.date }
     const result = await supabase.from('calendar_events').insert(payload).select('id').single()
     if (result.error) {
-      reportMutationError('일정을 등록하지 못했습니다.', result.error)
+      reportMutationError(msg('일정을 등록하지 못했습니다.'), result.error)
       return
     }
     // 시스템 채팅 메시지 ("채팅방이 생성되었습니다") 제거 — 불필요 알림 줄이기
     await fetchAll()
-    showToast('일정이 등록됐습니다')
+    showToast(msg('일정이 등록됐습니다'))
   }
 
   const createRepeatCalendarEvents = async (dates: string[], input: CalendarEventInput) => {
     // 종료일이 시작일보다 이전이면 dates 가 비어 0개 등록되는 사고 방지
     if (!dates || dates.length === 0) {
-      showToast('반복 종료일을 시작일 이후로 정해 주세요.', 'error')
+      showToast(msg('반복 종료일을 시작일 이후로 정해 주세요.'), 'error')
       return
     }
     const seriesId = crypto.randomUUID()
@@ -64,22 +65,22 @@ export function makeCalendarMutations(deps: {
       dates.map((date) => ({ ...basePayload, event_date: date, series_id: seriesId })),
     ).select('id')
     if (result.error) {
-      reportMutationError('반복 일정을 등록하지 못했습니다.', result.error)
+      reportMutationError(msg('반복 일정을 등록하지 못했습니다.'), result.error)
       return
     }
     // 시스템 채팅 메시지 ("채팅방이 생성되었습니다") 제거 — 불필요 알림 줄이기
     await fetchAll()
-    showToast(`${dates.length}개 일정이 등록됐습니다`)
+    showToast(msg('{length}개 일정이 등록됐습니다', { length: dates.length }))
   }
 
   const updateCalendarEvent = async (eventId: number, input: CalendarEventInput) => {
     const result = await supabase.from('calendar_events').update(buildEventPayload(input)).eq('id', eventId)
     if (result.error) {
-      reportMutationError('일정을 수정하지 못했습니다.', result.error)
+      reportMutationError(msg('일정을 수정하지 못했습니다.'), result.error)
       return
     }
     await fetchAll()
-    showToast('일정이 수정됐습니다')
+    showToast(msg('일정이 수정됐습니다'))
   }
 
   const updateCalendarEventSeries = async (
@@ -92,21 +93,21 @@ export function makeCalendarMutations(deps: {
       .eq('series_id', seriesId)
       .gte('event_date', fromDate)
     if (result.error) {
-      reportMutationError('반복 일정을 수정하지 못했습니다.', result.error)
+      reportMutationError(msg('반복 일정을 수정하지 못했습니다.'), result.error)
       return
     }
     await fetchAll()
-    showToast('이후 모든 반복 일정이 수정됐습니다')
+    showToast(msg('이후 모든 반복 일정이 수정됐습니다'))
   }
 
   const deleteCalendarEvent = async (eventId: number) => {
     const result = await supabase.from('calendar_events').delete().eq('id', eventId)
     if (result.error) {
-      reportMutationError('일정을 삭제하지 못했습니다.', result.error)
+      reportMutationError(msg('일정을 삭제하지 못했습니다.'), result.error)
       return
     }
     await fetchAll()
-    showToast('일정이 삭제됐습니다')
+    showToast(msg('일정이 삭제됐습니다'))
   }
 
   const deleteCalendarEventSeries = async (seriesId: string, fromDate: string) => {
@@ -115,11 +116,11 @@ export function makeCalendarMutations(deps: {
       .eq('series_id', seriesId)
       .gte('event_date', fromDate)
     if (result.error) {
-      reportMutationError('반복 일정 삭제에 실패했습니다.', result.error)
+      reportMutationError(msg('반복 일정 삭제에 실패했습니다.'), result.error)
       return
     }
     await fetchAll()
-    showToast('이후 반복 일정이 모두 삭제됐습니다')
+    showToast(msg('이후 반복 일정이 모두 삭제됐습니다'))
   }
 
   const linkEventsToSeries = async (eventIds: number[]) => {
@@ -128,11 +129,11 @@ export function makeCalendarMutations(deps: {
       .update({ series_id: seriesId })
       .in('id', eventIds)
     if (result.error) {
-      reportMutationError('시리즈 묶기에 실패했습니다. series_id 컬럼이 있는지 확인해 주세요.', result.error)
+      reportMutationError(msg('시리즈 묶기에 실패했습니다. series_id 컬럼이 있는지 확인해 주세요.'), result.error)
       return
     }
     await fetchAll()
-    showToast(`${eventIds.length}개 일정이 시리즈로 묶였습니다`)
+    showToast(msg('{length}개 일정이 시리즈로 묶였습니다', { length: eventIds.length }))
   }
 
   // ─── 참가자 / 신청 ───────────────────────────────────────────
@@ -141,7 +142,7 @@ export function makeCalendarMutations(deps: {
     const event = calendarEvents.find((e) => e.id === eventId)
     const isApplied = event?.applicants.includes(currentVisitor)
     if (event && !event.allowApplications && !isApplied) {
-      showToast('이 일정은 봉사 신청을 받지 않습니다.', 'info')
+      showToast(msg('이 일정은 봉사 신청을 받지 않습니다.'), 'info')
       return
     }
     if (isApplied) {
@@ -150,7 +151,7 @@ export function makeCalendarMutations(deps: {
         .eq('event_id', eventId)
         .eq('user_name', currentVisitor)
       if (result.error) {
-        reportMutationError('봉사 신청을 취소하지 못했습니다.', result.error)
+        reportMutationError(msg('봉사 신청을 취소하지 못했습니다.'), result.error)
         return
       }
       await logServiceAction({
@@ -165,7 +166,7 @@ export function makeCalendarMutations(deps: {
         { onConflict: 'event_id,user_name' },
       )
       if (result.error) {
-        reportMutationError('봉사 신청을 저장하지 못했습니다.', result.error)
+        reportMutationError(msg('봉사 신청을 저장하지 못했습니다.'), result.error)
         return
       }
       // 시스템 채팅 메시지 ("합류했습니다") 제거 — 불필요 알림 줄이기
@@ -195,7 +196,7 @@ export function makeCalendarMutations(deps: {
       .eq('event_id', eventId)
       .eq('user_name', userName)
     if (multiCardResult.error) {
-      reportMutationError('참가자의 추가 카드 배정을 정리하지 못했습니다.', multiCardResult.error)
+      reportMutationError(msg('참가자의 추가 카드 배정을 정리하지 못했습니다.'), multiCardResult.error)
       return
     }
 
@@ -204,7 +205,7 @@ export function makeCalendarMutations(deps: {
       .eq('event_id', eventId)
       .eq('user_name', userName)
     if (cardAssignmentResult.error) {
-      reportMutationError('참가자의 카드 배정을 정리하지 못했습니다.', cardAssignmentResult.error)
+      reportMutationError(msg('참가자의 카드 배정을 정리하지 못했습니다.'), cardAssignmentResult.error)
       return
     }
 
@@ -213,7 +214,7 @@ export function makeCalendarMutations(deps: {
       .eq('event_id', eventId)
       .eq('user_name', userName)
     if (informalResult.error) {
-      reportMutationError('참가자의 비공식 배정을 정리하지 못했습니다.', informalResult.error)
+      reportMutationError(msg('참가자의 비공식 배정을 정리하지 못했습니다.'), informalResult.error)
       return
     }
 
@@ -222,7 +223,7 @@ export function makeCalendarMutations(deps: {
       .eq('event_id', eventId)
       .eq('user_name', userName)
     if (restaurantResult.error) {
-      reportMutationError('참가자의 식당 배정을 정리하지 못했습니다.', restaurantResult.error)
+      reportMutationError(msg('참가자의 식당 배정을 정리하지 못했습니다.'), restaurantResult.error)
       return
     }
 
@@ -232,7 +233,7 @@ export function makeCalendarMutations(deps: {
       .eq('user_name', userName)
       .eq('source', 'assigned')
     if (sessionResult.error) {
-      reportMutationError('참가자의 자동 봉사 세션을 정리하지 못했습니다.', sessionResult.error)
+      reportMutationError(msg('참가자의 자동 봉사 세션을 정리하지 못했습니다.'), sessionResult.error)
       return
     }
 
@@ -241,7 +242,7 @@ export function makeCalendarMutations(deps: {
       .eq('event_id', eventId)
       .eq('user_name', userName)
     if (participantResult.error) {
-      reportMutationError('참가자를 제외하지 못했습니다.', participantResult.error)
+      reportMutationError(msg('참가자를 제외하지 못했습니다.'), participantResult.error)
       return
     }
 
@@ -252,7 +253,7 @@ export function makeCalendarMutations(deps: {
       details: { user_name: userName, source: 'admin_remove' },
     })
     await (refetchAfterParticipantRemoval ?? fetchAll)()
-    showToast(`${userName}님을 참가자와 배정에서 제외했습니다`)
+    showToast(msg('{userName}님을 참가자와 배정에서 제외했습니다', { userName: userName }))
   }
 
   const addParticipantToEvent = async (eventId: number, userName: string) => {
@@ -264,7 +265,7 @@ export function makeCalendarMutations(deps: {
       { onConflict: 'event_id,user_name' },
     )
     if (result.error) {
-      reportMutationError('참가자를 추가하지 못했습니다.', result.error)
+      reportMutationError(msg('참가자를 추가하지 못했습니다.'), result.error)
       return
     }
     // 시스템 채팅 메시지 ("합류했습니다") 제거 — 불필요 알림 줄이기
@@ -275,7 +276,7 @@ export function makeCalendarMutations(deps: {
       details: { user_name: userName, source: 'admin_add' },
     })
     await fetchAll()
-    showToast(`${userName}님을 신청자로 추가했습니다`)
+    showToast(msg('{userName}님을 신청자로 추가했습니다', { userName: userName }))
   }
 
   return {

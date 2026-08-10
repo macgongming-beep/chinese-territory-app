@@ -9,6 +9,7 @@ import type { AssignmentDraft, DraftAction, DraftState } from './types'
 import { draftReducer } from './reducer'
 import { saveLocalDraft } from './persistence'
 import { showToast } from '../../lib/toast'
+import { msg } from '../../lib/msg'
 
 export function useAssignmentDraft(
   eventId: number,
@@ -34,7 +35,7 @@ export function useAssignmentDraft(
     const ok = saveLocalDraft(eventId, userName, state.draft)
     if (!ok && !saveFailedRef.current) {
       saveFailedRef.current = true
-      showToast('임시 저장에 실패했습니다 (저장 공간 부족). 작업 후 바로 공유해 주세요.', 'error')
+      showToast(msg('임시 저장에 실패했습니다 (저장 공간 부족). 작업 후 바로 공유해 주세요.'), 'error')
     } else if (ok) {
       saveFailedRef.current = false
     }

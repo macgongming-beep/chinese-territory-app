@@ -32,6 +32,7 @@ import { AddUnitRow } from './AddUnitRow'
 import { useSessionState } from '../hooks/useSessionState'
 import { BuildingEditCells, UnitEditForm, type BuildingEditDraft } from './BuildingEditRows'
 import { CardCreateModal } from './DesktopTerritoryCardModal'
+import { msg } from '../lib/msg'
 
 // 상대 날짜 표시: "오늘", "어제", "N일 전", "N주 전", "N개월 전", "YYYY-MM-DD"
 function formatRelativeDate(iso: string): string {
@@ -529,7 +530,7 @@ export function DesktopTerritory({
   const handleAssignLeaderBulk = async () => {
     const targetIds = Array.from(checkedCardIds)
     if (targetIds.length === 0) {
-      showToast('먼저 카드를 선택해 주세요.', 'error')
+      showToast(msg('먼저 카드를 선택해 주세요.'), 'error')
       return
     }
     const actionLabel = bulkLeaderNames.length > 0
@@ -611,7 +612,7 @@ export function DesktopTerritory({
       if (byBoundary) {
         cardId = byBoundary
         const matchedCard = cards.find((c) => c.id === byBoundary)
-        if (matchedCard) showToast(`"${matchedCard.name}" 카드에 자동 배정됐습니다`, 'success')
+        if (matchedCard) showToast(msg('"{name}" 카드에 자동 배정됐습니다', { name: matchedCard.name }), 'success')
       } else {
         cardId = findCardForAddress(addBuildingForm.address) ?? cards[0]?.id ?? 0
       }
@@ -785,7 +786,7 @@ export function DesktopTerritory({
         lat = geocoded.lat
         lng = geocoded.lng
       } else {
-        showToast('주소로 위치를 찾지 못해 핀은 그대로 둡니다. 지도에서 핀을 직접 옮겨 주세요.', 'info')
+        showToast(msg('주소로 위치를 찾지 못해 핀은 그대로 둡니다. 지도에서 핀을 직접 옮겨 주세요.'), 'info')
       }
     }
 
@@ -875,7 +876,7 @@ export function DesktopTerritory({
     const rows = parseCsv(await file.text())
     if (rows.length < 2) {
       setCsvParsing(false)
-      showToast('CSV에 헤더와 데이터 행이 필요합니다.', 'error')
+      showToast(msg('CSV에 헤더와 데이터 행이 필요합니다.'), 'error')
       return
     }
 
@@ -1121,7 +1122,7 @@ export function DesktopTerritory({
     setCsvParsing(false)
     const totalVisits = previewRows.reduce((sum, r) => sum + r.units.reduce((s, u) => s + u.visitHistories.length, 0), 0)
     const visitMsg = totalVisits > 0 ? `, 방문기록 ${totalVisits}건` : ''
-    showToast(`CSV 확인 완료: 건물 ${previewRows.length}개 준비${visitMsg}, ${skipped}개 제외`, previewRows.length > 0 ? 'success' : 'info')
+    showToast(msg('CSV 확인 완료: 건물 {length}개 준비{visitMsg}, {skipped}개 제외', { length: previewRows.length, visitMsg: visitMsg, skipped: skipped }), previewRows.length > 0 ? 'success' : 'info')
   }
 
   const handleImportCsv = async () => {
@@ -1197,7 +1198,7 @@ export function DesktopTerritory({
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-    showToast(`${isPointList ? pointRows.length : sortedBuildings.length}개 항목을 내보냈습니다.`, 'success')
+    showToast(msg('{v1}개 항목을 내보냈습니다.', { v1: isPointList ? pointRows.length : sortedBuildings.length }), 'success')
   }
 
   const handleReassignByBoundary = async () => {
@@ -1212,7 +1213,7 @@ export function DesktopTerritory({
     })
 
     if (updates.length === 0) {
-      showToast('좌표 기준으로 바꿀 건물이 없습니다.', 'info')
+      showToast(msg('좌표 기준으로 바꿀 건물이 없습니다.'), 'info')
       return
     }
 
@@ -1244,7 +1245,7 @@ export function DesktopTerritory({
       const msgs = []
       if (noCoords > 0) msgs.push(`좌표 없음 ${noCoords}개`)
       if (outsideBounds > 0) msgs.push(`구역선 밖 ${outsideBounds}개`)
-      showToast(`재배정 가능한 건물이 없습니다. (${msgs.join(', ') || '이미 올바른 카드'})`, 'info')
+      showToast(msg('재배정 가능한 건물이 없습니다. ({v1})', { v1: msgs.join(', ') || '이미 올바른 카드' }), 'info')
       return
     }
 
@@ -1318,7 +1319,7 @@ export function DesktopTerritory({
 
   const handleExportCardBoundaries = () => {
     downloadCardBoundaryBackup(cards, cardBoundaries)
-    showToast('구역선 백업 파일을 내보냈습니다.', 'success')
+    showToast(msg('구역선 백업 파일을 내보냈습니다.'), 'success')
   }
 
   const handleImportCardBoundaries = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -1329,7 +1330,7 @@ export function DesktopTerritory({
       const text = await file.text()
       const boundaries = parseCardBoundaryBackup(text)
       if (boundaries.length === 0) {
-        showToast('가져올 구역선이 없습니다.', 'error')
+        showToast(msg('가져올 구역선이 없습니다.'), 'error')
         return
       }
       const confirmed = await confirmDialog({ message: `백업 파일의 구역선 ${boundaries.length}개를 현재 카드에 복구할까요?` })
@@ -1337,7 +1338,7 @@ export function DesktopTerritory({
       await Promise.resolve(onRestoreCardBoundaries(boundaries))
     } catch (error) {
       console.error(error)
-      showToast('구역선 백업 파일을 읽지 못했습니다.', 'error')
+      showToast(msg('구역선 백업 파일을 읽지 못했습니다.'), 'error')
     }
   }
 
@@ -1345,7 +1346,7 @@ export function DesktopTerritory({
     if (!onMergeCardBoundaries) return
     const ids = Array.from(checkedCardIds)
     if (ids.length < 2) {
-      showToast('병합할 카드를 2개 이상 선택해 주세요.', 'error')
+      showToast(msg('병합할 카드를 2개 이상 선택해 주세요.'), 'error')
       return
     }
     const firstWithBoundary = ids.find((id) => cardBoundaries.some((boundary) => boundary.cardId === id))
@@ -1364,13 +1365,13 @@ export function DesktopTerritory({
       .filter((boundary): boundary is CardBoundary => Boolean(boundary))
 
     if (selectedBoundaries.length < 2) {
-      showToast('구역선이 있는 카드를 2개 이상 선택해야 병합할 수 있습니다.', 'error')
+      showToast(msg('구역선이 있는 카드를 2개 이상 선택해야 병합할 수 있습니다.'), 'error')
       return
     }
 
     const mergeResult = mergeCardBoundaryPoints(selectedBoundaries)
     if (!mergeResult || mergeResult.points.length < 3) {
-      showToast('선택한 구역선을 병합하지 못했습니다.', 'error')
+      showToast(msg('선택한 구역선을 병합하지 못했습니다.'), 'error')
       return
     }
 

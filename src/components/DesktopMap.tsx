@@ -31,6 +31,7 @@ import { geocodeQuery } from '../lib/naverGeocode'
 import { getCurrentTimeSlot } from '../utils/timeUtils'
 import { mergeCardBoundaryPoints } from '../utils/boundaryMerge'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
+import { msg } from '../lib/msg'
 
 type VisitResultFilter = '전체' | '부재' | '만남'
 type HistoryEditor = {
@@ -251,13 +252,13 @@ export function DesktopMap({
     if (matchedCardId) {
       setNewBuildingCardId(matchedCardId)
       const matchedCard = cards.find(c => c.id === matchedCardId)
-      showToast(`구역 "${matchedCard?.name ?? matchedCardId}" 자동 선택됨`, 'success')
+      showToast(msg('구역 "{v1}" 자동 선택됨', { v1: matchedCard?.name ?? matchedCardId }), 'success')
     } else {
       if (unassignedCard) {
         setNewBuildingCardId(unassignedCard.id)
-        showToast('구역선 밖입니다. "미배정 건물" 카드로 설정됩니다.', 'info')
+        showToast(msg('구역선 밖입니다. "미배정 건물" 카드로 설정됩니다.'), 'info')
       } else {
-        showToast('구역선 밖입니다. 카드를 수동으로 선택해 주세요.', 'info')
+        showToast(msg('구역선 밖입니다. 카드를 수동으로 선택해 주세요.'), 'info')
       }
     }
 
@@ -319,7 +320,7 @@ export function DesktopMap({
     setShowMapActionMenu(false)
     setEditingPinMode(false)
     setAddingBuilding(true)
-    showToast('지도에서 건물을 추가할 위치를 눌러주세요', 'info')
+    showToast(msg('지도에서 건물을 추가할 위치를 눌러주세요'), 'info')
   }
 
   const toggleEditPinMode = () => {
@@ -353,7 +354,7 @@ export function DesktopMap({
       geocodeQuery(building.address).then((coordinates) => {
         if (!coordinates) return
         onUpdateBuilding(building.id, building.name, building.address, coordinates.lat, coordinates.lng, building.type)
-        showToast(`"${building.name || building.address}" 좌표를 주소로 보정했습니다`, 'success')
+        showToast(msg('"{v1}" 좌표를 주소로 보정했습니다', { v1: building.name || building.address }), 'success')
       })
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -403,9 +404,9 @@ export function DesktopMap({
         revealAddedBuildingCard(targetCardId)
         if (matchedCardId) {
           const matchedCard = cards.find((card) => card.id === matchedCardId)
-          showToast(`구역 "${matchedCard?.name}" 카드에 자동 배정됐습니다`, 'success')
+          showToast(msg('구역 "{v1}" 카드에 자동 배정됐습니다', { v1: matchedCard?.name }), 'success')
         } else if (unassignedCard) {
-          showToast('구역선 밖 — "미배정 건물" 카드에 배정됐습니다', 'info')
+          showToast(msg('구역선 밖 — "미배정 건물" 카드에 배정됐습니다'), 'info')
         }
         closeAddBuildingModal()
       } finally {
@@ -443,9 +444,9 @@ export function DesktopMap({
             if (matchedCardId) {
               setNewBuildingCardId(matchedCardId)
               const matchedCard = cards.find(c => c.id === matchedCardId)
-              showToast(`지도에서 위치를 확인 후 추가하세요 (구역: "${matchedCard?.name}")`, 'info')
+              showToast(msg('지도에서 위치를 확인 후 추가하세요 (구역: "{v1}")', { v1: matchedCard?.name }), 'info')
             } else {
-              showToast('지도에서 위치를 확인 후 추가를 누르세요', 'info')
+              showToast(msg('지도에서 위치를 확인 후 추가를 누르세요'), 'info')
             }
             return
           }
@@ -1005,7 +1006,7 @@ export function DesktopMap({
   const openMapMergeModal = () => {
     if (!onMergeCardBoundaries) return
     if (selectedBoundaryCardIds.size < 2) {
-      showToast('병합할 구역 카드를 2개 이상 선택해 주세요.', 'error')
+      showToast(msg('병합할 구역 카드를 2개 이상 선택해 주세요.'), 'error')
       return
     }
     const firstWithBoundary = Array.from(selectedBoundaryCardIds).find((id) => boundariesByCardId.has(id))
@@ -1023,13 +1024,13 @@ export function DesktopMap({
       .map((id) => boundariesByCardId.get(id))
       .filter((boundary): boundary is CardBoundary => Boolean(boundary))
     if (selectedBoundaries.length < 2) {
-      showToast('구역선이 있는 카드를 2개 이상 선택해야 병합할 수 있습니다.', 'error')
+      showToast(msg('구역선이 있는 카드를 2개 이상 선택해야 병합할 수 있습니다.'), 'error')
       return
     }
 
     const mergeResult = mergeCardBoundaryPoints(selectedBoundaries)
     if (!mergeResult || mergeResult.points.length < 3) {
-      showToast('선택한 구역선을 병합하지 못했습니다.', 'error')
+      showToast(msg('선택한 구역선을 병합하지 못했습니다.'), 'error')
       return
     }
 
@@ -1652,7 +1653,7 @@ export function DesktopMap({
                 const b = buildings.find(item => item.id === id)
                 if (b) {
                   onUpdateBuilding(id, b.name, b.address, lat, lng)
-                  showToast(`${b.name || b.address} 핀 위치가 저장됐습니다`, 'success')
+                  showToast(msg('{v1} 핀 위치가 저장됐습니다', { v1: b.name || b.address }), 'success')
                 }
               }}
               isMobile={false}

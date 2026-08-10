@@ -1,5 +1,6 @@
 import type { Building } from '../../types'
 import { supabase, showToast, reportMutationError } from './shared'
+import { msg } from '../../lib/msg'
 
 export function makeRestaurantServiceMutations(deps: {
   fetchAll: () => Promise<void>
@@ -29,11 +30,11 @@ export function makeRestaurantServiceMutations(deps: {
       visit_type: 'restaurant',
     })
     if (result.error) {
-      reportMutationError('식당봉사 기록을 추가하지 못했습니다.', result.error)
+      reportMutationError(msg('식당봉사 기록을 추가하지 못했습니다.'), result.error)
       return
     }
     await fetchAll()
-    showToast('식당봉사 기록이 저장됐습니다 🍜')
+    showToast(msg('식당봉사 기록이 저장됐습니다 🍜'))
   }
 
   /** 봉사자: 새 식당 추가 신청 */
@@ -51,11 +52,11 @@ export function makeRestaurantServiceMutations(deps: {
       visited_at: new Date().toISOString(),
     })
     if (result.error) {
-      reportMutationError('식당 추가 신청을 하지 못했습니다.', result.error)
+      reportMutationError(msg('식당 추가 신청을 하지 못했습니다.'), result.error)
       return
     }
     await fetchAll()
-    showToast('식당 추가 신청이 완료됐습니다. 관리자 승인 후 반영됩니다.')
+    showToast(msg('식당 추가 신청이 완료됐습니다. 관리자 승인 후 반영됩니다.'))
   }
 
   /** 봉사자: 신청한 식당의 메모 업데이트 */
@@ -68,11 +69,11 @@ export function makeRestaurantServiceMutations(deps: {
       .update({ memo: memo.trim() || null })
       .eq('id', requestId)
     if (result.error) {
-      reportMutationError('메모를 저장하지 못했습니다.', result.error)
+      reportMutationError(msg('메모를 저장하지 못했습니다.'), result.error)
       return
     }
     await fetchAll()
-    showToast('메모가 저장됐습니다 🍜')
+    showToast(msg('메모가 저장됐습니다 🍜'))
   }
 
   /** 관리자: 식당 신청 승인 */
@@ -102,7 +103,7 @@ export function makeRestaurantServiceMutations(deps: {
         .update({ is_restaurant: true })
         .eq('id', existingBuilding.id)
       if (toggleRes.error) {
-        reportMutationError('건물을 식당으로 표시하지 못했습니다.', toggleRes.error)
+        reportMutationError(msg('건물을 식당으로 표시하지 못했습니다.'), toggleRes.error)
         return
       }
       resolvedBuildingId = existingBuilding.id
@@ -116,7 +117,7 @@ export function makeRestaurantServiceMutations(deps: {
           .select('id')
           .single()
         if (uRes.error || !uRes.data) {
-          reportMutationError('세대를 생성하지 못했습니다.', uRes.error)
+          reportMutationError(msg('세대를 생성하지 못했습니다.'), uRes.error)
           return
         }
         resolvedUnitId = uRes.data.id
@@ -137,7 +138,7 @@ export function makeRestaurantServiceMutations(deps: {
 
       const cardId = cardData?.id
       if (!cardId) {
-        showToast('미배정 건물 카드를 찾을 수 없습니다.', 'error')
+        showToast(msg('미배정 건물 카드를 찾을 수 없습니다.'), 'error')
         return
       }
       void unassignedCard // suppress unused var
@@ -157,7 +158,7 @@ export function makeRestaurantServiceMutations(deps: {
         .single()
 
       if (bRes.error || !bRes.data) {
-        reportMutationError('식당 건물을 추가하지 못했습니다.', bRes.error)
+        reportMutationError(msg('식당 건물을 추가하지 못했습니다.'), bRes.error)
         return
       }
       resolvedBuildingId = bRes.data.id
@@ -168,7 +169,7 @@ export function makeRestaurantServiceMutations(deps: {
         .select('id')
         .single()
       if (uRes.error || !uRes.data) {
-        reportMutationError('세대를 생성하지 못했습니다.', uRes.error)
+        reportMutationError(msg('세대를 생성하지 못했습니다.'), uRes.error)
         return
       }
       resolvedUnitId = uRes.data.id
@@ -205,12 +206,12 @@ export function makeRestaurantServiceMutations(deps: {
       .eq('id', requestId)
 
     if (updateRes.error) {
-      reportMutationError('신청 상태 업데이트에 실패했습니다.', updateRes.error)
+      reportMutationError(msg('신청 상태 업데이트에 실패했습니다.'), updateRes.error)
       return
     }
 
     await fetchAll()
-    showToast('식당 신청이 승인됐습니다.')
+    showToast(msg('식당 신청이 승인됐습니다.'))
   }
 
   /** 관리자: 식당 신청 거절 */
@@ -227,11 +228,11 @@ export function makeRestaurantServiceMutations(deps: {
       })
       .eq('id', requestId)
     if (result.error) {
-      reportMutationError('신청 거절에 실패했습니다.', result.error)
+      reportMutationError(msg('신청 거절에 실패했습니다.'), result.error)
       return
     }
     await fetchAll()
-    showToast('식당 신청이 거절됐습니다.')
+    showToast(msg('식당 신청이 거절됐습니다.'))
   }
 
   return {

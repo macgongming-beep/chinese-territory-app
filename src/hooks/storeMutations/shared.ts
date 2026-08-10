@@ -3,6 +3,7 @@
  */
 import { supabase } from '../../lib/supabase'
 import { showToast } from '../../lib/toast'
+import { msg } from '../../lib/msg'
 
 export { supabase, showToast }
 // 공용 dateUtils 로 통합 (기존 ./shared import 경로 유지를 위해 재export)
@@ -24,7 +25,7 @@ export function getCurrentVisitor(): string {
 export function requireVisitor(): string | null {
   const name = getCurrentVisitor().trim()
   if (!name) {
-    showToast('로그인 정보가 없어 기록할 수 없습니다. 다시 로그인해 주세요.', 'error')
+    showToast(msg('로그인 정보가 없어 기록할 수 없습니다. 다시 로그인해 주세요.'), 'error')
     return null
   }
   return name

@@ -16,6 +16,7 @@ import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { getLocalDateString } from '../utils/dateUtils'
 import { toCsv, parseCsv, normalizeDate, parseYN, isDeleteMark, VISIT_RESULTS, TIME_SLOTS, downloadCsvFile } from '../utils/roundTripCsv'
+import { msg } from '../lib/msg'
 
 // ── supabase 페이징 조회 (기본 1000행 제한 대응) ─────────────
 async function fetchAllRows<T>(build: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>): Promise<T[]> {
@@ -120,7 +121,7 @@ export function DataRoundTrip() {
 
   // ── 방문 기록 다운로드 ──
   const exportVisits = async () => {
-    if (!fromDate || !toDate || fromDate > toDate) { showToast('기간을 확인해 주세요', 'error'); return }
+    if (!fromDate || !toDate || fromDate > toDate) { showToast(msg('기간을 확인해 주세요'), 'error'); return }
     setBusy('visit-export')
     try {
       const refs = await loadRefUnits()
@@ -139,9 +140,9 @@ export function DataRoundTrip() {
         ])
       }
       downloadCsvFile(`방문기록_${fromDate}_${toDate}.csv`, toCsv(rows))
-      showToast(`방문 기록 ${visits.length}건 다운로드`)
+      showToast(msg('방문 기록 {length}건 다운로드', { length: visits.length }))
     } catch (e) {
-      console.error(e); showToast('다운로드 실패', 'error')
+      console.error(e); showToast(msg('다운로드 실패'), 'error')
     } finally { setBusy(null) }
   }
 
@@ -159,9 +160,9 @@ export function DataRoundTrip() {
         ])
       }
       downloadCsvFile(`세대속성_${today}.csv`, toCsv(rows))
-      showToast(`세대 ${refs.size}개 다운로드`)
+      showToast(msg('세대 {size}개 다운로드', { size: refs.size }))
     } catch (e) {
-      console.error(e); showToast('다운로드 실패', 'error')
+      console.error(e); showToast(msg('다운로드 실패'), 'error')
     } finally { setBusy(null) }
   }
 
@@ -170,9 +171,9 @@ export function DataRoundTrip() {
     setBusy('visit-preview'); setVisitPlan(null); setApplied(null)
     try {
       const rows = parseCsv(await file.text())
-      if (rows.length < 2) { showToast('데이터 행이 없습니다', 'error'); return }
+      if (rows.length < 2) { showToast(msg('데이터 행이 없습니다'), 'error'); return }
       const idx = headerIndex(rows[0], ['기록ID', '세대ID', '방문일', '시간대', '방문자', '결과', '메모', '삭제'])
-      if (!idx) { showToast('헤더가 다릅니다. 다운로드한 파일 형식을 유지해 주세요', 'error'); return }
+      if (!idx) { showToast(msg('헤더가 다릅니다. 다운로드한 파일 형식을 유지해 주세요'), 'error'); return }
       const refs = await loadRefUnits()
 
       const get = (r: string[], name: string) => (r[idx.get(name)!] ?? '').trim()
@@ -235,7 +236,7 @@ export function DataRoundTrip() {
       }
       setVisitPlan(plan)
     } catch (e) {
-      console.error(e); showToast('파일 처리 실패', 'error')
+      console.error(e); showToast(msg('파일 처리 실패'), 'error')
     } finally { setBusy(null) }
   }
 
@@ -277,9 +278,9 @@ export function DataRoundTrip() {
     setBusy('unit-preview'); setUnitPlan(null); setApplied(null)
     try {
       const rows = parseCsv(await file.text())
-      if (rows.length < 2) { showToast('데이터 행이 없습니다', 'error'); return }
+      if (rows.length < 2) { showToast(msg('데이터 행이 없습니다'), 'error'); return }
       const idx = headerIndex(rows[0], ['세대ID', '중국인', '방문금지', '정기방문담당자', '세대메모'])
-      if (!idx) { showToast('헤더가 다릅니다. 다운로드한 파일 형식을 유지해 주세요', 'error'); return }
+      if (!idx) { showToast(msg('헤더가 다릅니다. 다운로드한 파일 형식을 유지해 주세요'), 'error'); return }
       const refs = await loadRefUnits()
       const get = (r: string[], name: string) => (r[idx.get(name)!] ?? '').trim()
       const plan: UnitPlan = { updates: [], errors: [], unchanged: 0 }
@@ -313,7 +314,7 @@ export function DataRoundTrip() {
       }
       setUnitPlan(plan)
     } catch (e) {
-      console.error(e); showToast('파일 처리 실패', 'error')
+      console.error(e); showToast(msg('파일 처리 실패'), 'error')
     } finally { setBusy(null) }
   }
 

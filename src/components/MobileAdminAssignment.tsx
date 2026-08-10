@@ -20,6 +20,7 @@ import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import type { Building, TerritoryCard } from '../types'
 import { isEmptyTerritoryCard, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
+import { msg } from '../lib/msg'
 
 function getCardLeaders(card: TerritoryCard) {
   return card.assignedLeaders && card.assignedLeaders.length > 0
@@ -240,7 +241,7 @@ export function MobileAdminAssignment({
 
   const ensureSelected = (): boolean => {
     if (selectedLeadersArr.length === 0) {
-      showToast('인도자를 먼저 선택하세요.', 'info')
+      showToast(msg('인도자를 먼저 선택하세요.'), 'info')
       return false
     }
     return true
@@ -270,7 +271,7 @@ export function MobileAdminAssignment({
     })
     setPendingCardIds(new Set())
     setStep(2)
-    showToast(`${targets.length}개 구역 배정 완료`, 'success')
+    showToast(msg('{length}개 구역 배정 완료', { length: targets.length }), 'success')
   }
 
   // 1개 카드에 선택된 인도자들 모두 추가 (이미 있는 인도자는 유지)
@@ -281,7 +282,7 @@ export function MobileAdminAssignment({
     if (next.length === cardLeaders.length) return // 변경 없음
     await Promise.resolve(onSetCardLeaders(card.id, next, { silentSuccess: true }))
     setSessionAssigned((prev) => new Set([...prev, card.id]))
-    showToast(`${card.name} 배정 완료`)
+    showToast(msg('{name} 배정 완료', { name: card.name }))
   }
 
   // 이미 다른 사람한테 배정된 카드: 추가 / 변경 / 해제
@@ -292,14 +293,14 @@ export function MobileAdminAssignment({
     await Promise.resolve(onSetCardLeaders(card.id, next, { silentSuccess: true }))
     setSessionAssigned((prev) => new Set([...prev, card.id]))
     setActionTarget(null)
-    showToast(`${card.name} 에 ${selectedLeadersArr.join(', ')} 추가 배정`)
+    showToast(msg('{name} 에 {v1} 추가 배정', { name: card.name, v1: selectedLeadersArr.join(', ') }))
   }
   const handleReplaceAssignment = async (card: TerritoryCard) => {
     if (!ensureSelected()) return
     await Promise.resolve(onSetCardLeaders(card.id, selectedLeadersArr, { silentSuccess: true }))
     setSessionAssigned((prev) => new Set([...prev, card.id]))
     setActionTarget(null)
-    showToast(`${card.name} 인도자를 ${selectedLeadersArr.join(', ')} 로 변경`)
+    showToast(msg('{name} 인도자를 {v1} 로 변경', { name: card.name, v1: selectedLeadersArr.join(', ') }))
   }
 
   const assignWholeGroup = async (group: { key: string; cards: TerritoryCard[] }) => {
@@ -309,7 +310,7 @@ export function MobileAdminAssignment({
       return selectedLeadersArr.some((name) => !cl.includes(name))
     })
     if (toAssign.length === 0) {
-      showToast('새로 배정할 카드가 없습니다', 'info')
+      showToast(msg('새로 배정할 카드가 없습니다'), 'info')
       return
     }
     await Promise.all(
@@ -323,7 +324,7 @@ export function MobileAdminAssignment({
       toAssign.forEach((c) => next.add(c.id))
       return next
     })
-    showToast(`${group.key} ${toAssign.length}개 배정 완료`, 'success')
+    showToast(msg('{key} {length}개 배정 완료', { key: group.key, length: toAssign.length }), 'success')
   }
 
   // 배정 해제 (선택된 인도자들 모두를 카드에서 빼기)
@@ -338,7 +339,7 @@ export function MobileAdminAssignment({
       n.delete(card.id)
       return n
     })
-    showToast(`${card.name} 배정 해제`, 'info')
+    showToast(msg('{name} 배정 해제', { name: card.name }), 'info')
   }
 
   // 그룹 전체 해제 (선택된 인도자가 담당하는 카드들만)
@@ -359,7 +360,7 @@ export function MobileAdminAssignment({
       mine.forEach((c) => n.delete(c.id))
       return n
     })
-    showToast(`${group.key} ${mine.length}개 해제`, 'info')
+    showToast(msg('{key} {length}개 해제', { key: group.key, length: mine.length }), 'info')
   }
 
   const toggleGroup = (key: string) => {
@@ -844,7 +845,7 @@ export function MobileAdminAssignment({
                   if (pendingCardIds.size > 0) {
                     if (selectedLeaders.size === 0) {
                       setStep(1)
-                      showToast('인도자를 선택하세요.', 'info')
+                      showToast(msg('인도자를 선택하세요.'), 'info')
                       return
                     }
                     void assignPendingCards()
@@ -923,7 +924,7 @@ export function MobileAdminAssignment({
                         return next
                       })
                       setActionTarget(null)
-                      showToast(`${actionTarget.name} 배정 해제`, 'info')
+                      showToast(msg('{name} 배정 해제', { name: actionTarget.name }), 'info')
                     })
                   }
                 }}

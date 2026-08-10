@@ -29,6 +29,7 @@ import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundari
 import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import { roleLabels } from '../types'
 import type { AppLanguage } from '../i18n'
+import { msg } from '../lib/msg'
 
 const pageToPath: Record<DesktopPage, string> = {
   '홈': '/',
@@ -320,7 +321,7 @@ export function DesktopApp({
     onChangeViewMode(role)
     setRoleDropdownOpen(false)
     const label = role === 'user' ? '봉사자' : roleLabels[role]
-    showToast(`${label}로 변경되었습니다.`, 'success')
+    showToast(msg('{label}로 변경되었습니다.', { label: label }), 'success')
   }
   // /zone?view=map 에서 지도 뷰 (인도자 구역 탭 내부 토글)
   const showZoneMapView = location.pathname === '/zone' && searchParams.get('view') === 'map'

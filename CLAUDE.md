@@ -260,7 +260,8 @@ src/
 │   ├── specialPeriod.ts     # findActivePeriod / findActivePeriodId (특별봉사 기간 판정)
 │   └── mapUtils.ts          # 지도 좌표 유틸 + getBuildingStatus
 ├── locales/                 # i18n 번역 사전 (ko/zh/en, i18n.ts 에서 분리)
-│   ├── ko.ts / zh.ts / en.ts
+│   ├── ko.ts / zh.ts / en.ts          # 화면 문구 (키 기반: t(lang, 'map.save'))
+│   ├── messages.zh.ts / messages.en.ts # 토스트·오류 문구 (한국어 원문이 열쇠)
 ├── data/
 │   ├── territoryStructure.ts  # 지역/동 데이터
 │   ├── territoryBoundary.ts   # 행정구역 폴리곤
@@ -408,6 +409,17 @@ App.css          [모바일 공통] 0px~
 6. **DB 스키마 변경** 시: `supabase/*.sql` 파일 추가 + 사용자가 SQL Editor 에서 실행
 7. **민감 작업** (PIN/RLS/마이그레이션): 사용자에게 백업 안내 후 진행
 8. **거대 파일 수정** 시 부분 Read (offset/limit 사용)
+
+### 문구 다국어 규칙
+- **화면 문구**: `t(language, 'key')` — 컴포넌트는 `language` prop 을 받아 쓴다.
+  props 로 못 받는 곳(이벤트 핸들러·모듈 상수)은 `t(currentLang(), 'key')`.
+  ⚠️ `currentLang()` 은 i18n 모듈이 들고 있는 값이다. localStorage 를 직접 읽지 말 것
+  (언어는 사용자별 키 `chsLanguage:<userId>` 에 저장된다).
+- **토스트·오류 문구**: `showToast(msg('저장했습니다'))` — 한국어 원문이 그대로 열쇠다.
+  번역은 `locales/messages.{zh,en}.ts` 에 추가한다. 사전에 없으면 한국어로 표시되므로
+  번역을 빠뜨려도 화면이 깨지지 않는다. 값 끼워넣기는 `msg('{n}개 삭제', { n })`.
+- ⚠️ **번역된 문자열을 값 비교에 쓰지 말 것.** 라벨은 표시 전용이고, 판단은 코드 내부
+  값(행 번호·상태 코드)으로 한다. (요일 라벨을 '주말' 과 비교해 생긴 버그 있었음)
 
 ### 절대 하지 말 것
 - ❌ `.env.local` 커밋

@@ -7,6 +7,7 @@ import { getLocalDateString } from '../utils/dateUtils'
 import { InformalPickerModal } from './InformalPickerModal'
 import { RestaurantPickerModal } from './RestaurantPickerModal'
 import { t, currentLang } from '../i18n'
+import { msg } from '../lib/msg'
 
 // ── 공유 타입 ──────────────────────────────────────────────────────
 type AssignmentStatus = 'draft' | 'confirmed' | 'shared'
@@ -224,7 +225,7 @@ function DesktopLeaderAssignmentView({
     if (!canEditSelectedEvent) return
     const name = addGuestInput.trim()
     if (!name || !draft) return
-    if (participants.some((p) => p.name === name)) { showToast('이미 있는 이름입니다.', 'info'); return }
+    if (participants.some((p) => p.name === name)) { showToast(msg('이미 있는 이름입니다.'), 'info'); return }
     persistDraft({ ...draft, guests: [...draft.guests, name] })
     setAddGuestInput('')
   }
@@ -267,7 +268,7 @@ function DesktopLeaderAssignmentView({
 
   const saveStatus = async (status: AssignmentStatus) => {
     if (!canEditSelectedEvent) {
-      showToast('이 봉사는 보기 전용입니다.', 'info')
+      showToast(msg('이 봉사는 보기 전용입니다.'), 'info')
       return
     }
     if (!draft || !selectedEvent) return
@@ -581,7 +582,7 @@ function DesktopLeaderAssignmentView({
                             type="button"
                             onClick={() => {
                               if (unassigned.length === 0 && addMemberTeamId !== team.id) {
-                                showToast('미배정 참가자가 없습니다.', 'info')
+                                showToast(msg('미배정 참가자가 없습니다.'), 'info')
                                 return
                               }
                               setAddMemberTeamId((current) => current === team.id ? null : team.id)
@@ -660,7 +661,7 @@ function DesktopLeaderAssignmentView({
                               className="dla-add-card-tile"
                               onClick={() => {
                                 if (team.members.length === 0) {
-                                  showToast('먼저 팀원을 추가해 주세요.', 'info')
+                                  showToast(msg('먼저 팀원을 추가해 주세요.'), 'info')
                                   return
                                 }
                                 setInformalPickerTeamId(team.id)
@@ -717,7 +718,7 @@ function DesktopLeaderAssignmentView({
                               className="dla-add-card-tile"
                               onClick={() => {
                                 if (team.members.length === 0) {
-                                  showToast('먼저 팀원을 추가해 주세요.', 'info')
+                                  showToast(msg('먼저 팀원을 추가해 주세요.'), 'info')
                                   return
                                 }
                                 setRestaurantPickerTeamId(team.id)
@@ -862,7 +863,7 @@ function DesktopLeaderAssignmentView({
             })
             if (ok) okCount += 1
           }
-          if (okCount > 0) showToast(`${okCount}명에게 비공식 자료를 배정했습니다.`, 'success')
+          if (okCount > 0) showToast(msg('{okCount}명에게 비공식 자료를 배정했습니다.', { okCount: okCount }), 'success')
           setInformalPickerTeamId(null)
         }}
         onClose={() => setInformalPickerTeamId(null)}
@@ -899,7 +900,7 @@ function DesktopLeaderAssignmentView({
             })
             if (ok) okCount += 1
           }
-          if (okCount > 0) showToast(`${okCount}명에게 식당을 배정했습니다.`, 'success')
+          if (okCount > 0) showToast(msg('{okCount}명에게 식당을 배정했습니다.', { okCount: okCount }), 'success')
           setRestaurantPickerTeamId(null)
         }}
         onToggleRestaurantFlag={onToggleBuildingRestaurant}
@@ -1202,7 +1203,7 @@ export function DesktopLeaderAssignment({
     const currentLeaders = getCardLeader(card)
     const next = currentLeaders.filter((l) => l !== selectedLeader)
     await Promise.resolve(onSetCardLeaders(card.id, next, { silentSuccess: true }))
-    showToast(`${card.name} 배정을 해제했습니다.`)
+    showToast(msg('{name} 배정을 해제했습니다.', { name: card.name }))
     setReleasing(null)
   }
 
@@ -1218,7 +1219,7 @@ export function DesktopLeaderAssignment({
       if (current.includes(selectedLeader)) return Promise.resolve()
       return Promise.resolve(onSetCardLeaders(id, [...current, selectedLeader], { silentSuccess: true }))
     }))
-    showToast(`${ids.length}개 카드를 ${selectedLeader}님께 배정했습니다.`)
+    showToast(msg('{length}개 카드를 {selectedLeader}님께 배정했습니다.', { length: ids.length, selectedLeader: selectedLeader }))
     setSelectedCardIds(new Set())
     setSelectMode(false)
     setBulkAssigning(false)
@@ -1307,7 +1308,7 @@ export function DesktopLeaderAssignment({
               )
             })}
           </div>
-          <button className="la-add-leader-btn" type="button" onClick={() => showToast('사용자 탭에서 인도자를 추가하세요.', 'info')}>
+          <button className="la-add-leader-btn" type="button" onClick={() => showToast(msg('사용자 탭에서 인도자를 추가하세요.'), 'info')}>
             + 인도자 추가
           </button>
         </aside>
@@ -1444,11 +1445,11 @@ export function DesktopLeaderAssignment({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (!selectedLeader) { showToast('인도자를 먼저 선택하세요.', 'info'); return }
+                        if (!selectedLeader) { showToast(msg('인도자를 먼저 선택하세요.'), 'info'); return }
                         const current = getCardLeader(card)
-                        if (current.includes(selectedLeader)) { showToast('이미 배정된 카드입니다.', 'info'); return }
+                        if (current.includes(selectedLeader)) { showToast(msg('이미 배정된 카드입니다.'), 'info'); return }
                         void Promise.resolve(onSetCardLeaders(card.id, [...current, selectedLeader], { silentSuccess: true }))
-                          .then(() => showToast(`${card.name} → ${selectedLeader} 배정 완료`))
+                          .then(() => showToast(msg('{name} → {selectedLeader} 배정 완료', { name: card.name, selectedLeader: selectedLeader })))
                       }}
                     >
                       {getCardLeader(card).includes(selectedLeader ?? '') ? '배정됨' : '배정'}

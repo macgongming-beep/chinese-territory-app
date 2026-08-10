@@ -6,6 +6,7 @@ import { clusterByGrid, getClusterThresholdKm } from '../utils/mapClustering'
 import { getBuildingStatus, getCardName, getMockPosition, isValidMapCoordinate } from '../utils/mapUtils'
 import { TERRITORY_BOUNDARY } from '../data/territoryBoundary'
 import { showToast } from '../lib/toast'
+import { msg } from '../lib/msg'
 
 const STATUS_COLORS: Record<BuildingStatus, string> = {
   방문필요: '#2D6CDF',
@@ -863,7 +864,7 @@ function NaverMapCanvas({
 
   const handleGPS = () => {
     if (!mapInstanceRef.current || !navigator.geolocation) {
-      showToast('GPS를 사용할 수 없는 환경입니다.', 'error')
+      showToast(msg('GPS를 사용할 수 없는 환경입니다.'), 'error')
       return
     }
     navigator.geolocation.getCurrentPosition(
@@ -902,7 +903,7 @@ function NaverMapCanvas({
           onLocationPermissionBlocked?.()
           return
         }
-        showToast('위치 정보를 가져올 수 없습니다.', 'error')
+        showToast(msg('위치 정보를 가져올 수 없습니다.'), 'error')
       },
     )
   }

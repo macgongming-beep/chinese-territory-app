@@ -1,6 +1,7 @@
 import type { Building, Role, ServiceSession, ServiceSessionStatus, TimeSlot } from '../../types'
 import { supabase, showToast, reportMutationError, getLocalDateString, getCurrentVisitor } from './shared'
 import { logServiceAction } from './serviceLog'
+import { msg } from '../../lib/msg'
 
 export function makeServiceSessionMutations(deps: {
   fetchAll: () => Promise<void>
@@ -71,7 +72,7 @@ export function makeServiceSessionMutations(deps: {
 
     const existingResult = await sameSessionQuery
     if (existingResult.error) {
-      reportMutationError('봉사 시작을 저장하지 못했습니다. service_sessions SQL을 먼저 실행해 주세요.', existingResult.error)
+      reportMutationError(msg('봉사 시작을 저장하지 못했습니다. service_sessions SQL을 먼저 실행해 주세요.'), existingResult.error)
       return null
     }
 
@@ -91,7 +92,7 @@ export function makeServiceSessionMutations(deps: {
         .in('id', activeSessionsToEnd.map((session) => session.id))
 
       if (endResult.error) {
-        reportMutationError('기존 봉사 세션을 종료하지 못했습니다.', endResult.error)
+        reportMutationError(msg('기존 봉사 세션을 종료하지 못했습니다.'), endResult.error)
         return null
       }
     }
@@ -116,7 +117,7 @@ export function makeServiceSessionMutations(deps: {
       : await supabase.from('service_sessions').insert(payload).select('id').single()
 
     if (result.error) {
-      reportMutationError('봉사 시작을 저장하지 못했습니다.', result.error)
+      reportMutationError(msg('봉사 시작을 저장하지 못했습니다.'), result.error)
       return null
     }
 
@@ -149,7 +150,7 @@ export function makeServiceSessionMutations(deps: {
       .eq('id', sessionId)
 
     if (result.error) {
-      reportMutationError('봉사 세션을 종료하지 못했습니다.', result.error)
+      reportMutationError(msg('봉사 세션을 종료하지 못했습니다.'), result.error)
       return
     }
 
@@ -165,7 +166,7 @@ export function makeServiceSessionMutations(deps: {
     })
 
     await fetchAll()
-    showToast('봉사 세션을 종료했습니다')
+    showToast(msg('봉사 세션을 종료했습니다'))
   }
 
   return { getRecordServiceSession, startServiceSession, endServiceSession }

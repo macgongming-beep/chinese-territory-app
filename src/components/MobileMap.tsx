@@ -15,6 +15,7 @@ import { suggestNextUnitNumber } from '../utils/nextUnitNumber'
 import { findActivePeriod } from '../utils/specialPeriod'
 import { AppHeaderActionButtons } from './AppHeader'
 import { MobileBulkUnitSheet } from './MobileBulkUnitSheet'
+import { msg } from '../lib/msg'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
@@ -1332,7 +1333,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                       },
                                       (error) => {
                                         if (error.code === error.PERMISSION_DENIED) {
-                                          showToast('위치 권한이 꺼져 있습니다. 설정에서 위치 권한을 허용하면 현재 위치를 볼 수 있습니다.', 'error')
+                                          showToast(msg('위치 권한이 꺼져 있습니다. 설정에서 위치 권한을 허용하면 현재 위치를 볼 수 있습니다.'), 'error')
                                         }
                                         fallback()
                                       },

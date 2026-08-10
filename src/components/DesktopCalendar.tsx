@@ -14,6 +14,7 @@ import type { TimePreset } from '../lib/timePresets'
 import { PlacePresetEditor, TimePresetEditor } from './admin/AdminMobileCalendar'
 import { ExportEventsModal } from './calendar/ExportEventsModal'
 import { ImportEventsModal } from './calendar/ImportEventsModal'
+import { msg } from '../lib/msg'
 
 
 function getCalendarDays(year: number, month: number): (number | null)[] {
@@ -245,7 +246,7 @@ export function DesktopCalendar({
     const input: EventInput = { time: newTime, endTime: newEndTime || undefined, title: newTitle, place: newPlace, mapLink: newMapLink || undefined, leader: newLeaders.join(', '), memo: newMemo, hasMeeting: newHasMeeting, allowApplications: newAllowApplications }
     if (isRepeat) {
       // 반복 켰는데 종료일 없음 → 조용히 단일 생성되던 문제 방지
-      if (!repeatEnd) { showToast('반복 종료일을 선택해 주세요', 'error'); return }
+      if (!repeatEnd) { showToast(msg('반복 종료일을 선택해 주세요'), 'error'); return }
       onCreateRepeatEvents(getWeeklyDates(newDate, repeatEnd), input)
     } else {
       onCreateEvent({ date: newDate, ...input })

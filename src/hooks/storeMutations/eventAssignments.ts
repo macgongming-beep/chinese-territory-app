@@ -1,4 +1,5 @@
 import { supabase, showToast, reportMutationError, getCurrentVisitor } from './shared'
+import { msg } from '../../lib/msg'
 
 export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<void> }) {
   const { fetchAll } = deps
@@ -16,11 +17,11 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
         .eq('event_id', eventId)
         .eq('user_name', userName)
       if (deleteResult.error) {
-        reportMutationError('카드 배정을 해제하지 못했습니다.', deleteResult.error)
+        reportMutationError(msg('카드 배정을 해제하지 못했습니다.'), deleteResult.error)
         return
       }
       await fetchAll()
-      showToast('카드 배정을 해제했습니다')
+      showToast(msg('카드 배정을 해제했습니다'))
       return
     }
 
@@ -37,7 +38,7 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
       )
 
     if (result.error) {
-      reportMutationError('참여자 카드 배정을 저장하지 못했습니다. event_card_assignments SQL을 먼저 실행해 주세요.', result.error)
+      reportMutationError(msg('참여자 카드 배정을 저장하지 못했습니다. event_card_assignments SQL을 먼저 실행해 주세요.'), result.error)
       return
     }
 
@@ -54,9 +55,9 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
     if (cardsInsert.error) {
       // 대표 카드는 저장됐지만 다중 카드 테이블 동기화 실패 → 조용히 넘어가지 않게
       console.warn('event_card_assignment_cards 동기화 실패:', cardsInsert.error)
-      showToast('대표 카드는 배정됐지만 다중 카드 동기화는 SQL 실행 후 완전해집니다.', 'info')
+      showToast(msg('대표 카드는 배정됐지만 다중 카드 동기화는 SQL 실행 후 완전해집니다.'), 'info')
     } else {
-      showToast('참여자 카드가 배정됐습니다')
+      showToast(msg('참여자 카드가 배정됐습니다'))
     }
   }
 
@@ -115,7 +116,7 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
           return
         }
         await fetchAll()
-        if (!silentSuccess) showToast(`참여자 카드 배정 ${result?.count ?? 0}건을 저장했습니다`)
+        if (!silentSuccess) showToast(msg('참여자 카드 배정 {v1}건을 저장했습니다', { v1: result?.count ?? 0 }))
         return
       }
       // RPC 미적용(함수 없음) 등은 아래 폴백으로
@@ -133,7 +134,7 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
       .eq('event_id', eventId)
 
     if (deleteResult.error) {
-      reportMutationError('기존 참여자 카드 배정을 정리하지 못했습니다.', deleteResult.error)
+      reportMutationError(msg('기존 참여자 카드 배정을 정리하지 못했습니다.'), deleteResult.error)
       return
     }
 
@@ -154,7 +155,7 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
         insertResult = await supabase.from('event_card_assignments').insert(legacyRows)
       }
       if (insertResult.error) {
-        reportMutationError('참여자 카드 일괄 배정을 저장하지 못했습니다. event_card_assignments SQL을 먼저 실행해 주세요.', insertResult.error)
+        reportMutationError(msg('참여자 카드 일괄 배정을 저장하지 못했습니다. event_card_assignments SQL을 먼저 실행해 주세요.'), insertResult.error)
         return
       }
     }
@@ -171,7 +172,7 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
       const multiCardResult = await supabase.from('event_card_assignment_cards').insert(multiCardRows)
       if (multiCardResult.error) {
         console.warn('여러 카드 배정 저장에 실패했습니다. event_card_assignment_cards SQL이 필요할 수 있습니다.', multiCardResult.error)
-        showToast('대표 카드 배정은 저장됐지만, 여러 카드 동기화는 SQL 실행 후 완전하게 사용됩니다.')
+        showToast(msg('대표 카드 배정은 저장됐지만, 여러 카드 동기화는 SQL 실행 후 완전하게 사용됩니다.'))
       }
     }
 
@@ -186,14 +187,14 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
         .eq('id', eventId)
 
       if (statusResult.error) {
-        reportMutationError('배정 공유 상태를 저장하지 못했습니다. event_assignment_status SQL을 먼저 실행해 주세요.', statusResult.error)
+        reportMutationError(msg('배정 공유 상태를 저장하지 못했습니다. event_assignment_status SQL을 먼저 실행해 주세요.'), statusResult.error)
         return
       }
     }
 
     await fetchAll()
     if (!silentSuccess) {
-      showToast(`참여자 카드 배정 ${normalizedAssignments.length}건을 저장했습니다`)
+      showToast(msg('참여자 카드 배정 {length}건을 저장했습니다', { length: normalizedAssignments.length }))
     }
   }
 

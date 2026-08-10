@@ -4,6 +4,7 @@ import { showToast } from '../lib/toast'
 import { t, type AppLanguage } from '../i18n'
 import type { Role } from '../types'
 import { LinkifiedText } from './LinkifiedText'
+import { msg } from '../lib/msg'
 
 export type MentionUser = {
   id: number
@@ -163,7 +164,7 @@ export function CommentSection({
       .eq('id', comment.id)
 
     if (error) {
-      showToast('댓글을 삭제하지 못했습니다.', 'error')
+      showToast(msg('댓글을 삭제하지 못했습니다.'), 'error')
       return
     }
     await fetchComments()
@@ -196,7 +197,7 @@ export function CommentSection({
       .eq('id', comment.id)
 
     if (error) {
-      showToast('댓글을 수정하지 못했습니다.', 'error')
+      showToast(msg('댓글을 수정하지 못했습니다.'), 'error')
       return
     }
 
@@ -315,5 +316,5 @@ export function CommentSection({
 
 function reportCommentError(error: unknown) {
   console.error('댓글 등록 실패', error)
-  showToast('댓글을 등록하지 못했습니다. V1+ SQL 적용 여부를 확인해 주세요.', 'error')
+  showToast(msg('댓글을 등록하지 못했습니다. V1+ SQL 적용 여부를 확인해 주세요.'), 'error')
 }

@@ -13,6 +13,7 @@ import {
 import type { Role } from '../types'
 import { roleLabels } from '../types'
 import { AppHeader } from './AppHeader'
+import { msg } from '../lib/msg'
 
 type UserFilter = 'all' | 'admin' | 'leader' | 'user'
 
@@ -106,7 +107,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
     const to = editingGroupName.trim()
     if (!from) return
     if (!to || to === from) { setEditingGroup(null); setEditingGroupName(''); return }
-    if (groups.includes(to)) { showToast('같은 이름의 집단이 이미 있습니다.', 'error'); return }
+    if (groups.includes(to)) { showToast(msg('같은 이름의 집단이 이미 있습니다.'), 'error'); return }
 
     const ok = await renameUserGroup(from, to)
     if (!ok) return
@@ -114,14 +115,14 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
     if (groupFilter === from) setGroupFilter(to)
     setEditingGroup(null)
     setEditingGroupName('')
-    showToast(`'${from}' → '${to}' 로 변경했습니다.`, 'success')
+    showToast(msg('\'{from}\' → \'{to}\' 로 변경했습니다.', { from: from, to: to }), 'success')
   }
 
   const saveGroups = async (next: string[]) => {
     const serialized = serializeUserGroups(next)
     setGroups(parseUserGroups(serialized))
     const { error } = await supabase.from('app_settings').upsert({ key: USER_GROUPS_SETTING_KEY, value: serialized }, { onConflict: 'key' })
-    if (error) showToast('집단 목록 저장에 실패했습니다.', 'error')
+    if (error) showToast(msg('집단 목록 저장에 실패했습니다.'), 'error')
   }
 
   const users = useMemo(() => {
@@ -168,7 +169,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
   const applyBulkGroup = async () => {
     if (checkedIds.size === 0) return
     const target = bulkGroup === '__none__' ? null : bulkGroup
-    if (!target && bulkGroup !== '__none__') { showToast('지정할 집단을 선택해 주세요', 'error'); return }
+    if (!target && bulkGroup !== '__none__') { showToast(msg('지정할 집단을 선택해 주세요'), 'error'); return }
     const ok = await updateUsersGroup([...checkedIds], target)
     if (ok) { setCheckedIds(new Set()); setSelectMode(false); setBulkGroup('') }
   }

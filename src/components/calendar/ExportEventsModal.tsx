@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { CalendarEvent } from '../../types'
 import { showToast } from '../../lib/toast'
+import { msg } from '../../lib/msg'
 
 type ExportEventsModalProps = {
   isOpen: boolean
@@ -29,7 +30,7 @@ export function ExportEventsModal({ isOpen, onClose, events }: ExportEventsModal
     }
 
     if (filtered.length === 0) {
-      showToast('해당 기간에 내보낼 일정이 없습니다.', 'error')
+      showToast(msg('해당 기간에 내보낼 일정이 없습니다.'), 'error')
       return
     }
 
@@ -64,7 +65,7 @@ export function ExportEventsModal({ isOpen, onClose, events }: ExportEventsModal
     link.click()
     document.body.removeChild(link)
     
-    showToast(`총 ${filtered.length}개의 일정을 내보냈습니다.`, 'success')
+    showToast(msg('총 {length}개의 일정을 내보냈습니다.', { length: filtered.length }), 'success')
     onClose()
   }
 

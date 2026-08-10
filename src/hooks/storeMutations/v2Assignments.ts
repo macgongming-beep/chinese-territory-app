@@ -5,6 +5,7 @@
 import { supabase } from '../../lib/supabase'
 import { showToast } from '../../lib/toast'
 import { getAuthToken } from '../../lib/authToken'
+import { msg } from '../../lib/msg'
 
 export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> }) {
   const { fetchAll } = deps
@@ -31,7 +32,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
         contentType: input.file.type || `image/${ext}`,
       })
     if (uploadError) {
-      showToast(`업로드 실패: ${uploadError.message}`, 'error')
+      showToast(msg('업로드 실패: {message}', { message: uploadError.message }), 'error')
       return { ok: false, error: uploadError.message }
     }
 
@@ -54,7 +55,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     if (error) {
       // Storage 롤백
       await supabase.storage.from('informal-assets').remove([path])
-      showToast(`등록 실패: ${error.message}`, 'error')
+      showToast(msg('등록 실패: {message}', { message: error.message }), 'error')
       return { ok: false, error: error.message }
     }
     await fetchAll()
@@ -69,7 +70,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       .select('id')
       .single()
     if (error) {
-      showToast(`그룹 생성 실패: ${error.message}`, 'error')
+      showToast(msg('그룹 생성 실패: {message}', { message: error.message }), 'error')
       return null
     }
     await fetchAll()
@@ -81,14 +82,14 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       .from('informal_groups')
       .update({ name: name.trim() || '새 그룹' })
       .eq('id', groupId)
-    if (error) showToast(`그룹 이름 변경 실패: ${error.message}`, 'error')
+    if (error) showToast(msg('그룹 이름 변경 실패: {message}', { message: error.message }), 'error')
     else await fetchAll()
   }
 
   const deleteInformalGroup = async (groupId: number) => {
     // 그룹 내 자료는 group_id 가 NULL 로 풀림 (FK on delete set null)
     const { error } = await supabase.from('informal_groups').delete().eq('id', groupId)
-    if (error) showToast(`그룹 삭제 실패: ${error.message}`, 'error')
+    if (error) showToast(msg('그룹 삭제 실패: {message}', { message: error.message }), 'error')
     else await fetchAll()
   }
 
@@ -97,21 +98,21 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       .from('informal_assets')
       .update({ group_id: groupId })
       .eq('id', assetId)
-    if (error) showToast(`자료 이동 실패: ${error.message}`, 'error')
+    if (error) showToast(msg('자료 이동 실패: {message}', { message: error.message }), 'error')
     else await fetchAll()
   }
 
   const deleteInformalAsset = async (assetId: number) => {
     const token = getAuthToken()
     if (!token) {
-      showToast('로그인 세션을 확인할 수 없습니다.', 'error')
+      showToast(msg('로그인 세션을 확인할 수 없습니다.'), 'error')
       return
     }
     const { error } = await supabase.rpc('delete_informal_asset_secure', {
       p_token: token,
       p_asset_id: assetId,
     })
-    if (error) showToast(`자료 삭제 실패: ${error.message}`, 'error')
+    if (error) showToast(msg('자료 삭제 실패: {message}', { message: error.message }), 'error')
     else await fetchAll()
   }
 
@@ -130,9 +131,9 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     })
     if (error) {
       if (error.code === '23505') {
-        showToast('이미 배정된 자료입니다.', 'info')
+        showToast(msg('이미 배정된 자료입니다.'), 'info')
       } else {
-        showToast(`비공식 배정 실패: ${error.message}`, 'error')
+        showToast(msg('비공식 배정 실패: {message}', { message: error.message }), 'error')
       }
       return false
     }
@@ -145,7 +146,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       .from('event_informal_assignments')
       .delete()
       .eq('id', assignmentId)
-    if (error) showToast(`배정 해제 실패: ${error.message}`, 'error')
+    if (error) showToast(msg('배정 해제 실패: {message}', { message: error.message }), 'error')
     else await fetchAll()
   }
 
@@ -165,7 +166,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       assigned_by: input.assignedBy,
     })
     if (error) {
-      showToast(`식당 배정 실패: ${error.message}`, 'error')
+      showToast(msg('식당 배정 실패: {message}', { message: error.message }), 'error')
       return false
     }
     await fetchAll()
@@ -177,7 +178,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       .from('event_restaurant_assignments')
       .delete()
       .eq('id', assignmentId)
-    if (error) showToast(`식당 배정 해제 실패: ${error.message}`, 'error')
+    if (error) showToast(msg('식당 배정 해제 실패: {message}', { message: error.message }), 'error')
     else await fetchAll()
   }
 
@@ -189,7 +190,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       .update({ is_chinese: false })
       .eq('id', unitId)
     if (unitError) {
-      showToast(`세대 해제 실패: ${unitError.message}`, 'error')
+      showToast(msg('세대 해제 실패: {message}', { message: unitError.message }), 'error')
       return
     }
 
@@ -214,7 +215,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       .from('buildings')
       .update({ is_restaurant: isRestaurant })
       .eq('id', buildingId)
-    if (error) showToast(`식당 표시 변경 실패: ${error.message}`, 'error')
+    if (error) showToast(msg('식당 표시 변경 실패: {message}', { message: error.message }), 'error')
     else await fetchAll()
   }
 
@@ -231,7 +232,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       .update({ is_restaurant: true })
       .in('id', buildingIds)
     if (error) {
-      showToast(`일괄 식당 등록 실패: ${error.message}`, 'error')
+      showToast(msg('일괄 식당 등록 실패: {message}', { message: error.message }), 'error')
       throw error
     }
 

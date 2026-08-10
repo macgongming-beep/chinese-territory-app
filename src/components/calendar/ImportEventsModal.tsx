@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { showToast } from '../../lib/toast'
+import { msg } from '../../lib/msg'
 
 type ParsedEvent = {
   date: string
@@ -27,7 +28,7 @@ export function ImportEventsModal({ isOpen, onClose, onCreateEvent }: ImportEven
 
   const handleParse = () => {
     if (!pasteData.trim()) {
-      showToast('입력된 데이터가 없습니다.', 'error')
+      showToast(msg('입력된 데이터가 없습니다.'), 'error')
       return
     }
 
@@ -63,12 +64,12 @@ export function ImportEventsModal({ isOpen, onClose, onCreateEvent }: ImportEven
     }
 
     if (results.length === 0) {
-      showToast('올바른 양식의 데이터를 찾을 수 없습니다. (엑셀에서 여러 열을 드래그하여 복사해주세요)', 'error')
+      showToast(msg('올바른 양식의 데이터를 찾을 수 없습니다. (엑셀에서 여러 열을 드래그하여 복사해주세요)'), 'error')
       return
     }
 
     setParsedRows(results)
-    showToast(`${results.length}개의 일정을 인식했습니다.`, 'success')
+    showToast(msg('{length}개의 일정을 인식했습니다.', { length: results.length }), 'success')
   }
 
   const handleImport = async () => {
@@ -92,10 +93,10 @@ export function ImportEventsModal({ isOpen, onClose, onCreateEvent }: ImportEven
         // 서버 과부하 방지를 위해 30ms 대기
         await new Promise((r) => setTimeout(r, 30))
       }
-      showToast(`성공적으로 ${parsedRows.length}개의 일정을 가져왔습니다.`, 'success')
+      showToast(msg('성공적으로 {length}개의 일정을 가져왔습니다.', { length: parsedRows.length }), 'success')
       onClose()
     } catch {
-      showToast('일부 일정을 등록하는 중 오류가 발생했습니다.', 'error')
+      showToast(msg('일부 일정을 등록하는 중 오류가 발생했습니다.'), 'error')
     } finally {
       setIsProcessing(false)
     }

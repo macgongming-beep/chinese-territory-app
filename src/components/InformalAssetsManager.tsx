@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import type { InformalAsset, Role } from '../types'
 import { showToast } from '../lib/toast'
 import { compressImage } from '../lib/imageCompress'
+import { msg } from '../lib/msg'
 
 const MAX_ORIGINAL_SIZE_MB = 30  // 압축 전 허용 최대 (원본이 너무 크면 메모리 부담)
 const TARGET_SIZE_MB = 0.5       // Phase 5: 1.5MB → 0.5MB (대역폭 절감)
@@ -81,7 +82,7 @@ export function InformalAssetsManager({
       })
     })
     if (rejected.length > 0) {
-      showToast(`일부 파일 거부됨:\n${rejected.join('\n')}`, 'error')
+      showToast(msg('일부 파일 거부됨: {v1}', { v1: rejected.join(', ') }), 'error')
     }
     if (accepted.length > 0) {
       setQueue((prev) => [...prev, ...accepted])
@@ -142,8 +143,8 @@ export function InformalAssetsManager({
       }
     }
     setRunning(false)
-    if (okCount > 0) showToast(`${okCount}개 자료를 등록했습니다`, 'success')
-    if (failCount > 0) showToast(`${failCount}개 실패`, 'error')
+    if (okCount > 0) showToast(msg('{okCount}개 자료를 등록했습니다', { okCount: okCount }), 'success')
+    if (failCount > 0) showToast(msg('{failCount}개 실패', { failCount: failCount }), 'error')
   }
 
   const clearDone = () => {

@@ -1,5 +1,6 @@
 import type { Building, ReturnVisit, TerritoryCard } from '../../types'
 import { supabase, showToast, reportMutationError, requireVisitor } from './shared'
+import { msg } from '../../lib/msg'
 
 export function makeRegularVisitMutations(deps: {
   fetchAll: () => Promise<void>
@@ -34,7 +35,7 @@ export function makeRegularVisitMutations(deps: {
       : await supabase.from('return_visits').insert(payload)
 
     if (result.error) {
-      reportMutationError('활동 정기방문 목록을 동기화하지 못했습니다.', result.error)
+      reportMutationError(msg('활동 정기방문 목록을 동기화하지 못했습니다.'), result.error)
     }
   }
 
@@ -46,23 +47,23 @@ export function makeRegularVisitMutations(deps: {
     if (unit.isRegularVisit) {
       const result = await supabase.from('regular_visits').delete().eq('unit_id', unitId)
       if (result.error) {
-        reportMutationError('정기방문을 해제하지 못했습니다.', result.error)
+        reportMutationError(msg('정기방문을 해제하지 못했습니다.'), result.error)
         return
       }
       await fetchAll()
-      showToast('정기방문이 해제됐습니다')
+      showToast(msg('정기방문이 해제됐습니다'))
     } else {
       const name = visitorName || requireVisitor()
       if (!name) return
       const result = await supabase.from('regular_visits').insert({ unit_id: unitId, visitor_name: name, registered_at: new Date().toISOString() })
       if (result.error) {
-        reportMutationError('정기방문을 등록하지 못했습니다.', result.error)
+        reportMutationError(msg('정기방문을 등록하지 못했습니다.'), result.error)
         return
       }
 
       await syncReturnVisitForUnit(building, unitId, name)
       await fetchAll()
-      showToast('정기방문이 등록됐습니다')
+      showToast(msg('정기방문이 등록됐습니다'))
     }
   }
 
@@ -72,11 +73,11 @@ export function makeRegularVisitMutations(deps: {
     if (!name) {
       const result = await supabase.from('regular_visits').delete().eq('unit_id', unitId)
       if (result.error) {
-        reportMutationError('정기방문자를 해제하지 못했습니다.', result.error)
+        reportMutationError(msg('정기방문자를 해제하지 못했습니다.'), result.error)
         return
       }
       await fetchAll()
-      showToast('정기방문자가 해제됐습니다')
+      showToast(msg('정기방문자가 해제됐습니다'))
       return
     }
 
@@ -88,14 +89,14 @@ export function makeRegularVisitMutations(deps: {
       .upsert(upsertData, { onConflict: 'unit_id' })
 
     if (result.error) {
-      reportMutationError('정기방문자를 저장하지 못했습니다.', result.error)
+      reportMutationError(msg('정기방문자를 저장하지 못했습니다.'), result.error)
       return
     }
     if (building) {
       await syncReturnVisitForUnit(building, unitId, name)
     }
     await fetchAll()
-    showToast('정기방문자가 저장됐습니다')
+    showToast(msg('정기방문자가 저장됐습니다'))
   }
 
   const toggleChinese = async (buildingId: number, unitId: number) => {
@@ -106,7 +107,7 @@ export function makeRegularVisitMutations(deps: {
     const newValue = !unit.isChinese
     const result = await supabase.from('units').update({ is_chinese: newValue }).eq('id', unitId)
     if (result.error) {
-      reportMutationError('중국인 거주 여부를 저장하지 못했습니다.', result.error)
+      reportMutationError(msg('중국인 거주 여부를 저장하지 못했습니다.'), result.error)
       return
     }
     await fetchAll()
@@ -129,7 +130,7 @@ export function makeRegularVisitMutations(deps: {
       visited_at: now,
     })
     if (logRes.error) {
-      reportMutationError('기록을 저장하지 못했습니다.', logRes.error)
+      reportMutationError(msg('기록을 저장하지 못했습니다.'), logRes.error)
       return
     }
     if (result) {
@@ -139,13 +140,13 @@ export function makeRegularVisitMutations(deps: {
       if (updRes.error) {
         // 로그는 저장됐지만 요약 갱신 실패 → 조용히 stale 되지 않게 알림
         console.warn('정기방문 요약(last_*) 갱신 실패:', updRes.error)
-        showToast('기록은 저장됐지만 요약 갱신에 실패했어요. 새로고침 해주세요.', 'info')
+        showToast(msg('기록은 저장됐지만 요약 갱신에 실패했어요. 새로고침 해주세요.'), 'info')
         await fetchAll()
         return
       }
     }
     await fetchAll()
-    showToast('기록이 저장됐습니다')
+    showToast(msg('기록이 저장됐습니다'))
   }
 
   const createManualReturnVisit = async (input: {
@@ -167,58 +168,58 @@ export function makeRegularVisitMutations(deps: {
       assigned_user_name: visitor,
       created_by: visitor,
     })
-    if (res.error) { reportMutationError('정기방문을 추가하지 못했습니다.', res.error); return }
+    if (res.error) { reportMutationError(msg('정기방문을 추가하지 못했습니다.'), res.error); return }
     await fetchAll()
-    showToast('정기방문이 추가됐습니다')
+    showToast(msg('정기방문이 추가됐습니다'))
   }
 
   const updateReturnVisitLog = async (id: number, result: '만남' | '부재' | null, memo: string) => {
     const res = await supabase.from('return_visit_logs').update({ result: result ?? null, memo }).eq('id', id)
-    if (res.error) { reportMutationError('기록을 수정하지 못했습니다.', res.error); return }
+    if (res.error) { reportMutationError(msg('기록을 수정하지 못했습니다.'), res.error); return }
     await fetchAll()
-    showToast('기록이 수정됐습니다')
+    showToast(msg('기록이 수정됐습니다'))
   }
 
   const deleteReturnVisitLog = async (id: number) => {
     const res = await supabase.from('return_visit_logs').delete().eq('id', id)
     if (res.error) {
-      reportMutationError('기록을 삭제하지 못했습니다.', res.error)
+      reportMutationError(msg('기록을 삭제하지 못했습니다.'), res.error)
       return
     }
     await fetchAll()
-    showToast('기록이 삭제됐습니다')
+    showToast(msg('기록이 삭제됐습니다'))
   }
 
   const deleteReturnVisit = async (id: number) => {
     const res = await supabase.from('return_visits').delete().eq('id', id)
     if (res.error) {
-      reportMutationError('정기방문을 삭제하지 못했습니다.', res.error)
+      reportMutationError(msg('정기방문을 삭제하지 못했습니다.'), res.error)
       return
     }
     await fetchAll()
-    showToast('정기방문이 삭제됐습니다')
+    showToast(msg('정기방문이 삭제됐습니다'))
   }
 
   const updateReturnVisitNickname = async (id: number, nickname: string) => {
     const res = await supabase.from('return_visits').update({ nickname: nickname.trim() }).eq('id', id)
-    if (res.error) { reportMutationError('별칭을 저장하지 못했습니다.', res.error); return }
+    if (res.error) { reportMutationError(msg('별칭을 저장하지 못했습니다.'), res.error); return }
     await fetchAll()
-    showToast('별칭이 저장됐습니다')
+    showToast(msg('별칭이 저장됐습니다'))
   }
 
   const updateReturnVisitAddress = async (id: number, address: string) => {
     const res = await supabase.from('return_visits').update({ address: address.trim() }).eq('id', id)
-    if (res.error) { reportMutationError('주소를 저장하지 못했습니다.', res.error); return }
+    if (res.error) { reportMutationError(msg('주소를 저장하지 못했습니다.'), res.error); return }
     await fetchAll()
-    showToast('주소가 저장됐습니다')
+    showToast(msg('주소가 저장됐습니다'))
   }
 
   // 정기방문 담당자 재배정 (전출/삭제로 끊긴 정기방문을 다른 봉사자에게)
   const reassignReturnVisit = async (id: number, newAssignee: string) => {
     const res = await supabase.from('return_visits').update({ assigned_user_name: newAssignee.trim() }).eq('id', id)
-    if (res.error) { reportMutationError('담당자를 변경하지 못했습니다.', res.error); return }
+    if (res.error) { reportMutationError(msg('담당자를 변경하지 못했습니다.'), res.error); return }
     await fetchAll()
-    showToast(`담당자가 ${newAssignee.trim()}님으로 변경됐습니다`)
+    showToast(msg('담당자가 {v1}님으로 변경됐습니다', { v1: newAssignee.trim() }))
   }
 
   return {

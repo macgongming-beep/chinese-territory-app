@@ -3,6 +3,7 @@ import { getCurrentTimeSlot } from '../../utils/timeUtils'
 import { supabase, showToast, reportMutationError, getLocalDateString, requireVisitor } from './shared'
 import { logServiceAction } from './serviceLog'
 import { t, currentLang } from '../../i18n'
+import { msg } from '../../lib/msg'
 
 export function makeVisitMutations(deps: {
   fetchAll: () => Promise<void>
@@ -45,7 +46,7 @@ export function makeVisitMutations(deps: {
     const effectiveTimeSlot = recordSession?.timeSlot ?? timeSlot
     const statusResult = await supabase.from('units').update({ status }).eq('id', unitId)
     if (statusResult.error) {
-      reportMutationError('호수 상태를 저장하지 못했습니다.', statusResult.error)
+      reportMutationError(msg('호수 상태를 저장하지 못했습니다.'), statusResult.error)
       return
     }
     patchUnit(unitId, { status })
@@ -64,7 +65,7 @@ export function makeVisitMutations(deps: {
       .limit(1)
 
     if (existingAttemptResult.error) {
-      reportMutationError('기존 방문 이력을 확인하지 못했습니다. 호수 상태는 변경됐을 수 있습니다.', existingAttemptResult.error)
+      reportMutationError(msg('기존 방문 이력을 확인하지 못했습니다. 호수 상태는 변경됐을 수 있습니다.'), existingAttemptResult.error)
       return
     }
 
@@ -92,7 +93,7 @@ export function makeVisitMutations(deps: {
         })
 
     if (historyResult.error) {
-      reportMutationError('방문 이력을 저장하지 못했습니다. 호수 상태는 변경됐을 수 있습니다.', historyResult.error)
+      reportMutationError(msg('방문 이력을 저장하지 못했습니다. 호수 상태는 변경됐을 수 있습니다.'), historyResult.error)
       return
     }
     // 봉사 로그: 상태 직접 변경
@@ -134,7 +135,7 @@ export function makeVisitMutations(deps: {
       .limit(1)
 
     if (existingResult.error) {
-      reportMutationError('기존 방문 기록 확인에 실패했습니다.', existingResult.error)
+      reportMutationError(msg('기존 방문 기록 확인에 실패했습니다.'), existingResult.error)
       return
     }
 
@@ -148,7 +149,7 @@ export function makeVisitMutations(deps: {
           .update({ invitation_left: false })
           .eq('id', existing.id)
         if (updateResult.error) {
-          reportMutationError('초대장 표시를 업데이트하지 못했습니다.', updateResult.error)
+          reportMutationError(msg('초대장 표시를 업데이트하지 못했습니다.'), updateResult.error)
           return
         }
       } else if (mode) {
@@ -159,7 +160,7 @@ export function makeVisitMutations(deps: {
           .update({ invitation_left: true, result: newResult })
           .eq('id', existing.id)
         if (updateResult.error) {
-          reportMutationError('초대장 표시를 업데이트하지 못했습니다.', updateResult.error)
+          reportMutationError(msg('초대장 표시를 업데이트하지 못했습니다.'), updateResult.error)
           return
         }
       }
@@ -178,7 +179,7 @@ export function makeVisitMutations(deps: {
         invitation_left: true,
       })
       if (insertResult.error) {
-        reportMutationError('초대장 기록을 저장하지 못했습니다.', insertResult.error)
+        reportMutationError(msg('초대장 기록을 저장하지 못했습니다.'), insertResult.error)
         return
       }
     }
@@ -199,7 +200,7 @@ export function makeVisitMutations(deps: {
 
     const unitUpdate = await supabase.from('units').update({ status: result }).eq('id', unitId)
     if (unitUpdate.error) {
-      reportMutationError('세대 상태를 업데이트하지 못했습니다.', unitUpdate.error)
+      reportMutationError(msg('세대 상태를 업데이트하지 못했습니다.'), unitUpdate.error)
       return
     }
     patchUnit(unitId, { status: result })
@@ -215,7 +216,7 @@ export function makeVisitMutations(deps: {
       .limit(1)
 
     if (existingResult.error) {
-      reportMutationError('기존 방문 기록 확인에 실패했습니다.', existingResult.error)
+      reportMutationError(msg('기존 방문 기록 확인에 실패했습니다.'), existingResult.error)
       return
     }
 
@@ -232,7 +233,7 @@ export function makeVisitMutations(deps: {
         })
         .eq('id', existing.id)
       if (updateResult.error) {
-        reportMutationError('방문 기록을 업데이트하지 못했습니다.', updateResult.error)
+        reportMutationError(msg('방문 기록을 업데이트하지 못했습니다.'), updateResult.error)
         return
       }
       historyStatus = '업데이트됨'
@@ -249,7 +250,7 @@ export function makeVisitMutations(deps: {
         invitation_left: invitationLeft,
       })
       if (insertResult.error) {
-        reportMutationError('방문 기록을 저장하지 못했습니다.', insertResult.error)
+        reportMutationError(msg('방문 기록을 저장하지 못했습니다.'), insertResult.error)
         return
       }
       historyStatus = '기록됨'
@@ -286,7 +287,7 @@ export function makeVisitMutations(deps: {
     if (Object.keys(dbFlags).length > 0) {
       const result = await supabase.from('units').update(dbFlags).eq('id', unitId)
       if (result.error) {
-        reportMutationError('세대 정보를 수정하지 못했습니다.', result.error)
+        reportMutationError(msg('세대 정보를 수정하지 못했습니다.'), result.error)
         return
       }
       patchUnit(unitId, flags)
@@ -298,7 +299,7 @@ export function makeVisitMutations(deps: {
         .update({ status: flags.isForbidden ? '거절' : '미방문' })
         .eq('id', unitId)
       if (statusResult.error) {
-        reportMutationError('방문금지 상태를 수정하지 못했습니다.', statusResult.error)
+        reportMutationError(msg('방문금지 상태를 수정하지 못했습니다.'), statusResult.error)
         return
       }
       patchUnit(unitId, { isForbidden: flags.isForbidden, status: flags.isForbidden ? '거절' : '미방문' })
@@ -330,14 +331,14 @@ export function makeVisitMutations(deps: {
 
     const deleteResult = await supabase.from('visit_histories').delete().eq('id', latestHistory.id)
     if (deleteResult.error) {
-      reportMutationError('최근 방문 이력을 취소하지 못했습니다.', deleteResult.error)
+      reportMutationError(msg('최근 방문 이력을 취소하지 못했습니다.'), deleteResult.error)
       return
     }
 
     const restoreStatus: UnitStatus = previousHistory?.result ?? '미방문'
     const statusResult = await supabase.from('units').update({ status: restoreStatus }).eq('id', unitId)
     if (statusResult.error) {
-      reportMutationError('방문 이력은 취소됐지만 호수 상태를 되돌리지 못했습니다.', statusResult.error)
+      reportMutationError(msg('방문 이력은 취소됐지만 호수 상태를 되돌리지 못했습니다.'), statusResult.error)
       return
     }
     patchUnit(unitId, { status: restoreStatus })
@@ -360,7 +361,7 @@ export function makeVisitMutations(deps: {
     })
 
     await fetchAll()
-    showToast('최근 입력이 취소됐습니다')
+    showToast(msg('최근 입력이 취소됐습니다'))
   }
 
   const updateVisitHistory = async (
@@ -379,7 +380,7 @@ export function makeVisitMutations(deps: {
       .eq('id', historyId)
 
     if (historyResult.error) {
-      reportMutationError('방문 이력을 수정하지 못했습니다.', historyResult.error)
+      reportMutationError(msg('방문 이력을 수정하지 못했습니다.'), historyResult.error)
       return
     }
 
@@ -387,7 +388,7 @@ export function makeVisitMutations(deps: {
     if (latestHistory?.id === historyId) {
       const statusResult = await supabase.from('units').update({ status: input.result }).eq('id', unitId)
       if (statusResult.error) {
-        reportMutationError('방문 이력은 수정됐지만 호수 대표 상태를 맞추지 못했습니다.', statusResult.error)
+        reportMutationError(msg('방문 이력은 수정됐지만 호수 대표 상태를 맞추지 못했습니다.'), statusResult.error)
         return
       }
       patchUnit(unitId, { status: input.result })
@@ -441,7 +442,7 @@ export function makeVisitMutations(deps: {
     })
 
     if (insertResult.error) {
-      reportMutationError('방문 이력을 추가하지 못했습니다.', insertResult.error)
+      reportMutationError(msg('방문 이력을 추가하지 못했습니다.'), insertResult.error)
       return
     }
 
@@ -450,7 +451,7 @@ export function makeVisitMutations(deps: {
     if (!latestExistingDate || input.visitedAt >= latestExistingDate) {
       const statusResult = await supabase.from('units').update({ status: input.result }).eq('id', unitId)
       if (statusResult.error) {
-        reportMutationError('방문 이력은 추가됐지만 호수 대표 상태를 맞추지 못했습니다.', statusResult.error)
+        reportMutationError(msg('방문 이력은 추가됐지만 호수 대표 상태를 맞추지 못했습니다.'), statusResult.error)
         return
       }
       patchUnit(unitId, { status: input.result })
@@ -476,14 +477,14 @@ export function makeVisitMutations(deps: {
     })
 
     await fetchAll()
-    showToast('방문 기록이 추가됐습니다')
+    showToast(msg('방문 기록이 추가됐습니다'))
   }
 
   const deleteVisitHistory = async (historyId: number, unitId: number) => {
     const prevLog = visitHistories.find((h) => h.id === historyId)
     const result = await supabase.from('visit_histories').delete().eq('id', historyId)
     if (result.error) {
-      reportMutationError('방문 히스토리 삭제를 실패했습니다.', result.error)
+      reportMutationError(msg('방문 히스토리 삭제를 실패했습니다.'), result.error)
       return
     }
 
@@ -493,7 +494,7 @@ export function makeVisitMutations(deps: {
 
     const statusUpdate = await supabase.from('units').update({ status: newStatus }).eq('id', unitId)
     if (statusUpdate.error) {
-      reportMutationError('호수 상태 동기화에 실패했습니다.', statusUpdate.error)
+      reportMutationError(msg('호수 상태 동기화에 실패했습니다.'), statusUpdate.error)
     } else {
       patchUnit(unitId, { status: newStatus })
     }

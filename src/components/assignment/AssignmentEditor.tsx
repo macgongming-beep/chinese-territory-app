@@ -17,6 +17,7 @@ import { TeamBuildScreen } from './TeamBuildScreen'
 import { ZoneAssignScreen } from './ZoneAssignScreen'
 import { showToast } from '../../lib/toast'
 import { pushBackHandler } from '../../lib/backStack'
+import { msg } from '../../lib/msg'
 
 // "5/29 (금) 10:00 · 봉사 모임" 형식
 function formatEventDateTime(event: CalendarEvent): string {
@@ -88,7 +89,7 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
     )
     dispatch({ type: 'SANITIZE', participants })
     if (removed.length > 0) {
-      showToast(`${removed.join(', ')}님이 신청 취소되어 배정에서 제외됐어요`, 'info')
+      showToast(msg('{v1}님이 신청 취소되어 배정에서 제외됐어요', { v1: removed.join(', ') }), 'info')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

@@ -3,6 +3,7 @@ import type { CsvBuildingImport } from '../../utils/csvBuildingImport'
 import { isValidMapCoordinate } from '../../utils/mapUtils'
 import { supabase, showToast, reportMutationError } from './shared'
 import { logServiceAction } from './serviceLog'
+import { msg } from '../../lib/msg'
 
 export function makeBuildingMutations(deps: {
   fetchAll: () => Promise<void>
@@ -20,11 +21,11 @@ export function makeBuildingMutations(deps: {
     lng: number
   }) => {
     if (!input.address.trim()) {
-      showToast('주소를 입력해 주세요.', 'error')
+      showToast(msg('주소를 입력해 주세요.'), 'error')
       return false
     }
     if (!cards.some((card) => card.id === input.cardId)) {
-      showToast('건물을 추가할 카드를 찾지 못했습니다. 카드를 직접 선택해 주세요.', 'error')
+      showToast(msg('건물을 추가할 카드를 찾지 못했습니다. 카드를 직접 선택해 주세요.'), 'error')
       return false
     }
     // 이름이 없으면 주소에서 자동 추출 (예: "언동로 213")
@@ -44,7 +45,7 @@ export function makeBuildingMutations(deps: {
       lng: input.lng,
     })
     if (result.error) {
-      reportMutationError('건물을 추가하지 못했습니다.', result.error)
+      reportMutationError(msg('건물을 추가하지 못했습니다.'), result.error)
       return false
     }
     const card = cards.find((c) => c.id === input.cardId)
@@ -55,7 +56,7 @@ export function makeBuildingMutations(deps: {
       details: { building_name: autoName, card_name: card?.name ?? null },
     })
     await fetchAll()
-    showToast(`"${autoName}" 건물이 추가됐습니다`)
+    showToast(msg('"{autoName}" 건물이 추가됐습니다', { autoName: autoName }))
     return true
   }
 
@@ -77,7 +78,7 @@ export function makeBuildingMutations(deps: {
       .filter((input) => input.name && input.address && isValidMapCoordinate(input.lat, input.lng))
 
     if (cleanedInputs.length === 0) {
-      showToast('업로드할 건물 데이터가 없습니다.', 'error')
+      showToast(msg('업로드할 건물 데이터가 없습니다.'), 'error')
       return { inserted: 0, skipped: inputs.length }
     }
 
@@ -180,7 +181,7 @@ export function makeBuildingMutations(deps: {
 
     await fetchAll()
     const visitMsg = visitHistoriesInserted > 0 ? `, 방문기록 ${visitHistoriesInserted}건` : ''
-    showToast(`CSV 업로드 완료: 건물 ${inserted}개 추가${visitMsg}, ${skipped}개 제외`, inserted > 0 ? 'success' : 'info')
+    showToast(msg('CSV 업로드 완료: 건물 {inserted}개 추가{visitMsg}, {skipped}개 제외', { inserted: inserted, visitMsg: visitMsg, skipped: skipped }), inserted > 0 ? 'success' : 'info')
     return { inserted, skipped }
   }
 
@@ -201,7 +202,7 @@ export function makeBuildingMutations(deps: {
       })),
     ).select('id')
     if (result.error) {
-      reportMutationError('호수를 추가하지 못했습니다.', result.error)
+      reportMutationError(msg('호수를 추가하지 못했습니다.'), result.error)
       return false
     }
     const newIds = (result.data ?? []).map((row) => (row as { id: number }).id)
@@ -217,36 +218,36 @@ export function makeBuildingMutations(deps: {
   const deleteUnitFromBuilding = async (_buildingId: number, unitId: number) => {
     const result = await supabase.from('units').delete().eq('id', unitId)
     if (result.error) {
-      reportMutationError('호수를 삭제하지 못했습니다.', result.error)
+      reportMutationError(msg('호수를 삭제하지 못했습니다.'), result.error)
       return
     }
     await fetchAll()
-    showToast('호수가 삭제됐습니다')
+    showToast(msg('호수가 삭제됐습니다'))
   }
 
   const deleteBuilding = async (buildingId: number) => {
     const result = await supabase.from('buildings').delete().eq('id', buildingId)
     if (result.error) {
-      reportMutationError('건물을 삭제하지 못했습니다.', result.error)
+      reportMutationError(msg('건물을 삭제하지 못했습니다.'), result.error)
       return
     }
     await fetchAll()
-    showToast('건물이 삭제됐습니다')
+    showToast(msg('건물이 삭제됐습니다'))
   }
 
   const deleteBuildings = async (buildingIds: number[]) => {
     const ids = Array.from(new Set(buildingIds)).filter(Number.isFinite)
     if (ids.length === 0) {
-      showToast('삭제할 건물이 없습니다.', 'info')
+      showToast(msg('삭제할 건물이 없습니다.'), 'info')
       return
     }
     const result = await supabase.from('buildings').delete().in('id', ids)
     if (result.error) {
-      reportMutationError('건물을 삭제하지 못했습니다.', result.error)
+      reportMutationError(msg('건물을 삭제하지 못했습니다.'), result.error)
       return
     }
     await fetchAll()
-    showToast(`건물 ${ids.length}개가 삭제됐습니다`)
+    showToast(msg('건물 {length}개가 삭제됐습니다', { length: ids.length }))
   }
 
   /**
@@ -282,7 +283,7 @@ export function makeBuildingMutations(deps: {
       return selectedPrimaryIdSet.has(primaryId)
     })
     if (duplicateGroups.length === 0) {
-      showToast('중복 주소 건물이 없습니다.', 'info')
+      showToast(msg('중복 주소 건물이 없습니다.'), 'info')
       return
     }
 
@@ -300,7 +301,7 @@ export function makeBuildingMutations(deps: {
           .update({ name: chosenName })
           .eq('id', primary.id)
         if (nameRes.error) {
-          reportMutationError('건물 이름 변경 중 오류가 발생했습니다.', nameRes.error)
+          reportMutationError(msg('건물 이름 변경 중 오류가 발생했습니다.'), nameRes.error)
           return
         }
       }
@@ -315,7 +316,7 @@ export function makeBuildingMutations(deps: {
             .update({ building_id: primary.id })
             .eq('id', unit.id)
           if (res.error) {
-            reportMutationError('호수 이전 중 오류가 발생했습니다.', res.error)
+            reportMutationError(msg('호수 이전 중 오류가 발생했습니다.'), res.error)
             return
           }
           existingNumbers.add(unit.number)
@@ -323,7 +324,7 @@ export function makeBuildingMutations(deps: {
         }
         const delRes = await supabase.from('buildings').delete().eq('id', duplicate.id)
         if (delRes.error) {
-          reportMutationError('중복 건물 삭제 중 오류가 발생했습니다.', delRes.error)
+          reportMutationError(msg('중복 건물 삭제 중 오류가 발생했습니다.'), delRes.error)
           return
         }
         mergedBuildings++
@@ -331,7 +332,7 @@ export function makeBuildingMutations(deps: {
     }
 
     await fetchAll()
-    showToast(`중복 건물 ${mergedBuildings}개 합병 완료 (호수 ${movedUnits}개 이전)`)
+    showToast(msg('중복 건물 {mergedBuildings}개 합병 완료 (호수 {movedUnits}개 이전)', { mergedBuildings: mergedBuildings, movedUnits: movedUnits }))
   }
 
   const updateBuilding = async (
@@ -352,7 +353,7 @@ export function makeBuildingMutations(deps: {
     if (isChineseHeavy !== undefined) payload.is_chinese_heavy = isChineseHeavy
     const result = await supabase.from('buildings').update(payload).eq('id', buildingId)
     if (result.error) {
-      reportMutationError('건물 정보를 수정하지 못했습니다.', result.error)
+      reportMutationError(msg('건물 정보를 수정하지 못했습니다.'), result.error)
       return
     }
     const building = buildings.find((b) => b.id === buildingId)
@@ -366,25 +367,25 @@ export function makeBuildingMutations(deps: {
     })
     await fetchAll()
     if (lat === undefined) {
-      showToast('건물 정보가 수정됐습니다')
+      showToast(msg('건물 정보가 수정됐습니다'))
     }
   }
 
   const moveBuildingToCard = async (buildingId: number, cardId: number) => {
     const result = await supabase.from('buildings').update({ card_id: cardId }).eq('id', buildingId)
     if (result.error) {
-      reportMutationError('건물 카드를 변경하지 못했습니다.', result.error)
+      reportMutationError(msg('건물 카드를 변경하지 못했습니다.'), result.error)
       return
     }
     await fetchAll()
-    showToast('건물 카드가 변경됐습니다')
+    showToast(msg('건물 카드가 변경됐습니다'))
   }
 
   const reassignBuildingsToCards = async (
     updates: Array<{ buildingId: number; cardId: number }>,
   ) => {
     if (updates.length === 0) {
-      showToast('재배정할 건물이 없습니다.', 'info')
+      showToast(msg('재배정할 건물이 없습니다.'), 'info')
       return { updated: 0, failed: 0 }
     }
 
@@ -408,7 +409,7 @@ export function makeBuildingMutations(deps: {
     }
 
     await fetchAll()
-    showToast(`좌표 기준 카드 재배정 완료: ${updated}개 변경${failed ? `, ${failed}개 실패` : ''}`, failed ? 'info' : 'success')
+    showToast(msg('좌표 기준 카드 재배정 완료: {updated}개 변경{v1}', { updated: updated, v1: failed ? `, ${failed}개 실패` : '' }), failed ? 'info' : 'success')
     return { updated, failed }
   }
 

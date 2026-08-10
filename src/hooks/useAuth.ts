@@ -12,6 +12,7 @@ import {
 import { setSentryUser, clearSentryUser } from '../lib/sentry'
 import type { Role } from '../types'
 import { t, currentLang } from '../i18n'
+import { msg } from '../lib/msg'
 
 export type AuthUser = {
   id: number
@@ -170,7 +171,7 @@ export function useAuth() {
 
       if (error) {
         console.error('[login] auth_login RPC failed:', error)
-        showToast('로그인 중 오류가 발생했습니다.', 'error')
+        showToast(msg('로그인 중 오류가 발생했습니다.'), 'error')
         return false
       }
 
@@ -184,12 +185,12 @@ export function useAuth() {
         approval_status?: string | null
       }>)?.[0]
       if (!row) {
-        showToast('아이디 또는 비밀번호가 일치하지 않습니다.', 'error')
+        showToast(msg('아이디 또는 비밀번호가 일치하지 않습니다.'), 'error')
         return false
       }
 
       if (row.approval_status === 'pending') {
-        showToast('가입 신청이 승인 대기 중입니다.', 'info')
+        showToast(msg('가입 신청이 승인 대기 중입니다.'), 'info')
         return false
       }
 
@@ -220,11 +221,11 @@ export function useAuth() {
         setAuthSession(authUser, false)
       }
 
-      showToast('로그인 성공!', 'success')
+      showToast(msg('로그인 성공!'), 'success')
       return true
     } catch (err) {
       console.error(err)
-      showToast('로그인 중 오류가 발생했습니다.', 'error')
+      showToast(msg('로그인 중 오류가 발생했습니다.'), 'error')
       return false
     }
   }
@@ -243,7 +244,7 @@ export function useAuth() {
 
       if (loginIdCheckError) throw loginIdCheckError
       if (existingLoginId) {
-        showToast('이미 사용 중인 아이디입니다.', 'error')
+        showToast(msg('이미 사용 중인 아이디입니다.'), 'error')
         return false
       }
 
@@ -255,7 +256,7 @@ export function useAuth() {
 
       if (nameCheckError) throw nameCheckError
       if (existingName) {
-        showToast('이미 사용 중인 닉네임입니다. 다른 이름을 사용해 주세요.', 'error')
+        showToast(msg('이미 사용 중인 닉네임입니다. 다른 이름을 사용해 주세요.'), 'error')
         return false
       }
 
@@ -267,14 +268,14 @@ export function useAuth() {
 
       if (error || !data) {
         if ((error as { message?: string })?.message?.includes('login_id')) {
-          showToast('DB에 login_id 컬럼이 없습니다. SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
+          showToast(msg('DB에 login_id 컬럼이 없습니다. SQL 마이그레이션을 먼저 실행해 주세요.'), 'error')
           return false
         }
         if ((error as { message?: string })?.message?.includes('approval_status')) {
-          showToast('가입 승인 SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
+          showToast(msg('가입 승인 SQL 마이그레이션을 먼저 실행해 주세요.'), 'error')
           return false
         }
-        showToast('가입 신청에 실패했습니다.', 'error')
+        showToast(msg('가입 신청에 실패했습니다.'), 'error')
         return false
       }
 
@@ -282,7 +283,7 @@ export function useAuth() {
       return true
     } catch (err) {
       console.error(err)
-      showToast('회원가입 중 오류가 발생했습니다.', 'error')
+      showToast(msg('회원가입 중 오류가 발생했습니다.'), 'error')
       return false
     }
   }
@@ -304,7 +305,7 @@ export function useAuth() {
       .eq('id', user.id)
 
     if (error) {
-      showToast('비밀번호 변경에 실패했습니다.', 'error')
+      showToast(msg('비밀번호 변경에 실패했습니다.'), 'error')
       return false
     }
     showToast(t(currentLang(), 'auth.pwChanged'), 'success')
@@ -317,7 +318,7 @@ export function useAuth() {
     const trimmedPhone = input.phone?.trim() ?? ''
 
     if (!trimmedName) {
-      showToast('닉네임을 입력해 주세요.', 'error')
+      showToast(msg('닉네임을 입력해 주세요.'), 'error')
       return false
     }
 
@@ -329,11 +330,11 @@ export function useAuth() {
       .maybeSingle()
 
     if (nameCheckError) {
-      showToast('닉네임 중복 확인 중 오류가 발생했습니다.', 'error')
+      showToast(msg('닉네임 중복 확인 중 오류가 발생했습니다.'), 'error')
       return false
     }
     if (duplicatedName) {
-      showToast('이미 사용 중인 닉네임입니다.', 'error')
+      showToast(msg('이미 사용 중인 닉네임입니다.'), 'error')
       return false
     }
 
@@ -344,10 +345,10 @@ export function useAuth() {
 
     if (error) {
       if ((error as { message?: string })?.message?.includes('phone')) {
-        showToast('DB에 phone 컬럼이 없습니다. 전화번호 마이그레이션을 먼저 실행해 주세요.', 'error')
+        showToast(msg('DB에 phone 컬럼이 없습니다. 전화번호 마이그레이션을 먼저 실행해 주세요.'), 'error')
         return false
       }
-      showToast('개인 정보 변경에 실패했습니다.', 'error')
+      showToast(msg('개인 정보 변경에 실패했습니다.'), 'error')
       return false
     }
 
@@ -444,7 +445,7 @@ export function useAuth() {
       .eq('id', userId)
 
     if (error) {
-      showToast('비밀번호 초기화에 실패했습니다.', 'error')
+      showToast(msg('비밀번호 초기화에 실패했습니다.'), 'error')
       return false
     }
     showToast(t(currentLang(), 'auth.pwChanged') + ` (${newPin})`, 'success')
@@ -466,20 +467,20 @@ export function useAuth() {
 
     if (error) {
       if (error.message?.includes('group_name')) {
-        showToast('DB에 group_name 컬럼/권한이 없습니다. supabase/add_app_users_group.sql 을 실행해 주세요.', 'error')
+        showToast(msg('DB에 group_name 컬럼/권한이 없습니다. supabase/add_app_users_group.sql 을 실행해 주세요.'), 'error')
       } else {
-        showToast('집단 지정에 실패했습니다.', 'error')
+        showToast(msg('집단 지정에 실패했습니다.'), 'error')
       }
       return false
     }
 
     const rows = (data ?? []) as Array<{ id: number; group_name?: string | null }>
     if (rows.length === 0) {
-      showToast('집단이 저장되지 않았습니다. supabase/add_app_users_group.sql 의 grant 구문을 실행해 주세요.', 'error')
+      showToast(msg('집단이 저장되지 않았습니다. supabase/add_app_users_group.sql 의 grant 구문을 실행해 주세요.'), 'error')
       return false
     }
     if (rows.some((row) => (row.group_name ?? null) !== nextGroup)) {
-      showToast('집단 값이 반영되지 않았습니다. DB 권한(grant select … group_name)을 확인해 주세요.', 'error')
+      showToast(msg('집단 값이 반영되지 않았습니다. DB 권한(grant select … group_name)을 확인해 주세요.'), 'error')
       return false
     }
     showToast(
@@ -504,7 +505,7 @@ export function useAuth() {
       .eq('group_name', from)
 
     if (error) {
-      showToast('집단 이름 변경에 실패했습니다.', 'error')
+      showToast(msg('집단 이름 변경에 실패했습니다.'), 'error')
       return false
     }
     await fetchAllUsers()
@@ -520,7 +521,7 @@ export function useAuth() {
       .eq('id', userId)
 
     if (error) {
-      showToast('권한 변경에 실패했습니다.', 'error')
+      showToast(msg('권한 변경에 실패했습니다.'), 'error')
       return false
     }
     showToast(t(currentLang(), 'auth.permissionChanged'), 'success')
@@ -532,7 +533,7 @@ export function useAuth() {
   const deleteUser = async (userId: number) => {
     if (!isAdminLike(user?.role)) return false
     if (user.id === userId) {
-      showToast('현재 로그인한 관리자 계정은 제거할 수 없습니다.', 'error')
+      showToast(msg('현재 로그인한 관리자 계정은 제거할 수 없습니다.'), 'error')
       return false
     }
 
@@ -544,7 +545,7 @@ export function useAuth() {
       .eq('id', userId)
 
     if (error) {
-      showToast('사용자 제거에 실패했습니다.', 'error')
+      showToast(msg('사용자 제거에 실패했습니다.'), 'error')
       return false
     }
 
@@ -571,7 +572,7 @@ export function useAuth() {
     const trimmedName = name.trim()
     const trimmedPin = pin.trim()
     if (!trimmedLoginId || !trimmedName || !trimmedPin) {
-      showToast('아이디, 닉네임, 비밀번호를 모두 입력해 주세요.', 'error')
+      showToast(msg('아이디, 닉네임, 비밀번호를 모두 입력해 주세요.'), 'error')
       return false
     }
 
@@ -583,11 +584,11 @@ export function useAuth() {
       .maybeSingle()
 
     if (loginIdCheckError) {
-      showToast('아이디 중복 확인 중 오류가 발생했습니다.', 'error')
+      showToast(msg('아이디 중복 확인 중 오류가 발생했습니다.'), 'error')
       return false
     }
     if (existingLoginId) {
-      showToast('이미 사용 중인 아이디입니다.', 'error')
+      showToast(msg('이미 사용 중인 아이디입니다.'), 'error')
       return false
     }
 
@@ -598,11 +599,11 @@ export function useAuth() {
       .maybeSingle()
 
     if (nameCheckError) {
-      showToast('닉네임 중복 확인 중 오류가 발생했습니다.', 'error')
+      showToast(msg('닉네임 중복 확인 중 오류가 발생했습니다.'), 'error')
       return false
     }
     if (existingName) {
-      showToast('이미 사용 중인 닉네임입니다.', 'error')
+      showToast(msg('이미 사용 중인 닉네임입니다.'), 'error')
       return false
     }
 
@@ -612,7 +613,7 @@ export function useAuth() {
 
     if (error) {
       if ((error as { message?: string })?.message?.includes('login_id')) {
-        showToast('DB에 login_id 컬럼이 없습니다. SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
+        showToast(msg('DB에 login_id 컬럼이 없습니다. SQL 마이그레이션을 먼저 실행해 주세요.'), 'error')
         return false
       }
       if ((error as { message?: string })?.message?.includes('approval_status')) {
@@ -626,7 +627,7 @@ export function useAuth() {
           return true
         }
       }
-      showToast('사용자 추가에 실패했습니다.', 'error')
+      showToast(msg('사용자 추가에 실패했습니다.'), 'error')
       return false
     }
 
@@ -639,7 +640,7 @@ export function useAuth() {
   const updateUserApprovalStatus = async (userId: number, approvalStatus: AppUserRecord['approvalStatus']) => {
     if (!isAdminLike(user?.role) || !approvalStatus) return false
     if (user.id === userId && approvalStatus !== 'approved') {
-      showToast('현재 로그인한 계정은 차단할 수 없습니다.', 'error')
+      showToast(msg('현재 로그인한 계정은 차단할 수 없습니다.'), 'error')
       return false
     }
 
@@ -650,10 +651,10 @@ export function useAuth() {
 
     if (error) {
       if ((error as { message?: string })?.message?.includes('approval_status')) {
-        showToast('가입 승인 SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
+        showToast(msg('가입 승인 SQL 마이그레이션을 먼저 실행해 주세요.'), 'error')
         return false
       }
-      showToast('가입 신청 상태 변경에 실패했습니다.', 'error')
+      showToast(msg('가입 신청 상태 변경에 실패했습니다.'), 'error')
       return false
     }
 
@@ -676,26 +677,26 @@ export function useAuth() {
     const trimmedName = name.trim()
 
     if (!trimmedLoginId || !trimmedName) {
-      showToast('아이디와 닉네임을 모두 입력해 주세요.', 'error')
+      showToast(msg('아이디와 닉네임을 모두 입력해 주세요.'), 'error')
       return false
     }
 
 
     const target = allUsers.find((item) => item.id === userId)
     if (!target) {
-      showToast('사용자 정보를 찾을 수 없습니다.', 'error')
+      showToast(msg('사용자 정보를 찾을 수 없습니다.'), 'error')
       return false
     }
 
     const duplicatedLoginId = allUsers.some((item) => item.id !== userId && item.loginId === trimmedLoginId)
     if (duplicatedLoginId) {
-      showToast('이미 사용 중인 아이디입니다.', 'error')
+      showToast(msg('이미 사용 중인 아이디입니다.'), 'error')
       return false
     }
 
     const duplicatedName = allUsers.some((item) => item.id !== userId && item.name === trimmedName)
     if (duplicatedName) {
-      showToast('이미 사용 중인 닉네임입니다.', 'error')
+      showToast(msg('이미 사용 중인 닉네임입니다.'), 'error')
       return false
     }
 
@@ -706,10 +707,10 @@ export function useAuth() {
 
     if (error) {
       if ((error as { message?: string })?.message?.includes('login_id')) {
-        showToast('DB에 login_id 컬럼이 없습니다. SQL 마이그레이션을 먼저 실행해 주세요.', 'error')
+        showToast(msg('DB에 login_id 컬럼이 없습니다. SQL 마이그레이션을 먼저 실행해 주세요.'), 'error')
         return false
       }
-      showToast('아이디/닉네임 변경에 실패했습니다.', 'error')
+      showToast(msg('아이디/닉네임 변경에 실패했습니다.'), 'error')
       return false
     }
 

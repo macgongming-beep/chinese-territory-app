@@ -8,6 +8,7 @@ import { t, type AppLanguage, currentLang } from '../i18n'
 import type { MentionUser } from './CommentSection'
 import type { Role } from '../types'
 import { LinkifiedText } from './LinkifiedText'
+import { msg } from '../lib/msg'
 
 type ChatMessage = {
   id: number
@@ -148,7 +149,7 @@ export function ChatRoom({
           .from('chat_room_mutes')
           .upsert({ event_id: eventId, user_id: currentUserId }, { onConflict: 'event_id,user_id' })
         if (error) throw error
-        showToast('이 채팅방 알림을 껐어요', 'info')
+        showToast(msg('이 채팅방 알림을 껐어요'), 'info')
       } else {
         const { error } = await supabase
           .from('chat_room_mutes')
@@ -156,12 +157,12 @@ export function ChatRoom({
           .eq('event_id', eventId)
           .eq('user_id', currentUserId)
         if (error) throw error
-        showToast('이 채팅방 알림을 다시 받아요', 'info')
+        showToast(msg('이 채팅방 알림을 다시 받아요'), 'info')
       }
     } catch (err) {
       console.warn('채팅 음소거 토글 실패:', err)
       setIsMuted(!next) // 롤백
-      showToast('알림 설정 변경에 실패했어요', 'error')
+      showToast(msg('알림 설정 변경에 실패했어요'), 'error')
     } finally {
       setMuteBusy(false)
     }
@@ -346,7 +347,7 @@ export function ChatRoom({
 
     if (uploadError) {
       console.error('사진 업로드 실패', uploadError)
-      showToast('사진을 업로드하지 못했습니다. chat-attachments Storage 버킷을 확인해 주세요.', 'error')
+      showToast(msg('사진을 업로드하지 못했습니다. chat-attachments Storage 버킷을 확인해 주세요.'), 'error')
       setUploading(false)
       return
     }
@@ -390,7 +391,7 @@ export function ChatRoom({
   const deleteMessage = async (message: ChatMessage) => {
     const token = getAuthToken()
     if (!token) {
-      showToast('로그인 정보가 만료되었습니다. 다시 로그인해주세요.', 'error')
+      showToast(msg('로그인 정보가 만료되었습니다. 다시 로그인해주세요.'), 'error')
       return
     }
 

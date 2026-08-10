@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { showToast } from '../lib/toast'
 import type { TerritoryCard } from '../types'
 import { isEmptyTerritoryCard, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
+import { msg } from '../lib/msg'
 
 function getCardLeaders(card: TerritoryCard) {
   return card.assignedLeaders && card.assignedLeaders.length > 0
@@ -229,22 +230,22 @@ export function DesktopAdminAssignment({
     setReleasing(card.id)
     const nextLeaders = getCardLeaders(card).filter((leader) => leader !== selectedLeader)
     await Promise.resolve(onSetCardLeaders(card.id, nextLeaders, { silentSuccess: true }))
-    showToast(`${card.name} 배정을 해제했습니다.`)
+    showToast(msg('{name} 배정을 해제했습니다.', { name: card.name }))
     setReleasing(null)
   }
 
   const handleAssignCard = async (card: TerritoryCard) => {
     if (!selectedLeader) {
-      showToast('인도자를 먼저 선택하세요.', 'info')
+      showToast(msg('인도자를 먼저 선택하세요.'), 'info')
       return
     }
     const currentLeaders = getCardLeaders(card)
     if (currentLeaders.includes(selectedLeader)) {
-      showToast('이미 배정된 카드입니다.', 'info')
+      showToast(msg('이미 배정된 카드입니다.'), 'info')
       return
     }
     await Promise.resolve(onSetCardLeaders(card.id, [...currentLeaders, selectedLeader], { silentSuccess: true }))
-    showToast(`${card.name} -> ${selectedLeader} 배정 완료`)
+    showToast(msg('{name} -> {selectedLeader} 배정 완료', { name: card.name, selectedLeader: selectedLeader }))
   }
 
   const handleBulkAssign = async () => {
@@ -258,7 +259,7 @@ export function DesktopAdminAssignment({
       if (currentLeaders.includes(selectedLeader)) return Promise.resolve()
       return Promise.resolve(onSetCardLeaders(id, [...currentLeaders, selectedLeader], { silentSuccess: true }))
     }))
-    showToast(`${ids.length}개 카드를 ${selectedLeader}님께 배정했습니다.`)
+    showToast(msg('{length}개 카드를 {selectedLeader}님께 배정했습니다.', { length: ids.length, selectedLeader: selectedLeader }))
     setSelectedCardIds(new Set())
     setSelectMode(false)
     setBulkAssigning(false)
@@ -301,7 +302,7 @@ export function DesktopAdminAssignment({
               </button>
             ))}
           </div>
-          <button className="la-add-leader-btn" type="button" onClick={() => showToast('사용자 탭에서 인도자를 추가하세요.', 'info')}>
+          <button className="la-add-leader-btn" type="button" onClick={() => showToast(msg('사용자 탭에서 인도자를 추가하세요.'), 'info')}>
             + 인도자 추가
           </button>
         </aside>

@@ -15,6 +15,7 @@ import { teamHex } from './teamColors'
 import { sortTerritoryCardsByOperationalPriority } from '../../utils/cardSearch'
 import { MapCanvas } from '../MapCanvas'
 import { getBuildingStatus } from '../../utils/mapUtils'
+import { msg } from '../../lib/msg'
 
 type BuildingTypeFilter = '전체' | '주택' | '상가'
 
@@ -216,41 +217,41 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
   // 비공식 토글: 활성팀에 이미 배정돼 있으면 해제, 아니면 전원 배정
   const toggleInformal = async (assetId: number, label: string) => {
     if (!activeTeam || activeTeam.members.length === 0) {
-      showToast('멤버가 있는 팀을 먼저 선택하세요', 'error')
+      showToast(msg('멤버가 있는 팀을 먼저 선택하세요'), 'error')
       return
     }
     const members = activeTeam.members
     const toRemove = (informalAssigns.get(assetId) ?? []).filter((a) => members.includes(a.user))
     if (toRemove.length > 0) {
       for (const a of toRemove) await onRemoveInformalAssignment?.(a.assignmentId)
-      showToast(`"${label}" → ${activeTeam.name} 배정 해제`)
+      showToast(msg('"{label}" → {name} 배정 해제', { label: label, name: activeTeam.name }))
       return
     }
     let ok = 0
     for (const member of members) {
       if (await onAssignInformalToUser?.({ eventId, userName: member, assetId, assignedBy: currentVisitor })) ok += 1
     }
-    if (ok > 0) showToast(`"${label}" → ${activeTeam.name}(${members.join('·')}) 배정`)
+    if (ok > 0) showToast(msg('"{label}" → {name}({v1}) 배정', { label: label, name: activeTeam.name, v1: members.join('·') }))
   }
 
   // 식당 토글 (세대 단위)
   const toggleRestaurant = async (buildingId: number, unitId: number | null, label: string) => {
     if (!activeTeam || activeTeam.members.length === 0) {
-      showToast('멤버가 있는 팀을 먼저 선택하세요', 'error')
+      showToast(msg('멤버가 있는 팀을 먼저 선택하세요'), 'error')
       return
     }
     const members = activeTeam.members
     const toRemove = (restaurantAssigns.get(`${buildingId}:${unitId ?? 0}`) ?? []).filter((a) => members.includes(a.user))
     if (toRemove.length > 0) {
       for (const a of toRemove) await onRemoveRestaurantAssignment?.(a.assignmentId)
-      showToast(`"${label}" → ${activeTeam.name} 배정 해제`)
+      showToast(msg('"{label}" → {name} 배정 해제', { label: label, name: activeTeam.name }))
       return
     }
     let ok = 0
     for (const member of members) {
       if (await onAssignRestaurantToUser?.({ eventId, userName: member, buildingId, unitId, assignedBy: currentVisitor })) ok += 1
     }
-    if (ok > 0) showToast(`"${label}" → ${activeTeam.name}(${members.join('·')}) 배정`)
+    if (ok > 0) showToast(msg('"{label}" → {name}({v1}) 배정', { label: label, name: activeTeam.name, v1: members.join('·') }))
   }
 
   // 공용 항목 타입 (비공식·식당). 식당은 unitId, 비공식은 imageUrl 세팅.
