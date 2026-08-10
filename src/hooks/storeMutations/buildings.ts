@@ -192,24 +192,26 @@ export function makeBuildingMutations(deps: {
     )]
     if (unitNumbers.length === 0) return false
 
+    // 새로 만든 id 를 돌려준다 — 추가 직후 바로 기록(예: 출입불가 → 대상외)해야 할 때 필요
     const result = await supabase.from('units').insert(
       unitNumbers.map((number) => ({
         building_id: buildingId,
         number,
         status: '미방문',
       })),
-    )
+    ).select('id')
     if (result.error) {
       reportMutationError('호수를 추가하지 못했습니다.', result.error)
       return false
     }
+    const newIds = (result.data ?? []).map((row) => (row as { id: number }).id)
     await fetchAll()
     showToast(
       unitNumbers.length === 1
         ? `${unitNumbers[0]} 호수가 추가됐습니다`
         : `${unitNumbers.length}개 호수가 추가됐습니다`,
     )
-    return true
+    return newIds
   }
 
   const deleteUnitFromBuilding = async (_buildingId: number, unitId: number) => {

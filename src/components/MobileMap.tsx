@@ -11,6 +11,7 @@ import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { getLocalDateString } from '../utils/dateUtils'
+import { suggestNextUnitNumber } from '../utils/nextUnitNumber'
 import { findActivePeriod } from '../utils/specialPeriod'
 import { AppHeaderActionButtons } from './AppHeader'
 import { MobileBulkUnitSheet } from './MobileBulkUnitSheet'
@@ -75,7 +76,7 @@ export function MobileMap({
   focusedScopeLabel?: string
   onOpenLocationSettings?: () => void
   onBack: () => void
-  onAddUnit: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void>
+  onAddUnit: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void | number[]>
   onCreateBuilding: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => void
   onDeleteBuilding: (buildingId: number) => void
   onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number) => void
@@ -176,7 +177,9 @@ export function MobileMap({
     findActivePeriod(specialPeriods, dateStr)
   const [unitMemos, setUnitMemos] = useState<Record<number, string>>({})
   const [_absentTimestamps, _setAbsentTimestamps] = useState<Record<number, number>>({})
-  const [newUnitNumber, setNewUnitNumber] = useState('101')
+  // 미리 채워두면 매번 지우고 다시 쳐야 한다 — 비워두고 추천 번호는 placeholder 로만 보여준다
+  const [newUnitNumber, setNewUnitNumber] = useState('')
+  const [addingNoEntry, setAddingNoEntry] = useState(false)
   const [addingUnitToBuildingId, setAddingUnitToBuildingId] = useState<number | null>(null)
   const [bulkUnitBuildingId, setBulkUnitBuildingId] = useState<number | null>(null)
 
@@ -1456,19 +1459,51 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                           )
                         })}
 
-                        {addingUnitToBuildingId === building.id ? (
+                        {addingUnitToBuildingId === building.id ? (() => {
+                          // 입력이 비어 있으면 이미 있는 호수 다음 번호를 알아서 붙인다
+                          const existingNumbers = building.units.map((u) => u.number)
+                          const suggested = suggestNextUnitNumber(existingNumbers)
+                          const submitUnit = () => {
+                            const number = newUnitNumber.trim() || suggested
+                            onAddUnit(building.id, number)
+                            setNewUnitNumber('')
+                          }
+                          const noEntryLabel = t(language, 'unit.noEntry')
+                          const addNoEntry = async () => {
+                            if (addingNoEntry) return
+                            if (existingNumbers.includes(noEntryLabel) || existingNumbers.includes('출입불가')) {
+                              showToast(t(language, 'unit.noEntryExists'))
+                              return
+                            }
+                            setAddingNoEntry(true)
+                            try {
+                              // 호수 이름은 언어와 무관하게 '출입불가' 로 저장 (다른 언어 사용자와 같은 데이터)
+                              const created = await onAddUnit(building.id, '출입불가')
+                              const newId = Array.isArray(created) ? created[0] : undefined
+                              if (newId != null) {
+                                // 추가하자마자 대상외로 기록 — 들어갈 수 없는 건물은 그걸로 끝난다
+                                onQuickLogVisit(building.id, newId, '대상외')
+                                showToast(t(language, 'unit.noEntryAdded'))
+                              }
+                            } finally {
+                              setAddingNoEntry(false)
+                            }
+                          }
+                          return (
                           <div className="mm-unit-add-row">
-                            <input autoFocus placeholder={t(language, 'map.unitNumberPlaceholder')} value={newUnitNumber} onChange={e => setNewUnitNumber(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter' && newUnitNumber.trim()) { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') } }}
+                            <input autoFocus placeholder={suggested} value={newUnitNumber} onChange={e => setNewUnitNumber(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') submitUnit() }}
                               className="mm-unit-add-input" />
-                            <button disabled={!newUnitNumber.trim()} onClick={() => { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') }}
+                            <button onClick={submitUnit}
                               className="mm-unit-add-btn">{t(language, 'common.add')}</button>
-                            <button onClick={() => setBulkUnitBuildingId(building.id)} className="mm-unit-bulk-btn" type="button">일괄</button>
+                            <button onClick={addNoEntry} disabled={addingNoEntry} className="mm-unit-noentry-btn" type="button">{noEntryLabel}</button>
+                            <button onClick={() => setBulkUnitBuildingId(building.id)} className="mm-unit-bulk-btn" type="button">{t(language, 'unit.bulkShort')}</button>
                             <button onClick={() => setAddingUnitToBuildingId(null)} className="mm-unit-cancel-btn" aria-label="닫기">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
                             </button>
                           </div>
-                        ) : (
+                          )
+                        })() : (
                           <button className="bld-add-unit-btn" onClick={() => setAddingUnitToBuildingId(building.id)} type="button">{t(language, 'map.addUnit')}</button>
                         )}
                       </div>

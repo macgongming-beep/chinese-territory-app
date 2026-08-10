@@ -29771,6 +29771,9 @@ button:focus-visible {
 .mm-unit-add-btn { padding: 9px 14px; background: var(--ink); color: #fff; border: none; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; flex-shrink: 0; }
 .mm-unit-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .mm-unit-bulk-btn { padding: 9px 12px; background: var(--surface, #fff); color: var(--ink); border: 1px solid var(--ink); border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; flex-shrink: 0; }
+/* 출입불가: 추가와 동시에 대상외로 기록되므로 대상외 색(회색)으로 예고 */
+.mm-unit-noentry-btn { padding: 9px 10px; background: var(--surface, #fff); color: #64748b; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 700; font-size: 12.5px; cursor: pointer; flex-shrink: 0; white-space: nowrap; }
+.mm-unit-noentry-btn:disabled { opacity: 0.5; cursor: default; }
 .mm-unit-cancel-btn { width: 32px; height: 34px; display: grid; place-items: center; background: var(--bg-muted, #f1f5f9); border: none; border-radius: 8px; color: var(--muted); cursor: pointer; flex-shrink: 0; }
 
 /* ━━━ 호수 일괄 추가 바텀시트 ━━━ */

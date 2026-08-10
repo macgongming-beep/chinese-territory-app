@@ -14,7 +14,7 @@ export function MobileBulkUnitSheet({
   buildingId: number
   buildingName: string
   existingNumbers: Set<string>
-  onAdd: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void>
+  onAdd: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void | number[]>
   onClose: () => void
 }) {
   const [startFloor, setStartFloor] = useState(1)
@@ -107,7 +107,7 @@ export function MobileBulkUnitSheet({
 
           {/* 미리보기 */}
           <div className="mbu-preview-label">
-            {t(currentLang(), 'unit.previewAdd').replace('{count}', '')} <strong>{t(currentLang(), 'unit.previewAdd', { count: newOnes.length })}</strong>
+            <strong>{t(currentLang(), 'unit.previewAdd', { count: newOnes.length })}</strong>
             {skipped > 0 && <span className="mbu-skip"> {t(currentLang(), 'unit.skipped', { count: skipped })}</span>}
           </div>
           <div className="mbu-preview-grid">

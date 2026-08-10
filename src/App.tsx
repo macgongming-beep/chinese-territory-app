@@ -9,7 +9,7 @@ import { useCalendarRealtime } from './hooks/useCalendarRealtime'
 import { useAuth } from './hooks/useAuth'
 import type { Role } from './types'
 import type { AppLanguage } from './i18n'
-import { isAppLanguage } from './i18n'
+import { isAppLanguage, setCurrentLang } from './i18n'
 import './App.css'
 
 const DesktopApp = lazy(() =>
@@ -59,6 +59,10 @@ function App() {
   const [mobileViewMode, setMobileViewMode] = useState<Role>(actualRole)
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage)
   const [translatePlaceNames, setTranslatePlaceNames] = useState(false)
+  // 컴포넌트 밖(이벤트 핸들러·모듈 상수)에서 t(currentLang(), ...) 로 부르는 코드가
+  // 현재 언어를 알 수 있도록 i18n 모듈에 반영한다. 렌더 중에 바로 맞춰야
+  // 첫 페인트부터 올바른 언어로 나온다.
+  setCurrentLang(language)
   const [isDesktop, setIsDesktop] = useState<boolean>(getInitialDesktopMode)
 
   const {

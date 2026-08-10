@@ -12,13 +12,21 @@ export const languageLabels: Record<AppLanguage, string> = {
 
 const dictionary = { ko, zh, en } satisfies Record<AppLanguage, Record<string, string>>
 
+// 현재 화면 언어 — App 이 언어를 바꿀 때마다 여기에 반영한다.
+// ⚠ localStorage 를 직접 읽지 않는다: 언어는 사용자별 키(chsLanguage:<userId>)에
+//   저장되어 있어서, 'language' 같은 키를 읽으면 항상 한국어로 떨어진다.
+let activeLanguage: AppLanguage = 'ko'
+
+export function setCurrentLang(language: AppLanguage): void {
+  activeLanguage = language
+}
+
 /**
- * 저장된 언어 설정을 읽는다 — 컴포넌트 밖(이벤트 핸들러·mutation)에서 t() 를 부를 때.
- * localStorage 값을 그대로 넘기면 타입이 맞지 않아 as any 로 뭉개게 되므로 여기서 좁힌다.
+ * 컴포넌트 밖(이벤트 핸들러·mutation·모듈 상수)에서 t() 를 부를 때 쓰는 현재 언어.
+ * props 로 language 를 받을 수 있는 곳에서는 그걸 그대로 쓰는 편이 낫다.
  */
 export function currentLang(): AppLanguage {
-  const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('language') : null
-  return saved === 'zh' || saved === 'en' ? saved : 'ko'
+  return activeLanguage
 }
 
 export function t(language: AppLanguage, key: keyof typeof dictionary.ko, vars?: Record<string, string | number>): string {

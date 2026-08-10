@@ -89,7 +89,7 @@ export function DesktopMap({
   serviceSessions: ServiceSession[]
   focusedCardId?: number | null
   focusedBuildingId?: number | null
-  onAddUnit: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void>
+  onAddUnit: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void | number[]>
   onCreateBuilding: (input: {
     cardId: number
     name: string

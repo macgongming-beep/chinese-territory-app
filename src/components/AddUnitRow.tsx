@@ -13,7 +13,7 @@ export function AddUnitRow({
 }: {
   buildingId: number
   existingNumbers: Set<string>
-  onAdd: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void>
+  onAdd: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void | number[]>
 }) {
   const [value, setValue] = useState('')
   const [showBulk, setShowBulk] = useState(false)
@@ -128,7 +128,6 @@ export function AddUnitRow({
           {/* 미리보기 */}
           <div className="unit-bulk-preview">
             <div className="unit-bulk-preview-label">
-              {t(currentLang(), 'unit.previewAdd').replace('{count}', '')} &nbsp;
               <strong>{t(currentLang(), 'unit.previewAdd', { count: newOnes.length })}</strong>
               {skipped > 0 && (
                 <span className="unit-bulk-skip"> {t(currentLang(), 'unit.skipped', { count: skipped })}</span>

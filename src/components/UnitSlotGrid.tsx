@@ -5,8 +5,9 @@ import { getSlotMatrix, isAllSlotsAbsent } from '../utils/visitStrategy'
 import { t, currentLang } from '../i18n'
 
 // 표시용 라벨 — 값 비교에 쓰지 말 것 (번역되면 문자열이 달라진다)
-const DAY_LABELS = [t(currentLang(), 'time.weekday'), t(currentLang(), 'time.weekend')]
-const SLOT_LABELS: string[] = [t(currentLang(), 'time.morning'), t(currentLang(), 'time.afternoon'), t(currentLang(), 'time.evening')]
+// ⚠ 모듈 최상위에서 t() 를 부르면 import 시점 언어로 고정된다 → 함수로 두고 렌더할 때 계산
+const dayLabels = () => [t(currentLang(), 'time.weekday'), t(currentLang(), 'time.weekend')]
+const slotLabels = () => [t(currentLang(), 'time.morning'), t(currentLang(), 'time.afternoon'), t(currentLang(), 'time.evening')]
 const WEEKEND_ROW = 1  // SlotMatrix 는 [평일, 주말] 순
 
 // ── 셀 색상 계산 ──────────────────────────────────────────────
@@ -183,7 +184,7 @@ export function UnitSlotGrid({
         {/* 헤더 행 */}
         <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 1fr 1fr', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
           <div />
-          {SLOT_LABELS.map((s) => (
+          {slotLabels().map((s) => (
             <div key={s} style={{ padding: '3px 0', textAlign: 'center', fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>{s}</div>
           ))}
         </div>
@@ -191,14 +192,14 @@ export function UnitSlotGrid({
         {/* 데이터 행 */}
         {matrix.map((row, rowIdx) => (
           <div
-            key={DAY_LABELS[rowIdx]}
+            key={dayLabels()[rowIdx]}
             style={{
               display: 'grid', gridTemplateColumns: '36px 1fr 1fr 1fr',
               borderBottom: rowIdx < matrix.length - 1 ? '1px solid #f1f5f9' : 'none',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f8fafc', borderRight: '1px solid #f1f5f9' }}>
-              {DAY_LABELS[rowIdx]}
+              {dayLabels()[rowIdx]}
             </div>
             {row.map((cell, colIdx) => {
               const s = cellStyle(cell)
