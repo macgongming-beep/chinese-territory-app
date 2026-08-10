@@ -482,6 +482,11 @@ function NaverMapCanvas({
   const clickListenerRef = useRef<any>(null)
   const scriptLoadedRef = useRef(false)
   const hasFitBoundaryRef = useRef(false)
+  // 건물을 지정해 들어온 직후, 화면 밖에서 카드 필터가 뒤늦게 세팅되며
+  // 지도를 카드 범위로 끌고 가던 것을 막는다 (전체 → 구 → 건물 처럼 보이던 잔상)
+  const suppressNextCardFitRef = useRef(false)
+  // 건물을 지정해 들어왔는지 — 첫 자동 맞춤(전체 보기)을 건너뛰는 데 쓴다
+  const mountedWithFocusRef = useRef(false)
   const prevSelectedBuildingIdRef = useRef(selectedBuildingId)
   const prevSelectedCardIdRef = useRef<number | '전체' | null>(selectedCardId)
   const prevHighlightedCardIdsSignatureRef = useRef('')
@@ -1319,6 +1324,8 @@ function NaverMapCanvas({
       const initialCardId = selectedCardIdRef.current
       if (hasFocusTarget) {
         hasFitBoundaryRef.current = true
+        suppressNextCardFitRef.current = true
+        mountedWithFocusRef.current = true
         prevSelectedCardIdRef.current = initialCardId
         prevHighlightedCardIdsSignatureRef.current = getHighlightedCardIdsSignature(highlightedCardIdsRef.current)
       } else if (initialCardId !== null && initialCardId !== '전체') {
@@ -1451,7 +1458,10 @@ function NaverMapCanvas({
     if (visibleMapSignature && visibleBuildingSignatureRef.current !== visibleMapSignature) {
       const isInitialLoad = !visibleBuildingSignatureRef.current
       visibleBuildingSignatureRef.current = visibleMapSignature
-      if (isInitialLoad && !editingBuildingLocationRef.current && !addingBuildingRef.current) {
+      // 지정한 건물로 들어왔으면 이미 그 위치다 — 전체 보기로 되돌리지 않는다
+      if (isInitialLoad && mountedWithFocusRef.current) {
+        // 위에서 signature 는 기록해 두었으므로 다음부터는 이 분기로 오지 않는다
+      } else if (isInitialLoad && !editingBuildingLocationRef.current && !addingBuildingRef.current) {
         // 특정 카드로 진입한 경우, 건물 마커 기준(과도한 줌인) 대신 구역선 전체가 보이게 fit
         const sel = selectedCardIdRef.current
         const selBoundary = (sel !== null && sel !== '전체')
@@ -1491,6 +1501,13 @@ function NaverMapCanvas({
     const highlightedScopeChanged = prevHighlightedCardIdsSignatureRef.current !== highlightedCardIdsSignature
 
     if (cardSelectionChanged || highlightedScopeChanged) {
+      // 지정한 건물을 보고 있는 중이라면 그 화면을 유지한다
+      if (suppressNextCardFitRef.current) {
+        suppressNextCardFitRef.current = false
+        prevSelectedCardIdRef.current = selectedCardId
+        prevHighlightedCardIdsSignatureRef.current = highlightedCardIdsSignature
+        return
+      }
       if (selectedCardId !== '전체' && selectedCardId !== null) {
         const boundary = cardBoundaries.find((b: CardBoundary) => b.cardId === selectedCardId)
         if (boundary && boundary.points.length >= 3) {
