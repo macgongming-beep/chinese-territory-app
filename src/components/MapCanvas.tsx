@@ -971,10 +971,98 @@ function NaverMapCanvas({
     })
   }
 
+  // 구역선 하나를 지도에 올린다 (폴리곤)
+  const createBoundaryPolygon = (boundary: CardBoundary) => {
+    const naver = (window as any).naver
+    if (!naver?.maps || !mapInstanceRef.current) return
+    if (cardPolygonsRef.current.has(boundary.cardId)) return
+    if (!boundary.points || boundary.points.length < 3) return
+    const palette = getMapPalette()
+    try {
+      const polygon = new naver.maps.Polygon({
+        map: mapInstanceRef.current,
+        paths: boundary.points.map(({ lat, lng }) => {
+          if (typeof lat !== 'number' || typeof lng !== 'number') {
+            throw new Error(`Invalid point: ${lat}, ${lng}`)
+          }
+          return new naver.maps.LatLng(lat, lng)
+        }),
+        fillColor: palette.cardDraft,
+        fillOpacity: 0.08,
+        strokeColor: palette.cardDraft,
+        strokeOpacity: 0.55,
+        strokeWeight: 2,
+        strokeStyle: 'shortdash',
+        clickable: !addingBuilding,
+      })
+
+      naver.maps.Event.addListener(polygon, 'click', () => {
+        onSelectCardBoundaryRef.current?.(boundary.cardId)
+      })
+      naver.maps.Event.addListener(polygon, 'rightclick', (event: any) => {
+        onMapRightClickRef.current?.(event.coord.lat(), event.coord.lng())
+      })
+
+      cardPolygonsRef.current.set(boundary.cardId, polygon)
+    } catch (err) {
+      console.error(`Error creating polygon for card ${boundary.cardId}:`, err)
+    }
+  }
+
+  // 카드 이름 라벨 — 확대해야 보이므로, 보일 때가 되면 그때 만든다
+  // (600개를 미리 만들어 두면 지도 진입에서 그대로 시간을 잡아먹는다)
+  const createBoundaryLabel = (boundary: CardBoundary) => {
+    const naver = (window as any).naver
+    if (!naver?.maps || !mapInstanceRef.current) return
+    if (cardLabelsRef.current.has(boundary.cardId)) return
+    const center = boundaryLabelCenter(boundary.points)
+    const card = cardsRef.current.find((c) => c.id === boundary.cardId)
+    const text = card ? shortCardLabel(card.name) : ''
+    if (!center || !text) return
+    try {
+      const labelMarker = new naver.maps.Marker({
+        position: new naver.maps.LatLng(center.lat, center.lng),
+        map: mapInstanceRef.current,
+        icon: { content: cardLabelHtml(text), anchor: new naver.maps.Point(0, 0) },
+        clickable: false,
+        zIndex: 50,
+      })
+      cardLabelsRef.current.set(boundary.cardId, labelMarker)
+    } catch (err) {
+      console.error(`Error creating label for card ${boundary.cardId}:`, err)
+    }
+  }
+
+  // 남은 구역선을 조금씩 나눠서 올린다 — 한 번에 다 만들면 지도가 그동안 멈춘다
+  const boundaryQueueRef = useRef<CardBoundary[]>([])
+  const boundaryChunkTimerRef = useRef<number | null>(null)
+  const cancelBoundaryQueue = () => {
+    if (boundaryChunkTimerRef.current !== null) {
+      window.cancelAnimationFrame(boundaryChunkTimerRef.current)
+      boundaryChunkTimerRef.current = null
+    }
+    boundaryQueueRef.current = []
+  }
+  const drainBoundaryQueueRef = useRef<() => void>(() => {})
+  drainBoundaryQueueRef.current = () => {
+    const CHUNK = 40
+    const chunk = boundaryQueueRef.current.splice(0, CHUNK)
+    chunk.forEach(createBoundaryPolygon)
+    // 스타일 정리는 끝나고 한 번만 — 조각마다 전체를 다시 칠하면 그게 또 부담이다
+    if (boundaryQueueRef.current.length > 0) {
+      boundaryChunkTimerRef.current = window.requestAnimationFrame(() => drainBoundaryQueueRef.current())
+    } else {
+      boundaryChunkTimerRef.current = null
+      updatePolygonStyles()
+      updateCardLabelVisibility()
+    }
+  }
+
+  useEffect(() => () => cancelBoundaryQueue(), [])
+
   const syncCardBoundaries = () => {
     const naver = (window as any).naver
     if (!naver?.maps || !mapInstanceRef.current) return
-    const palette = getMapPalette()
 
     const currentMap = cardPolygonsRef.current
     const labelMap = cardLabelsRef.current
@@ -994,71 +1082,46 @@ function NaverMapCanvas({
       }
     })
 
-    cardBoundaries.forEach((boundary) => {
-      if (!currentMap.has(boundary.cardId)) {
-        try {
-          if (!boundary.points || boundary.points.length < 3) return
+    cancelBoundaryQueue()
+    const pending = cardBoundaries.filter((b) => !currentMap.has(b.cardId))
 
-          const polygon = new naver.maps.Polygon({
-            map: mapInstanceRef.current,
-            paths: boundary.points.map(({ lat, lng }) => {
-              if (typeof lat !== 'number' || typeof lng !== 'number') {
-                throw new Error(`Invalid point: ${lat}, ${lng}`)
-              }
-              return new naver.maps.LatLng(lat, lng)
-            }),
-            fillColor: palette.cardDraft,
-            fillOpacity: 0.08,
-            strokeColor: palette.cardDraft,
-            strokeOpacity: 0.55,
-            strokeWeight: 2,
-            strokeStyle: 'shortdash',
-            clickable: !addingBuilding,
-          })
+    // 지도 가운데에 가까운 것부터 — 보고 있는 곳이 먼저 채워진다
+    const center = mapInstanceRef.current.getCenter?.()
+    if (center && pending.length > 1) {
+      const cLat = center.lat()
+      const cLng = center.lng()
+      pending.sort((a, b) => {
+        const pa = a.points?.[0]
+        const pb = b.points?.[0]
+        if (!pa || !pb) return 0
+        const da = (pa.lat - cLat) ** 2 + (pa.lng - cLng) ** 2
+        const db = (pb.lat - cLat) ** 2 + (pb.lng - cLng) ** 2
+        return da - db
+      })
+    }
 
-          naver.maps.Event.addListener(polygon, 'click', () => {
-            onSelectCardBoundaryRef.current?.(boundary.cardId)
-          })
-          naver.maps.Event.addListener(polygon, 'rightclick', (event: any) => {
-            onMapRightClickRef.current?.(event.coord.lat(), event.coord.lng())
-          })
-
-          currentMap.set(boundary.cardId, polygon)
-        } catch (err) {
-          console.error(`Error creating polygon for card ${boundary.cardId}:`, err)
-        }
-      }
-
-      // 라벨 (없으면 생성). 카드명 → 짧은 이름
-      if (!labelMap.has(boundary.cardId)) {
-        const center = boundaryLabelCenter(boundary.points)
-        const card = cardsRef.current.find((c) => c.id === boundary.cardId)
-        const text = card ? shortCardLabel(card.name) : ''
-        if (center && text) {
-          try {
-            const labelMarker = new naver.maps.Marker({
-              position: new naver.maps.LatLng(center.lat, center.lng),
-              map: mapInstanceRef.current.getZoom() >= CARD_LABEL_MIN_ZOOM ? mapInstanceRef.current : null,
-              icon: { content: cardLabelHtml(text), anchor: new naver.maps.Point(0, 0) },
-              clickable: false,
-              zIndex: 50,
-            })
-            labelMap.set(boundary.cardId, labelMarker)
-          } catch (err) {
-            console.error(`Error creating label for card ${boundary.cardId}:`, err)
-          }
-        }
-      }
-    })
+    const FIRST_BATCH = 40
+    pending.slice(0, FIRST_BATCH).forEach(createBoundaryPolygon)
+    boundaryQueueRef.current = pending.slice(FIRST_BATCH)
 
     updatePolygonStyles()
     updateCardLabelVisibility()
+
+    if (boundaryQueueRef.current.length > 0 && boundaryChunkTimerRef.current === null) {
+      boundaryChunkTimerRef.current = window.requestAnimationFrame(() => drainBoundaryQueueRef.current())
+    }
   }
 
   // 줌 레벨에 따라 카드 라벨 표시/숨김 (겹침 방지)
   const updateCardLabelVisibility = () => {
     if (!mapInstanceRef.current) return
     const show = mapInstanceRef.current.getZoom() >= CARD_LABEL_MIN_ZOOM
+    if (show) {
+      // 아직 안 만든 라벨은 이때 만든다 (숨겨진 라벨을 미리 만들지 않는다)
+      cardBoundariesRef.current.forEach((boundary) => {
+        if (cardPolygonsRef.current.has(boundary.cardId)) createBoundaryLabel(boundary)
+      })
+    }
     cardLabelsRef.current.forEach((label) => {
       const onMap = !!label.getMap()
       if (show && !onMap) label.setMap(mapInstanceRef.current)
