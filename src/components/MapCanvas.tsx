@@ -1262,14 +1262,23 @@ function NaverMapCanvas({
       if (!naver?.maps || !mapRef.current) return
       scriptLoadedRef.current = true
 
-      const center =
-        buildingsRef.current.length > 0
+      // 갈 곳이 정해져 있으면 처음부터 거기서 시작한다.
+      // 예전에는 아무 데나 띄운 뒤 → 건물로 날아가고 → 다시 카드 범위로 맞추느라
+      // 화면이 두세 번 움직였다 (구역 → 구 → 건물 처럼 보이던 것)
+      const focusTarget = focusBuildingIdRef.current
+        ? buildingsRef.current.find((item) => item.id === focusBuildingIdRef.current)
+        : undefined
+      const hasFocusTarget = !!focusTarget && isValidMapCoordinate(Number(focusTarget.lat), Number(focusTarget.lng))
+
+      const center = hasFocusTarget
+        ? new naver.maps.LatLng(Number(focusTarget!.lat), Number(focusTarget!.lng))
+        : buildingsRef.current.length > 0
           ? new naver.maps.LatLng(buildingsRef.current[0].lat, buildingsRef.current[0].lng)
           : new naver.maps.LatLng(37.2384, 127.2142)
 
       mapInstanceRef.current = new naver.maps.Map(mapRef.current, {
         center,
-        zoom: 15,
+        zoom: hasFocusTarget ? 17 : 15,
         mapTypeControl: false,
         zoomControl: false,
       })
@@ -1287,7 +1296,7 @@ function NaverMapCanvas({
       }
 
       rebuildMarkers()
-      focusBuildingOnMap(focusBuildingIdRef.current)
+      if (hasFocusTarget) lastFocusedBuildingIdRef.current = focusBuildingIdRef.current ?? null
 
       // 구역 경계선 폴리곤
       boundaryRef.current = new naver.maps.Polygon({
@@ -1306,8 +1315,13 @@ function NaverMapCanvas({
       })
 
       // 선택된 카드나 범위가 있으면 해당 경계로 줌인, 없으면 전체 영역
+      // (건물을 지정해서 들어온 경우엔 이미 그 건물에 맞춰져 있으므로 건너뛴다)
       const initialCardId = selectedCardIdRef.current
-      if (initialCardId !== null && initialCardId !== '전체') {
+      if (hasFocusTarget) {
+        hasFitBoundaryRef.current = true
+        prevSelectedCardIdRef.current = initialCardId
+        prevHighlightedCardIdsSignatureRef.current = getHighlightedCardIdsSignature(highlightedCardIdsRef.current)
+      } else if (initialCardId !== null && initialCardId !== '전체') {
         const boundary = cardBoundaries.find((b: CardBoundary) => b.cardId === initialCardId)
         if (boundary && boundary.points.length >= 3) {
           if (fitBoundaryPoints(boundary.points)) {
@@ -1454,9 +1468,14 @@ function NaverMapCanvas({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildings, aggregateMarkers, selectedBuildingId, previewPinLat, previewPinLng])
 
+  const lastFocusedBuildingIdRef = useRef<number | null>(null)
   useEffect(() => {
     if (!scriptLoadedRef.current) return
-    focusBuildingOnMap(focusBuildingId)
+    // buildings 배열이 갱신될 때마다 다시 날아가지 않도록, 대상이 바뀔 때만 이동
+    if (lastFocusedBuildingIdRef.current === (focusBuildingId ?? null)) return
+    if (focusBuildingOnMap(focusBuildingId)) {
+      lastFocusedBuildingIdRef.current = focusBuildingId ?? null
+    }
   }, [focusBuildingId, buildings])
 
   useEffect(() => {
