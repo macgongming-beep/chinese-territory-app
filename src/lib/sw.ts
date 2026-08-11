@@ -10,6 +10,21 @@ import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { NetworkFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { clientsClaim } from 'workbox-core'
+import { translateNotificationText } from './notificationText'
+import { LANG_CACHE, LANG_KEY } from './swLanguage'
+import type { AppLanguage } from '../i18n'
+
+// 앱이 Cache Storage 에 적어 둔 현재 언어 (없으면 한국어)
+async function readLanguage(): Promise<AppLanguage> {
+  try {
+    const cache = await caches.open(LANG_CACHE)
+    const res = await cache.match(LANG_KEY)
+    const value = await res?.text()
+    return value === 'zh' || value === 'en' ? value : 'ko'
+  } catch {
+    return 'ko'
+  }
+}
 
 declare const self: ServiceWorkerGlobalScope
 
@@ -112,7 +127,12 @@ self.addEventListener('push', (event: PushEvent) => {
         if (hasOpenChatClient) return
       }
 
-      await self.registration.showNotification(payload.title, options)
+      // 서버는 문구를 한국어로 보낸다 — 받는 사람 언어로 바꿔서 띄운다
+      const lang = await readLanguage()
+      await self.registration.showNotification(
+        translateNotificationText(payload.title, lang),
+        { ...options, body: translateNotificationText(options.body as string, lang) },
+      )
     })()
   )
 })

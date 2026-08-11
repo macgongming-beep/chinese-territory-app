@@ -10,6 +10,7 @@ import { useAuth } from './hooks/useAuth'
 import type { Role } from './types'
 import type { AppLanguage } from './i18n'
 import { isAppLanguage, setCurrentLang } from './i18n'
+import { syncLanguageToServiceWorker } from './lib/swLanguage'
 import './App.css'
 
 const DesktopApp = lazy(() =>
@@ -63,6 +64,8 @@ function App() {
   // 현재 언어를 알 수 있도록 i18n 모듈에 반영한다. 렌더 중에 바로 맞춰야
   // 첫 페인트부터 올바른 언어로 나온다.
   setCurrentLang(language)
+  // 푸시 알림은 서비스 워커가 그린다 — 워커도 언어를 알아야 번역할 수 있다
+  syncLanguageToServiceWorker(language)
   const [isDesktop, setIsDesktop] = useState<boolean>(getInitialDesktopMode)
 
   const {
