@@ -544,4 +544,6 @@ export const messagesEn: Record<string, string> = {
   "알림": "Notification",
   "일정이 변경되었습니다": "Event updated",
   "채팅에서 언급됨": "Mentioned in chat",
+  "구역 선택": "Choose territory",
+  "신규 인도자 (담당 없음)": "New leaders (unassigned)",
 }

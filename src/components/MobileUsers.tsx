@@ -219,7 +219,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
       <div className="mobile-users-page">
         {!isEmbedded && (
           <AppHeader
-            pageTitle="사용자"
+            pageTitle={msg('사용자 관리')}
             showBack
             onBack={() => navigate('/settings')}
             userId={currentUser?.id}
@@ -420,7 +420,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
     <div className="mobile-users-page">
       {!isEmbedded && (
         <AppHeader
-          pageTitle="사용자"
+          pageTitle={msg('사용자 관리')}
           subtitle={`회중 ${users.length}명 · 관리자 ${adminCount}`}
           showBack
           onBack={() => navigate('/settings')}

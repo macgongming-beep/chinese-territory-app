@@ -395,8 +395,8 @@ export function MobileAdminAssignment({
         gap: 8,
         marginBottom: 18,
       }}>
-        <SelectionTab label="인도자 선택" active={step === 1} count={selectedLeaders.size || undefined} onClick={() => setStep(1)} />
-        <SelectionTab label="구역 선택" active={step === 2} count={pendingCardIds.size || undefined} onClick={() => setStep(2)} />
+        <SelectionTab label={msg('인도자 선택')} active={step === 1} count={selectedLeaders.size || undefined} onClick={() => setStep(1)} />
+        <SelectionTab label={msg('구역 선택')} active={step === 2} count={pendingCardIds.size || undefined} onClick={() => setStep(2)} />
       </div>
 
       {/* ── Step 1: 인도자 선택 ───────────── */}
@@ -430,7 +430,7 @@ export function MobileAdminAssignment({
           {/* 신규 인도자 섹션 divider */}
           {(leaderFilter === 'all' || leaderFilter === 'new') && filteredNew.length > 0 && (
             <>
-              <SectionDivider label="신규 인도자 (담당 없음)" count={filteredNew.length} marginTop={leaderFilter === 'all' && filteredActive.length > 0 ? 20 : 14} />
+              <SectionDivider label={msg('신규 인도자 (담당 없음)')} count={filteredNew.length} marginTop={leaderFilter === 'all' && filteredActive.length > 0 ? 20 : 14} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 10 }}>
                 {filteredNew.map((leader) => (
                   <LeaderCard
