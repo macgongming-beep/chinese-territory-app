@@ -219,7 +219,7 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
       {canEdit && (
         <div className="asg-editor-footer">
           <button className="asg-share-btn" onClick={handleShare} disabled={sharing || teams.length === 0} type="button">
-            {sharing ? '공유 중...' : '배정 공유'}
+            {sharing ? msg('공유 중...') : msg('배정 공유')}
           </button>
         </div>
       )}

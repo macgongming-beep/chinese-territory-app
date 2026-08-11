@@ -553,7 +553,7 @@ export function MobileMap({
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'))
   }, [cardMap, mapBuildings, selectedArea, shouldUseAggregateMap, placeLabel])
 
-  const aggregateScopeLabel = selectedArea ? '동' : '구'
+  const aggregateScopeLabel = selectedArea ? msg('동') : msg('구')
 
   const handleSelectAggregateMarker = (id: string) => {
     const [kind, label] = id.split(':')
@@ -1764,7 +1764,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                       type="button"
                       onClick={async () => {
                         setShowUnitHeaderMenu(false)
-                        if (await confirmDialog({ message: msg('"{number}" 세대를 삭제할까요?', { number: liveFullScreenUnit.unit.number }), danger: true, confirmLabel: '삭제' })) {
+                        if (await confirmDialog({ message: msg('"{number}" 세대를 삭제할까요?', { number: liveFullScreenUnit.unit.number }), danger: true, confirmLabel: msg('삭제') })) {
                           onDeleteUnit(liveFullScreenUnit.building.id, liveFullScreenUnit.unit.id)
                           setFullScreenUnit(null)
                         }
@@ -2081,7 +2081,7 @@ function UnitDetailScreen({
                           <button onClick={() => { setHistoryToEdit(h); setEditingHistoryId(null) }}
                             style={{ padding: '2px 8px', border: '1px solid var(--line)', borderRadius: 5, background: 'var(--surface)', color: 'var(--ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
                             type="button">{t(language, 'common.edit')}</button>
-                          <button onClick={async () => { if (await confirmDialog({ message: t(language, 'map.deleteHistoryConfirm'), danger: true, confirmLabel: '삭제' })) onDeleteVisitHistory(h.id, unit.id); setEditingHistoryId(null) }}
+                          <button onClick={async () => { if (await confirmDialog({ message: t(language, 'map.deleteHistoryConfirm'), danger: true, confirmLabel: msg('삭제') })) onDeleteVisitHistory(h.id, unit.id); setEditingHistoryId(null) }}
                             style={{ padding: '2px 8px', border: '1px solid #fecaca', borderRadius: 5, background: '#fef2f2', color: '#dc2626', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
                             type="button">{t(language, 'common.delete')}</button>
                           <button onClick={() => setEditingHistoryId(null)}
@@ -2099,7 +2099,7 @@ function UnitDetailScreen({
                       )}
                     </div>
                     {/* 메모 줄은 항상 보인다 — 아이콘만 두면 메모가 있는지조차 모른다.
-                        내용이 있으면 그대로, 없으면 '메모 추가...' 자리표시 (세대 메모와 같은 방식) */}
+                        내용이 있으면 그대로, 없으면 msg('메모 추가...') 자리표시 (세대 메모와 같은 방식) */}
                     {!isMemoOpen && (
                       canRecordVisits && onUpdateVisitHistory ? (
                         <button
@@ -2210,12 +2210,12 @@ function UnitDetailScreen({
             <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {unit.regularVisitor && (
                 <span style={{ fontSize: 11, color: '#B8862A', fontWeight: 600 }}>
-                  {t(currentLang(), 'app.manager', { defaultValue: '담당' })}: {unit.regularVisitor}
+                  {t(currentLang(), 'app.manager', { defaultValue: msg('담당') })}: {unit.regularVisitor}
                 </span>
               )}
               {unit.regularVisitStart && (
                 <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-                  {t(currentLang(), 'app.start', { defaultValue: '시작' })}: {unit.regularVisitStart.slice(0, 10).replace(/-/g, '/')}
+                  {t(currentLang(), 'app.start', { defaultValue: msg('시작') })}: {unit.regularVisitStart.slice(0, 10).replace(/-/g, '/')}
                 </span>
               )}
               {canRecordVisits && (

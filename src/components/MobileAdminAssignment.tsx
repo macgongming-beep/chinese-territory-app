@@ -449,7 +449,7 @@ export function MobileAdminAssignment({
           {/* 나 섹션 (전체일 때만 노출) */}
           {leaderFilter === 'all' && filteredMe && (
             <>
-              <SectionDivider label="나" marginTop={filteredActive.length > 0 || filteredNew.length > 0 ? 20 : 14} />
+              <SectionDivider label={msg('나')} marginTop={filteredActive.length > 0 || filteredNew.length > 0 ? 20 : 14} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 10 }}>
                 <LeaderCard
                   key={filteredMe}
@@ -521,7 +521,7 @@ export function MobileAdminAssignment({
             marginBottom: 12, padding: '0 2px', alignItems: 'center',
           }}>
             <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500, marginRight: 2 }}>
-              {selectedLeaders.size > 0 ? '선택된 인도자' : '인도자 미선택'}
+              {selectedLeaders.size > 0 ? msg('선택된 인도자') : msg('인도자 미선택')}
             </span>
             {[...selectedLeaders].map((name) => (
               <span
@@ -558,7 +558,7 @@ export function MobileAdminAssignment({
                 color: 'var(--muted)', borderRadius: 99,
                 fontSize: 12, fontWeight: 500, cursor: 'pointer',
               }}
-            >{selectedLeaders.size > 0 ? '+ 추가' : '인도자 선택'}</button>
+            >{selectedLeaders.size > 0 ? msg('+ 추가') : msg('인도자 선택')}</button>
           </div>
 
           {/* 검색 + 지도 버튼 */}
@@ -633,7 +633,7 @@ export function MobileAdminAssignment({
                 background: 'var(--surface)', border: '1px solid var(--line)',
                 borderRadius: 12,
               }}>
-                {cardQuery ? '검색 결과가 없습니다' : unassignedOnly ? '미배정 구역이 없습니다' : '구역이 없습니다'}
+                {cardQuery ? msg('검색 결과가 없습니다') : unassignedOnly ? msg('미배정 구역이 없습니다') : msg('구역이 없습니다')}
               </div>
             ) : grouped.map((g) => {
               const isExpanded = expandedGroups.has(g.key)
@@ -755,7 +755,7 @@ export function MobileAdminAssignment({
                                     fontSize: 12, fontWeight: 600, cursor: 'pointer',
                                   }}
                                 >
-                                  {isPending ? '선택됨' : '선택'}
+                                  {isPending ? msg('선택됨') : msg('선택')}
                                 </button>
                               ) : isFree ? (
                                 <button
@@ -863,7 +863,7 @@ export function MobileAdminAssignment({
                   fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                {pendingCardIds.size > 0 ? (selectedLeaders.size > 0 ? '배정' : '인도자 선택') : '완료'}
+                {pendingCardIds.size > 0 ? (selectedLeaders.size > 0 ? msg('배정하기') : msg('인도자 선택')) : msg('완료됨')}
               </button>
             </div>
           </StickyBottom>
@@ -899,24 +899,24 @@ export function MobileAdminAssignment({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <SheetButton
                 label={`${selectedLeader} 추가 배정`}
-                sub="기존 인도자 유지, 같이 담당"
+                sub={msg('기존 인도자 유지, 같이 담당')}
                 onClick={() => void handleAddToAssignment(actionTarget)}
               />
               <SheetButton
                 label={`${selectedLeader} 로 변경`}
-                sub="기존 인도자 해제하고 이 인도자만"
+                sub={msg('기존 인도자 해제하고 이 인도자만')}
                 onClick={async () => {
-                  if (await confirmDialog({ message: msg('기존 인도자({v1})를 해제하고 {selectedLeader} 로 변경할까요?', { v1: getCardLeaders(actionTarget).join(', '), selectedLeader: selectedLeader ?? '' }), confirmLabel: '변경' })) {
+                  if (await confirmDialog({ message: msg('기존 인도자({v1})를 해제하고 {selectedLeader} 로 변경할까요?', { v1: getCardLeaders(actionTarget).join(', '), selectedLeader: selectedLeader ?? '' }), confirmLabel: msg('변경') })) {
                     void handleReplaceAssignment(actionTarget)
                   }
                 }}
               />
               <SheetButton
-                label="배정 모두 해제"
-                sub="이 카드를 미배정 상태로"
+                label={msg('배정 모두 해제')}
+                sub={msg('이 카드를 미배정 상태로')}
                 danger
                 onClick={async () => {
-                  if (await confirmDialog({ message: msg('"{name}" 의 모든 인도자 배정을 해제할까요?', { name: actionTarget.name }), danger: true, confirmLabel: '해제' })) {
+                  if (await confirmDialog({ message: msg('"{name}" 의 모든 인도자 배정을 해제할까요?', { name: actionTarget.name }), danger: true, confirmLabel: msg('해제') })) {
                     void Promise.resolve(onSetCardLeaders(actionTarget.id, [], { silentSuccess: true })).then(() => {
                       setSessionAssigned((prev) => {
                         const next = new Set(prev)

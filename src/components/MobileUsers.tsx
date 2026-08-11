@@ -32,9 +32,9 @@ function roleClass(role: Role) {
 }
 
 function formatLastLogin(value?: string | null) {
-  if (!value) return '로그인 기록 없음'
+  if (!value) return msg('로그인 기록 없음')
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '로그인 기록 없음'
+  if (Number.isNaN(date.getTime())) return msg('로그인 기록 없음')
   return `마지막 접속 ${date.getMonth() + 1}/${date.getDate()}`
 }
 
@@ -239,7 +239,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
       <div className="mobile-users-page">
         {!isEmbedded && (
           <AppHeader
-            pageTitle="사용자 편집"
+            pageTitle={msg('사용자 편집')}
             subtitle={`${displayRole(selectedUser.role)} · ${formatLastLogin(selectedUser.lastLoginAt)}`}
             showBack
             onBack={() => setSelectedUserId(null)}
@@ -315,7 +315,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
                     onClick={() => setLoginLogsExpanded((value) => !value)}
                     type="button"
                   >
-                    {loginLogsExpanded ? '접기' : `더 보기 ${loginLogs.length - 3}건`}
+                    {loginLogsExpanded ? msg('접기') : `더 보기 ${loginLogs.length - 3}건`}
                   </button>
                 )}
               </div>
@@ -403,7 +403,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
           <button
             disabled={!canDelete}
             onClick={async () => {
-              if (!(await confirmDialog({ message: msg('{name} 사용자를 제거할까요?', { name: selectedUser.name }), danger: true, confirmLabel: '제거' }))) return
+              if (!(await confirmDialog({ message: msg('{name} 사용자를 제거할까요?', { name: selectedUser.name }), danger: true, confirmLabel: msg('제거') }))) return
               const ok = await deleteUser(selectedUser.id)
               if (ok) setSelectedUserId(null)
             }}
@@ -482,7 +482,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
             onClick={() => { setSelectMode((v) => !v); setCheckedIds(new Set()) }}
             type="button"
           >
-            {selectMode ? '선택 취소' : '집단 일괄 지정'}
+            {selectMode ? msg('선택 취소') : msg('집단 일괄 지정')}
           </button>
           <button className="mobile-users-add-toggle" onClick={() => setGroupEditOpen((v) => !v)} type="button">
             집단 편집
@@ -496,7 +496,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
           <h2>{msg('집단 관리')}</h2>
           <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 10px' }}>
             집단 이름을 누르면 수정할 수 있고, ×로 삭제합니다. 이름을 바꾸면 소속된 사용자도 함께 옮겨집니다.
-            삭제해도 사용자 정보는 유지되며 해당 집단은 '미지정'으로 표시됩니다.
+            삭제해도 사용자 정보는 유지되며 해당 집단은 msg('미지정')으로 표시됩니다.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
             {groups.map((g) => (
@@ -539,7 +539,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
                   <button
                     aria-label={`${g} 삭제`}
                     onClick={async () => {
-                      if (await confirmDialog({ message: msg('\'{g}\' 집단을 목록에서 삭제할까요?', { g: g }), danger: true, confirmLabel: '삭제' })) {
+                      if (await confirmDialog({ message: msg('\'{g}\' 집단을 목록에서 삭제할까요?', { g: g }), danger: true, confirmLabel: msg('삭제') })) {
                         void saveGroups(groups.filter((x) => x !== g))
                       }
                     }}

@@ -308,14 +308,14 @@ export function ChatRoom({
     if (error) {
       console.error('send_chat_message RPC 실패', error)
       // FK 위반 = 삭제된 일정 or 참여 오류
-      const msg = (() => {
+      const text = (() => {
         const m = (error as { message?: string }).message ?? ''
         if (m.includes('foreign key') || m.includes('violates')) return t(currentLang(), 'chat.accessError')
-        if (m.includes('참여자가 아닙니다')) return '채팅방 참여자만 메시지를 보낼 수 있습니다.'
+        if (m.includes('참여자가 아닙니다')) return msg('채팅방 참여자만 메시지를 보낼 수 있습니다.')
         if (m.includes('잠겼습니다')) return m
-        return '메시지를 보내지 못했습니다.'
+        return msg('메시지를 보내지 못했습니다.')
       })()
-      showToast(msg, 'error')
+      showToast(text, 'error')
       return
     }
 
@@ -371,7 +371,7 @@ export function ChatRoom({
       if (removeError) {
         console.warn('사진 메시지 저장 실패 후 업로드 파일 정리에 실패했습니다.', removeError)
       }
-      showToast(error.message ?? '사진 메시지를 저장하지 못했습니다.', 'error')
+      showToast(error.message ?? msg('사진 메시지를 저장하지 못했습니다.'), 'error')
       setUploading(false)
       return
     }
@@ -401,7 +401,7 @@ export function ChatRoom({
     })
 
     if (error) {
-      showToast(error.message ?? '메시지를 삭제하지 못했습니다.', 'error')
+      showToast(error.message ?? msg('메시지를 삭제하지 못했습니다.'), 'error')
       return
     }
 
@@ -433,7 +433,7 @@ export function ChatRoom({
   }
   const deleteSelectedMessages = async () => {
     if (selectedMessages.length === 0) return
-    const confirmed = await confirmDialog({ message: t(lang, 'chat.deleteConfirm', { n: selectedMessages.length }), danger: true, confirmLabel: '삭제' })
+    const confirmed = await confirmDialog({ message: t(lang, 'chat.deleteConfirm', { n: selectedMessages.length }), danger: true, confirmLabel: msg('삭제') })
     if (!confirmed) return
     for (const message of selectedMessages) {
       await deleteMessage(message)
@@ -482,8 +482,8 @@ export function ChatRoom({
             {currentUserId != null && (
               <button
                 className={`chat-mute-btn${isMuted ? ' is-muted' : ''}`}
-                aria-label={isMuted ? '알림 켜기' : '알림 끄기'}
-                title={isMuted ? '이 채팅방 알림이 꺼져 있어요' : '이 채팅방 알림 끄기'}
+                aria-label={isMuted ? msg('알림 켜기') : msg('알림 끄기')}
+                title={isMuted ? msg('이 채팅방 알림이 꺼져 있어요') : msg('이 채팅방 알림 끄기')}
                 onClick={toggleMute}
                 disabled={muteBusy}
                 type="button"

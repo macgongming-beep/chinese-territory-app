@@ -203,7 +203,7 @@ export function MobileProfileSettings({
                 onClick={() => setLoginLogsExpanded((value) => !value)}
                 type="button"
               >
-                {loginLogsExpanded ? '접기' : `더 보기 ${loginLogs.length - 3}건`}
+                {loginLogsExpanded ? msg('접기') : `더 보기 ${loginLogs.length - 3}건`}
               </button>
             )}
           </div>

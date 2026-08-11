@@ -149,12 +149,12 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
                     <small>{team.members.length}명</small>
                   </div>
                   <div className="asg-team-members">
-                    {team.members.length > 0 ? team.members.join(' · ') : '구성원 없음'}
+                    {team.members.length > 0 ? team.members.join(' · ') : msg('구성원 없음')}
                   </div>
                   <div className={`asg-team-zones${team.cardIds.length === 0 ? ' is-empty' : ''}`}>
                     {team.cardIds.length > 0
-                      ? `${team.cardIds.map(cardName).slice(0, 2).join(' · ')}${team.cardIds.length > 2 ? ` 외 ${team.cardIds.length - 2}` : ''}`
-                      : '구역 미배정'}
+                      ? `${team.cardIds.map(cardName).slice(0, 2).join(' · ')}${team.cardIds.length > 2 ? msg(' 외 {n}', { n: team.cardIds.length - 2 }) : ''}`
+                      : msg('구역 미배정')}
                   </div>
                                   </div>
                   <span className="asg-team-chev" aria-hidden="true" style={{ marginRight: canEdit ? 32 : 0 }}>›</span>
@@ -168,7 +168,7 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
                       const message = zoneCount > 0
                         ? `${team.name}을(를) 삭제할까요?\n배분된 구역 ${zoneCount}개도 함께 미배정으로 풀립니다.`
                         : `${team.name}을(를) 삭제할까요?`
-                      if (await confirmDialog({ message, danger: true, confirmLabel: '삭제' })) dispatch({ type: 'DELETE_TEAM', teamId: team.id })
+                      if (await confirmDialog({ message, danger: true, confirmLabel: msg('삭제') })) dispatch({ type: 'DELETE_TEAM', teamId: team.id })
                     }}
                     style={{
                       position: 'absolute',

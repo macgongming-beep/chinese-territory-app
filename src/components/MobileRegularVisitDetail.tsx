@@ -147,13 +147,13 @@ export function MobileRegularVisitDetail({
 
   const handleDeleteLog = async (logId: number) => {
     if (!onDeleteReturnVisitLog) return
-    if (!(await confirmDialog({ message: t(language, 'territory.deleteLogConfirm'), danger: true, confirmLabel: '삭제' }))) return
+    if (!(await confirmDialog({ message: t(language, 'territory.deleteLogConfirm'), danger: true, confirmLabel: msg('삭제') }))) return
     await onDeleteReturnVisitLog(logId)
   }
 
   const handleDeleteRv = async () => {
     if (!onDeleteReturnVisit) return
-    if (!(await confirmDialog({ message: t(language, 'territory.deleteRegularConfirm'), danger: true, confirmLabel: '삭제' }))) return
+    if (!(await confirmDialog({ message: t(language, 'territory.deleteRegularConfirm'), danger: true, confirmLabel: msg('삭제') }))) return
     await onDeleteReturnVisit(rv.id)
     navigate('/territory?section=regular')
   }

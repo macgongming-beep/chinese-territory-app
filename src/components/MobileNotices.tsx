@@ -4,6 +4,7 @@ import { confirmDialog } from '../lib/confirm'
 import type { Notice, Role } from '../types'
 import { t, type AppLanguage } from '../i18n'
 import { CommentSection, type MentionUser } from './CommentSection'
+import { msg } from '../lib/msg'
 
 const PRIORITY_COLOR: Record<Notice['priority'], { bg: string; color: string }> = {
   긴급: { bg: 'var(--status-danger-bg)', color: 'var(--status-danger)' },
@@ -137,7 +138,7 @@ export function MobileNotices({
             <span className="mobile-notice-meta">{notice.author} · {notice.createdAt.slice(0, 10)}</span>
             {isAdmin && (
               <button
-                onClick={async () => { if (await confirmDialog({ message: t(language, 'notices.deleteConfirm'), danger: true, confirmLabel: '삭제' })) onDeleteNotice(notice.id) }}
+                onClick={async () => { if (await confirmDialog({ message: t(language, 'notices.deleteConfirm'), danger: true, confirmLabel: msg('삭제') })) onDeleteNotice(notice.id) }}
                 style={{
                   height: 26, minHeight: 26, padding: '0 10px',
                   borderRadius: 8, border: 'none',

@@ -602,7 +602,7 @@ export function MobileTerritory({
     <div className="mobile-territory-page">
       {role !== 'admin' && (
         <>
-          {/* 활성 세션 카드 제거됨 — 자동 종료 + "오늘 배정" 안 활성 카드 강조로 대체 */}
+          {/* 활성 세션 카드 제거됨 — 자동 종료 + {msg('오늘 배정')} 안 활성 카드 강조로 대체 */}
 
           <section className="mobile-territory-section mobile-today-service-section">
             <div className="mt-mini-section-head">
@@ -659,7 +659,7 @@ export function MobileTerritory({
                                 return (
                                   <div className="mobile-today-card-row" key={`inf-${asn.id}`}>
                                     <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#8e6acb' }} />
-                                    <strong>{asset?.name ?? '비공식 자료'}</strong>
+                                    <strong>{asset?.name ?? msg('비공식 자료')}</strong>
                                     <em style={{ color: '#8e6acb' }}>{msg('비공식')}</em>
                                     {asset?.imageUrl && (
                                       <a href={asset.imageUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
@@ -1659,7 +1659,7 @@ export function MobileTerritory({
               onClick={() => setShowDoneExcludedCards((open) => !open)}
               type="button"
             >
-              완료·제외 {doneExcludedCards.length}개 {showDoneExcludedCards ? '접기' : '펼치기'}
+              완료·제외 {doneExcludedCards.length}개 {showDoneExcludedCards ? msg('접기') : msg('펼치기')}
             </button>
           )}
         </>

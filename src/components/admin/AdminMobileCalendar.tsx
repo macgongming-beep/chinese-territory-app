@@ -562,7 +562,7 @@ export function AdminMobileCalendar({
                   if (detailEvent.seriesId && onDeleteEventSeries) {
                     setScopeAction({ kind: 'delete', event: detailEvent })
                     setDetailEventId(null)
-                  } else if (await confirmDialog({ message: t(language, 'calendar.deleteConfirm'), danger: true, confirmLabel: '삭제' })) {
+                  } else if (await confirmDialog({ message: t(language, 'calendar.deleteConfirm'), danger: true, confirmLabel: msg('삭제') })) {
                     onDeleteEvent(detailEvent.id)
                     setDetailEventId(null)
                   }

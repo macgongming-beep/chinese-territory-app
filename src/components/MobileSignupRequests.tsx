@@ -9,10 +9,11 @@ import { msg } from '../lib/msg'
 
 type ApprovalTab = 'pending' | 'approved' | 'blocked'
 
-const tabLabels: Record<ApprovalTab, string> = {
-  pending: '승인대기',
-  approved: '승인됨',
-  blocked: '차단됨',
+// ⚠ 모듈 최상위에서 msg() 를 부르면 불러올 때의 언어로 굳는다 → 그릴 때 계산
+function tabLabel(tab: ApprovalTab): string {
+  if (tab === 'pending') return msg('승인대기')
+  if (tab === 'approved') return msg('승인됨')
+  return msg('차단됨')
 }
 
 function roleLabel(role: Role) {
@@ -72,7 +73,7 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
       <div className="mobile-signup-requests-page">
         {!isEmbedded && (
           <AppHeader
-            pageTitle="가입 신청"
+            pageTitle={msg('가입 신청')}
             showBack
             onBack={() => navigate('/settings')}
             userId={currentUser?.id}
@@ -89,7 +90,7 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
     <div className="mobile-signup-requests-page">
       {!isEmbedded && (
         <AppHeader
-          pageTitle="가입 신청"
+          pageTitle={msg('가입 신청')}
           showBack
           onBack={() => navigate('/settings')}
           userId={currentUser?.id}
@@ -111,7 +112,7 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
             onClick={() => setActiveTab(tab)}
             type="button"
           >
-            <span>{tabLabels[tab]}</span>
+            <span>{tabLabel(tab)}</span>
             <strong>{counts[tab]}</strong>
           </button>
         ))}
@@ -121,7 +122,7 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
         <section className="signup-request-empty-card">
           <span aria-hidden="true">✓</span>
           <strong>{msg('모두 처리되었습니다')}</strong>
-          <p>{tabLabels[activeTab]} 사용자가 없습니다.</p>
+          <p>{tabLabel(activeTab)} 사용자가 없습니다.</p>
           <button onClick={() => fetchAllUsers()} type="button">{msg('새로고침')}</button>
         </section>
       ) : (
@@ -171,7 +172,7 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
                   <button
                     className="delete"
                     onClick={async () => {
-                      if (!(await confirmDialog({ message: msg('{name} 계정을 삭제할까요?', { name: item.name }), danger: true, confirmLabel: '삭제' }))) return
+                      if (!(await confirmDialog({ message: msg('{name} 계정을 삭제할까요?', { name: item.name }), danger: true, confirmLabel: msg('삭제') }))) return
                       void deleteUser(item.id)
                     }}
                     type="button"

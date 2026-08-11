@@ -1133,7 +1133,7 @@ export function MobileHome({
               (role === 'admin' || role === 'developer') ? (
                 <div className="mobile-settings-page" style={{ paddingBottom: 60 }}>
                   <AppHeader
-                    pageTitle="정기방문 관리"
+                    pageTitle={msg('정기방문 관리')}
                     language={language}
                     showBack
                     onBack={() => navigate('/settings')}
@@ -1191,7 +1191,7 @@ export function MobileHome({
               role === 'admin' ? (
                 <div className="mobile-settings-page" style={{ paddingBottom: 60 }}>
                   <AppHeader
-                    pageTitle="대화 방법 제안 관리"
+                    pageTitle={msg('대화 방법 제안 관리')}
                     language={language}
                     showBack
                     onBack={() => navigate('/settings')}

@@ -151,7 +151,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
     return c.name.replace(/^(처인구|기흥구|수지구|영통구|화성시)\s*/, '')
   }
   const teamAreaNames = (t: DraftTeam) =>
-    t.cardIds.length ? t.cardIds.map(shortName).slice(0, 3).join(', ') + (t.cardIds.length > 3 ? ` 외 ${t.cardIds.length - 3}` : '') : null
+    t.cardIds.length ? t.cardIds.map(shortName).slice(0, 3).join(', ') + (t.cardIds.length > 3 ? msg(' 외 {n}', { n: t.cardIds.length - 3 }) : '') : null
 
   // 동(area)별 그룹 — 선택된 구 기준
   const grouped = useMemo(() => {
@@ -271,7 +271,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
       byGroup.set(key, [...(byGroup.get(key) ?? []), item])
     })
     const sections: Array<{ key: string; title: string; items: SubItem[] }> = []
-    if (byGroup.has('null')) sections.push({ key: 'inf-null', title: '미분류', items: byGroup.get('null')! })
+    if (byGroup.has('null')) sections.push({ key: 'inf-null', title: msg('미분류'), items: byGroup.get('null')! })
     informalGroups.forEach((g) => {
       if (byGroup.has(g.id)) sections.push({ key: `inf-${g.id}`, title: g.name, items: byGroup.get(g.id)! })
     })
@@ -369,7 +369,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
                   <span className="asg-teambar-cnt">{team.members.length}</span>
                 </span>
                 <span className="asg-teambar-zones" style={areas ? undefined : { color: 'var(--warn, #b8862a)' }}>
-                  {areas ?? '구역 미배정'}
+                  {areas ?? msg('구역 미배정')}
                 </span>
               </button>
             )
@@ -402,7 +402,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
                       background: on ? 'var(--ink)' : 'var(--surface)',
                       color: on ? '#fff' : 'var(--muted)',
                     }}
-                  >{tb}</button>
+                  >{msg(tb)}</button>
                 )
               })}
             </div>
@@ -445,7 +445,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
           <div className="asg-zone-map-hint">
             <div className="asg-zone-map-hint-row">
               <span className="asg-zone-map-hint-swatch" style={{ background: activeTeam ? `${teamHex(activeTeam.color)}22` : 'transparent', borderColor: activeTeam ? teamHex(activeTeam.color) : 'var(--line)' }} />
-              <span>{msg('폴리곤을 탭하면')}<b>{activeTeam?.name ?? '팀 선택'}</b>{msg('색으로 칠해집니다.')}</span>
+              <span>{msg('폴리곤을 탭하면')}<b>{activeTeam?.name ?? msg('팀 선택')}</b>{msg('색으로 칠해집니다.')}</span>
             </div>
             <div className="asg-zone-map-hint-meta">
               담당 카드 {regionCards.length} · 경계선 {myBoundaries.length}
@@ -459,7 +459,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
             <input
               className="asg-zone-search"
               style={{ flex: 1, minWidth: 0 }}
-              placeholder={mainTab === '식당' ? '식당 검색' : mainTab === '비공식' ? '비공식 검색' : '카드 검색'}
+              placeholder={mainTab === '식당' ? msg('식당 검색') : mainTab === '비공식' ? msg('비공식 검색') : msg('카드 검색')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -484,7 +484,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
               {!activeTeam && <div className="asg-empty">{msg('먼저 위에서 팀을 선택하세요.')}</div>}
               {activeTeam && (
                 <div style={{ padding: '0 2px 8px', fontSize: 12, color: 'var(--muted)' }}>
-                  탭하면 <b style={{ color: 'var(--ink)' }}>{activeTeam.name}</b>({activeTeam.members.join('·') || '멤버 없음'}) 배정 ↔ 다시 탭하면 해제
+                  탭하면 <b style={{ color: 'var(--ink)' }}>{activeTeam.name}</b>({activeTeam.members.join('·') || msg('멤버 없음')}) 배정 ↔ 다시 탭하면 해제
                 </div>
               )}
               {subTotal === 0 ? (
@@ -508,7 +508,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
                             <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{section.title}</span>
                             <span style={{ fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>{section.items.length}</span>
                           </div>
-                          <span style={{ fontSize: 12, color: 'var(--muted)' }}>{open ? '접기' : '열기'}</span>
+                          <span style={{ fontSize: 12, color: 'var(--muted)' }}>{open ? msg('접기') : msg('열기')}</span>
                         </div>
                         {open && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
