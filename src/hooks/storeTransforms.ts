@@ -264,42 +264,58 @@ export function normalizeCardType(): CardType {
   return '전체'
 }
 
-export function toCard(raw: RawCard, buildings: Building[]): TerritoryCard {
-  const cardBuildings = buildings.filter((b) => b.cardId === raw.id)
+/**
+ * 카드의 건물·세대 통계를 다시 계산한다.
+ *
+ * 방문 기록이나 세대 추가처럼 건물 데이터만 바뀌었을 때, 서버를 다시 부르지 않고
+ * 진행률·세대 수를 맞추는 데 쓴다. (toCard 와 같은 규칙을 공유해 어긋나지 않게)
+ */
+export function recomputeCardStats(card: TerritoryCard, buildings: Building[]): TerritoryCard {
+  const cardBuildings = buildings.filter((b) => b.cardId === card.id)
   // 식당도 상가의 일부(구역의 한 세대)이므로 진행률에 포함한다.
-  // ("식당봉사"라는 비공식 활동만 식당 탭/신청으로 분리, 세대 자체는 일반 취급)
   const allUnits = cardBuildings.flatMap((b) => b.units)
   // "완료" 기준을 지도의 방문완료 판정과 동일하게 — 미방문·부재는 아직 방문필요로 본다.
   const completed = allUnits.filter((u) => u.status !== '미방문' && u.status !== '부재').length
   const total = allUnits.length
-  const progress = total > 0 ? Math.round((completed / total) * 100) : 100
   const regularVisitPoints = cardBuildings.flatMap((b) =>
     b.units
       .filter((u) => u.isRegularVisit)
       .map((u) => ({ point: `${b.name} ${u.number}`, visitor: u.regularVisitor ?? '' })),
   )
+  return {
+    ...card,
+    buildings: cardBuildings.length,
+    units: total,
+    completed,
+    progress: total > 0 ? Math.round((completed / total) * 100) : 100,
+    regularVisits: regularVisitPoints.length,
+    regularVisitPoints,
+  }
+}
 
+export function toCard(raw: RawCard, buildings: Building[]): TerritoryCard {
   const assignedLeaders = Array.from(
     new Set((raw.card_leader_assignments ?? []).map((entry) => entry.user_name).filter(Boolean)),
   )
 
-  return {
+  const base: TerritoryCard = {
     id: raw.id,
     name: raw.name,
     area: raw.area,
     region: raw.region,
     type: normalizeCardType(),
     status: raw.status,
-    buildings: cardBuildings.length,
-    units: total,
-    completed,
-    progress,
-    regularVisits: regularVisitPoints.length,
-    regularVisitPoints,
+    buildings: 0,
+    units: 0,
+    completed: 0,
+    progress: 100,
+    regularVisits: 0,
+    regularVisitPoints: [],
     assignedLeader: assignedLeaders[0] ?? raw.leader_name,
     assignedLeaders,
     assignedUsers: (raw.card_assignments ?? []).map((a) => a.user_name),
   }
+  return recomputeCardStats(base, buildings)
 }
 
 export function toCalendarEvent(

@@ -37,6 +37,7 @@ import {
   toServiceSession,
   toCardBoundary,
   toNotice,
+  recomputeCardStats,
 } from './storeTransforms'
 import {
   makeNoticeMutations,
@@ -526,14 +527,45 @@ export function useStore() {
     [fetchSlices],
   )
 
-  // 저장에 성공한 세대 변경을 화면 상태에 즉시 반영 (전체 재조회 대체)
+  // ── 건물 데이터를 서버 재조회 없이 화면에 반영 ────────────────
+  // 건물 전체(약 440KB)를 다시 받는 대신 바뀐 부분만 갈아끼운다.
+  // ⚠ 카드의 진행률·세대 수는 건물에서 계산되므로 함께 다시 계산해야 한다.
+  //   (buildingsRef 는 다음 cards 조회가 쓰는 값이라 같이 갱신)
+  const applyBuildingsChange = useCallback((update: (prev: Building[]) => Building[]) => {
+    setBuildings((prev) => {
+      const next = update(prev)
+      buildingsRef.current = next
+      return next
+    })
+    setCards((prevCards) => prevCards.map((card) => recomputeCardStats(card, buildingsRef.current)))
+  }, [])
+
+  // 세대 추가/삭제
+  const appendUnits = useCallback((buildingId: number, units: Unit[]) => {
+    if (units.length === 0) return
+    applyBuildingsChange((prev) => prev.map((building) => (
+      building.id === buildingId
+        ? { ...building, units: [...building.units, ...units.filter((u) => !building.units.some((x) => x.id === u.id))] }
+        : building
+    )))
+  }, [applyBuildingsChange])
+
+  const removeUnit = useCallback((unitId: number) => {
+    applyBuildingsChange((prev) => prev.map((building) => (
+      building.units.some((u) => u.id === unitId)
+        ? { ...building, units: building.units.filter((u) => u.id !== unitId) }
+        : building
+    )))
+  }, [applyBuildingsChange])
+
+  // 방문 기록 등으로 세대 하나가 바뀐 경우
   const patchUnit = useCallback((unitId: number, patch: Partial<Unit>) => {
-    setBuildings((prev) => prev.map((building) => (
+    applyBuildingsChange((prev) => prev.map((building) => (
       building.units.some((u) => u.id === unitId)
         ? { ...building, units: building.units.map((u) => (u.id === unitId ? { ...u, ...patch } : u)) }
         : building
     )))
-  }, [])
+  }, [applyBuildingsChange])
   const refetchCards = useCallback(
     // 카드 추가·수정·인도자 배정 — buildings 안 건드림 (가벼움)
     () => fetchSlices(['cards'], { triggeredBy: 'mutation:cards' }),
@@ -621,7 +653,7 @@ export function useStore() {
     updateBuilding,
     moveBuildingToCard,
     reassignBuildingsToCards,
-  } = makeBuildingMutations({ fetchAll: refetchBuildings, buildings, cards })
+  } = makeBuildingMutations({ fetchAll: refetchBuildings, buildings, cards, appendUnits, removeUnit })
 
   const { saveCardBoundary, deleteCardBoundary, restoreCardBoundaries, mergeCardBoundaries, undoMergeCardBoundaries } = makeCardBoundaryMutations({ fetchAll: refetchCardBoundaries, cardBoundaries, buildings })
 

@@ -1,4 +1,4 @@
-import type { Building, TerritoryCard, UnitStatus } from '../../types'
+import type { Building, TerritoryCard, Unit, UnitStatus } from '../../types'
 import type { CsvBuildingImport } from '../../utils/csvBuildingImport'
 import { isValidMapCoordinate } from '../../utils/mapUtils'
 import { supabase, showToast, reportMutationError } from './shared'
@@ -9,8 +9,15 @@ export function makeBuildingMutations(deps: {
   fetchAll: () => Promise<void>
   buildings: Building[]
   cards: TerritoryCard[]
+  /**
+   * 세대 추가·삭제를 화면 상태에 바로 반영한다.
+   * 이게 없으면 호수 하나 넣을 때마다 건물 전체(약 440KB)를 다시 받아야 해서
+   * 일괄로 여러 개 넣을 때 눈에 띄게 느려진다. (방문 기록과 같은 방식)
+   */
+  appendUnits: (buildingId: number, units: Unit[]) => void
+  removeUnit: (unitId: number) => void
 }) {
-  const { fetchAll, buildings, cards } = deps
+  const { fetchAll, buildings, cards, appendUnits, removeUnit } = deps
 
   const createBuilding = async (input: {
     cardId: number
@@ -193,20 +200,28 @@ export function makeBuildingMutations(deps: {
     )]
     if (unitNumbers.length === 0) return false
 
-    // 새로 만든 id 를 돌려준다 — 추가 직후 바로 기록(예: 출입불가 → 대상외)해야 할 때 필요
+    // 새로 만든 행을 돌려받는다 — id 는 추가 직후 기록(출입불가 → 대상외)에,
+    // 나머지는 화면에 바로 반영하는 데 쓴다
     const result = await supabase.from('units').insert(
       unitNumbers.map((number) => ({
         building_id: buildingId,
         number,
         status: '미방문',
       })),
-    ).select('id')
+    ).select('id, number, status')
     if (result.error) {
       reportMutationError(msg('호수를 추가하지 못했습니다.'), result.error)
       return false
     }
-    const newIds = (result.data ?? []).map((row) => (row as { id: number }).id)
-    await fetchAll()
+    const created = (result.data ?? []) as Array<{ id: number; number: string; status: string }>
+    const newIds = created.map((row) => row.id)
+    // 건물 전체를 다시 받지 않고 새 호수만 목록에 얹는다
+    appendUnits(buildingId, created.map((row) => ({
+      id: row.id,
+      number: row.number,
+      status: (row.status ?? '미방문') as UnitStatus,
+      isChinese: false,
+    })))
     showToast(
       unitNumbers.length === 1
         ? `${unitNumbers[0]} 호수가 추가됐습니다`
@@ -221,7 +236,7 @@ export function makeBuildingMutations(deps: {
       reportMutationError(msg('호수를 삭제하지 못했습니다.'), result.error)
       return
     }
-    await fetchAll()
+    removeUnit(unitId)
     showToast(msg('호수가 삭제됐습니다'))
   }
 
