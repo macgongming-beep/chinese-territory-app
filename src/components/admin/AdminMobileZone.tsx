@@ -20,6 +20,7 @@ import { getBuildingStatus } from '../../utils/mapUtils'
 import { InformalCardsTab } from '../InformalCardsTab'
 import { RestaurantsTab } from '../RestaurantsTab'
 import { Card } from '../ui'
+import { msg } from '../../lib/msg'
 
 type ZoneKind = 'territory' | 'informal' | 'restaurant'
 type Scope = 'mine' | 'all'
@@ -462,7 +463,7 @@ export function AdminMobileZone({
               cursor: 'pointer', borderRadius: 8, marginLeft: -8,
               flexShrink: 0,
             }}
-            aria-label="뒤로"
+            aria-label={msg('뒤로')}
           >
             <ChevL size={16} />
           </button>

@@ -1643,7 +1643,7 @@ export function TimePresetEditor({ language,
             ariaLabel={t(language, 'calendar.defaultTitle')}
             value={preset.title}
             onChange={(value) => updatePreset(index, { title: value })}
-            placeholder="기본 제목"
+            placeholder={msg('기본 제목')}
           />
         </div>
       ))}

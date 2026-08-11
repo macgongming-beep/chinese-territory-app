@@ -154,11 +154,11 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
     return (
       <div className="asg-conflict-backdrop">
         <div className="asg-conflict">
-          <h2>임시 저장본과 공유본이 다릅니다</h2>
+          <h2>{msg('임시 저장본과 공유본이 다릅니다')}</h2>
           <p>다른 곳에서 배정이 공유되었어요. 무엇을 사용할까요?</p>
-          <button onClick={() => { reload(conflict.server); setConflict(null) }} type="button">공유본 사용</button>
-          <button onClick={() => { reload(conflict.local); setConflict(null) }} type="button">내 임시 저장 이어서</button>
-          <button className="danger" onClick={() => { clearLocalDraft(event.id, currentVisitor); reload(conflict.server); setConflict(null) }} type="button">임시 저장 삭제</button>
+          <button onClick={() => { reload(conflict.server); setConflict(null) }} type="button">{msg('공유본 사용')}</button>
+          <button onClick={() => { reload(conflict.local); setConflict(null) }} type="button">{msg('내 임시 저장 이어서')}</button>
+          <button className="danger" onClick={() => { clearLocalDraft(event.id, currentVisitor); reload(conflict.server); setConflict(null) }} type="button">{msg('임시 저장 삭제')}</button>
         </div>
       </div>
     )
@@ -197,11 +197,11 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
     <div className="asg-editor">
       <header className="asg-editor-head">
         <div className="asg-editor-head-left">
-          <button className="asg-editor-back" onClick={onClose} type="button" aria-label="뒤로">
+          <button className="asg-editor-back" onClick={onClose} type="button" aria-label={msg('뒤로')}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <div className="asg-editor-titles">
-            <strong>봉사 배정</strong>
+            <strong>{msg('봉사 배정')}</strong>
             <span>{formatEventDateTime(event)}</span>
           </div>
         </div>
@@ -228,13 +228,13 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
       {confirmShare && (
         <div className="asg-confirm-backdrop" onClick={() => setConfirmShare(false)}>
           <div className="asg-confirm" onClick={(e) => e.stopPropagation()}>
-            <h2>구역이 없는 팀이 있어요</h2>
+            <h2>{msg('구역이 없는 팀이 있어요')}</h2>
             <p>
               {emptyTeams.map((t) => t.name).join(', ')}에 배정된 구역이 없습니다.
               지금 공유하면 이 팀은 저장되지 않아요.
             </p>
-            <button className="asg-confirm-primary" onClick={() => setConfirmShare(false)} type="button">돌아가서 구역 배정</button>
-            <button className="asg-confirm-ghost" onClick={() => void doShare()} type="button">그대로 공유</button>
+            <button className="asg-confirm-primary" onClick={() => setConfirmShare(false)} type="button">{msg('돌아가서 구역 배정')}</button>
+            <button className="asg-confirm-ghost" onClick={() => void doShare()} type="button">{msg('그대로 공유')}</button>
           </div>
         </div>
       )}
@@ -243,12 +243,12 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
       {shareConflict && (
         <div className="asg-confirm-backdrop">
           <div className="asg-confirm" onClick={(e) => e.stopPropagation()}>
-            <h2>다른 곳에서 먼저 공유됐어요</h2>
+            <h2>{msg('다른 곳에서 먼저 공유됐어요')}</h2>
             <p>
               편집하는 사이 다른 사람이 이 일정의 배정을 공유했습니다.
               덮어쓰지 않았어요. 최신 내용을 보려면 새로고침하세요.
             </p>
-            <button className="asg-confirm-primary" onClick={() => { setShareConflict(false); onClose() }} type="button">닫고 새로고침</button>
+            <button className="asg-confirm-primary" onClick={() => { setShareConflict(false); onClose() }} type="button">{msg('닫고 새로고침')}</button>
           </div>
         </div>
       )}

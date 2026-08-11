@@ -227,7 +227,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
             onOpenMenu={() => navigate('/settings')}
           />
         )}
-        <section className="mobile-users-empty">관리자만 사용할 수 있습니다.</section>
+        <section className="mobile-users-empty">{msg('관리자만 사용할 수 있습니다.')}</section>
       </div>
     )
   }
@@ -270,13 +270,13 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
         </section>
 
         <section className="mobile-user-manage-card mobile-user-account-card">
-          <h2>계정 관리</h2>
+          <h2>{msg('계정 관리')}</h2>
           <label>
-            <span>아이디</span>
+            <span>{msg('아이디')}</span>
             <input value={editLoginId} onChange={(event) => setEditLoginId(event.target.value)} />
           </label>
           <label>
-            <span>닉네임</span>
+            <span>{msg('닉네임')}</span>
             <input value={editName} onChange={(event) => setEditName(event.target.value)} />
           </label>
           <button
@@ -294,18 +294,18 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
         {currentUser?.role === 'developer' && (
           <section className="mobile-user-manage-card mobile-user-login-card">
             <div className="mobile-user-login-head">
-              <h2>로그인 기록</h2>
+              <h2>{msg('로그인 기록')}</h2>
               <span>{loginLogsExpanded ? `${loginLogs.length}건` : `최근 ${Math.min(loginLogs.length, 3)}건`}</span>
             </div>
             {loadingLoginLogs ? (
-              <p className="mobile-login-empty">로그인 기록을 불러오는 중입니다.</p>
+              <p className="mobile-login-empty">{msg('로그인 기록을 불러오는 중입니다.')}</p>
             ) : loginLogs.length === 0 ? (
-              <p className="mobile-login-empty">아직 로그인 기록이 없습니다.</p>
+              <p className="mobile-login-empty">{msg('아직 로그인 기록이 없습니다.')}</p>
             ) : (
               <div className={`mobile-login-list${loginLogsExpanded ? ' is-expanded' : ''}`}>
                 {visibleLoginLogs.map((log) => (
                   <div className="mobile-login-row" key={log.id}>
-                    <span>로그인</span>
+                    <span>{msg('로그인')}</span>
                     <strong>{formatLoginDateTime(log.logged_in_at)}</strong>
                   </div>
                 ))}
@@ -324,7 +324,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
         )}
 
         <section className="mobile-user-manage-card">
-          <h2>집단</h2>
+          <h2>{msg('집단')}</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
             {groups.map((g) => {
               const on = selectedUser.groupName === g
@@ -351,11 +351,11 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
               {!selectedUser.groupName ? '✓ ' : ''}미지정
             </button>
           </div>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>한 사용자는 하나의 집단에만 속합니다.</p>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>{msg('한 사용자는 하나의 집단에만 속합니다.')}</p>
         </section>
 
         <section className="mobile-user-manage-card mobile-user-role-card">
-          <h2>사용자 권한</h2>
+          <h2>{msg('사용자 권한')}</h2>
           <div className="mobile-user-role-select">
             {(['admin', 'leader', 'user'] as Role[]).map((role) => (
               <button
@@ -368,17 +368,17 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
               </button>
             ))}
           </div>
-          <p>관리자는 인도자와 봉사자 권한을 포함합니다.</p>
+          <p>{msg('관리자는 인도자와 봉사자 권한을 포함합니다.')}</p>
         </section>
 
         <section className="mobile-user-manage-card mobile-user-password-card">
-          <h2>비밀번호</h2>
+          <h2>{msg('비밀번호')}</h2>
           <button onClick={() => resetUserPin(selectedUser.id)} type="button">
             0000으로 초기화
           </button>
           <div className="mobile-user-inline-form">
             <input
-              placeholder="새 비밀번호"
+              placeholder={msg('새 비밀번호')}
               value={editPin}
               onChange={(event) => setEditPin(event.target.value)}
             />
@@ -397,8 +397,8 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
 
         <section className="mobile-user-danger-card">
           <div>
-            <strong>사용자 제거</strong>
-            <span>로그인 계정만 삭제하고 방문 기록은 보존합니다.</span>
+            <strong>{msg('사용자 제거')}</strong>
+            <span>{msg('로그인 계정만 삭제하고 방문 기록은 보존합니다.')}</span>
           </div>
           <button
             disabled={!canDelete}
@@ -431,7 +431,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
       )}
       {isEmbedded && (
         <div style={{ padding: '0 4px 16px' }}>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gray-900)' }}>사용자 관리</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gray-900)' }}>{msg('사용자 관리')}</h2>
           <p style={{ color: 'var(--gray-500)', fontSize: 13, marginTop: 4 }}>회중 {users.length}명 · 관리자 {adminCount}</p>
         </div>
       )}
@@ -441,31 +441,31 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
           <label className="mobile-users-search-box">
             <span aria-hidden="true">⌕</span>
             <input
-              aria-label="사용자 이름 검색"
-              placeholder="이름 검색"
+              aria-label={msg('사용자 이름 검색')}
+              placeholder={msg('이름 검색')}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
           <label className="mobile-users-filter-box">
             <select
-              aria-label="권한 필터"
+              aria-label={msg('권한 필터')}
               value={roleFilter}
               onChange={(event) => setRoleFilter(event.target.value as UserFilter)}
             >
-              <option value="all">전체</option>
-              <option value="admin">관리자</option>
-              <option value="leader">인도자</option>
-              <option value="user">봉사자</option>
+              <option value="all">{msg('전체')}</option>
+              <option value="admin">{msg('관리자')}</option>
+              <option value="leader">{msg('인도자')}</option>
+              <option value="user">{msg('봉사자')}</option>
             </select>
           </label>
           <label className="mobile-users-filter-box">
             <select
-              aria-label="집단 필터"
+              aria-label={msg('집단 필터')}
               value={groupFilter}
               onChange={(event) => setGroupFilter(event.target.value)}
             >
-              <option value="all">집단 전체</option>
+              <option value="all">{msg('집단 전체')}</option>
               {groups.map((g) => (
                 <option key={g} value={g}>{g} ({groupCounts.get(g) ?? 0})</option>
               ))}
@@ -493,7 +493,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
       {/* 집단 이름 편집 */}
       {groupEditOpen && (
         <section className="mobile-user-manage-card">
-          <h2>집단 관리</h2>
+          <h2>{msg('집단 관리')}</h2>
           <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 10px' }}>
             집단 이름을 누르면 수정할 수 있고, ×로 삭제합니다. 이름을 바꾸면 소속된 사용자도 함께 옮겨집니다.
             삭제해도 사용자 정보는 유지되며 해당 집단은 '미지정'으로 표시됩니다.
@@ -514,18 +514,18 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
                     onClick={() => void commitGroupRename()}
                     style={{ minHeight: 0, padding: '6px 10px', borderRadius: 999, border: 'none', background: 'var(--ink)', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}
                     type="button"
-                  >저장</button>
+                  >{msg('저장')}</button>
                   <button
                     onClick={() => { setEditingGroup(null); setEditingGroupName('') }}
                     style={{ minHeight: 0, padding: '6px 8px', borderRadius: 999, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer' }}
                     type="button"
-                  >취소</button>
+                  >{msg('취소')}</button>
                 </span>
               ) : (
                 <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 999, border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 13 }}>
                   <button
                     aria-label={`${g} 이름 변경`}
-                    title="이름 변경"
+                    title={msg('이름 변경')}
                     onClick={() => { setEditingGroup(g); setEditingGroupName(g) }}
                     style={{ minHeight: 0, border: 'none', background: 'transparent', color: 'var(--ink)', cursor: 'pointer', padding: 0, fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                     type="button"
@@ -552,8 +552,8 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
-              aria-label="새 집단 이름"
-              placeholder="새 집단 이름"
+              aria-label={msg('새 집단 이름')}
+              placeholder={msg('새 집단 이름')}
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               style={{ flex: 1, minWidth: 0, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8, fontSize: 13, background: 'var(--surface)', color: 'var(--ink)' }}
@@ -563,7 +563,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
               onClick={() => { void saveGroups([...groups, newGroupName]); setNewGroupName('') }}
               type="button"
               style={{ minHeight: 0, padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-            >추가</button>
+            >{msg('추가')}</button>
           </div>
         </section>
       )}
@@ -571,20 +571,20 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
       {/* 선택 모드: 일괄 집단 지정 바 */}
       {selectMode && (
         <section className="mobile-user-manage-card">
-          <h2>집단 일괄 지정</h2>
+          <h2>{msg('집단 일괄 지정')}</h2>
           <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 10px' }}>
             아래 목록에서 사용자를 선택한 뒤 집단을 지정하세요. (선택 {checkedIds.size}명)
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <select
-              aria-label="지정할 집단"
+              aria-label={msg('지정할 집단')}
               value={bulkGroup}
               onChange={(e) => setBulkGroup(e.target.value)}
               style={{ flex: 1, minWidth: 120, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8, fontSize: 13, background: 'var(--surface)', color: 'var(--ink)' }}
             >
-              <option value="">집단 선택…</option>
+              <option value="">{msg('집단 선택…')}</option>
               {groups.map((g) => <option key={g} value={g}>{g}</option>)}
-              <option value="__none__">미지정으로 해제</option>
+              <option value="__none__">{msg('미지정으로 해제')}</option>
             </select>
             <button
               disabled={checkedIds.size === 0 || !bulkGroup}
@@ -598,25 +598,25 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
 
       {showAddForm && (
         <section className="mobile-user-manage-card mobile-users-add-card">
-          <h2>사용자 추가</h2>
+          <h2>{msg('사용자 추가')}</h2>
           <label>
-            <span>아이디</span>
+            <span>{msg('아이디')}</span>
             <input value={newLoginId} onChange={(event) => setNewLoginId(event.target.value)} />
           </label>
           <label>
-            <span>닉네임</span>
+            <span>{msg('닉네임')}</span>
             <input value={newName} onChange={(event) => setNewName(event.target.value)} />
           </label>
           <label>
-            <span>초기 비밀번호</span>
+            <span>{msg('초기 비밀번호')}</span>
             <input value={newPin} onChange={(event) => setNewPin(event.target.value)} />
           </label>
           <label>
-            <span>권한</span>
+            <span>{msg('권한')}</span>
             <select value={newRole} onChange={(event) => setNewRole(event.target.value as Role)}>
-              <option value="user">봉사자</option>
-              <option value="leader">인도자</option>
-              <option value="admin">관리자</option>
+              <option value="user">{msg('봉사자')}</option>
+              <option value="leader">{msg('인도자')}</option>
+              <option value="admin">{msg('관리자')}</option>
             </select>
           </label>
           <div className="mobile-users-add-actions">
@@ -646,13 +646,13 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
         </section>
       )}
 
-      <section className="mobile-users-list" aria-label="사용자 목록">
+      <section className="mobile-users-list" aria-label={msg('사용자 목록')}>
         <div className="mobile-users-list-head">
-          <strong>사용자 목록</strong>
+          <strong>{msg('사용자 목록')}</strong>
           <span>{filteredUsers.length}명</span>
         </div>
         {filteredUsers.length === 0 ? (
-          <div className="mobile-users-empty">검색 결과가 없습니다.</div>
+          <div className="mobile-users-empty">{msg('검색 결과가 없습니다.')}</div>
         ) : (
           filteredUsers.map((item) => (
             <button

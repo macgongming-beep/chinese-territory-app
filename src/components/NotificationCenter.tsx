@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import type { AppNotification, NotificationType } from '../hooks/useNotifications'
 import { useUserChats } from '../hooks/useUserChats'
 import { normalizeAppLink } from '../utils/appNavigation'
+import { msg } from '../lib/msg'
 
 const TYPE_LABEL: Record<NotificationType, { icon: NotificationIconName; color: string; bg: string }> = {
   notice: { icon: 'notice', color: '#2563eb', bg: '#eff4fe' },
@@ -342,7 +343,7 @@ export function NotificationCenter({
                 display: 'grid', placeItems: 'center',
                 borderRadius: 8,
               }}
-              aria-label="닫기"
+              aria-label={msg('닫기')}
               type="button"
             >
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">

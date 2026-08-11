@@ -6,6 +6,7 @@ import { t, translateKoreanAddress, weekdayShortLabels } from '../i18n'
 import { getTerritoryCardOperationalState, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
 import { getUserReturnVisits, normalizeVisitorName } from '../utils/returnVisits'
 import { RestaurantServiceSheet } from './RestaurantServiceSheet'
+import { msg } from '../lib/msg'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
   if (!assignment) return []
@@ -646,7 +647,7 @@ export function MobileTerritory({
                                     <span className={`mobile-today-card-dot${isActive ? ' is-active' : ''}`} aria-hidden="true" />
                                     <strong>
                                       {translateKoreanAddress(card.name, language, translatePlaceNames)}
-                                      {isActive && <span className="mobile-today-card-active-badge">봉사 중</span>}
+                                      {isActive && <span className="mobile-today-card-active-badge">{msg('봉사 중')}</span>}
                                     </strong>
                                     <em>{card.progress}%</em>
                                     <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
@@ -659,7 +660,7 @@ export function MobileTerritory({
                                   <div className="mobile-today-card-row" key={`inf-${asn.id}`}>
                                     <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#8e6acb' }} />
                                     <strong>{asset?.name ?? '비공식 자료'}</strong>
-                                    <em style={{ color: '#8e6acb' }}>비공식</em>
+                                    <em style={{ color: '#8e6acb' }}>{msg('비공식')}</em>
                                     {asset?.imageUrl && (
                                       <a href={asset.imageUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
                                         <img
@@ -681,7 +682,7 @@ export function MobileTerritory({
                                   <div className="mobile-today-card-row" key={`rest-${asn.id}`}>
                                     <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#d88a3e' }} />
                                     <strong>{restName}{unit ? ` · ${b.name || b.address}` : ''}</strong>
-                                    <em style={{ color: '#d88a3e' }}>식당</em>
+                                    <em style={{ color: '#d88a3e' }}>{msg('식당')}</em>
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -692,7 +693,7 @@ export function MobileTerritory({
                                           onOpenMap(b.cardId)
                                         }
                                       }}
-                                    >길찾기</button>
+                                    >{msg('길찾기')}</button>
                                   </div>
                                 )
                               })}
@@ -739,7 +740,7 @@ export function MobileTerritory({
                         type="button"
                         className="mt-rs-dots-btn"
                         onClick={() => setShowSessionMenu((v) => !v)}
-                        aria-label="더보기"
+                        aria-label={msg('더보기')}
                       >
                         ···
                       </button>
@@ -1131,14 +1132,14 @@ export function MobileTerritory({
                       type="button"
                       className="mobile-past-mini-nav-btn"
                       onClick={() => navigatePastMonth(-1)}
-                      aria-label="이전 달"
+                      aria-label={msg('이전 달')}
                     >‹</button>
                     <span className="mobile-past-mini-nav-label">{pastMonthLabel}</span>
                     <button
                       type="button"
                       className="mobile-past-mini-nav-btn"
                       onClick={() => navigatePastMonth(1)}
-                      aria-label="다음 달"
+                      aria-label={msg('다음 달')}
                     >›</button>
                   </div>
 
@@ -1192,7 +1193,7 @@ export function MobileTerritory({
                           <button
                             type="button"
                             onClick={() => setSelectedPastDate(null)}
-                            aria-label="닫기"
+                            aria-label={msg('닫기')}
                           >×</button>
                         </header>
                         <ul className="mobile-past-mini-detail-list">

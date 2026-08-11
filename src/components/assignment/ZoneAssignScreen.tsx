@@ -338,11 +338,11 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
       <div className="asg-zone-sticky">
         <header className="asg-editor-head" style={{ position: 'relative', borderBottom: 'none' }}>
           <div className="asg-editor-head-left">
-            <button className="asg-editor-back" onClick={onBack} type="button" aria-label="뒤로">
+            <button className="asg-editor-back" onClick={onBack} type="button" aria-label={msg('뒤로')}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
             <div className="asg-editor-titles">
-              <strong>구역 배분</strong>
+              <strong>{msg('구역 배분')}</strong>
               <span title={activeTeam ? activeTeam.members.join(' · ') : ''}>
                 {activeTeam ? `${activeTeam.name} · ${activeTeam.members.join(' · ')}` : ''}
               </span>
@@ -350,7 +350,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
           </div>
         </header>
         {/* 배분할 팀 — 가로 스크롤, 받은 구역명 표시 */}
-        <span className="asg-teambar-label">배분할 팀</span>
+        <span className="asg-teambar-label">{msg('배분할 팀')}</span>
         <div className="asg-teambar">
           {teams.map((team) => {
             const isActive = team.id === activeTeamId
@@ -445,7 +445,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
           <div className="asg-zone-map-hint">
             <div className="asg-zone-map-hint-row">
               <span className="asg-zone-map-hint-swatch" style={{ background: activeTeam ? `${teamHex(activeTeam.color)}22` : 'transparent', borderColor: activeTeam ? teamHex(activeTeam.color) : 'var(--line)' }} />
-              <span>폴리곤을 탭하면 <b>{activeTeam?.name ?? '팀 선택'}</b> 색으로 칠해집니다.</span>
+              <span>{msg('폴리곤을 탭하면')}<b>{activeTeam?.name ?? '팀 선택'}</b>{msg('색으로 칠해집니다.')}</span>
             </div>
             <div className="asg-zone-map-hint-meta">
               담당 카드 {regionCards.length} · 경계선 {myBoundaries.length}
@@ -481,7 +481,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
           {/* 비공식 / 식당 — 구역 화면과 동일한 그룹 구성. 탭=토글(배정↔해제) */}
           {mainTab !== '카드' && (
             <>
-              {!activeTeam && <div className="asg-empty">먼저 위에서 팀을 선택하세요.</div>}
+              {!activeTeam && <div className="asg-empty">{msg('먼저 위에서 팀을 선택하세요.')}</div>}
               {activeTeam && (
                 <div style={{ padding: '0 2px 8px', fontSize: 12, color: 'var(--muted)' }}>
                   탭하면 <b style={{ color: 'var(--ink)' }}>{activeTeam.name}</b>({activeTeam.members.join('·') || '멤버 없음'}) 배정 ↔ 다시 탭하면 해제
@@ -540,7 +540,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                                    {item.isActive && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: 'var(--ink)' }}>✓ 배정됨</span>}
+                                    {item.isActive && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: 'var(--ink)' }}>{msg('✓ 배정됨')}</span>}
                                   </div>
                                   {mainTab === '식당' && item.address && (
                                     <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.address}</div>
@@ -563,7 +563,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
             </>
           )}
 
-          {mainTab === '카드' && !activeTeam && <div className="asg-empty">먼저 위에서 팀을 선택하세요.</div>}
+          {mainTab === '카드' && !activeTeam && <div className="asg-empty">{msg('먼저 위에서 팀을 선택하세요.')}</div>}
 
           {mainTab === '카드' && grouped.map(([groupName, groupCards]) => {
             const isCollapsed = collapsedGroups.has(groupName)
@@ -693,7 +693,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
             </div>
           )})}
 
-          {grouped.length === 0 && <div className="asg-empty">조건에 맞는 카드가 없습니다.</div>}
+          {grouped.length === 0 && <div className="asg-empty">{msg('조건에 맞는 카드가 없습니다.')}</div>}
         </div>
       )}
     </div>

@@ -492,7 +492,7 @@ export function ChatRoom({
               </button>
             )}
             {selectableMessages.length > 0 && (
-              <button aria-label="메시지 선택" onClick={enterSelectMode} type="button">⋯</button>
+              <button aria-label={msg('메시지 선택')} onClick={enterSelectMode} type="button">⋯</button>
             )}
           </div>
         )}
@@ -522,7 +522,7 @@ export function ChatRoom({
               >
                 {selectMode && !system && (
                   <button
-                    aria-label="메시지 선택"
+                    aria-label={msg('메시지 선택')}
                     className="chat-message__check"
                     disabled={!selectable}
                     onClick={() => toggleMessageSelected(message)}
@@ -541,7 +541,7 @@ export function ChatRoom({
                   )}
                   {message.image_url && !message.image_expired && (
                     <a href={message.image_url} rel="noreferrer" target="_blank">
-                      <img alt="채팅 첨부 이미지" src={message.image_url} />
+                      <img alt={msg('채팅 첨부 이미지')} src={message.image_url} />
                     </a>
                   )}
                   {message.message_type === 'image' && message.image_expired && (

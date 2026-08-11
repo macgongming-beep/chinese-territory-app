@@ -11,6 +11,7 @@ import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
 import { confirmDialog } from '../../lib/confirm'
 import { matchesName } from '../../utils/koreanSearch'
+import { msg } from '../../lib/msg'
 
 type Props = {
   participants: string[]              // 일정 신청자 ∪ 배정자
@@ -71,16 +72,16 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
       {/* 요약 바 */}
       <div className="asg-summary">
         <div className="asg-summary-stats">
-          <span><b className="muted">신청</b> {participants.length}</span>
-          <span><b className="muted">배정</b> {assignedSet.size}</span>
-          <span><b className="muted">미배정</b> <em className={unassigned.length > 0 ? 'danger' : ''}>{unassigned.length}</em></span>
+          <span><b className="muted">{msg('신청')}</b> {participants.length}</span>
+          <span><b className="muted">{msg('배정')}</b> {assignedSet.size}</span>
+          <span><b className="muted">{msg('미배정')}</b> <em className={unassigned.length > 0 ? 'danger' : ''}>{unassigned.length}</em></span>
         </div>
       </div>
 
       {/* 신청자 풀 */}
       <section className="asg-build-pool">
         <div className="asg-build-pool-head">
-          <h2>신청자 <small>배정 안 된 사람만 진하게</small></h2>
+          <h2>{msg('신청자')}<small>{msg('배정 안 된 사람만 진하게')}</small></h2>
           {selected.size > 0 && (
             <button className="asg-build-group-btn" onClick={makeTeam} type="button">
               {selected.size}명 새 팀으로 묶기
@@ -93,18 +94,18 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="이름 검색 (초성 가능, 예: ㄱㅁㅈ)"
+              placeholder={msg('이름 검색 (초성 가능, 예: ㄱㅁㅈ)')}
               className="asg-build-search-input"
-              aria-label="신청자 이름 검색"
+              aria-label={msg('신청자 이름 검색')}
             />
             {search && (
-              <button type="button" className="asg-build-search-clear" onClick={() => setSearch('')} aria-label="검색 지우기">×</button>
+              <button type="button" className="asg-build-search-clear" onClick={() => setSearch('')} aria-label={msg('검색 지우기')}>×</button>
             )}
           </div>
         )}
         <div className="asg-chip-wrap">
           {visibleParticipants.length === 0 && (
-            <p className="asg-build-empty">검색 결과가 없어요.</p>
+            <p className="asg-build-empty">{msg('검색 결과가 없어요.')}</p>
           )}
           {visibleParticipants.map((name) => {
             const isSel = selected.has(name)
@@ -123,13 +124,13 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
             )
           })}
         </div>
-        <p className="asg-build-hint">사람을 골라 묶으면 팀이 됩니다. 묶은 뒤 팀의 › 를 눌러 구역을 배정하세요.</p>
+        <p className="asg-build-hint">{msg('사람을 골라 묶으면 팀이 됩니다. 묶은 뒤 팀의 › 를 눌러 구역을 배정하세요.')}</p>
       </section>
 
       {/* 팀 목록 */}
       <section className="asg-team-list">
         {teams.length === 0 ? (
-          <div className="asg-empty">아직 팀이 없습니다. 위에서 사람을 골라 묶어주세요.</div>
+          <div className="asg-empty">{msg('아직 팀이 없습니다. 위에서 사람을 골라 묶어주세요.')}</div>
         ) : (
           teams.map((team) => (
             <article className="asg-team-row" key={team.id} style={{ borderLeftColor: teamHex(team.color) }}>
@@ -183,7 +184,7 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
                       color: 'var(--danger, #ef4444)',
                       cursor: 'pointer'
                     }}
-                    aria-label="팀 삭제"
+                    aria-label={msg('팀 삭제')}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>

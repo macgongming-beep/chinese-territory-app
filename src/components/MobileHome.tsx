@@ -29,6 +29,7 @@ import { LocationPermissionSettings } from './LocationPermissionSettings'
 import { AppUpdateCard } from './AppUpdateCard'
 import { AppHeader } from './AppHeader'
 import { formatRelativeVisitDate, getLatestReturnVisitDate, getUserReturnVisits, normalizeVisitorName } from '../utils/returnVisits'
+import { msg } from '../lib/msg'
 
 type MobileTab = '홈' | '캘린더' | '활동' | '구역' | '지도' | '배정' | '설정'
 
@@ -643,7 +644,7 @@ export function MobileHome({
       : ['홈', '캘린더', '구역', '배정', '설정']  // admin (카드→인도자 배정 유지)
 
   const BottomNav = (
-    <nav className="bottom-nav" aria-label="주요 메뉴">
+    <nav className="bottom-nav" aria-label={msg('주요 메뉴')}>
       {visibleTabs.map((item) => (
         <button
           className={item === activeTab ? 'active' : ''}
@@ -1263,7 +1264,7 @@ export function MobileHome({
                   onOpenMenu={() => navigate('/settings')}
                 />
 
-                <button className="mobile-settings-profile" onClick={() => navigate('/profile')} type="button" aria-label="내 정보 관리">
+                <button className="mobile-settings-profile" onClick={() => navigate('/profile')} type="button" aria-label={msg('내 정보 관리')}>
                   <div className="mobile-settings-avatar" aria-hidden="true">
                     {currentVisitor.slice(0, 1)}
                   </div>
@@ -1278,7 +1279,7 @@ export function MobileHome({
                 </button>
 
                 {actualRole === 'admin' && (
-                  <section className="mobile-settings-switch" aria-label="화면 보기 전환">
+                  <section className="mobile-settings-switch" aria-label={msg('화면 보기 전환')}>
                     <p>{t(language, 'settings.viewMode')}</p>
                     <div className="mobile-role-grid">
                       {(['admin', 'leader', 'user'] as Role[]).map((r) => (
@@ -1295,7 +1296,7 @@ export function MobileHome({
                   </section>
                 )}
 
-                <section className="mobile-settings-switch" aria-label="언어 설정">
+                <section className="mobile-settings-switch" aria-label={msg('언어 설정')}>
                   <p>{t(language, 'settings.language')}</p>
                   <div className="mobile-language-grid">
                     {(['ko', 'zh', 'en'] as AppLanguage[]).map((item) => (
@@ -1329,7 +1330,7 @@ export function MobileHome({
                 
                 {/* [기능] 섹션 */}
                 <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>{t(language, 'settings.features')}</div>
-                <section className="mobile-settings-menu" aria-label="기능 설정">
+                <section className="mobile-settings-menu" aria-label={msg('기능 설정')}>
                   <div className="mobile-settings-feature-row">
                     <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
                       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1354,7 +1355,7 @@ export function MobileHome({
 
                 {/* [소식 & 알림] 섹션 */}
                 <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>소식 & 알림</div>
-                <section className="mobile-settings-menu" aria-label="소식 및 알림 메뉴">
+                <section className="mobile-settings-menu" aria-label={msg('소식 및 알림 메뉴')}>
                   {role === 'admin' && (
                     <button onClick={() => navigate('/notices')} type="button">
                       <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
@@ -1393,7 +1394,7 @@ export function MobileHome({
                   <>
                     {/* [관리 (Admin)] 섹션 — 관리자·개발자 */}
                     <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>관리 (Admin)</div>
-                    <section className="mobile-settings-menu" aria-label="관리 메뉴">
+                    <section className="mobile-settings-menu" aria-label={msg('관리 메뉴')}>
                       <button onClick={() => navigate('/users')} type="button">
                         <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
                           <SettingsIcon name="users" />
@@ -1425,8 +1426,8 @@ export function MobileHome({
                           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></svg>
                         </span>
                         <span className="mobile-settings-row-text">
-                          <strong>정기방문 관리</strong>
-                          <small>담당자 끊긴 정기방문 점검·재배정</small>
+                          <strong>{msg('정기방문 관리')}</strong>
+                          <small>{msg('담당자 끊긴 정기방문 점검·재배정')}</small>
                         </span>
                         <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                       </button>

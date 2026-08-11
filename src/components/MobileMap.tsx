@@ -811,7 +811,7 @@ export function MobileMap({
                   type="button"
                   className="mobile-map-header-action"
                   onClick={() => setShowCardFinder((open) => !open)}
-                  aria-label="카드 / 주소 검색"
+                  aria-label={msg('카드 / 주소 검색')}
                 >
                   <svg viewBox="0 0 24 24" aria-hidden>
                     <circle cx="11" cy="11" r="7" />
@@ -822,7 +822,7 @@ export function MobileMap({
                   type="button"
                   className="mobile-map-header-action"
                   onClick={() => setShowMapActionMenu((prev) => !prev)}
-                  aria-label="더보기"
+                  aria-label={msg('더보기')}
                 >
                   <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden>
                     <circle cx="12" cy="5" r="1.5" />
@@ -961,7 +961,7 @@ export function MobileMap({
         <>
           {/* 지역 칩 필터 (drill 폐기 후 신규) — admin/leader 만 */}
           {!isUserMap && !enteredDirectly && areas.length > 1 && (
-            <div className="mobile-map-area-chips" role="tablist" aria-label="지역 필터">
+            <div className="mobile-map-area-chips" role="tablist" aria-label={msg('지역 필터')}>
               <button
                 role="tab"
                 aria-selected={selectedArea === null}
@@ -1289,7 +1289,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                             className="bld-edit-btn"
                             onClick={() => setBuildingMenuId((prev) => prev === building.id ? null : building.id)}
                             type="button"
-                            aria-label="더보기"
+                            aria-label={msg('더보기')}
                           >⋯</button>
                           {buildingMenuId === building.id && (
                             <>
@@ -1499,7 +1499,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                               className="mm-unit-add-btn">{t(language, 'common.add')}</button>
                             <button onClick={addNoEntry} disabled={addingNoEntry} className="mm-unit-noentry-btn" type="button">{noEntryLabel}</button>
                             <button onClick={() => setBulkUnitBuildingId(building.id)} className="mm-unit-bulk-btn" type="button">{t(language, 'unit.bulkShort')}</button>
-                            <button onClick={() => setAddingUnitToBuildingId(null)} className="mm-unit-cancel-btn" aria-label="닫기">
+                            <button onClick={() => setAddingUnitToBuildingId(null)} className="mm-unit-cancel-btn" aria-label={msg('닫기')}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
                             </button>
                           </div>
@@ -1642,7 +1642,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                 </select>
               </div>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>날짜</p>
+                <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{msg('날짜')}</p>
                 <input
                   type="date"
                   value={historyToEdit.visitedAt}
@@ -1721,7 +1721,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               onClick={() => setFullScreenUnit(null)}
               type="button"
               style={{ width: 36, height: 36, padding: 0, border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--text)', cursor: 'pointer', fontSize: 22, lineHeight: 1, marginLeft: -4, flexShrink: 0 }}
-              aria-label="닫기"
+              aria-label={msg('닫기')}
             >‹</button>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ margin: 0, fontWeight: 700, fontSize: 20, letterSpacing: '-0.015em', color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -1783,7 +1783,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                 autoFocus
                 value={unitNumberDraft}
                 onChange={e => setUnitNumberDraft(e.target.value)}
-                placeholder="호수 (예: 101)"
+                placeholder={msg('호수 (예: 101)')}
                 style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--line)', borderRadius: 7, fontSize: 13, background: 'var(--bg)', color: 'var(--ink)' }}
               />
               <button

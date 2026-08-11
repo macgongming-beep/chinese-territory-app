@@ -243,7 +243,7 @@ export function CommentSection({
                   {hasActions(comment) && editingId !== comment.id && (
                     <div className="comment-action-menu">
                       <button
-                        aria-label="댓글 메뉴"
+                        aria-label={msg('댓글 메뉴')}
                         className="comment-action-trigger"
                         onClick={() => setMenuCommentId((id) => id === comment.id ? null : comment.id)}
                         type="button"

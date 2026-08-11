@@ -410,7 +410,7 @@ export function MobileAdminAssignment({
           </div>
 
           {/* 검색 */}
-          <SearchInput value={leaderSearch} onChange={setLeaderSearch} placeholder="인도자 검색" />
+          <SearchInput value={leaderSearch} onChange={setLeaderSearch} placeholder={msg('인도자 검색')} />
 
           {/* 활성 인도자 */}
           {(leaderFilter === 'all' || leaderFilter === 'active') && filteredActive.length > 0 && (
@@ -564,7 +564,7 @@ export function MobileAdminAssignment({
           {/* 검색 + 지도 버튼 */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'stretch', width: '100%' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <SearchInput value={cardQuery} onChange={setCardQuery} placeholder="구·동 검색" />
+              <SearchInput value={cardQuery} onChange={setCardQuery} placeholder={msg('구·동 검색')} />
             </div>
             <button
               type="button"
@@ -786,7 +786,7 @@ export function MobileAdminAssignment({
                                     alignItems: 'center',
                                     gap: 4,
                                   }}
-                                  title="탭해서 배정 해제"
+                                  title={msg('탭해서 배정 해제')}
                                 >
                                   배정됨
                                   <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -1021,12 +1021,12 @@ function LeaderCard({
       </div>
       {!muted ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '2px 8px', fontSize: 11.5, color: 'var(--muted)' }}>
-           <span style={{ whiteSpace: 'nowrap' }}>담당 <b style={{ color: 'var(--ink)', fontWeight: 650 }}>{stats.assigned}</b></span>
-           <span style={{ whiteSpace: 'nowrap' }}>진행 <b style={{ color: 'var(--ink)', fontWeight: 650 }}>{stats.inProgress}</b></span>
-           <span style={{ whiteSpace: 'nowrap' }}>완료 <b style={{ color: 'var(--ink)', fontWeight: 650 }}>{stats.done}</b></span>
+           <span style={{ whiteSpace: 'nowrap' }}>{msg('담당')}<b style={{ color: 'var(--ink)', fontWeight: 650 }}>{stats.assigned}</b></span>
+           <span style={{ whiteSpace: 'nowrap' }}>{msg('진행')}<b style={{ color: 'var(--ink)', fontWeight: 650 }}>{stats.inProgress}</b></span>
+           <span style={{ whiteSpace: 'nowrap' }}>{msg('완료')}<b style={{ color: 'var(--ink)', fontWeight: 650 }}>{stats.done}</b></span>
         </div>
       ) : (
-        <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>담당 없음</span>
+        <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>{msg('담당 없음')}</span>
       )}
     </button>
   )

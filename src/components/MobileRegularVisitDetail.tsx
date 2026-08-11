@@ -9,6 +9,7 @@ import { t } from '../i18n'
 import type { Building, ReturnVisit, ReturnVisitLog } from '../types'
 import { formatRelativeVisitDate } from '../utils/returnVisits'
 import { confirmDialog } from '../lib/confirm'
+import { msg } from '../lib/msg'
 
 type Props = {
   language: AppLanguage
@@ -102,7 +103,7 @@ export function MobileRegularVisitDetail({
     return (
       <main className="mobile-rv-detail-shell">
         <header className="mobile-rv-detail-header">
-          <button className="mobile-rv-back-btn" onClick={() => navigate(-1)} type="button" aria-label="뒤로">‹</button>
+          <button className="mobile-rv-back-btn" onClick={() => navigate(-1)} type="button" aria-label={msg('뒤로')}>‹</button>
           <h1>{t(language, 'territory.regularVisit')}</h1>
         </header>
         <div className="mobile-rv-detail-empty">
@@ -171,10 +172,10 @@ export function MobileRegularVisitDetail({
     <main className="mobile-rv-detail-shell">
       {/* 헤더 */}
       <header className="mobile-rv-detail-header">
-        <button className="mobile-rv-back-btn" onClick={() => navigate(-1)} type="button" aria-label="뒤로">‹</button>
+        <button className="mobile-rv-back-btn" onClick={() => navigate(-1)} type="button" aria-label={msg('뒤로')}>‹</button>
         <h1>{t(language, 'territory.regularVisit')}</h1>
         <div className="mobile-rv-header-menu">
-          <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="더보기">⋮</button>
+          <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label={msg('더보기')}>⋮</button>
           {menuOpen && (
             <>
               <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
@@ -393,7 +394,7 @@ export function MobileRegularVisitDetail({
                   type="button"
                   className="rv-sheet-close"
                   onClick={() => setShowQuickLog(false)}
-                  aria-label="닫기"
+                  aria-label={msg('닫기')}
                 >×</button>
               </div>
               <div className="rv-sheet-divider" />

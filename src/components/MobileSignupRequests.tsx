@@ -80,7 +80,7 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
             onOpenMenu={() => navigate('/settings')}
           />
         )}
-        <section className="signup-request-empty-card">관리자만 사용할 수 있습니다.</section>
+        <section className="signup-request-empty-card">{msg('관리자만 사용할 수 있습니다.')}</section>
       </div>
     )
   }
@@ -99,11 +99,11 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
       )}
       {isEmbedded && (
         <div style={{ padding: '0 4px 16px' }}>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gray-900)', marginBottom: 8 }}>가입 신청 관리</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gray-900)', marginBottom: 8 }}>{msg('가입 신청 관리')}</h2>
         </div>
       )}
 
-      <nav className="signup-request-tabs" aria-label="가입 신청 상태">
+      <nav className="signup-request-tabs" aria-label={msg('가입 신청 상태')}>
         {(['pending', 'approved', 'blocked'] as ApprovalTab[]).map((tab) => (
           <button
             className={activeTab === tab ? 'active' : ''}
@@ -120,9 +120,9 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
       {users.length === 0 ? (
         <section className="signup-request-empty-card">
           <span aria-hidden="true">✓</span>
-          <strong>모두 처리되었습니다</strong>
+          <strong>{msg('모두 처리되었습니다')}</strong>
           <p>{tabLabels[activeTab]} 사용자가 없습니다.</p>
-          <button onClick={() => fetchAllUsers()} type="button">새로고침</button>
+          <button onClick={() => fetchAllUsers()} type="button">{msg('새로고침')}</button>
         </section>
       ) : (
         <section className="signup-request-list">
