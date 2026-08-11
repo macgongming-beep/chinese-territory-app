@@ -10,6 +10,7 @@ import type { AppLanguage } from '../i18n'
 import { confirmDialog } from '../lib/confirm'
 import { formatRelativeVisitDate } from '../utils/returnVisits'
 import { matchesName } from '../utils/koreanSearch'
+import { msg } from '../lib/msg'
 
 const STALE_DAYS = 90
 
@@ -75,7 +76,7 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
 
   const handleDelete = async (rv: ReturnVisit) => {
     const ok = await confirmDialog({
-      message: `"${rv.nickname || rv.displayName}" 정기방문을 해제할까요?\n등록만 풀리고 호수·방문기록은 그대로 남습니다.`,
+      message: msg('"{v1}" 정기방문을 해제할까요?\n등록만 풀리고 호수·방문기록은 그대로 남습니다.', { v1: rv.nickname || rv.displayName }),
       danger: true,
       confirmLabel: '정기방문 해제',
     })

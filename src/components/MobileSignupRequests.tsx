@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
 import { AppHeader } from './AppHeader'
+import { msg } from '../lib/msg'
 
 type ApprovalTab = 'pending' | 'approved' | 'blocked'
 
@@ -170,7 +171,7 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
                   <button
                     className="delete"
                     onClick={async () => {
-                      if (!(await confirmDialog({ message: `${item.name} 계정을 삭제할까요?`, danger: true, confirmLabel: '삭제' }))) return
+                      if (!(await confirmDialog({ message: msg('{name} 계정을 삭제할까요?', { name: item.name }), danger: true, confirmLabel: '삭제' }))) return
                       void deleteUser(item.id)
                     }}
                     type="button"

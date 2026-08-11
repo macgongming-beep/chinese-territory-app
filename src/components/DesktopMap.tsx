@@ -1035,7 +1035,7 @@ export function DesktopMap({
     }
 
     const confirmed = await confirmDialog({
-      message: `${targetCard.name} 카드로 ${selectedIds.length}개 카드의 건물과 구역선을 합칠까요?\n` +
+      message: msg('{name} 카드로 {length}개 카드의 건물과 구역선을 합칠까요?\n', { name: targetCard.name, length: selectedIds.length }) +
         '원본 카드는 남기고, 원본 카드의 구역선만 비워집니다.\n병합 후 되돌리기 버튼으로 취소할 수 있습니다.',
     })
     if (!confirmed) return
@@ -1326,7 +1326,7 @@ export function DesktopMap({
                       disabled={drawingBoundary}
                       onClick={async () => {
                         setShowBoundaryActionMenu(false)
-                        if (await confirmDialog({ message: `${selectedBoundaryCard?.name ?? '선택 카드'} 구역선을 삭제할까요?`, danger: true, confirmLabel: '삭제' })) {
+                        if (await confirmDialog({ message: msg('{v1} 구역선을 삭제할까요?', { v1: selectedBoundaryCard?.name ?? '선택 카드' }), danger: true, confirmLabel: '삭제' })) {
                           handleDeleteBoundary(boundaryCardId)
                         }
                       }}

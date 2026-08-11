@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { confirmDialog, alertDialog } from '../lib/confirm'
 import { DataRoundTrip } from './DataRoundTrip'
 import { t, currentLang } from '../i18n'
+import { msg } from '../lib/msg'
 
 export function DesktopDataManagement() {
   
@@ -96,10 +97,14 @@ export function DesktopDataManagement() {
 
   const runRetentionCleanup = async () => {
     const total = retPreview ? retPreview.chat + retPreview.notif + retPreview.svc + retPreview.login : null
-    const msg = total != null
-      ? `오래된 데이터 ${total.toLocaleString()}건(채팅 ${retPreview!.chat} · 알림 ${retPreview!.notif} · 운영로그 ${retPreview!.svc} · 로그인 ${retPreview!.login})을 지금 영구 삭제할까요?`
-      : '현재 보존 기간 기준으로 오래된 데이터를 지금 영구 삭제할까요?'
-    if (!(await confirmDialog({ message: msg, danger: true, confirmLabel: '정리 실행' }))) return
+    // msg 는 번역 헬퍼 이름이라 지역 변수명으로 쓰지 않는다
+    const question = total != null
+      ? msg('오래된 데이터 {total}건(채팅 {chat} · 알림 {notif} · 운영로그 {svc} · 로그인 {login})을 지금 영구 삭제할까요?', {
+          total: total.toLocaleString(), chat: retPreview!.chat, notif: retPreview!.notif,
+          svc: retPreview!.svc, login: retPreview!.login,
+        })
+      : msg('현재 보존 기간 기준으로 오래된 데이터를 지금 영구 삭제할까요?')
+    if (!(await confirmDialog({ message: question, danger: true, confirmLabel: '정리 실행' }))) return
     setRetRunning(true)
     const { data, error } = await supabase.rpc('cleanup_old_data')
     setRetRunning(false)
@@ -111,7 +116,7 @@ export function DesktopDataManagement() {
     const d = data as Record<string, number | boolean>
     const deleted = (Number(d.chat_deleted) || 0) + (Number(d.notifications_deleted) || 0) + (Number(d.service_logs_deleted) || 0) + (Number(d.login_logs_deleted) || 0)
     setRetPreview(null)
-    void alertDialog({ message: `정리 완료: 총 ${deleted.toLocaleString()}건 삭제됨` })
+    void alertDialog({ message: msg('정리 완료: 총 {v1}건 삭제됨', { v1: deleted.toLocaleString() }) })
   }
 
   const saveResetSettings = async () => {

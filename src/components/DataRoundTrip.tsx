@@ -245,7 +245,7 @@ export function DataRoundTrip() {
     if (!visitPlan) return
     const { updates, inserts, deletes } = visitPlan
     const ok = await confirmDialog({
-      message: `방문 기록에 적용할까요?\n수정 ${updates.length} · 추가 ${inserts.length} · 삭제 ${deletes.length}\n(적용 전 백업(npm run backup)을 권장합니다)`,
+      message: msg('방문 기록에 적용할까요?\n수정 {length} · 추가 {v1} · 삭제 {v2}\n(적용 전 백업(npm run backup)을 권장합니다)', { length: updates.length, v1: inserts.length, v2: deletes.length }),
       danger: deletes.length > 0,
       confirmLabel: '적용',
     })
@@ -322,7 +322,7 @@ export function DataRoundTrip() {
   const applyUnitPlan = async () => {
     if (!unitPlan) return
     const ok = await confirmDialog({
-      message: `세대 속성 ${unitPlan.updates.length}개를 수정할까요?\n(적용 전 백업(npm run backup)을 권장합니다)`,
+      message: msg('세대 속성 {length}개를 수정할까요?\n(적용 전 백업(npm run backup)을 권장합니다)', { length: unitPlan.updates.length }),
       confirmLabel: '적용',
     })
     if (!ok) return

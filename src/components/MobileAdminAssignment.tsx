@@ -906,7 +906,7 @@ export function MobileAdminAssignment({
                 label={`${selectedLeader} 로 변경`}
                 sub="기존 인도자 해제하고 이 인도자만"
                 onClick={async () => {
-                  if (await confirmDialog({ message: `기존 인도자(${getCardLeaders(actionTarget).join(', ')})를 해제하고 ${selectedLeader} 로 변경할까요?`, confirmLabel: '변경' })) {
+                  if (await confirmDialog({ message: msg('기존 인도자({v1})를 해제하고 {selectedLeader} 로 변경할까요?', { v1: getCardLeaders(actionTarget).join(', '), selectedLeader: selectedLeader ?? '' }), confirmLabel: '변경' })) {
                     void handleReplaceAssignment(actionTarget)
                   }
                 }}
@@ -916,7 +916,7 @@ export function MobileAdminAssignment({
                 sub="이 카드를 미배정 상태로"
                 danger
                 onClick={async () => {
-                  if (await confirmDialog({ message: `"${actionTarget.name}" 의 모든 인도자 배정을 해제할까요?`, danger: true, confirmLabel: '해제' })) {
+                  if (await confirmDialog({ message: msg('"{name}" 의 모든 인도자 배정을 해제할까요?', { name: actionTarget.name }), danger: true, confirmLabel: '해제' })) {
                     void Promise.resolve(onSetCardLeaders(actionTarget.id, [], { silentSuccess: true })).then(() => {
                       setSessionAssigned((prev) => {
                         const next = new Set(prev)

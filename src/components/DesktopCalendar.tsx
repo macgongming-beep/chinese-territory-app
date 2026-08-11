@@ -1104,7 +1104,7 @@ function EventDetailCard({
                   type="button"
                   aria-label={`${name} 참가자 제외`}
                   onClick={async () => {
-                    if (await confirmDialog({ message: `${name}님을 이 일정에서 제외할까요?\n이미 팀이나 카드에 배정되어 있으면 배정에서도 제외됩니다.`, danger: true, confirmLabel: '제외' })) {
+                    if (await confirmDialog({ message: msg('{name}님을 이 일정에서 제외할까요?\n이미 팀이나 카드에 배정되어 있으면 배정에서도 제외됩니다.', { name: name }), danger: true, confirmLabel: '제외' })) {
                       onRemoveParticipant(event.id, name)
                     }
                   }}

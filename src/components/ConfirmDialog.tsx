@@ -2,6 +2,7 @@
 // confirm.ts 의 이벤트 버스를 구독해 큐에 쌓고, 맨 앞 요청 하나만 표시한다.
 
 import { useEffect, useState, useCallback } from 'react'
+import { msg } from '../lib/msg'
 import { registerDialogListener, type DialogRequest } from '../lib/confirm'
 
 export function ConfirmDialog() {
@@ -34,8 +35,11 @@ export function ConfirmDialog() {
 
   if (!current) return null
 
-  const cancelLabel = current.cancelLabel ?? '취소'
-  const confirmLabel = current.confirmLabel ?? '확인'
+  // 문구는 여기서 한 번에 번역한다 — 호출부가 100곳이 넘어 각자 번역하게 두면
+  // 빠뜨리기 쉽다. 이미 번역된 문구(t()로 만든 중국어 등)는 사전에 없으므로
+  // 그대로 통과한다.
+  const cancelLabel = msg(current.cancelLabel ?? '취소')
+  const confirmLabel = msg(current.confirmLabel ?? '확인')
 
   return (
     <div
@@ -49,8 +53,8 @@ export function ConfirmDialog() {
         role="alertdialog"
         aria-modal="true"
       >
-        {current.title && <h2 className="cdlg-title">{current.title}</h2>}
-        <p className="cdlg-message">{current.message}</p>
+        {current.title && <h2 className="cdlg-title">{msg(current.title)}</h2>}
+        <p className="cdlg-message">{msg(current.message)}</p>
         <div className="cdlg-actions">
           {current.kind === 'confirm' && (
             <button className="cdlg-btn cdlg-cancel" onClick={() => close(false)} type="button">

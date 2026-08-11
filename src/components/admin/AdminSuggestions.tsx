@@ -5,6 +5,7 @@ import { saveServiceSuggestion, deleteServiceSuggestion } from '../../hooks/stor
 import { useServiceSuggestions } from '../../hooks/useServiceSuggestions'
 import { confirmDialog, alertDialog } from '../../lib/confirm'
 import { RichTextEditor } from '../RichTextEditor'
+import { msg } from '../../lib/msg'
 
 type Props = {
   language?: AppLanguage
@@ -363,7 +364,12 @@ export function AdminSuggestions(_props: Props) {
     setImporting(false)
     setImportPreview(null)
     setImportErrors([])
-    void alertDialog({ message: `가져오기 완료: ${ok}건 저장${fail ? `, ${fail}건 실패` : ''}` })
+    void alertDialog({
+      message: msg('가져오기 완료: {ok}건 저장{failText}', {
+        ok,
+        failText: fail ? msg(', {fail}건 실패', { fail }) : '',
+      }),
+    })
   }
 
   const rowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between' as const, gap: '10px', padding: '16px', borderRadius: '10px', background: 'var(--surface)', marginBottom: '10px', border: '1px solid var(--line-muted)' }

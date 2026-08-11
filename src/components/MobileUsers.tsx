@@ -403,7 +403,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
           <button
             disabled={!canDelete}
             onClick={async () => {
-              if (!(await confirmDialog({ message: `${selectedUser.name} 사용자를 제거할까요?`, danger: true, confirmLabel: '제거' }))) return
+              if (!(await confirmDialog({ message: msg('{name} 사용자를 제거할까요?', { name: selectedUser.name }), danger: true, confirmLabel: '제거' }))) return
               const ok = await deleteUser(selectedUser.id)
               if (ok) setSelectedUserId(null)
             }}
@@ -539,7 +539,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
                   <button
                     aria-label={`${g} 삭제`}
                     onClick={async () => {
-                      if (await confirmDialog({ message: `'${g}' 집단을 목록에서 삭제할까요?`, danger: true, confirmLabel: '삭제' })) {
+                      if (await confirmDialog({ message: msg('\'{g}\' 집단을 목록에서 삭제할까요?', { g: g }), danger: true, confirmLabel: '삭제' })) {
                         void saveGroups(groups.filter((x) => x !== g))
                       }
                     }}

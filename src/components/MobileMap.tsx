@@ -1764,7 +1764,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                       type="button"
                       onClick={async () => {
                         setShowUnitHeaderMenu(false)
-                        if (await confirmDialog({ message: `"${liveFullScreenUnit.unit.number}" 세대를 삭제할까요?`, danger: true, confirmLabel: '삭제' })) {
+                        if (await confirmDialog({ message: msg('"{number}" 세대를 삭제할까요?', { number: liveFullScreenUnit.unit.number }), danger: true, confirmLabel: '삭제' })) {
                           onDeleteUnit(liveFullScreenUnit.building.id, liveFullScreenUnit.unit.id)
                           setFullScreenUnit(null)
                         }

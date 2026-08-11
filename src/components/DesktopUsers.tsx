@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { confirmDialog } from '../lib/confirm'
 import type { Role, VisitHistory } from '../types'
+import { msg } from '../lib/msg'
 
 type UserProfile = {
   name: string
@@ -542,7 +543,7 @@ export function DesktopUsers({
                       </p>
                       <button
                         onClick={async () => {
-                          if (await confirmDialog({ message: `${profile.name}님의 비밀번호를 '0000'으로 초기화하시겠습니까?`, confirmLabel: '초기화' })) {
+                          if (await confirmDialog({ message: msg('{name}님의 비밀번호를 \'0000\'으로 초기화하시겠습니까?', { name: profile.name }), confirmLabel: '초기화' })) {
                             resetUserPin(profile.userId!)
                           }
                         }}
