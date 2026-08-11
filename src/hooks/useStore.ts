@@ -78,6 +78,23 @@ export function getCurrentVisitor(): string {
 // 공용 dateUtils 로 통합 (기존 import 경로 호환을 위해 재export)
 export { getLocalDateString } from '../utils/dateUtils'
 
+// PostgREST 는 한 번에 최대 1,000행만 준다. 통계용 데이터는 끝까지 받아야
+// 숫자가 조용히 줄어들지 않는다.
+async function fetchAllPages<T>(
+  query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<{ data: T[]; error: unknown }> {
+  const pageSize = 1000
+  const rows: T[] = []
+  for (let from = 0; ; from += pageSize) {
+    const res = await query(from, from + pageSize - 1)
+    if (res.error) return { data: rows, error: res.error }
+    const page = res.data ?? []
+    rows.push(...page)
+    if (page.length < pageSize) break
+  }
+  return { data: rows, error: null }
+}
+
 export function useStore() {
   const [cards, setCards] = useState<TerritoryCard[]>([])
   const [buildings, setBuildings] = useState<Building[]>([])
@@ -192,17 +209,20 @@ export function useStore() {
       case 'cards': {
         // cards에 card_leader_assignments 컬럼이 없으면 폴백
         const cardsQueryPromise = (async () => {
-          const withLeader = await supabase
+          const withLeader = await fetchAllPages((from, to) => supabase
             .from('cards')
             .select('*, card_assignments(user_name), card_leader_assignments(user_name)')
             .order('id')
+            .range(from, to))
           if (!withLeader.error) {
             setMissingCardLeaderAssignmentsTable(false)
             return withLeader
           }
-          if (withLeader.error.message.includes('card_leader_assignments')) {
+          const message = (withLeader.error as { message?: string })?.message ?? ''
+          if (message.includes('card_leader_assignments')) {
             setMissingCardLeaderAssignmentsTable(true)
-            return supabase.from('cards').select('*, card_assignments(user_name)').order('id')
+            return fetchAllPages((from, to) => supabase
+              .from('cards').select('*, card_assignments(user_name)').order('id').range(from, to))
           }
           return withLeader
         })()
@@ -236,16 +256,21 @@ export function useStore() {
         // Phase 5 projection + 기간 필터
         // visit_histories: 최근 12개월만 (이전 데이터는 별도 통계 RPC 필요 시)
         const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
+        // ⚠ 통계가 이 데이터로 계산된다 — 한 페이지(1,000행)에서 잘리면
+        //   숫자가 조용히 줄어든다. 반드시 끝까지 받는다.
+        //   (예전에는 봉사 세션을 100개만 받아 누적 시간이 절반만 나왔다)
         const [visitsRes, sessionsRes] = await Promise.all([
-          supabase
+          fetchAllPages((from, to) => supabase
             .from('visit_histories')
             .select('id, unit_id, visitor_name, result, time_slot, memo, visited_at, service_session_id, special_period_id, invitation_left, created_at')
             .gte('created_at', oneYearAgo)
-            .order('created_at', { ascending: false }),
-          supabase
+            .order('created_at', { ascending: false })
+            .range(from, to)),
+          fetchAllPages((from, to) => supabase
             .from('service_sessions')
             .select('id, user_name, role, calendar_event_id, started_at, ended_at, service_date, time_slot, status, primary_card_id, assigned_card_id, assignment_id, source, memo, created_at')
-            .order('started_at', { ascending: false }).limit(100),
+            .order('started_at', { ascending: false })
+            .range(from, to)),
         ])
 
         if (visitsRes.error) {
@@ -269,9 +294,11 @@ export function useStore() {
 
       case 'calendar': {
         const [eventsRes, eventCardAssignmentsRes, eventAssignmentCardsRes] = await Promise.all([
-          supabase.from('calendar_events').select('*, event_participants(*)').order('event_date').order('time'),
-          supabase.from('event_card_assignments').select('*'),
-          supabase.from('event_card_assignment_cards').select('*'),
+          // 1,000개를 넘으면 조용히 잘리므로 끝까지 받는다 (현재 일정 700개 근처)
+          fetchAllPages((from, to) => supabase.from('calendar_events')
+            .select('*, event_participants(*)').order('event_date').order('time').range(from, to)),
+          fetchAllPages((from, to) => supabase.from('event_card_assignments').select('*').order('id').range(from, to)),
+          fetchAllPages((from, to) => supabase.from('event_card_assignment_cards').select('*').order('id').range(from, to)),
         ])
 
         if (eventsRes.error) {
