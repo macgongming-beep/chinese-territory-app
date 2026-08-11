@@ -72,6 +72,40 @@ function getDeviceLabel() {
   return `${platform} browser`
 }
 
+/**
+ * 이름이 텍스트로 저장된 모든 곳을 새 이름으로 옮긴다.
+ *
+ * 이 앱은 배정·기록을 user_id 가 아니라 **이름 문자열**로 들고 있다.
+ * 그래서 닉네임을 바꾸면 옛 이름이 남은 기록은 그 사람 것이 아니게 된다 —
+ * 실제로 통계가 두 사람으로 갈라지고, 구역 인도자 배정을 잃어버리는 일이 있었다.
+ * (예전에는 5개 테이블만 옮기고 방문 기록·봉사 세션은 빠져 있었다)
+ *
+ * 새 테이블에 이름 컬럼이 생기면 여기에도 추가할 것.
+ */
+async function migrateUserNameReferences(oldName: string, newName: string): Promise<void> {
+  if (!oldName || oldName === newName) return
+  const targets: Array<[table: string, column: string]> = [
+    ['visit_histories', 'visitor_name'],
+    ['service_sessions', 'user_name'],
+    ['regular_visits', 'visitor_name'],
+    ['card_leader_assignments', 'user_name'],
+    ['card_assignments', 'user_name'],
+    ['event_participants', 'user_name'],
+    ['event_card_assignments', 'user_name'],
+    ['event_card_assignment_cards', 'user_name'],
+    ['event_restaurant_assignments', 'user_name'],
+    ['event_informal_assignments', 'user_name'],
+    ['cards', 'leader_name'],
+  ]
+  const results = await Promise.all(
+    targets.map(([table, column]) =>
+      supabase.from(table).update({ [column]: newName }).eq(column, oldName)),
+  )
+  results.forEach((r, i) => {
+    if (r.error) console.warn('[migrateUserNameReferences] 이관 실패', targets[i][0], r.error)
+  })
+}
+
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
@@ -338,6 +372,7 @@ export function useAuth() {
       return false
     }
 
+    const previousName = user.name
     const { error } = await supabase
       .from('app_users')
       .update({ name: trimmedName, phone: trimmedPhone || null })
@@ -351,6 +386,10 @@ export function useAuth() {
       showToast(msg('개인 정보 변경에 실패했습니다.'), 'error')
       return false
     }
+
+    // 이름이 바뀌면 이름으로 저장된 기록도 함께 옮긴다 —
+    // 안 하면 본인 방문 기록·봉사 시간이 옛 이름에 남아 통계가 갈라진다
+    await migrateUserNameReferences(previousName, trimmedName)
 
     const nextUser: AuthUser = { ...user, name: trimmedName, phone: trimmedPhone || null }
     setUser(nextUser)
@@ -717,14 +756,7 @@ export function useAuth() {
     // 닉네임 변경 시 이름 텍스트로 저장된 배정/참여 데이터도 새 이름으로 이관 (best-effort)
     // (안 하면 옛 이름이 배정 화면에 잔재로 남고, 본인 배정을 잃어버림)
     if (target.name !== trimmedName) {
-      const renames = await Promise.all([
-        supabase.from('card_leader_assignments').update({ user_name: trimmedName }).eq('user_name', target.name),
-        supabase.from('card_assignments').update({ user_name: trimmedName }).eq('user_name', target.name),
-        supabase.from('regular_visits').update({ visitor_name: trimmedName }).eq('visitor_name', target.name),
-        supabase.from('event_participants').update({ user_name: trimmedName }).eq('user_name', target.name),
-        supabase.from('event_card_assignments').update({ user_name: trimmedName }).eq('user_name', target.name),
-      ])
-      renames.forEach((r) => { if (r.error) console.warn('[updateUserIdentity] 배정 이름 이관 실패', r.error) })
+      await migrateUserNameReferences(target.name, trimmedName)
     }
 
     if (user.id === userId) {
