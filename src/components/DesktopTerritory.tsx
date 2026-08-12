@@ -1199,12 +1199,15 @@ export function DesktopTerritory({
   const downloadFilteredBuildingCsv = () => {
     const isPointList = buildingSubTab === '세대 목록'
     const headers = isPointList
-      ? ['카드명', '지역', '동', '건물명', '주소', '유형', '호수', '식당', '중국어', '정기방문', '정기방문자', '최근 방문', '메모']
+      // 세대ID 를 맨 앞에 — 엑셀에서 다른 파일(전화 조사 시트 등)과 이어 붙일 때 열쇠가 된다.
+      // 상호·주소는 바뀌지만 세대ID 는 안 바뀐다
+      ? ['세대ID', '카드명', '지역', '동', '건물명', '주소', '유형', '호수', '식당', '중국어', '정기방문', '정기방문자', '최근 방문', '메모']
       : ['카드명', '지역', '동', '건물명', '주소', '유형', '식당', '세대', '중국어', '중국어 다수', '정기방문', '건물 메모', '세대 메모']
     const rows = isPointList
       ? sortedPointRows.map(({ building, unit, latestHistory }) => {
           const card = cardMap.get(building.cardId)
           return [
+            String(unit.id),
             card?.name ?? '',
             card?.region ?? '',
             card?.area ?? '',
