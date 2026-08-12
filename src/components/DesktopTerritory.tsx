@@ -956,6 +956,7 @@ export function DesktopTerritory({
       status: UnitStatus
       isChinese: boolean
       isRestaurant: boolean
+      naverPlaceId: string
       regularVisitor: string
       regularVisitorStartDate: string
       memo: string
@@ -995,6 +996,8 @@ export function DesktopTerritory({
       // 업종이 있으면 상가로 보고, 음식 관련이면 식당으로도 표시한다.
       const industryValue = findValue(row, ['업종', '카테고리', 'category'])
       const restaurantValue = findValue(row, ['식당', '식당여부', 'restaurant'])
+      // 네이버 업체ID — 다음 수집 때 이름·주소가 바뀌어도 같은 곳으로 이어 붙이는 열쇠
+      const placeIdValue = findValue(row, ['업체ID', '업체아이디', 'placeId', 'place_id', 'naverPlaceId'])
       // '상호명' 은 전화 조사 시트(플레이스 수집기)가 쓰는 이름 — 상가는 상호가 곧 세대다
       const unitsValue = findValue(row, ['unit', 'units', '호수', '세대', '호수목록', '상호명', '업소명', '가게명'])
       const statusValue = findValue(row, ['status', '상태'])
@@ -1027,6 +1030,21 @@ export function DesktopTerritory({
             `${item.region} ${item.area}` === cardNameValue,
           )
       const explicitCard = cardById ?? cardByName
+
+      // 전화 조사 시트: 중국어를 쓰지 않는 곳까지 올리면 지도가 음식점 목록이 된다.
+      // '없음'·'미확인' 은 등록하지 않고 건너뛴다 (조사한 사실은 조사 대장에 남는다).
+      // ⚠ 빈칸은 전화 조사 시트가 아닌 일반 CSV 일 수 있으므로 거르지 않는다.
+      const surveyAnswer = chineseValue.trim()
+      if (surveyAnswer && !looksTruthy(surveyAnswer)) {
+        skipRow(
+          rowNumber,
+          `중국어 ${surveyAnswer} — 등록하지 않음`,
+          '전화 조사에서 중국어를 쓰지 않는 곳으로 확인된 곳입니다. 지도에 올리지 않습니다.',
+          address,
+          row,
+        )
+        continue
+      }
 
       if (!address) {
         skipRow(rowNumber, '주소 없음', '`주소` 컬럼에 지번/도로명 주소를 넣어 주세요.', undefined, row)
@@ -1135,6 +1153,7 @@ export function DesktopTerritory({
           status,
           isChinese,
           isRestaurant: looksTruthy(restaurantValue),
+          naverPlaceId: placeIdValue.trim(),
           regularVisitor: regularVisitorValue,
           regularVisitorStartDate: regularStartValue ? (parseCsvDate(regularStartValue) ?? regularStartValue) : '',
           memo: memoValue,
@@ -1161,6 +1180,7 @@ export function DesktopTerritory({
           status: finalStatus,
           isChinese: u.isChinese,
           isRestaurant: u.isRestaurant,
+          naverPlaceId: u.naverPlaceId || undefined,
           isRegularVisit: Boolean(u.regularVisitor),
           regularVisitor: u.regularVisitor || undefined,
           regularVisitorStartDate: u.regularVisitorStartDate || undefined,
@@ -1179,7 +1199,7 @@ export function DesktopTerritory({
         lat: accum.lat,
         lng: accum.lng,
         warning: accum.warning || undefined,
-        units: builtUnits.length > 0 ? builtUnits : [{ number: '101', status: '미방문' as UnitStatus, isChinese: false, isRestaurant: false, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }],
+        units: builtUnits.length > 0 ? builtUnits : [{ number: '101', status: '미방문' as UnitStatus, isChinese: false, isRestaurant: false, naverPlaceId: undefined, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }],
       })
     }
 

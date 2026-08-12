@@ -122,7 +122,7 @@ export function makeBuildingMutations(deps: {
 
       const units = input.units.length > 0
         ? input.units
-        : [{ number: '101호', status: '미방문' as UnitStatus, isChinese: false, isRestaurant: false, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }]
+        : [{ number: '101호', status: '미방문' as UnitStatus, isChinese: false, isRestaurant: false, naverPlaceId: undefined, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }]
       const unitsResult = await supabase.from('units').insert(
         units.map((unit) => ({
           building_id: buildingResult.data.id,
@@ -130,6 +130,7 @@ export function makeBuildingMutations(deps: {
           status: unit.status,
           is_chinese: unit.isChinese,
           is_restaurant: unit.isRestaurant ?? false,
+          naver_place_id: unit.naverPlaceId || null,
           memo: unit.memo || null,
         })),
       ).select('id, number')

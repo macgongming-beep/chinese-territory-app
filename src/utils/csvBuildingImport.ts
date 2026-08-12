@@ -20,6 +20,8 @@ export type CsvUnitImport = {
   isChinese: boolean
   /** 이 세대가 식당인가 (업종과 별개 — 상가 중 식당만 true) */
   isRestaurant: boolean
+  /** 네이버 업체ID — 다음 수집 때 이 세대를 정확히 다시 찾는 열쇠 */
+  naverPlaceId?: string
   isRegularVisit: boolean
   regularVisitor?: string
   regularVisitorStartDate?: string
@@ -159,6 +161,7 @@ export function createCsvUnits(
     regularVisitorStartDate?: string
     memo: string
     isRestaurant?: boolean
+    naverPlaceId?: string
     visitHistories?: CsvVisitHistory[]
   },
 ): CsvUnitImport[] {
@@ -169,6 +172,7 @@ export function createCsvUnits(
     status: input.status,
     isChinese: input.isChinese || Boolean(input.regularVisitor) || input.status === '만남' || input.status === '부재',
     isRestaurant: input.isRestaurant ?? false,
+    naverPlaceId: input.naverPlaceId,
     isRegularVisit: Boolean(input.regularVisitor),
     regularVisitor: input.regularVisitor || undefined,
     regularVisitorStartDate: input.regularVisitorStartDate || undefined,
