@@ -472,8 +472,7 @@ export function DesktopTerritory({
   const activeAdvancedBuildingFilterCount =
     (buildingRegularFilter !== '전체' ? 1 : 0) +
     (buildingMemoFilter !== '전체' ? 1 : 0) +
-    (buildingChineseHeavyFilter !== '전체' ? 1 : 0) +
-    (buildingRestaurantFilter !== '전체' ? 1 : 0)
+    (buildingChineseHeavyFilter !== '전체' ? 1 : 0)
   const activeAdvancedPointFilterCount =
     (pointRegularFilter !== '전체' ? 1 : 0) +
     (pointMemoFilter !== '전체' ? 1 : 0)
@@ -2368,6 +2367,13 @@ export function DesktopTerritory({
           {/* Layer 3: 건물 관리 필터 */}
           {activeTab === '건물 관리' && buildingSubTab === '건물 목록' && (
             <div className="tbl-filter-layer" style={{ gap: 12 }}>
+              {/* 두 화면의 필터 순서를 같게 둔다: 구분 → 유형 → (카드|상태) → 필터 → 정렬 */}
+              <span className="tbl-filter-label">구분</span>
+              <div className="tbl-mini-seg">
+                {(['전체', '식당', '식당 아님'] as const).map((f) => (
+                  <button key={f} className={buildingRestaurantFilter === f ? 'active' : ''} onClick={() => setBuildingRestaurantFilter(f)} type="button">{f}</button>
+                ))}
+              </div>
               <span className="tbl-filter-label">유형</span>
               <div className="tbl-mini-seg">
                 {(['전체', '상가', '주택'] as Array<Building['type'] | '전체'>).map((f) => (
@@ -2416,14 +2422,6 @@ export function DesktopTerritory({
                       ))}
                     </div>
                   </div>
-                  <div className="tbl-filter-group">
-                    <span className="tbl-filter-label">식당 등록</span>
-                    <div className="tbl-mini-seg">
-                      {(['전체', '식당', '식당 아님'] as const).map((f) => (
-                        <button key={f} className={buildingRestaurantFilter === f ? 'active' : ''} onClick={() => setBuildingRestaurantFilter(f)} type="button">{f}</button>
-                      ))}
-                    </div>
-                  </div>
                   <button
                     className="tbl-filter-reset"
                     disabled={activeAdvancedBuildingFilterCount === 0}
@@ -2431,7 +2429,6 @@ export function DesktopTerritory({
                       setBuildingRegularFilter('전체')
                       setBuildingMemoFilter('전체')
                       setBuildingChineseHeavyFilter('전체')
-                      setBuildingRestaurantFilter('전체')
                     }}
                     type="button"
                   >
@@ -2448,18 +2445,6 @@ export function DesktopTerritory({
                 {(['카드', '건물', '주소', '유형', '식당'] as BuildingSortKey[]).map((key) => (
                   <button key={key} className={buildingSort.key === key ? 'active' : ''} onClick={() => setBuildingSort((prev) => prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' })} type="button">
                     {key}{buildingSort.key === key ? (buildingSort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {activeTab === '건물 관리' && buildingSubTab === '세대 목록' && (
-            <div className="tbl-filter-layer tbl-filter-layer--sort">
-              <span className="tbl-filter-label">정렬</span>
-              <div className="tbl-mini-seg">
-                {(['카드', '건물', '세대', '상태', '최근 방문'] as PointSortKey[]).map((key) => (
-                  <button key={key} className={pointSort.key === key ? 'active' : ''} onClick={() => setPointSort((prev) => prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' })} type="button">
-                    {key}{pointSort.key === key ? (pointSort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
                   </button>
                 ))}
               </div>
@@ -2528,6 +2513,18 @@ export function DesktopTerritory({
                   </button>
                 </div>
               )}
+            </div>
+          )}
+          {activeTab === '건물 관리' && buildingSubTab === '세대 목록' && (
+            <div className="tbl-filter-layer tbl-filter-layer--sort">
+              <span className="tbl-filter-label">정렬</span>
+              <div className="tbl-mini-seg">
+                {(['카드', '건물', '세대', '상태', '최근 방문'] as PointSortKey[]).map((key) => (
+                  <button key={key} className={pointSort.key === key ? 'active' : ''} onClick={() => setPointSort((prev) => prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' })} type="button">
+                    {key}{pointSort.key === key ? (pointSort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
