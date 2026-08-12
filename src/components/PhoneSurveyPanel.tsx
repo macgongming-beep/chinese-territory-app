@@ -150,7 +150,25 @@ export function PhoneSurveyPanel({ currentVisitor = '' }: { currentVisitor?: str
       const skipped = answered.length - payload.length
       const { error } = await supabase.from('phone_surveys').upsert(payload, { onConflict: 'place_id' })
       if (error) { console.error(error); showToast(msg('저장 실패'), 'error'); return }
-      setSaved(`${payload.length}건 기록${skipped > 0 ? ` (업체ID 없는 ${skipped}건 제외)` : ''}`)
+
+      // 대조로 "이 세대가 그 업소"임을 확인한 순간이 업체ID 를 채울 최적의 시점이다.
+      // 여기서 안 붙이면 다음 대조에서도 주소·이름으로 흐릿하게 맞춰야 한다.
+      let linked = 0
+      for (const r of answered) {
+        if (!r.unit || !r.row.placeId || r.unit.placeId) continue
+        const { error: linkError } = await supabase
+          .from('units')
+          .update({ naver_place_id: r.row.placeId })
+          .eq('id', r.unit.unitId)
+          .is('naver_place_id', null)   // 이미 다른 값이 있으면 덮지 않는다
+        if (!linkError) linked += 1
+      }
+
+      setSaved(
+        `${payload.length}건 기록`
+        + (linked > 0 ? ` · 세대 ${linked}곳에 업체ID 연결` : '')
+        + (skipped > 0 ? ` (업체ID 없는 ${skipped}건 제외)` : ''),
+      )
       showToast(msg('저장되었습니다.'))
     } finally { setBusy(null) }
   }

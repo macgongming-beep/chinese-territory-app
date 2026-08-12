@@ -101,3 +101,24 @@ describe('조사 결과 값 읽기', () => {
     expect(normalizeSurveyAnswer(undefined)).toBeNull()
   })
 })
+
+describe('등록·조사가 겹칠 때', () => {
+  const units = [unit(3, '제일식당', '경기 용인시 처인구 백암면 백암로201번길 11')]
+
+  it('지도에도 있고 조사도 했으면 등록됨으로 알려 준다 (세대를 찾아야 업체ID를 붙인다)', () => {
+    const [r] = matchSurveyRows(
+      [row('제일식당', '경기 용인시 처인구 백암면 백암로201번길 11', '777')],
+      units,
+      new Set(['777']),
+    )
+    expect(r.kind).toBe('registered')
+    expect(r.unit?.unitId).toBe(3)          // ← 여기서 업체ID를 붙일 수 있다
+    expect(r.reason).toContain('조사도 완료')
+  })
+
+  it('지도에 없고 조사만 했으면 조사함', () => {
+    const [r] = matchSurveyRows([row('없는가게', '경기 용인시 처인구 어딘로 9', '888')], units, new Set(['888']))
+    expect(r.kind).toBe('surveyed')
+    expect(r.unit).toBeUndefined()
+  })
+})

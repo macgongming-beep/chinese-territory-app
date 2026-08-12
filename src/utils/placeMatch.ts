@@ -102,19 +102,28 @@ export function matchSurveyRows(
       return { row, kind: 'registered' as const, unit: byId, reason: '업체ID 일치' }
     }
 
+    const addr = normalizeRoadAddress(row.address)
+    const surveyed = Boolean(row.placeId && surveyedPlaceIds.has(row.placeId))
+
+    // 2. 주소 + 이름
+    // ⚠ 조사 대장 확인보다 먼저 본다. 지도에 있는 곳이면 '등록됨' 으로 알려 주는 편이
+    //   정보가 많고, 세대를 찾아야 업체ID 를 붙일 수 있다 (다음 대조가 정확해진다).
+    const exact = addr ? byAddrName.get(`${addr}|${normalizePlaceName(row.name)}`) : undefined
+    if (exact) {
+      return {
+        row,
+        kind: 'registered' as const,
+        unit: exact,
+        reason: surveyed ? '주소·상호 일치 (조사도 완료)' : '주소·상호 일치',
+      }
+    }
+
     // 조사 대장에 있으면 (등록은 안 했어도) 이미 확인한 곳
-    if (row.placeId && surveyedPlaceIds.has(row.placeId)) {
+    if (surveyed) {
       return { row, kind: 'surveyed' as const, reason: '지난 조사에서 확인함' }
     }
 
-    const addr = normalizeRoadAddress(row.address)
     if (!addr) return { row, kind: 'new' as const, reason: '주소에서 도로명을 찾지 못함' }
-
-    // 2. 주소 + 이름
-    const exact = byAddrName.get(`${addr}|${normalizePlaceName(row.name)}`)
-    if (exact) {
-      return { row, kind: 'registered' as const, unit: exact, reason: '주소·상호 일치' }
-    }
 
     // 3. 주소만 — 같은 건물인데 이름이 다르다
     const sameAddr = byAddr.get(addr)
