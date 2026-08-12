@@ -12,6 +12,7 @@ import {
   parseCsvRestaurants,
 } from '../utils/csvRestaurantImport'
 import type { MatchResult } from '../utils/csvRestaurantImport'
+import { getRestaurantUnits } from '../utils/restaurants'
 
 function isLeaderOrAdmin(role: Role): boolean {
   return role === 'leader' || role === 'admin' || role === 'developer'
@@ -675,13 +676,15 @@ export function RestaurantsTab({
   const restaurants = useMemo<RestaurantRow[]>(() => {
     const rows: RestaurantRow[] = []
     for (const b of buildings) {
-      if (b.type !== '상가' || !b.isRestaurant) continue
-      const chineseUnits = b.units.filter((u) => u.isChinese)
-      if (chineseUnits.length === 0) {
-        // 중국인 세대 없으면 건물명 fallback 1행
+      // 판정은 utils/restaurants 한 곳에서만. 유형(상가) 조건은 걸지 않는다
+      // — 잘못 등록된 건물이 조용히 사라지는 편보다 눈에 보이는 편이 낫다
+      const restaurantUnits = getRestaurantUnits(b)
+      if (restaurantUnits.length === 0) {
+        if (!b.isRestaurant) continue
+        // 세대가 없는 옛 데이터는 건물명으로 1행
         rows.push({ building: b, unit: null, key: `${b.id}-none` })
       } else {
-        for (const u of chineseUnits) {
+        for (const u of restaurantUnits) {
           rows.push({ building: b, unit: u, key: `${b.id}-${u.id}` })
         }
       }

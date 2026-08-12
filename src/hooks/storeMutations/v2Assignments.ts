@@ -182,30 +182,22 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     else await fetchAll()
   }
 
-  // ── 식당 개별 세대 해제 (unit.is_chinese → false, 마지막이면 is_restaurant 도 해제) ──
+  // ── 식당 세대 해제 ──
+  // ⚠ 예전에는 is_chinese(중국인 여부)를 껐다. 그러면 "중국어 안 씀"과
+  //   "식당 아님"이 구분되지 않아, 중국어를 안 쓴다고 표시하면 식당 목록에서
+  //   통째로 사라졌다. 이제 식당 표시(is_restaurant)만 끈다.
+  //   중국어를 쓰지 않는 식당은 방문 결과를 '대상외' 로 찍으면 된다.
   const removeRestaurantUnit = async (unitId: number, buildingId: number) => {
-    // 1) 해당 세대 중국인 플래그 해제
     const { error: unitError } = await supabase
       .from('units')
-      .update({ is_chinese: false })
+      .update({ is_restaurant: false })
       .eq('id', unitId)
     if (unitError) {
       showToast(msg('세대 해제 실패: {message}', { message: unitError.message }), 'error')
       return
     }
-
-    // 2) 이 건물에 남은 중국인 세대 수 확인
-    const { count } = await supabase
-      .from('units')
-      .select('id', { count: 'exact', head: true })
-      .eq('building_id', buildingId)
-      .eq('is_chinese', true)
-
-    // 3) 0개 남으면 건물 식당 표시도 해제
-    if ((count ?? 0) === 0) {
-      await supabase.from('buildings').update({ is_restaurant: false }).eq('id', buildingId)
-    }
-
+    // 건물의 식당 표시는 DB 트리거가 세대에 맞춰 자동으로 맞춘다
+    void buildingId
     await fetchAll()
   }
 

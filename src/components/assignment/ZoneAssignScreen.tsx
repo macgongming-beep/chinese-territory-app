@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react'
 import type { Dispatch } from 'react'
 import type { Building, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, TerritoryCard, VisitHistory } from '../../types'
 import { matchesName } from '../../utils/koreanSearch'
+import { getRestaurantUnits } from '../../utils/restaurants'
 import { showToast } from '../../lib/toast'
 import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
@@ -290,18 +291,20 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
     const q = query.trim().toLowerCase()
     const byRegion = new Map<string, SubItem[]>()
     buildings.forEach((b) => {
-      if (b.type !== '상가' || !b.isRestaurant) return
+      // 유형(상가) 조건은 걸지 않는다 — 잘못 등록돼도 조용히 사라지지 않게
+      if (!b.isRestaurant && getRestaurantUnits(b).length === 0) return
       const region = cardRegionById.get(b.cardId) || '기타'
-      const chineseUnits = (b.units ?? []).filter((u) => u.isChinese)
-      // 중국인 세대 없으면 건물명 1행 (unitId null = 건물단위)
-      const rows: Array<{ unitId: number | null; name: string }> = chineseUnits.length === 0
-        ? [{ unitId: null, name: b.name || b.address }]
-        : chineseUnits.map((u) => ({ unitId: u.id, name: u.number || b.name || b.address }))
+      // 식당 판정은 utils/restaurants 한 곳에서만 (화면마다 다르면 어긋난다)
+      const restaurantUnits = getRestaurantUnits(b)
+      // 세대가 없으면 건물명 1행 (unitId null = 건물단위 옛 데이터)
+      const rows: Array<{ unitId: number | null; name: string; excluded: boolean }> = restaurantUnits.length === 0
+        ? [{ unitId: null, name: b.name || b.address, excluded: false }]
+        : restaurantUnits.map((u) => ({ unitId: u.id, name: u.number || b.name || b.address, excluded: u.status === '대상외' }))
       rows.forEach((row) => {
         if (q && !row.name.toLowerCase().includes(q) && !(b.address ?? '').toLowerCase().includes(q)) return
         const assigns = restaurantAssigns.get(`${b.id}:${row.unitId ?? 0}`) ?? []
         if (unassignedOnly && assigns.length > 0) return
-        const item: SubItem = { key: `rest-${b.id}-${row.unitId ?? 0}`, id: b.id, unitId: row.unitId, name: row.name, address: b.address, assignedTo: assigns.map((x) => x.user), isActive: assigns.some((x) => memberSet.has(x.user)) }
+        const item: SubItem = { key: `rest-${b.id}-${row.unitId ?? 0}`, id: b.id, unitId: row.unitId, name: row.excluded ? `${row.name} (대상외)` : row.name, address: b.address, assignedTo: assigns.map((x) => x.user), isActive: assigns.some((x) => memberSet.has(x.user)) }
         byRegion.set(region, [...(byRegion.get(region) ?? []), item])
       })
     })

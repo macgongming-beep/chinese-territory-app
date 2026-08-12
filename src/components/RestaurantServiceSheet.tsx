@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react'
 import type { Building, RestaurantRequest, TerritoryCard, Unit, VisitHistory } from '../types'
 import { normalizeCardSearch } from '../utils/cardSearch'
 import { t, translateKoreanAddress, type AppLanguage } from '../i18n'
+import { getRestaurantUnits } from '../utils/restaurants'
 
 // ── 아이콘 ────────────────────────────────────────────────────
 function ForkIcon() {
@@ -145,12 +146,12 @@ export function RestaurantServiceSheet({
   const restaurants = useMemo<RestaurantRow[]>(() => {
     const rows: RestaurantRow[] = []
     for (const building of buildings) {
-      if (building.type !== '상가' || !building.isRestaurant) continue
-      const chineseUnits = building.units.filter((unit) => unit.isChinese)
-      if (chineseUnits.length === 0) {
+      const restaurantUnits = getRestaurantUnits(building)
+      if (restaurantUnits.length === 0) {
+        if (!building.isRestaurant) continue
         rows.push({ building, unit: null, key: `${building.id}-none` })
       } else {
-        for (const unit of chineseUnits) {
+        for (const unit of restaurantUnits) {
           rows.push({ building, unit, key: `${building.id}-${unit.id}` })
         }
       }

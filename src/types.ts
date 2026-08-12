@@ -118,6 +118,8 @@ export type Unit = {
   number: string
   status: UnitStatus
   isChinese?: boolean
+  /** 이 세대가 식당인가 (업종). 중국어 사용 여부와는 별개 — utils/restaurants 참고 */
+  isRestaurant?: boolean
   isKorean?: boolean
   isForbidden?: boolean
   isRegularVisit?: boolean

@@ -21,6 +21,7 @@ import { InformalCardsTab } from '../InformalCardsTab'
 import { RestaurantsTab } from '../RestaurantsTab'
 import { Card } from '../ui'
 import { msg } from '../../lib/msg'
+import { getRestaurantUnits } from '../../utils/restaurants'
 
 type ZoneKind = 'territory' | 'informal' | 'restaurant'
 type Scope = 'mine' | 'all'
@@ -179,9 +180,9 @@ export function AdminMobileZone({
 
   const informalCount = informalAssets.length
   const restaurantCount = buildings.reduce((acc, b) => {
-    if (b.type !== '상가' || !b.isRestaurant) return acc
-    const chineseUnits = b.units.filter(u => u.isChinese).length
-    return acc + (chineseUnits === 0 ? 1 : chineseUnits)
+    const units = getRestaurantUnits(b).length
+    if (units === 0) return acc + (b.isRestaurant ? 1 : 0)
+    return acc + units
   }, 0)
 
   // ── 카드 필터: 담당/전체 ─────────────────────

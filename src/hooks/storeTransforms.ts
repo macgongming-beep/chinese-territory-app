@@ -44,6 +44,7 @@ export type RawUnit = {
   number: string
   status: UnitStatus
   is_chinese: boolean
+  is_restaurant?: boolean | null
   is_forbidden?: boolean | null
   memo: string | null
   regular_visits: { visitor_name: string; registered_at?: string | null }[]
@@ -247,6 +248,7 @@ export function toBuilding(raw: RawBuilding): Building {
         number: u.number,
         status: u.status,
         isChinese: u.is_chinese,
+        isRestaurant: u.is_restaurant ?? false,
         isForbidden: Boolean(u.is_forbidden) || u.status === '거절',
         memo: u.memo ?? undefined,
         isRegularVisit: !!(u.regular_visits && (Array.isArray(u.regular_visits) ? u.regular_visits.length > 0 : true)),

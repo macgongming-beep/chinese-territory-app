@@ -113,7 +113,7 @@ export function makeRestaurantServiceMutations(deps: {
         // 세대가 없으면 하나 생성
         const uRes = await supabase
           .from('units')
-          .insert({ building_id: resolvedBuildingId, number: '전체', status: '만남', is_chinese: true })
+          .insert({ building_id: resolvedBuildingId, number: '전체', status: '만남', is_chinese: true, is_restaurant: true })
           .select('id')
           .single()
         if (uRes.error || !uRes.data) {
@@ -165,7 +165,7 @@ export function makeRestaurantServiceMutations(deps: {
 
       const uRes = await supabase
         .from('units')
-        .insert({ building_id: resolvedBuildingId, number: '전체', status: '만남', is_chinese: true })
+        .insert({ building_id: resolvedBuildingId, number: '전체', status: '만남', is_chinese: true, is_restaurant: true })
         .select('id')
         .single()
       if (uRes.error || !uRes.data) {

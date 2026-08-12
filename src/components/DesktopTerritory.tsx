@@ -33,6 +33,7 @@ import { useSessionState } from '../hooks/useSessionState'
 import { BuildingEditCells, UnitEditForm, type BuildingEditDraft } from './BuildingEditRows'
 import { CardCreateModal } from './DesktopTerritoryCardModal'
 import { msg } from '../lib/msg'
+import { getRestaurantUnits } from '../utils/restaurants'
 
 // 상대 날짜 표시: "오늘", "어제", "N일 전", "N주 전", "N개월 전", "YYYY-MM-DD"
 function formatRelativeDate(iso: string): string {
@@ -202,9 +203,9 @@ export function DesktopTerritory({
   const [zoneKind, setZoneKind] = useSessionState<ZoneKind>('dt.zoneKind', 'territory')
   const informalCount = informalAssets.length
   const restaurantCount = buildings.reduce((acc, b) => {
-    if (b.type !== '상가' || !b.isRestaurant) return acc
-    const chineseUnits = b.units.filter((u) => u.isChinese)
-    return acc + (chineseUnits.length === 0 ? 1 : chineseUnits.length)
+    const units = getRestaurantUnits(b).length
+    if (units === 0) return acc + (b.isRestaurant ? 1 : 0)
+    return acc + units
   }, 0)
   const [buildingSubTab, setBuildingSubTab] = useSessionState<'건물 목록' | '중국어 포인트'>('dt.buildingSubTab', '건물 목록')
   const [showCardModal, setShowCardModal] = useState(false)
@@ -2684,7 +2685,16 @@ export function DesktopTerritory({
                             }}>{recommendationBadge.label}</span>
                           )}
                         </span>
-                        <span>{building.type}</span>
+                        <span>
+                          {building.type}
+                          {getRestaurantUnits(building).length > 0 && (
+                            <span style={{
+                              marginLeft: 5, fontSize: 10.5, fontWeight: 700,
+                              color: '#b4621f', background: '#fef3e7',
+                              border: '1px solid #f5cfa1', borderRadius: 5, padding: '1px 5px',
+                            }}>식당 {getRestaurantUnits(building).length}</span>
+                          )}
+                        </span>
                         <span>{building.units.length}개</span>
                         <span>{chineseCount}건</span>
                         <button
