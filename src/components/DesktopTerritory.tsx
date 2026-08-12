@@ -988,15 +988,16 @@ export function DesktopTerritory({
         ? rawAddressValue
         : [fullRegionValue, rawAddressValue].filter(Boolean).join(' ')
       const nameValue = findValue(row, ['name', 'buildingName', '건물명', '건물']) || detailAddressValue
-      const typeValue = findValue(row, ['type', '유형', '건물유형'])
-      const unitsValue = findValue(row, ['unit', 'units', '호수', '세대', '호수목록'])
+      const typeValue = findValue(row, ['type', '유형', '건물유형', '업종'])
+      // '상호명' 은 전화 조사 시트(플레이스 수집기)가 쓰는 이름 — 상가는 상호가 곧 세대다
+      const unitsValue = findValue(row, ['unit', 'units', '호수', '세대', '호수목록', '상호명', '업소명', '가게명'])
       const statusValue = findValue(row, ['status', '상태'])
       const divisionValue = findValue(row, ['구분', 'division'])
       const chineseValue = findValue(row, ['chinese', 'isChinese', '중국어', '중국어여부', '중국인', '중국인여부'])
       const warningValue = findValue(row, ['warning', '방문금지', '경고'])
       const regularVisitorValue = findValue(row, ['regularVisitor', 'regular', '정기방문자', '재방문자', '정기방문'])
       const regularStartValue = findValue(row, ['정기방문시작일', '정기방문시작', 'regularStart', 'regularVisitorStartDate'])
-      const memoValue = findValue(row, ['memo', 'note', '메모', '비고', '备注'])
+      const memoValue = findValue(row, ['memo', 'note', '메모', '비고', '备注', '조사메모'])
       const latValue = findValue(row, ['lat', 'latitude', '위도'])
       const lngValue = findValue(row, ['lng', 'lon', 'longitude', '경도'])
       // 방문기록 컬럼
