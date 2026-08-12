@@ -93,16 +93,33 @@ function todayStamp() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+/**
+ * 한 테이블을 통째로 받아온다.
+ *
+ * ⚠ Supabase(PostgREST)는 한 번에 최대 1,000행만 준다. 페이지 처리를 안 하면
+ *   백업이 조용히 1,000행에서 잘린다 — 실제로 세대(units) 1,553개 중 1,000개만
+ *   저장돼 있었다. 잘린 백업은 없는 것보다 위험하므로 끝까지 받는다.
+ */
 async function dumpTable(name) {
-  const { data, error } = await supabase.from(name).select('*')
-  if (error) {
-    if (error.message?.includes('does not exist') || error.code === 'PGRST205' || error.code === '42P01') {
-      return { status: 'skipped' }
+  const pageSize = 1000
+  const rows = []
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from(name)
+      .select('*')
+      .range(from, from + pageSize - 1)
+    if (error) {
+      if (error.message?.includes('does not exist') || error.code === 'PGRST205' || error.code === '42P01') {
+        return { status: 'skipped' }
+      }
+      console.error(`❌ ${name}: ${error.message}`)
+      return { status: 'failed' }
     }
-    console.error(`❌ ${name}: ${error.message}`)
-    return { status: 'failed' }
+    const page = data ?? []
+    rows.push(...page)
+    if (page.length < pageSize) break
   }
-  return { status: 'ok', rows: data ?? [] }
+  return { status: 'ok', rows }
 }
 
 async function main() {
