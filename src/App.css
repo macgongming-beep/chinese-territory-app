@@ -12490,7 +12490,7 @@ button:focus-visible {
   .building-management-head,
   .building-management-row {
     display: grid;
-    grid-template-columns: 34px minmax(130px, 1fr) minmax(200px, 1.35fr) minmax(150px, 0.9fr) 56px 58px 62px 54px 110px;
+    grid-template-columns: 34px minmax(130px, 1fr) minmax(190px, 1.3fr) minmax(140px, 0.85fr) 104px 56px 60px 52px 110px;
     gap: 12px;
     align-items: center;
   }
@@ -12510,6 +12510,25 @@ button:focus-visible {
     border-top: 1px solid #e6e9ee;
     color: #263241;
     font-size: 13px;
+  }
+
+  /* 유형 칸의 식당 표시 — 좁은 칸이라 글자를 줄이고 줄바꿈을 막는다 */
+  .building-type-restaurant {
+    margin-left: 4px;
+    padding: 1px 5px;
+    border: 1px solid #f5cfa1;
+    border-radius: 5px;
+    background: #fef3e7;
+    color: #b4621f;
+    font-size: 10.5px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .unit-flag-chip.restaurant {
+    background: #fef3e7;
+    border-color: #f5cfa1;
+    color: #b4621f;
   }
 
   .building-management-row:hover {

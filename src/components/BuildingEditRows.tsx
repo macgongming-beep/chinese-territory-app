@@ -88,6 +88,8 @@ export type UnitEditDraft = {
   isChinese: boolean
   isRegularVisit: boolean
   isForbidden: boolean
+  /** 이 세대가 식당인가 (업종). 중국어 사용 여부와 별개 */
+  isRestaurant: boolean
 }
 
 export function UnitEditForm({
@@ -106,6 +108,7 @@ export function UnitEditForm({
     isChinese: unit.isChinese ?? false,
     isRegularVisit: unit.isRegularVisit ?? false,
     isForbidden: unit.isForbidden ?? false,
+    isRestaurant: unit.isRestaurant ?? false,
   })
   return (
     <div className="unit-edit-layout">
@@ -161,6 +164,14 @@ export function UnitEditForm({
             onChange={(e) => setDraft((d) => ({ ...d, isChinese: e.target.checked }))}
           />
           중국어
+        </label>
+        <label className="unit-flag-label">
+          <input
+            type="checkbox"
+            checked={draft.isRestaurant}
+            onChange={(e) => setDraft((d) => ({ ...d, isRestaurant: e.target.checked }))}
+          />
+          식당
         </label>
       </div>
     </div>

@@ -2688,11 +2688,9 @@ export function DesktopTerritory({
                         <span>
                           {building.type}
                           {getRestaurantUnits(building).length > 0 && (
-                            <span style={{
-                              marginLeft: 5, fontSize: 10.5, fontWeight: 700,
-                              color: '#b4621f', background: '#fef3e7',
-                              border: '1px solid #f5cfa1', borderRadius: 5, padding: '1px 5px',
-                            }}>식당 {getRestaurantUnits(building).length}</span>
+                            <span className="building-type-restaurant">
+                              식당{getRestaurantUnits(building).length > 1 ? ` ${getRestaurantUnits(building).length}` : ''}
+                            </span>
                           )}
                         </span>
                         <span>{building.units.length}개</span>
@@ -2733,6 +2731,7 @@ export function DesktopTerritory({
                                       isChinese: draft.isChinese,
                                       isRegularVisit: draft.isRegularVisit,
                                       isForbidden: draft.isForbidden,
+                                      isRestaurant: draft.isRestaurant,
                                       memo: draft.memo,
                                     })
                                     setEditingUnitId(null)
@@ -2747,6 +2746,7 @@ export function DesktopTerritory({
                                     {unit.isForbidden && <span className="unit-flag-chip forbidden">방문금지</span>}
                                     {unit.isRegularVisit && <span className="unit-flag-chip regular">정기</span>}
                                     {unit.isChinese && <span className="unit-flag-chip chinese">中</span>}
+                                    {unit.isRestaurant && <span className="unit-flag-chip restaurant">식당</span>}
                                   </div>
                                   <span className="unit-memo">{unit.memo || '-'}</span>
                                   <span className="unit-row-actions">

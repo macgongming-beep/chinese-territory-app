@@ -280,6 +280,8 @@ export function makeVisitMutations(deps: {
   const updateUnitFlags = async (unitId: number, flags: Partial<Unit>) => {
     const dbFlags: Record<string, unknown> = {}
     if (flags.isChinese !== undefined) dbFlags.is_chinese = flags.isChinese
+    // 식당 여부(업종) — 중국어 사용 여부와 별개로 저장한다
+    if (flags.isRestaurant !== undefined) dbFlags.is_restaurant = flags.isRestaurant
     if (flags.isKorean !== undefined) dbFlags.is_korean = flags.isKorean
     if (flags.memo !== undefined) dbFlags.memo = flags.memo
     if (flags.number !== undefined) dbFlags.number = flags.number
