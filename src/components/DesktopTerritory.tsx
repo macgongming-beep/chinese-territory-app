@@ -228,6 +228,8 @@ export function DesktopTerritory({
   const [pointStatusFilter, setPointStatusFilter] = useSessionState<UnitStatus | '전체'>('dt.pointStatusFilter', '전체')
   // 세대 목록의 구분 — 예전에는 "중국어 또는 정기방문" 으로 고정이라 일반 세대를 볼 수 없었다.
   // 기본값은 '중국어' 로 두어 이 화면을 쓰던 방식이 그대로 유지되게 한다.
+  type PointSortKey = '카드' | '건물' | '세대' | '상태' | '최근 방문'
+  const [pointSort, setPointSort] = useSessionState<{ key: PointSortKey; dir: 'asc' | 'desc' }>('dt.pointSort', { key: '카드', dir: 'asc' })
   type PointKindFilter = '전체' | '중국어' | '정기방문' | '식당'
   const [pointKindFilter, setPointKindFilter] = useSessionState<PointKindFilter>('dt.pointKindFilter', '중국어')
   const [buildingRegularFilter, setBuildingRegularFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingRegularFilter', '전체')
@@ -741,6 +743,35 @@ export function DesktopTerritory({
     if (pointMemoFilter === '없음' && hasMemo) return false
     return true
   })
+  const STATUS_ORDER: Record<string, number> = { 미방문: 0, 부재: 1, 만남: 2, 대상외: 3, 거절: 4 }
+  const sortedPointRows = [...pointRows].sort((a, b) => {
+    const dir = pointSort.dir === 'asc' ? 1 : -1
+    if (pointSort.key === '카드') {
+      const ca = cardMap.get(a.building.cardId)?.name ?? ''
+      const cb = cardMap.get(b.building.cardId)?.name ?? ''
+      const byCard = naturalCompare(ca, cb)
+      if (byCard !== 0) return byCard * dir
+      return naturalCompare(a.building.name || a.building.address, b.building.name || b.building.address) * dir
+    }
+    if (pointSort.key === '건물') {
+      return naturalCompare(a.building.name || a.building.address, b.building.name || b.building.address) * dir
+    }
+    if (pointSort.key === '세대') return naturalCompare(a.unit.number, b.unit.number) * dir
+    if (pointSort.key === '상태') {
+      const sa = STATUS_ORDER[a.unit.status] ?? 9
+      const sb = STATUS_ORDER[b.unit.status] ?? 9
+      if (sa !== sb) return (sa - sb) * dir
+      return naturalCompare(a.unit.number, b.unit.number)
+    }
+    // 최근 방문 — 기록 없는 세대는 언제나 뒤로 (오래된 순/최근 순 어느 쪽이든)
+    const da = a.latestHistory?.visitedAt ?? ''
+    const db = b.latestHistory?.visitedAt ?? ''
+    if (!da && !db) return naturalCompare(a.unit.number, b.unit.number)
+    if (!da) return 1
+    if (!db) return -1
+    return da < db ? -dir : da > db ? dir : 0
+  })
+
   const selectedPointDetailData = useMemo(() => {
     if (!selectedPointDetail) return null
     const building = buildings.find((item) => item.id === selectedPointDetail.buildingId)
@@ -1171,7 +1202,7 @@ export function DesktopTerritory({
       ? ['카드명', '지역', '동', '건물명', '주소', '유형', '호수', '식당', '중국어', '정기방문', '정기방문자', '최근 방문', '메모']
       : ['카드명', '지역', '동', '건물명', '주소', '유형', '식당', '세대', '중국어', '중국어 다수', '정기방문', '건물 메모', '세대 메모']
     const rows = isPointList
-      ? pointRows.map(({ building, unit, latestHistory }) => {
+      ? sortedPointRows.map(({ building, unit, latestHistory }) => {
           const card = cardMap.get(building.cardId)
           return [
             card?.name ?? '',
@@ -1225,7 +1256,7 @@ export function DesktopTerritory({
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-    showToast(msg('{v1}개 항목을 내보냈습니다.', { v1: isPointList ? pointRows.length : sortedBuildings.length }), 'success')
+    showToast(msg('{v1}개 항목을 내보냈습니다.', { v1: isPointList ? sortedPointRows.length : sortedBuildings.length }), 'success')
   }
 
   const handleReassignByBoundary = async () => {
@@ -2423,6 +2454,18 @@ export function DesktopTerritory({
             </div>
           )}
           {activeTab === '건물 관리' && buildingSubTab === '세대 목록' && (
+            <div className="tbl-filter-layer tbl-filter-layer--sort">
+              <span className="tbl-filter-label">정렬</span>
+              <div className="tbl-mini-seg">
+                {(['카드', '건물', '세대', '상태', '최근 방문'] as PointSortKey[]).map((key) => (
+                  <button key={key} className={pointSort.key === key ? 'active' : ''} onClick={() => setPointSort((prev) => prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' })} type="button">
+                    {key}{pointSort.key === key ? (pointSort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {activeTab === '건물 관리' && buildingSubTab === '세대 목록' && (
             <div className="tbl-filter-layer" style={{ gap: 12 }}>
               <span className="tbl-filter-label">구분</span>
               <div className="tbl-mini-seg">
@@ -2847,7 +2890,7 @@ export function DesktopTerritory({
               <span>메모</span>
               <span>지도</span>
             </div>
-            {pointRows.map(({ building, unit, latestHistory }) => {
+            {sortedPointRows.map(({ building, unit, latestHistory }) => {
               const card = cardMap.get(building.cardId)
               return (
                 <div
