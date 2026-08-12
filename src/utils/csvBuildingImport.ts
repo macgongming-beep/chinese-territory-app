@@ -18,6 +18,8 @@ export type CsvUnitImport = {
   number: string
   status: UnitStatus
   isChinese: boolean
+  /** 이 세대가 식당인가 (업종과 별개 — 상가 중 식당만 true) */
+  isRestaurant: boolean
   isRegularVisit: boolean
   regularVisitor?: string
   regularVisitorStartDate?: string
@@ -156,6 +158,7 @@ export function createCsvUnits(
     regularVisitor: string
     regularVisitorStartDate?: string
     memo: string
+    isRestaurant?: boolean
     visitHistories?: CsvVisitHistory[]
   },
 ): CsvUnitImport[] {
@@ -165,6 +168,7 @@ export function createCsvUnits(
     number,
     status: input.status,
     isChinese: input.isChinese || Boolean(input.regularVisitor) || input.status === '만남' || input.status === '부재',
+    isRestaurant: input.isRestaurant ?? false,
     isRegularVisit: Boolean(input.regularVisitor),
     regularVisitor: input.regularVisitor || undefined,
     regularVisitorStartDate: input.regularVisitorStartDate || undefined,

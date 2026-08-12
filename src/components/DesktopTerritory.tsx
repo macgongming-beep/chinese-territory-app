@@ -955,6 +955,7 @@ export function DesktopTerritory({
     type AccumUnit = {
       status: UnitStatus
       isChinese: boolean
+      isRestaurant: boolean
       regularVisitor: string
       regularVisitorStartDate: string
       memo: string
@@ -988,7 +989,12 @@ export function DesktopTerritory({
         ? rawAddressValue
         : [fullRegionValue, rawAddressValue].filter(Boolean).join(' ')
       const nameValue = findValue(row, ['name', 'buildingName', '건물명', '건물']) || detailAddressValue
-      const typeValue = findValue(row, ['type', '유형', '건물유형', '업종'])
+      const typeValue = findValue(row, ['type', '유형', '건물유형'])
+      // 업종(순대·치킨·공장 등)은 유형(주택/상가)과 다른 값이다.
+      // 유형 칸으로 읽으면 '상가' 라는 글자가 없어 전부 주택으로 떨어진다.
+      // 업종이 있으면 상가로 보고, 음식 관련이면 식당으로도 표시한다.
+      const industryValue = findValue(row, ['업종', '카테고리', 'category'])
+      const restaurantValue = findValue(row, ['식당', '식당여부', 'restaurant'])
       // '상호명' 은 전화 조사 시트(플레이스 수집기)가 쓰는 이름 — 상가는 상호가 곧 세대다
       const unitsValue = findValue(row, ['unit', 'units', '호수', '세대', '호수목록', '상호명', '업소명', '가게명'])
       const statusValue = findValue(row, ['status', '상태'])
@@ -1068,7 +1074,11 @@ export function DesktopTerritory({
       }
 
       const buildingName = nameValue || address.split(' ').slice(-2).join(' ') || '새 건물'
-      const buildingType: CsvBuildingImport['type'] = typeValue.includes('상가') ? '상가' : '주택'
+      const buildingType: CsvBuildingImport['type'] =
+        typeValue.includes('상가') ? '상가'
+        : typeValue.includes('주택') ? '주택'
+        : industryValue ? '상가'          // 업종이 있으면 사업장 — 상가로 본다
+        : '주택'
       const buildingKey = `${card.id}|${address}|${buildingName}`
 
       // 구분 컬럼: 대상외(구: 한국인) → false, 중국어(구: 중국인) → true, 없으면 heuristic
@@ -1124,6 +1134,7 @@ export function DesktopTerritory({
         accum.units.set(unitNumber, {
           status,
           isChinese,
+          isRestaurant: looksTruthy(restaurantValue),
           regularVisitor: regularVisitorValue,
           regularVisitorStartDate: regularStartValue ? (parseCsvDate(regularStartValue) ?? regularStartValue) : '',
           memo: memoValue,
@@ -1149,6 +1160,7 @@ export function DesktopTerritory({
           number,
           status: finalStatus,
           isChinese: u.isChinese,
+          isRestaurant: u.isRestaurant,
           isRegularVisit: Boolean(u.regularVisitor),
           regularVisitor: u.regularVisitor || undefined,
           regularVisitorStartDate: u.regularVisitorStartDate || undefined,
@@ -1167,7 +1179,7 @@ export function DesktopTerritory({
         lat: accum.lat,
         lng: accum.lng,
         warning: accum.warning || undefined,
-        units: builtUnits.length > 0 ? builtUnits : [{ number: '101', status: '미방문', isChinese: false, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }],
+        units: builtUnits.length > 0 ? builtUnits : [{ number: '101', status: '미방문' as UnitStatus, isChinese: false, isRestaurant: false, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }],
       })
     }
 

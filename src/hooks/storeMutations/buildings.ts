@@ -122,13 +122,14 @@ export function makeBuildingMutations(deps: {
 
       const units = input.units.length > 0
         ? input.units
-        : [{ number: '101호', status: '미방문' as UnitStatus, isChinese: false, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }]
+        : [{ number: '101호', status: '미방문' as UnitStatus, isChinese: false, isRestaurant: false, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }]
       const unitsResult = await supabase.from('units').insert(
         units.map((unit) => ({
           building_id: buildingResult.data.id,
           number: unit.number,
           status: unit.status,
           is_chinese: unit.isChinese,
+          is_restaurant: unit.isRestaurant ?? false,
           memo: unit.memo || null,
         })),
       ).select('id, number')
