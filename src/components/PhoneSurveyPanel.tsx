@@ -70,6 +70,9 @@ export function PhoneSurveyPanel({ currentVisitor = '' }: { currentVisitor?: str
           address: get(r, '주소'),
           category: get(r, '업종'),
           phone: get(r, '전화번호'),
+          restaurant: get(r, '식당'),
+          collectStatus: get(r, '수집상태'),
+          detailLink: get(r, '상세링크'),
           chinese: get(r, '중국어'),
           checkedAt: get(r, '확인일'),
           checkedBy: get(r, '확인자'),
@@ -118,10 +121,22 @@ export function PhoneSurveyPanel({ currentVisitor = '' }: { currentVisitor?: str
     const targets = summary.results.filter((r) => r.kind === 'new' || r.kind === 'ambiguous')
     const rows: string[][] = [HEADERS.slice()]
     for (const r of targets) {
+      // 수집기가 채운 값(식당·수집상태·상세링크)은 그대로 싣는다.
+      // 특히 '식당' 이 비면 나중에 지도에 등록할 때 식당 표시가 안 된다.
+      // 조사자가 채울 칸(중국어·확인일·확인자)만 비워 둔다.
       rows.push([
-        r.row.name, r.row.phone ?? '', r.row.address, r.row.category ?? '', '', '',
-        '', '', '', r.kind === 'ambiguous' ? `※ ${r.reason}` : '',
-        r.row.placeId, '',
+        r.row.name,
+        r.row.phone ?? '',
+        r.row.address,
+        r.row.category ?? '',
+        r.row.restaurant ?? '',
+        r.row.collectStatus ?? '',
+        '',   // 중국어  ← 조사자가 채움
+        '',   // 확인일  ← 조사자가 채움
+        '',   // 확인자  ← 조사자가 채움
+        r.kind === 'ambiguous' ? `※ ${r.reason}` : '',
+        r.row.placeId,
+        r.row.detailLink ?? '',
       ])
     }
     downloadCsvFile(`통화목록_${summary.fileName.replace(/\.[^.]+$/, '')}.csv`, toCsv(rows))

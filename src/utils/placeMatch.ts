@@ -16,6 +16,10 @@ export type SurveyRow = {
   address: string
   category?: string
   phone?: string
+  /** 수집기가 채운 값들 — 통화 목록에 그대로 실어 보내야 한다 */
+  restaurant?: string
+  collectStatus?: string
+  detailLink?: string
   /** 있음 / 없음 / 미확인 / 빈칸(아직 조사 안 함) */
   chinese?: string
   checkedAt?: string
