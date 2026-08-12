@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase'
 import { showToast } from '../lib/toast'
 import { msg } from '../lib/msg'
 import { parseCsv, toCsv, downloadCsvFile } from '../utils/roundTripCsv'
+import { parseCsvDate } from '../utils/csvBuildingImport'
 import {
   matchSurveyRows,
   normalizeSurveyAnswer,
@@ -147,7 +148,7 @@ export function PhoneSurveyPanel({ currentVisitor = '' }: { currentVisitor?: str
     if (answered.length === 0) return
     setBusy('save')
     try {
-      const payload = answered
+      const rowsToSave = answered
         .filter((r) => r.row.placeId)
         .map((r) => ({
           place_id: r.row.placeId,
@@ -156,15 +157,23 @@ export function PhoneSurveyPanel({ currentVisitor = '' }: { currentVisitor?: str
           category: r.row.category || null,
           phone: r.row.phone || null,
           result: normalizeSurveyAnswer(r.row.chinese)!,
-          checked_at: r.row.checkedAt || null,
+          // 엑셀은 '2026.8.13' 처럼 내보낸다. 날짜 칸에 그대로 넣으면 저장이 통째로 실패한다.
+          checked_at: parseCsvDate(r.row.checkedAt ?? '')?.slice(0, 10) ?? null,
           checked_by: r.row.checkedBy || null,
           memo: r.row.memo || null,
           unit_id: r.unit?.unitId ?? null,
           uploaded_by: currentVisitor || null,
         }))
+      // 같은 업체가 두 줄 있으면 upsert 가 통째로 거부된다 (한 행을 두 번 못 고침)
+      const payload = [...new Map(rowsToSave.map((p) => [p.place_id, p])).values()]
       const skipped = answered.length - payload.length
       const { error } = await supabase.from('phone_surveys').upsert(payload, { onConflict: 'place_id' })
-      if (error) { console.error(error); showToast(msg('저장 실패'), 'error'); return }
+      if (error) {
+        console.error(error)
+        // 원인을 감추면 다음에도 똑같이 막힌다 — 서버가 준 말을 그대로 보여 준다
+        showToast(`${msg('저장 실패')} — ${error.message}`, 'error')
+        return
+      }
 
       // 대조로 "이 세대가 그 업소"임을 확인한 순간이 업체ID 를 채울 최적의 시점이다.
       // 여기서 안 붙이면 다음 대조에서도 주소·이름으로 흐릿하게 맞춰야 한다.
