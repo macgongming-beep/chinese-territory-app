@@ -9,7 +9,7 @@
 //
 // 왜 대장을 앱에 두나: 조사 이력이 수집기(외부 스크립트)에만 있으면 그 코드를
 // 고치다 날아갈 수 있고, 여러 사람이 조사하면 합치기도 어렵다.
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { showToast } from '../lib/toast'
 import { msg } from '../lib/msg'
@@ -43,10 +43,57 @@ type Summary = {
   fileName: string
 }
 
+/** 대장에는 '있음' 인데 지도에 세대가 없는 곳 — 놓치면 영영 못 찾는다 */
+type PendingRow = {
+  place_id: string
+  name: string
+  address: string | null
+  category: string | null
+  phone: string | null
+  restaurant?: string | null
+  checked_at: string | null
+  checked_by: string | null
+  memo: string | null
+}
+
 export function PhoneSurveyPanel({ currentVisitor = '' }: { currentVisitor?: string }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [summary, setSummary] = useState<Summary | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
+  const [pending, setPending] = useState<PendingRow[] | null>(null)
+
+  // 대장에만 기록하고 지도 등록을 깜빡하면, 다음 대조에서 '이미 조사함' 으로 걸러져
+  // 통화 목록에도 안 나오고 지도에도 없는 상태로 영영 묻힌다. 그래서 늘 띄워 둔다.
+  const refreshPending = useCallback(async () => {
+    try {
+      // select('*') — 아직 SQL 을 안 돌렸어도(식당 칸 없음) 깨지지 않게
+      const surveys = await fetchAllRows<PendingRow & { result: string }>(
+        (f, t) => supabase.from('phone_surveys').select('*').eq('result', '있음').order('id').range(f, t))
+      const linked = await fetchAllRows<{ naver_place_id: string | null }>(
+        (f, t) => supabase.from('units').select('naver_place_id').not('naver_place_id', 'is', null).order('id').range(f, t))
+      const onMap = new Set(linked.map((u) => u.naver_place_id))
+      setPending(surveys.filter((s) => !onMap.has(s.place_id)))
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
+
+  useEffect(() => { void refreshPending() }, [refreshPending])
+
+  const downloadPending = () => {
+    if (!pending || pending.length === 0) return
+    const rows: string[][] = [HEADERS.slice()]
+    for (const p of pending) {
+      rows.push([
+        p.name, p.phone ?? '', p.address ?? '', p.category ?? '',
+        p.restaurant ?? '', '',
+        '있음', p.checked_at ?? '', p.checked_by ?? '', p.memo ?? '',
+        p.place_id, '',
+      ])
+    }
+    downloadCsvFile('지도등록_대기.csv', toCsv(rows))
+    showToast(msg('{v1}개 항목을 내보냈습니다.', { v1: pending.length }))
+  }
 
   const readFile = async (file: File) => {
     setBusy('match'); setSummary(null); setSaved(null)
@@ -156,6 +203,8 @@ export function PhoneSurveyPanel({ currentVisitor = '' }: { currentVisitor?: str
           address: r.row.address || null,
           category: r.row.category || null,
           phone: r.row.phone || null,
+          // 지도 등록을 깜빡한 곳을 다시 꺼낼 때 식당 표시까지 살려 보내야 한다
+          restaurant: r.row.restaurant || null,
           result: normalizeSurveyAnswer(r.row.chinese)!,
           // 엑셀은 '2026.8.13' 처럼 내보낸다. 날짜 칸에 그대로 넣으면 저장이 통째로 실패한다.
           checked_at: parseCsvDate(r.row.checkedAt ?? '')?.slice(0, 10) ?? null,
@@ -167,7 +216,13 @@ export function PhoneSurveyPanel({ currentVisitor = '' }: { currentVisitor?: str
       // 같은 업체가 두 줄 있으면 upsert 가 통째로 거부된다 (한 행을 두 번 못 고침)
       const payload = [...new Map(rowsToSave.map((p) => [p.place_id, p])).values()]
       const skipped = answered.length - payload.length
-      const { error } = await supabase.from('phone_surveys').upsert(payload, { onConflict: 'place_id' })
+      let { error } = await supabase.from('phone_surveys').upsert(payload, { onConflict: 'place_id' })
+      // 식당 칸을 더하는 SQL 을 아직 안 돌렸을 수 있다. 그것 때문에 조사 기록을
+      // 통째로 잃는 건 손해가 크므로, 그 칸만 빼고 한 번 더 시도한다.
+      if (error && /restaurant/.test(error.message)) {
+        const without = payload.map(({ restaurant: _restaurant, ...rest }) => rest)
+        ;({ error } = await supabase.from('phone_surveys').upsert(without, { onConflict: 'place_id' }))
+      }
       if (error) {
         console.error(error)
         // 원인을 감추면 다음에도 똑같이 막힌다 — 서버가 준 말을 그대로 보여 준다
@@ -194,6 +249,7 @@ export function PhoneSurveyPanel({ currentVisitor = '' }: { currentVisitor?: str
         + (skipped > 0 ? ` (업체ID 없는 ${skipped}건 제외)` : ''),
       )
       showToast(msg('저장되었습니다.'))
+      await refreshPending()
     } finally { setBusy(null) }
   }
 
@@ -209,6 +265,23 @@ export function PhoneSurveyPanel({ currentVisitor = '' }: { currentVisitor?: str
         플레이스 수집기 CSV 를 올리면 이미 등록됐거나 지난번에 조사한 곳을 걸러 줍니다.
         남은 곳만 내려받아 전화하고, 결과를 적어 다시 올리면 조사 대장에 기록됩니다.
       </p>
+
+      {pending && pending.length > 0 && (
+        <div style={{
+          margin: '0 0 14px', padding: 12, borderRadius: 10,
+          border: '1px solid var(--danger, #d9534f)', background: 'rgba(217,83,79,0.06)',
+        }}>
+          <strong style={{ fontSize: 13.5 }}>지도에 아직 없는 곳 {pending.length}곳</strong>
+          <p style={{ margin: '4px 0 10px', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6 }}>
+            중국어 <b>있음</b>으로 기록됐지만 지도에 등록되지 않았습니다.
+            이대로 두면 다음 대조에서 <b>이미 조사함</b>으로 걸러져 통화 목록에도 나오지 않습니다.
+            아래 파일을 구역 → 건물 관리 → <b>건물 CSV 업로드</b>에 올리세요.
+          </p>
+          <button className="ds-btn" type="button" onClick={downloadPending}>
+            지도 등록용 CSV 내려받기 ({pending.length}곳)
+          </button>
+        </div>
+      )}
 
       <label className="ds-btn" style={{ display: 'inline-flex', cursor: 'pointer' }}>
         {busy === 'match' ? '대조 중…' : 'CSV 올리기'}
