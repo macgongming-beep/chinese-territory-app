@@ -943,6 +943,11 @@ export function DesktopTerritory({
       return index >= 0 ? row[index]?.trim() ?? '' : ''
     }
 
+    // 전화 조사 시트인지 — '업체ID' 칸은 플레이스 수집기 파일에만 있다.
+    // 이 파일에서 중국어 칸이 비었다는 건 '아직 전화 안 함' 이므로 올리면 안 된다.
+    // (일반 CSV 는 중국어 칸 자체가 없거나 비어 있는 게 정상이라 구분이 필요하다)
+    const isSurveySheet = normalizedHeaders.includes(normalizeCsvKey('업체ID'))
+
     const previewRows: CsvPreviewRow[] = []
     const skippedDetails: CsvSkippedRow[] = []
     let skipped = 0
@@ -1035,11 +1040,13 @@ export function DesktopTerritory({
       // '없음'·'미확인' 은 등록하지 않고 건너뛴다 (조사한 사실은 조사 대장에 남는다).
       // ⚠ 빈칸은 전화 조사 시트가 아닌 일반 CSV 일 수 있으므로 거르지 않는다.
       const surveyAnswer = chineseValue.trim()
-      if (surveyAnswer && !looksTruthy(surveyAnswer)) {
+      if ((surveyAnswer || isSurveySheet) && !looksTruthy(surveyAnswer)) {
         skipRow(
           rowNumber,
-          `중국어 ${surveyAnswer} — 등록하지 않음`,
-          '전화 조사에서 중국어를 쓰지 않는 곳으로 확인된 곳입니다. 지도에 올리지 않습니다.',
+          surveyAnswer ? `중국어 ${surveyAnswer} — 등록하지 않음` : '아직 전화 안 함 — 등록하지 않음',
+          surveyAnswer
+            ? '전화 조사에서 중국어를 쓰지 않는 곳으로 확인된 곳입니다. 지도에 올리지 않습니다.'
+            : '통화 목록의 중국어 칸이 비어 있습니다. 전화한 뒤 있음/없음을 적어 주세요.',
           address,
           row,
         )
