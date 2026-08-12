@@ -272,6 +272,7 @@ export function MobileHome({
   onUpdateUnitStatus: _onUpdateUnitStatus,
   onQuickLogVisit,
   onUpdateUnitFlags,
+  onRemoveRestaurantUnit,
   onToggleInvitationLeft,
   onLogout,
   visitHistories,
@@ -368,6 +369,8 @@ export function MobileHome({
   onUpdateUnitStatus: (buildingId: number, unitId: number, status: UnitStatus, memo?: string) => void
   onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
+  /** 식당 탭: 세대 단위 식당 해제 */
+  onRemoveRestaurantUnit?: (unitId: number, buildingId: number) => Promise<void>
   onToggleInvitationLeft?: (buildingId: number, unitId: number) => void
   onLogout: () => void
   visitHistories: VisitHistory[]
@@ -990,6 +993,8 @@ export function MobileHome({
                 cards={cards}
                 buildings={buildings}
                 visitHistories={visitHistories}
+                onUpdateUnitFlags={onUpdateUnitFlags}
+                onRemoveRestaurantUnit={onRemoveRestaurantUnit}
                 currentVisitor={currentVisitor}
                 role={role}
                 informalAssets={informalAssets}

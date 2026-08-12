@@ -466,6 +466,7 @@ function App() {
               onUpdateUnitStatus={updateUnitStatus}
               onQuickLogVisit={quickLogVisit}
               onUpdateUnitFlags={updateUnitFlags}
+              onRemoveRestaurantUnit={removeRestaurantUnit}
               onToggleInvitationLeft={toggleInvitationLeft}
               onLogout={logout}
               visitHistories={visitHistories}

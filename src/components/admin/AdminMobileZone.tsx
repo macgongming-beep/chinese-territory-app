@@ -43,6 +43,9 @@ type Props = {
   cards: TerritoryCard[]
   buildings: Building[]
   visitHistories?: VisitHistory[]
+  /** 식당 탭: 세대 해제 / 대상외 해제 (PC 와 같은 기능) */
+  onRemoveRestaurantUnit?: (unitId: number, buildingId: number) => Promise<void>
+  onUpdateUnitFlags?: (unitId: number, flags: Partial<import('../../types').Unit>) => void
   currentVisitor: string
   role: Role
   informalAssets?: InformalAsset[]
@@ -113,6 +116,8 @@ export function AdminMobileZone({
   cards,
   buildings,
   visitHistories = [],
+  onRemoveRestaurantUnit,
+  onUpdateUnitFlags,
   currentVisitor,
   role,
   informalAssets = [],
@@ -419,9 +424,12 @@ export function AdminMobileZone({
           currentVisitor={currentVisitor}
           restaurantRequests={restaurantRequests}
           onToggleRestaurantFlag={onToggleBuildingRestaurant}
+          onRemoveRestaurantUnit={onRemoveRestaurantUnit}
           onApproveRestaurantRequest={onApproveRestaurantRequest}
           onRejectRestaurantRequest={onRejectRestaurantRequest}
           onOpenMap={(cardId) => onOpenMap(cardId)}
+          visitHistories={visitHistories}
+          onUpdateUnitFlags={onUpdateUnitFlags}
           language={language}
           translatePlaceNames={translatePlaceNames}
         />

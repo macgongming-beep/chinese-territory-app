@@ -203,13 +203,14 @@ function findMatchedBuildings(address: string, coords: { lat: number; lng: numbe
 }
 
 // ── 아이콘 ─────────────────────────────
-function ForkIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 2v7c0 1.66 1.34 3 3 3h0c1.66 0 3-1.34 3-3V2" /><line x1="6" y1="12" x2="6" y2="22" /><path d="M15 22V12c0-3 2-7 4-7v17" />
-    </svg>
-  )
+/** 목록용 짧은 날짜 — 올해면 08.12, 지난해면 25.08.12 */
+function shortVisitDate(iso: string): string {
+  const d = iso.slice(0, 10)
+  const [y, m, day] = d.split('-')
+  const nowYear = String(new Date().getFullYear())
+  return y === nowYear ? `${m}.${day}` : `${y.slice(2)}.${m}.${day}`
 }
+
 function MapIcon({ size = 15 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
@@ -1044,33 +1045,39 @@ export function RestaurantsTab({
                   const isExcluded = rowUnit?.status === '대상외'
                   const lastVisit = rowUnit ? lastVisitByUnit.get(rowUnit.id) : undefined
                   return (
-                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--tint)', display: 'grid', placeItems: 'center', color: 'var(--muted)', flexShrink: 0 }}>
-                        <ForkIcon />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <span style={{ fontSize: 15, fontWeight: 600, color: isExcluded ? 'var(--muted)' : 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {placeLabel(restaurantName)}
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px 9px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10 }}>
+                      {/* 포크 아이콘 제거 — 385줄이 전부 같은 그림이라 자리만 차지했다.
+                          이름과 뱃지가 잘리던 것도 그 공간을 되찾아 해결된다 */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14.5, fontWeight: 600, color: isExcluded ? 'var(--muted)' : 'var(--ink)' }}>
+                            {placeLabel(restaurantName)}
+                          </span>
+                          {/* 뱃지는 이름 밖에 둔다 — 안에 있으면 이름 말줄임에 같이 잘린다 */}
                           {isExcluded && (
-                            <span style={{ marginLeft: 6, padding: '1px 6px', borderRadius: 5, background: 'var(--tint)', border: '1px solid var(--line-2)', color: 'var(--muted)', fontSize: 11, fontWeight: 700 }}>
+                            <span style={{ flexShrink: 0, padding: '0 5px', borderRadius: 4, background: 'var(--tint)', border: '1px solid var(--line-2)', color: 'var(--muted)', fontSize: 10.5, fontWeight: 700, lineHeight: '16px' }}>
                               {copy.excluded}
                             </span>
                           )}
-                        </span>
-                        <span style={{ fontSize: 12.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {placeLabel(b.address)}
-                          {lastVisit && <span style={{ marginLeft: 8 }}>· {copy.lastVisit} {lastVisit.slice(0, 10).replace(/-/g, '.')}</span>}
-                        </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, fontSize: 12, color: 'var(--muted)' }}>
+                          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {placeLabel(b.address)}
+                          </span>
+                          {lastVisit && <span style={{ flexShrink: 0 }}>· {shortVisitDate(lastVisit)}</span>}
+                        </div>
                       </div>
                       <button type="button"
                         onClick={() => onOpenBuildingMap ? onOpenBuildingMap(b.id) : onOpenMap(b.cardId)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 34, minHeight: 34, padding: '0 12px', fontSize: 13, fontWeight: 600, border: '1px solid var(--line-2)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }}>
-                        <MapIcon /> {copy.map}
+                        aria-label={copy.map}
+                        title={copy.map}
+                        style={{ flexShrink: 0, width: 36, height: 36, minHeight: 36, display: 'grid', placeItems: 'center', border: '1px solid var(--line-2)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }}>
+                        <MapIcon />
                       </button>
                       {canManage && (onToggleRestaurantFlag || onRemoveRestaurantUnit) && (
                         <div style={{ position: 'relative' }}>
                           <button type="button" onClick={() => setOpenMenuId(openMenuId === key ? null : key)}
-                            style={{ width: 28, height: 28, minHeight: 28, display: 'grid', placeItems: 'center', background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', borderRadius: 6 }}
+                            style={{ width: 36, height: 36, minHeight: 36, display: 'grid', placeItems: 'center', background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', borderRadius: 8 }}
                             aria-label={copy.more}>
                             <DotsIcon />
                           </button>
