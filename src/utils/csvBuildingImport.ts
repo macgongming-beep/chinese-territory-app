@@ -129,13 +129,39 @@ export function looksTruthy(value: string): boolean {
   return /^(true|yes|y|1|중국어|중국인|중국|정기|재방|있음|ㅇ|예)$/i.test(value.trim())
 }
 
+/**
+ * 엑셀에서 온 날짜를 너그럽게 읽는다.
+ *
+ * 사람에게 "0 을 붙여 적으세요" 라고 시키면 언젠가 까먹고, 그러면 날짜가
+ * 조용히 사라진다 (오류도 안 난다). 그래서 흔한 형태를 모두 받아 준다.
+ *   2026-08-13 · 2026.8.13 · 2026/8/13 · 2026년 8월 13일
+ *   46247      ← 엑셀이 날짜를 숫자로 내보낸 경우 (1899-12-30 기준 일련번호)
+ */
 export function parseCsvDate(value: string): string | null {
-  const cleaned = value.trim().replace(/[./]/g, '-')
-  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
-    const d = new Date(cleaned + 'T12:00:00+09:00')
+  const raw = value.trim()
+  if (!raw) return null
+
+  // 엑셀 날짜 일련번호 (예: 46247 = 2026-08-13)
+  if (/^\d{5}$/.test(raw)) {
+    const serial = Number(raw)
+    // 1900 년 윤년 버그 때문에 엑셀의 기준일은 1899-12-30 이다
+    const ms = Date.UTC(1899, 11, 30) + serial * 86400000
+    const d = new Date(ms + 12 * 3600000)
     return isNaN(d.getTime()) ? null : d.toISOString()
   }
-  return null
+
+  const cleaned = raw
+    .replace(/년|월/g, '-')
+    .replace(/일/g, '')
+    .replace(/[./\s]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/-$/, '')
+  const m = cleaned.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (!m) return null
+  const [, y, mo, day] = m
+  const iso = `${y}-${mo.padStart(2, '0')}-${day.padStart(2, '0')}`
+  const d = new Date(iso + 'T12:00:00+09:00')
+  return isNaN(d.getTime()) ? null : d.toISOString()
 }
 
 export function normalizeTimeSlot(value: string): string {
