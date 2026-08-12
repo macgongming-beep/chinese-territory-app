@@ -207,7 +207,7 @@ export function DesktopTerritory({
     if (units === 0) return acc + (b.isRestaurant ? 1 : 0)
     return acc + units
   }, 0)
-  const [buildingSubTab, setBuildingSubTab] = useSessionState<'건물 목록' | '중국어 포인트'>('dt.buildingSubTab', '건물 목록')
+  const [buildingSubTab, setBuildingSubTab] = useSessionState<'건물 목록' | '세대 목록'>('dt.buildingSubTab', '건물 목록')
   const [showCardModal, setShowCardModal] = useState(false)
   const [pendingBoundaryCard, setPendingBoundaryCard] = useState<{ id: number; name: string } | null>(null)
   const [regionFilter, setRegionFilter] = useSessionState<TerritoryRegion | '전체'>('dt.regionFilter', '전체')
@@ -226,6 +226,10 @@ export function DesktopTerritory({
   const [buildingCardFilter, setBuildingCardFilter] = useSessionState<number | '전체'>('dt.buildingCardFilter', '전체')
   const [buildingTypeFilter, setBuildingTypeFilter] = useSessionState<Building['type'] | '전체'>('dt.buildingTypeFilter', '전체')
   const [pointStatusFilter, setPointStatusFilter] = useSessionState<UnitStatus | '전체'>('dt.pointStatusFilter', '전체')
+  // 세대 목록의 구분 — 예전에는 "중국어 또는 정기방문" 으로 고정이라 일반 세대를 볼 수 없었다.
+  // 기본값은 '중국어' 로 두어 이 화면을 쓰던 방식이 그대로 유지되게 한다.
+  type PointKindFilter = '전체' | '중국어' | '정기방문' | '식당'
+  const [pointKindFilter, setPointKindFilter] = useSessionState<PointKindFilter>('dt.pointKindFilter', '중국어')
   const [buildingRegularFilter, setBuildingRegularFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingRegularFilter', '전체')
   const [buildingMemoFilter, setBuildingMemoFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingMemoFilter', '전체')
   const [buildingChineseHeavyFilter, setBuildingChineseHeavyFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingChineseHeavyFilter', '전체')
@@ -382,7 +386,7 @@ export function DesktopTerritory({
     }).length
 
   const getAreaMetricCount = (area: string) => {
-    if (activeTab === '건물 관리' && buildingSubTab === '중국어 포인트') {
+    if (activeTab === '건물 관리' && buildingSubTab === '세대 목록') {
       return buildings.reduce((sum, building) => {
         const card = cardMap.get(building.cardId)
         if (!card || card.area !== area) return sum
@@ -469,6 +473,7 @@ export function DesktopTerritory({
     (buildingChineseHeavyFilter !== '전체' ? 1 : 0) +
     (buildingRestaurantFilter !== '전체' ? 1 : 0)
   const activeAdvancedPointFilterCount =
+    (pointKindFilter !== '중국어' ? 1 : 0) +
     (pointRegularFilter !== '전체' ? 1 : 0) +
     (pointMemoFilter !== '전체' ? 1 : 0)
 
@@ -715,9 +720,15 @@ export function DesktopTerritory({
     return Array.from(groupMap.values()).filter((g) => g.length > 1)
   })()
   const duplicateBuildingIds = new Set(duplicateAddressGroups.flatMap((g) => g.map((b) => b.id)))
+  const matchesPointKind = (unit: Building['units'][number]) => {
+    if (pointKindFilter === '중국어') return !!unit.isChinese
+    if (pointKindFilter === '정기방문') return !!unit.isRegularVisit
+    if (pointKindFilter === '식당') return !!unit.isRestaurant
+    return true
+  }
   const pointRows = baseFilteredBuildings.flatMap((building) =>
     building.units
-      .filter((unit) => unit.isChinese || unit.isRegularVisit)
+      .filter(matchesPointKind)
       .map((unit) => {
         const histories = visitHistoriesByUnitId.get(unit.id) ?? []
         return { building, unit, latestHistory: histories[0] }
@@ -1156,9 +1167,9 @@ export function DesktopTerritory({
   }
 
   const downloadFilteredBuildingCsv = () => {
-    const isPointList = buildingSubTab === '중국어 포인트'
+    const isPointList = buildingSubTab === '세대 목록'
     const headers = isPointList
-      ? ['카드명', '지역', '동', '건물명', '주소', '유형', '호수', '정기방문', '정기방문자', '최근 방문', '메모']
+      ? ['카드명', '지역', '동', '건물명', '주소', '유형', '호수', '식당', '중국어', '정기방문', '정기방문자', '최근 방문', '메모']
       : ['카드명', '지역', '동', '건물명', '주소', '유형', '식당', '세대', '중국어', '중국어 다수', '정기방문', '건물 메모', '세대 메모']
     const rows = isPointList
       ? pointRows.map(({ building, unit, latestHistory }) => {
@@ -1171,6 +1182,8 @@ export function DesktopTerritory({
             building.address,
             building.type,
             unit.number,
+            unit.isRestaurant ? 'Y' : '',
+            unit.isChinese ? 'Y' : '',
             unit.isRegularVisit ? 'Y' : '',
             unit.regularVisitor ?? '',
             latestHistory ? `${latestHistory.visitedAt.slice(0, 10)} ${latestHistory.timeSlot} ${latestHistory.result}` : '',
@@ -1207,7 +1220,7 @@ export function DesktopTerritory({
     const link = document.createElement('a')
     const suffix = new Date().toISOString().slice(0, 10)
     link.href = url
-    link.download = isPointList ? `chinese_points_${suffix}.csv` : `buildings_${suffix}.csv`
+    link.download = isPointList ? `units_${suffix}.csv` : `buildings_${suffix}.csv`
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
@@ -1435,7 +1448,7 @@ export function DesktopTerritory({
 
 
 
-  const showPointDetailPane = activeTab === '건물 관리' && buildingSubTab === '중국어 포인트' && selectedPointDetailData
+  const showPointDetailPane = activeTab === '건물 관리' && buildingSubTab === '세대 목록' && selectedPointDetailData
   const territoryLayoutClassName = showPointDetailPane
     ? 'territory-layout point-detail-open'
     : activeTab === '건물 관리' || !detailPaneOpen
@@ -1565,7 +1578,7 @@ export function DesktopTerritory({
             <div className="cal-modal-head">
               <div className="cal-modal-title">
                 <h2>중국어 표시 해제</h2>
-                <p className="merge-name-modal-sub">해제하면 이 항목은 중국어 포인트 목록에서 사라질 수 있습니다.</p>
+                <p className="merge-name-modal-sub">해제하면 이 항목은 세대 목록의 중국어 구분에서 사라질 수 있습니다.</p>
               </div>
             </div>
             <div className="cal-modal-body">
@@ -2181,7 +2194,7 @@ export function DesktopTerritory({
         {/* ── 건물 관리 서브탭 ── */}
         {activeTab === '건물 관리' && (
           <div className="territory-subtabs" style={{ marginBottom: 16 }}>
-            {(['건물 목록', '중국어 포인트'] as const).map((tab) => (
+            {(['건물 목록', '세대 목록'] as const).map((tab) => (
               <button className={buildingSubTab === tab ? 'active' : ''} key={tab} onClick={() => setBuildingSubTab(tab)} type="button">{tab}</button>
             ))}
           </div>
@@ -2410,8 +2423,14 @@ export function DesktopTerritory({
               </div>
             </div>
           )}
-          {activeTab === '건물 관리' && buildingSubTab === '중국어 포인트' && (
+          {activeTab === '건물 관리' && buildingSubTab === '세대 목록' && (
             <div className="tbl-filter-layer" style={{ gap: 12 }}>
+              <span className="tbl-filter-label">구분</span>
+              <div className="tbl-mini-seg">
+                {(['전체', '중국어', '정기방문', '식당'] as const).map((f) => (
+                  <button key={f} className={pointKindFilter === f ? 'active' : ''} onClick={() => setPointKindFilter(f)} type="button">{f}</button>
+                ))}
+              </div>
               <span className="tbl-filter-label">상태</span>
               <select className="tbl-filter-select" value={pointStatusFilter} onChange={(e) => setPointStatusFilter(e.target.value as UnitStatus | '전체')}>
                 <option value="전체">전체 상태</option>
@@ -2811,11 +2830,11 @@ export function DesktopTerritory({
           </div>
           </>
         ) : (
-          <div className="point-management-table" ref={pointTableRef} role="table" aria-label="중국어 포인트 목록">
+          <div className="point-management-table" ref={pointTableRef} role="table" aria-label="세대 목록">
             <div className="point-management-head" role="row">
               <span>카드</span>
               <span>건물/주소</span>
-              <span>포인트</span>
+              <span>세대</span>
               <span>정기</span>
               <span>최근 방문</span>
               <span>메모</span>
@@ -2837,7 +2856,12 @@ export function DesktopTerritory({
 	                >
                   <span>{card?.name ?? '카드 없음'}</span>
                   <span title={building.address}>{building.name || formatDisplayAddress(building.address)}</span>
-                  <strong title={unit.number}>{unit.number}</strong>
+                  <strong title={unit.number} style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{unit.number}</span>
+                    {/* 구분 칩 — 전체 보기에서 어떤 세대인지 알 수 있게 */}
+                    {unit.isRestaurant && <span className="unit-flag-chip restaurant">식당</span>}
+                    {unit.isChinese && !unit.isRestaurant && <span className="unit-flag-chip chinese">中</span>}
+                  </strong>
 	                  {unit.isRegularVisit ? (
 	                    <input
 	                      aria-label={`${unit.number} 정기방문자`}
@@ -2902,7 +2926,7 @@ export function DesktopTerritory({
             })}
             {pointRows.length === 0 && (
               <div className="empty-card-row">
-                표시할 중국어 포인트가 없습니다. 지도에서 호수를 기록하거나 CSV로 포인트를 업로드해 주세요.
+                조건에 맞는 세대가 없습니다. 위 구분·필터를 바꿔 보세요.
               </div>
             )}
           </div>
