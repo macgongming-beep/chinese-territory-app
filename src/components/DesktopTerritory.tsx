@@ -473,7 +473,6 @@ export function DesktopTerritory({
     (buildingChineseHeavyFilter !== '전체' ? 1 : 0) +
     (buildingRestaurantFilter !== '전체' ? 1 : 0)
   const activeAdvancedPointFilterCount =
-    (pointKindFilter !== '중국어' ? 1 : 0) +
     (pointRegularFilter !== '전체' ? 1 : 0) +
     (pointMemoFilter !== '전체' ? 1 : 0)
 
@@ -2431,6 +2430,14 @@ export function DesktopTerritory({
                   <button key={f} className={pointKindFilter === f ? 'active' : ''} onClick={() => setPointKindFilter(f)} type="button">{f}</button>
                 ))}
               </div>
+              {/* 건물 유형은 두 화면에 함께 걸린다. 여기서 안 보이면
+                  "왜 개수가 적지?" 하고 원인을 못 찾는다 (실제로 그런 일이 있었다) */}
+              <span className="tbl-filter-label">유형</span>
+              <div className="tbl-mini-seg">
+                {(['전체', '상가', '주택'] as Array<Building['type'] | '전체'>).map((f) => (
+                  <button key={f} className={buildingTypeFilter === f ? 'active' : ''} onClick={() => setBuildingTypeFilter(f)} type="button">{f}</button>
+                ))}
+              </div>
               <span className="tbl-filter-label">상태</span>
               <select className="tbl-filter-select" value={pointStatusFilter} onChange={(e) => setPointStatusFilter(e.target.value as UnitStatus | '전체')}>
                 <option value="전체">전체 상태</option>
@@ -2487,7 +2494,7 @@ export function DesktopTerritory({
               {regionFilter === '전체' ? '전체 지역' : regionFilter}
               {' · '}{areaFilter === '전체' ? '전체 동' : areaFilter}
               {' · 표시 '}
-              {activeTab === '카드 관리' ? `${filteredCards.length}개 카드` : buildingSubTab === '건물 목록' ? `${filteredBuildings.length}개 건물` : `${pointRows.length}개 포인트`}
+              {activeTab === '카드 관리' ? `${filteredCards.length}개 카드` : buildingSubTab === '건물 목록' ? `${filteredBuildings.length}개 건물` : `${pointRows.length}개 세대`}
             </span>
             {activeTab === '건물 관리' && (
               <button className="tbl-ghost-btn sm" onClick={downloadFilteredBuildingCsv} type="button">
