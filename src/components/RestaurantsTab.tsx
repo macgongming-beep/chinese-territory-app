@@ -1,9 +1,10 @@
 // 식당 탭 — design_handoff 06 화면
 // 식당 표시된 상가 목록 (지역별 그룹) + 추가 모달 + 식당봉사 신청 승인
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Building, Unit, RestaurantRequest, Role, TerritoryCard } from '../types'
+import type { Building, Unit, RestaurantRequest, Role, TerritoryCard, VisitHistory } from '../types'
 import { RestaurantPickerModal } from './RestaurantPickerModal'
 import { confirmDialog } from '../lib/confirm'
+import { msg } from '../lib/msg'
 import { normalizeCardSearch } from '../utils/cardSearch'
 import { translateKoreanAddress, type AppLanguage } from '../i18n'
 import {
@@ -20,6 +21,14 @@ function isLeaderOrAdmin(role: Role): boolean {
 
 const restaurantCopy = {
   ko: {
+    excluded: '대상외',
+    lastVisit: '최근',
+    hideExcluded: (n: number) => `대상외 ${n}곳 숨기기`,
+    releaseExcluded: '대상외 해제',
+    releaseTitle: '대상외 해제',
+    releaseHint: '해제 사유를 적어 두면 다음에 방문하는 사람이 이유를 알 수 있어요. (선택)',
+    releaseReasonPlaceholder: '예: 중국인 직원 새로 들어옴',
+    release: '해제',
     other: '기타',
     pendingTitle: '식당봉사 추가 신청',
     total: (count: number) => `전체 ${count}개`,
@@ -59,6 +68,14 @@ const restaurantCopy = {
     units: (count: number) => `세대 ${count}개`,
   },
   zh: {
+    excluded: '非目标',
+    lastVisit: '最近',
+    hideExcluded: (n: number) => `隐藏非目标 ${n} 处`,
+    releaseExcluded: '解除非目标',
+    releaseTitle: '解除非目标',
+    releaseHint: '写下解除原因，下次访问的人就能知道理由。（选填）',
+    releaseReasonPlaceholder: '例：新来了会中文的员工',
+    release: '解除',
     other: '其他',
     pendingTitle: '餐厅传道申请',
     total: (count: number) => `共 ${count} 个`,
@@ -98,6 +115,14 @@ const restaurantCopy = {
     units: (count: number) => `${count} 户`,
   },
   en: {
+    excluded: 'Not target',
+    lastVisit: 'Last',
+    hideExcluded: (n: number) => `Hide ${n} not-target`,
+    releaseExcluded: 'Clear not-target',
+    releaseTitle: 'Clear not-target',
+    releaseHint: 'A short reason helps whoever visits next. (optional)',
+    releaseReasonPlaceholder: 'e.g. Chinese-speaking staff joined',
+    release: 'Clear',
     other: 'Other',
     pendingTitle: 'Restaurant service requests',
     total: (count: number) => `${count} total`,
@@ -552,6 +577,10 @@ type Props = {
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
   onOpenMap: (cardId: number) => void
   onOpenBuildingMap?: (buildingId: number) => void
+  /** 방문 기록 — 식당별 최근 방문일 표시에 쓴다 */
+  visitHistories?: VisitHistory[]
+  /** 대상외 해제용. 방문 기록을 만들지 않고 상태·메모만 고친다 */
+  onUpdateUnitFlags?: (unitId: number, flags: Partial<Unit>) => void
   language?: AppLanguage
   translatePlaceNames?: boolean
 }
@@ -559,6 +588,7 @@ type Props = {
 export function RestaurantsTab({
   role, buildings, cards, currentVisitor = '', restaurantRequests = [],
   onToggleRestaurantFlag, onRemoveRestaurantUnit, onBulkSetRestaurant, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap, onOpenBuildingMap,
+  visitHistories = [], onUpdateUnitFlags,
   language = 'ko',
   translatePlaceNames = false,
 }: Props) {
@@ -566,7 +596,33 @@ export function RestaurantsTab({
   const placeLabel = (value: string) => translateKoreanAddress(value, language, translatePlaceNames)
   const canManage = isLeaderOrAdmin(role)
   const [search, setSearch] = useState('')
+  const [hideExcluded, setHideExcluded] = useState(false)
+  // 대상외 해제 — 사유를 받아 세대 메모에 남긴다 (누가·언제·왜)
+  const [excludeReleaseTarget, setExcludeReleaseTarget] = useState<{ unit: Unit; name: string } | null>(null)
+  const [releaseReason, setReleaseReason] = useState('')
   const [expandedRegions, setExpandedRegions] = useState<Set<string>>(new Set())
+
+  // 세대별 최근 방문일
+  const lastVisitByUnit = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const h of visitHistories) {
+      const prev = map.get(h.unitId)
+      if (!prev || h.visitedAt > prev) map.set(h.unitId, h.visitedAt)
+    }
+    return map
+  }, [visitHistories])
+
+  const releaseExcluded = async () => {
+    const target = excludeReleaseTarget
+    if (!target || !onUpdateUnitFlags) return
+    const today = new Date().toISOString().slice(0, 10)
+    const reason = releaseReason.trim()
+    const line = `${today} ${currentVisitor || '관리자'}: 대상외 해제${reason ? ` — ${reason}` : ''}`
+    const memo = [target.unit.memo?.trim(), line].filter(Boolean).join('\n')
+    onUpdateUnitFlags(target.unit.id, { status: '미방문', memo })
+    setExcludeReleaseTarget(null)
+    setReleaseReason('')
+  }
 
   const toggleRegion = (region: string) => {
     setExpandedRegions(prev => {
@@ -691,6 +747,11 @@ export function RestaurantsTab({
     }
     return rows
   }, [buildings])
+
+  const excludedCount = useMemo(
+    () => restaurants.filter((r) => r.unit?.status === '대상외').length,
+    [restaurants],
+  )
 
   // 식당명: 세대 번호(unit.number) → 건물명 → 주소 순
   const getRestaurantName = (row: RestaurantRow): string =>
@@ -941,6 +1002,14 @@ export function RestaurantsTab({
         />
       </label>
 
+      {/* 대상외는 기본으로 보여 준다 — 숨기면 "왜 안 보이지?" 하고 헤매기 쉽다 */}
+      {excludedCount > 0 && (
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 2, fontSize: 13, color: 'var(--muted)', cursor: 'pointer' }}>
+          <input type="checkbox" checked={hideExcluded} onChange={(e) => setHideExcluded(e.target.checked)} />
+          {copy.hideExcluded(excludedCount)}
+        </label>
+      )}
+
       {/* 빈 상태 */}
       {restaurants.length === 0 ? (
         <div style={{ padding: '40px 16px', textAlign: 'center', fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
@@ -969,20 +1038,28 @@ export function RestaurantsTab({
               </div>
               {expandedRegions.has(region) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {list.map((row) => {
+                {list.filter((row) => !hideExcluded || row.unit?.status !== '대상외').map((row) => {
                   const { building: b, unit: rowUnit, key } = row
                   const restaurantName = getRestaurantName(row)
+                  const isExcluded = rowUnit?.status === '대상외'
+                  const lastVisit = rowUnit ? lastVisitByUnit.get(rowUnit.id) : undefined
                   return (
                     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
                       <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--tint)', display: 'grid', placeItems: 'center', color: 'var(--muted)', flexShrink: 0 }}>
                         <ForkIcon />
                       </div>
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: 15, fontWeight: 600, color: isExcluded ? 'var(--muted)' : 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {placeLabel(restaurantName)}
+                          {isExcluded && (
+                            <span style={{ marginLeft: 6, padding: '1px 6px', borderRadius: 5, background: 'var(--tint)', border: '1px solid var(--line-2)', color: 'var(--muted)', fontSize: 11, fontWeight: 700 }}>
+                              {copy.excluded}
+                            </span>
+                          )}
                         </span>
                         <span style={{ fontSize: 12.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {placeLabel(b.address)}
+                          {lastVisit && <span style={{ marginLeft: 8 }}>· {copy.lastVisit} {lastVisit.slice(0, 10).replace(/-/g, '.')}</span>}
                         </span>
                       </div>
                       <button type="button"
@@ -1017,6 +1094,17 @@ export function RestaurantsTab({
                                   style={{ width: '100%', textAlign: 'left', padding: '8px 10px', minHeight: 0, background: 'transparent', border: 'none', fontSize: 13, color: 'var(--status-danger)', cursor: 'pointer', borderRadius: 6 }}>
                                   {copy.removeFromList}
                                 </button>
+                                {isExcluded && rowUnit && onUpdateUnitFlags && (
+                                  <button type="button"
+                                    onClick={() => {
+                                      setOpenMenuId(null)
+                                      setReleaseReason('')
+                                      setExcludeReleaseTarget({ unit: rowUnit, name: placeLabel(restaurantName) })
+                                    }}
+                                    style={{ width: '100%', textAlign: 'left', padding: '8px 10px', minHeight: 0, background: 'transparent', border: 'none', fontSize: 13, color: 'var(--text)', cursor: 'pointer', borderRadius: 6 }}>
+                                    {copy.releaseExcluded}
+                                  </button>
+                                )}
                               </div>
                             </>
                           )}
@@ -1048,6 +1136,41 @@ export function RestaurantsTab({
           onToggleRestaurantFlag={onToggleRestaurantFlag}
           onClose={() => setAddOpen(false)}
         />
+      )}
+
+      {/* 대상외 해제 — 사유를 받아 세대 메모에 남긴다 (누가·언제·왜) */}
+      {excludeReleaseTarget && (
+        <div
+          onClick={() => setExcludeReleaseTarget(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(15,23,42,0.45)', display: 'grid', placeItems: 'center', padding: 16 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 380, background: 'var(--surface)', borderRadius: 14, padding: 18, boxShadow: '0 12px 40px rgba(15,23,42,0.25)' }}
+          >
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>{copy.releaseTitle}</h3>
+            <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--muted)' }}>{excludeReleaseTarget.name}</p>
+            <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>{copy.releaseHint}</p>
+            <input
+              autoFocus
+              value={releaseReason}
+              onChange={(e) => setReleaseReason(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void releaseExcluded() }}
+              placeholder={copy.releaseReasonPlaceholder}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', fontSize: 13.5, background: 'var(--bg)', color: 'var(--ink)' }}
+            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+              <button type="button" onClick={() => setExcludeReleaseTarget(null)}
+                style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--muted)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
+                {msg('취소')}
+              </button>
+              <button type="button" onClick={() => void releaseExcluded()}
+                style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: 'none', background: 'var(--ink)', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+                {copy.release}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

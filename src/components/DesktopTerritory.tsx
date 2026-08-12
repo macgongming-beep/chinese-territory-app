@@ -2055,6 +2055,8 @@ export function DesktopTerritory({
               onRejectRestaurantRequest={onRejectRestaurantRequest}
               onOpenMap={(cardId) => onOpenCardMap(cardId)}
               onOpenBuildingMap={onOpenBuildingMap}
+              visitHistories={visitHistories}
+              onUpdateUnitFlags={onUpdateUnitFlags}
             />
           </div>
         )}

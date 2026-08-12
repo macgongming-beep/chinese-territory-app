@@ -279,6 +279,9 @@ export function makeVisitMutations(deps: {
 
   const updateUnitFlags = async (unitId: number, flags: Partial<Unit>) => {
     const dbFlags: Record<string, unknown> = {}
+    // 상태를 방문 기록 없이 직접 고치는 경로 (예: 대상외 해제)
+    // ⚠ 방문한 것이 아니므로 visit_histories 에는 남기지 않는다 — 통계가 어긋난다
+    if (flags.status !== undefined) dbFlags.status = flags.status
     if (flags.isChinese !== undefined) dbFlags.is_chinese = flags.isChinese
     // 식당 여부(업종) — 중국어 사용 여부와 별개로 저장한다
     if (flags.isRestaurant !== undefined) dbFlags.is_restaurant = flags.isRestaurant
