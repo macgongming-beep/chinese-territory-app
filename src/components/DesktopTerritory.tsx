@@ -229,9 +229,11 @@ export function DesktopTerritory({
   const [buildingRegularFilter, setBuildingRegularFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingRegularFilter', '전체')
   const [buildingMemoFilter, setBuildingMemoFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingMemoFilter', '전체')
   const [buildingChineseHeavyFilter, setBuildingChineseHeavyFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingChineseHeavyFilter', '전체')
+  // 식당 등록 여부 — 상가 중 어디가 식당인지 골라 보기 위함
+  const [buildingRestaurantFilter, setBuildingRestaurantFilter] = useSessionState<'전체' | '식당' | '식당 아님'>('dt.buildingRestaurantFilter', '전체')
   const [pointRegularFilter, setPointRegularFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.pointRegularFilter', '전체')
   const [pointMemoFilter, setPointMemoFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.pointMemoFilter', '전체')
-  type BuildingSortKey = '카드' | '건물' | '주소' | '유형'
+  type BuildingSortKey = '카드' | '건물' | '주소' | '유형' | '식당'
   const [buildingSort, setBuildingSort] = useSessionState<{ key: BuildingSortKey; dir: 'asc' | 'desc' }>('dt.buildingSort', { key: '카드', dir: 'asc' })
   const [editingBuildingId, setEditingBuildingId] = useState<number | null>(null)
   const [editingUnitId, setEditingUnitId] = useState<number | null>(null)
@@ -464,7 +466,8 @@ export function DesktopTerritory({
   const activeAdvancedBuildingFilterCount =
     (buildingRegularFilter !== '전체' ? 1 : 0) +
     (buildingMemoFilter !== '전체' ? 1 : 0) +
-    (buildingChineseHeavyFilter !== '전체' ? 1 : 0)
+    (buildingChineseHeavyFilter !== '전체' ? 1 : 0) +
+    (buildingRestaurantFilter !== '전체' ? 1 : 0)
   const activeAdvancedPointFilterCount =
     (pointRegularFilter !== '전체' ? 1 : 0) +
     (pointMemoFilter !== '전체' ? 1 : 0)
@@ -577,6 +580,9 @@ export function DesktopTerritory({
     if (buildingMemoFilter === '없음' && hasMemo) return false
     if (buildingChineseHeavyFilter === '있음' && !building.isChineseHeavy) return false
     if (buildingChineseHeavyFilter === '없음' && building.isChineseHeavy) return false
+    const restaurantUnitCount = getRestaurantUnits(building).length
+    if (buildingRestaurantFilter === '식당' && restaurantUnitCount === 0) return false
+    if (buildingRestaurantFilter === '식당 아님' && restaurantUnitCount > 0) return false
     return true
   })
   // 건물 추가 — 카드 자동 매칭 (동 이름 기준)
@@ -661,6 +667,13 @@ export function DesktopTerritory({
     if (buildingSort.key === '건물') return naturalCompare(a.name, b.name) * dir
     if (buildingSort.key === '주소') return naturalCompare(a.address, b.address) * dir
     if (buildingSort.key === '유형') return naturalCompare(a.type, b.type) * dir
+    if (buildingSort.key === '식당') {
+      // 식당이 많은 건물부터 (오름차순이면 식당 아닌 것부터)
+      const ra = getRestaurantUnits(a).length
+      const rb = getRestaurantUnits(b).length
+      if (ra !== rb) return (ra - rb) * dir
+      return naturalCompare(a.name, b.name)
+    }
     return 0
   })
 
@@ -1146,7 +1159,7 @@ export function DesktopTerritory({
     const isPointList = buildingSubTab === '중국어 포인트'
     const headers = isPointList
       ? ['카드명', '지역', '동', '건물명', '주소', '유형', '호수', '정기방문', '정기방문자', '최근 방문', '메모']
-      : ['카드명', '지역', '동', '건물명', '주소', '유형', '세대', '중국어', '중국어 다수', '정기방문', '건물 메모', '세대 메모']
+      : ['카드명', '지역', '동', '건물명', '주소', '유형', '식당', '세대', '중국어', '중국어 다수', '정기방문', '건물 메모', '세대 메모']
     const rows = isPointList
       ? pointRows.map(({ building, unit, latestHistory }) => {
           const card = cardMap.get(building.cardId)
@@ -1179,6 +1192,7 @@ export function DesktopTerritory({
             building.name,
             building.address,
             building.type,
+            getRestaurantUnits(building).length || '',
             building.units.length,
             chineseCount,
             building.isChineseHeavy ? 'Y' : '',
@@ -2357,6 +2371,14 @@ export function DesktopTerritory({
                       ))}
                     </div>
                   </div>
+                  <div className="tbl-filter-group">
+                    <span className="tbl-filter-label">식당 등록</span>
+                    <div className="tbl-mini-seg">
+                      {(['전체', '식당', '식당 아님'] as const).map((f) => (
+                        <button key={f} className={buildingRestaurantFilter === f ? 'active' : ''} onClick={() => setBuildingRestaurantFilter(f)} type="button">{f}</button>
+                      ))}
+                    </div>
+                  </div>
                   <button
                     className="tbl-filter-reset"
                     disabled={activeAdvancedBuildingFilterCount === 0}
@@ -2364,6 +2386,7 @@ export function DesktopTerritory({
                       setBuildingRegularFilter('전체')
                       setBuildingMemoFilter('전체')
                       setBuildingChineseHeavyFilter('전체')
+                      setBuildingRestaurantFilter('전체')
                     }}
                     type="button"
                   >
@@ -2377,7 +2400,7 @@ export function DesktopTerritory({
             <div className="tbl-filter-layer tbl-filter-layer--sort">
               <span className="tbl-filter-label">정렬</span>
               <div className="tbl-mini-seg">
-                {(['카드', '건물', '주소', '유형'] as BuildingSortKey[]).map((key) => (
+                {(['카드', '건물', '주소', '유형', '식당'] as BuildingSortKey[]).map((key) => (
                   <button key={key} className={buildingSort.key === key ? 'active' : ''} onClick={() => setBuildingSort((prev) => prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' })} type="button">
                     {key}{buildingSort.key === key ? (buildingSort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
                   </button>
