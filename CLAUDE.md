@@ -106,9 +106,12 @@
 ### 알려진 운영 메모
 - 배정 푸시 알림 정상 동작 확인됨 (사용자가 알림 권한 켜면 옴).
 - 채팅 실시간/배정 알림/일정 즉시 반영 — 위 SQL 두 개가 적용돼 있어야 동작.
-- Vercel 프로젝트: `chinese-territory-app`
+- Vercel 프로젝트: `chinese-territory-app` ⚠️ **이름·주소를 바꾸지 말 것**
   현재 배포: https://chinese-territory-app.vercel.app/
   (이전 `-rwb7` 도메인은 사용 안 함)
+  주소가 바뀌면 80명의 홈화면 PWA 가 옛 주소를 가리킨 채 남고, 로그인 세션과
+  **푸시 구독이 전부 무효가 된다** (둘 다 origin 에 묶여 있다). 회복하려면
+  전원에게 다시 설치·알림 허용을 부탁해야 한다. 저장소·패키지 이름만 바꿨다.
 
 ---
 
@@ -118,8 +121,9 @@
 
 - **목적**: 80명 규모 한 회중의 중국인 봉사 구역 관리 (PC + 모바일)
 - **사용자**: 단일 회중 내부 사용 (외부 배포 X)
-- **배포 주소**: https://chinese-territory-app.vercel.app/
-- **GitHub**: https://github.com/macgongming-beep/chinese-territory-app
+- **앱 이름**: 필드맵 (Field Map) — 사용자에게 보이는 이름 (PWA manifest)
+- **배포 주소**: https://chinese-territory-app.vercel.app/ (바꾸지 말 것 — 위 메모 참고)
+- **GitHub**: https://github.com/macgongming-beep/field-map
 
 ---
 
