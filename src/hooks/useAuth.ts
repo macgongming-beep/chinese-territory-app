@@ -506,7 +506,7 @@ export function useAuth() {
 
     if (error) {
       if (error.message?.includes('group_name')) {
-        showToast(msg('DB에 group_name 컬럼/권한이 없습니다. supabase/add_app_users_group.sql 을 실행해 주세요.'), 'error')
+        showToast(msg('DB에 group_name 컬럼/권한이 없습니다. supabase/applied/add_app_users_group.sql 을 실행해 주세요.'), 'error')
       } else {
         showToast(msg('집단 지정에 실패했습니다.'), 'error')
       }
@@ -515,7 +515,7 @@ export function useAuth() {
 
     const rows = (data ?? []) as Array<{ id: number; group_name?: string | null }>
     if (rows.length === 0) {
-      showToast(msg('집단이 저장되지 않았습니다. supabase/add_app_users_group.sql 의 grant 구문을 실행해 주세요.'), 'error')
+      showToast(msg('집단이 저장되지 않았습니다. supabase/applied/add_app_users_group.sql 의 grant 구문을 실행해 주세요.'), 'error')
       return false
     }
     if (rows.some((row) => (row.group_name ?? null) !== nextGroup)) {

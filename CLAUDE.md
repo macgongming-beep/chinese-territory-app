@@ -351,11 +351,14 @@ review_tasks        id, title, content, status, completed_at, created_at
 - `get_login_logs(p_user_id, p_since, p_limit)` — 로그인 기록 조회
 - `hash_pin_if_plain` — 트리거 함수 (자동 호출, 직접 호출 X)
 
-### SQL 파일 위치
+### SQL 파일 위치 → 규칙은 `supabase/README.md`
 - `supabase/schema.sql` — 초기 스키마
-- `supabase/auth_hash_pins.sql` — bcrypt 트리거 + auth_login RPC
-- `supabase/auth_lockdown.sql` — PIN 컬럼 차단 + login_logs RPC
-- `supabase/migrate_*.sql`, `add_*.sql` — 점진적 마이그레이션
+- `supabase/*.sql` — **아직 적용 안 했거나 방금 적용한 것.** 새 SQL 은 여기 만든다
+- `supabase/applied/` — 적용이 끝난 마이그레이션 (기록용, 고치지 말 것)
+- `supabase/tools/` — 읽기 전용 점검 (`_VERIFY_production.sql` 로 적용 여부 확인)
+
+⚠️ 사용자가 실행했다고 확인해 주면 **그 자리에서 `applied/` 로 옮길 것.**
+미루면 루트가 다시 60개가 된다.
 
 ---
 
