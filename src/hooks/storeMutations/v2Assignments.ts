@@ -6,11 +6,83 @@ import { supabase } from '../../lib/supabase'
 import { showToast } from '../../lib/toast'
 import { getAuthToken } from '../../lib/authToken'
 import { msg } from '../../lib/msg'
+import { reportMutationError } from './shared'
 
 export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> }) {
   const { fetchAll } = deps
 
   // ── 비공식 자료 풀 ────────────────────────────────
+  /**
+   * 사진 없이 지도 핀으로 비공식 장소 만들기 (docs/비공식-봉사-재설계.md)
+   *
+   * 사진은 위치를 알려 주지 못한다 — 처음 가는 형제는 못 찾는다.
+   * 그리고 사진을 안 쓰면 회중마다 스토리지 버킷을 만들 필요가 없어져
+   * 다른 회중 설치 절차가 하나 줄어든다.
+   */
+  const createInformalPlace = async (input: {
+    name: string
+    createdBy: string
+    groupId?: number | null
+    lat: number
+    lng: number
+    memo?: string
+    zoom?: number | null
+  }): Promise<boolean> => {
+    const name = input.name.trim()
+    if (!name) {
+      showToast(msg('이름을 입력해 주세요'), 'error')
+      return false
+    }
+    const { error } = await supabase.from('informal_assets').insert({
+      name,
+      // 사진이 없는 자료다. 빈 글자로 두어 기존 화면이 그대로 동작하게 한다
+      image_url: '',
+      image_path: '',
+      uploaded_by: input.createdBy,
+      archived: false,
+      group_id: input.groupId ?? null,
+      lat: input.lat,
+      lng: input.lng,
+      memo: input.memo?.trim() || null,
+      zoom: input.zoom ?? null,
+    })
+    if (error) {
+      const message = (error as { message?: string }).message ?? ''
+      if (/lat|lng|memo|zoom|column/.test(message)) {
+        showToast(msg('지도 칸이 아직 없습니다. supabase/v3_informal_map.sql 을 실행해 주세요.'), 'error')
+      } else {
+        reportMutationError(msg('비공식 장소를 등록하지 못했습니다.'), error)
+      }
+      return false
+    }
+    await fetchAll()
+    showToast(msg('등록했습니다'))
+    return true
+  }
+
+  /** 핀·메모 고치기. 사진이 있는 기존 자료에도 그대로 쓴다 */
+  const updateInformalPlace = async (
+    assetId: number,
+    input: { name?: string; memo?: string; lat?: number; lng?: number; zoom?: number | null },
+  ): Promise<boolean> => {
+    const patch: Record<string, unknown> = {}
+    if (input.name !== undefined) patch.name = input.name.trim()
+    if (input.memo !== undefined) patch.memo = input.memo.trim() || null
+    if (input.lat !== undefined) patch.lat = input.lat
+    if (input.lng !== undefined) patch.lng = input.lng
+    if (input.zoom !== undefined) patch.zoom = input.zoom
+    if (Object.keys(patch).length === 0) return true
+
+    const { error } = await supabase.from('informal_assets').update(patch).eq('id', assetId)
+    if (error) {
+      reportMutationError(msg('비공식 장소를 수정하지 못했습니다.'), error)
+      return false
+    }
+    await fetchAll()
+    showToast(msg('저장했습니다'))
+    return true
+  }
+
   const uploadInformalAsset = async (input: {
     file: File
     name: string
@@ -241,6 +313,8 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
   }
 
   return {
+    createInformalPlace,
+    updateInformalPlace,
     uploadInformalAsset,
     deleteInformalAsset,
     createInformalGroup,

@@ -118,6 +118,12 @@ export type RawInformalAsset = {
   created_at: string
   archived: boolean
   group_id?: number | null
+  lat?: number | null
+  lng?: number | null
+  memo?: string | null
+  boundary?: unknown
+  route?: unknown
+  zoom?: number | null
 }
 
 export type RawInformalGroup = {
@@ -364,6 +370,18 @@ export function toEventCardAssignment(raw: RawEventCardAssignment): EventCardAss
   }
 }
 
+/** jsonb → 좌표 목록. 모양이 아니면 null (지도가 깨지는 것보다 안 그려지는 게 낫다) */
+function toGeoPoints(value: unknown): GeoPoint[] | null {
+  if (!Array.isArray(value)) return null
+  const points = value.filter(
+    (p): p is GeoPoint =>
+      !!p && typeof p === 'object'
+      && typeof (p as GeoPoint).lat === 'number'
+      && typeof (p as GeoPoint).lng === 'number',
+  )
+  return points.length > 0 ? points : null
+}
+
 export function toInformalAsset(raw: RawInformalAsset): InformalAsset {
   return {
     id: raw.id,
@@ -374,6 +392,12 @@ export function toInformalAsset(raw: RawInformalAsset): InformalAsset {
     createdAt: raw.created_at,
     archived: !!raw.archived,
     groupId: raw.group_id ?? null,
+    lat: raw.lat ?? null,
+    lng: raw.lng ?? null,
+    memo: raw.memo ?? '',
+    boundary: toGeoPoints(raw.boundary),
+    route: toGeoPoints(raw.route),
+    zoom: raw.zoom ?? null,
   }
 }
 

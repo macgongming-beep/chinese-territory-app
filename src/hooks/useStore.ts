@@ -750,6 +750,8 @@ export function useStore() {
   } = makeReviewTaskMutations({ fetchAll, setReviewTasks })  // reviewTasks는 setter 직접 사용 (fetchAll 호출 거의 없음)
 
   const {
+    createInformalPlace,
+    updateInformalPlace,
     uploadInformalAsset,
     deleteInformalAsset,
     createInformalGroup,
@@ -875,6 +877,8 @@ export function useStore() {
     eventInformalAssignments,
     eventRestaurantAssignments,
     informalGroups,
+    createInformalPlace,
+    updateInformalPlace,
     uploadInformalAsset,
     deleteInformalAsset,
     createInformalGroup,
