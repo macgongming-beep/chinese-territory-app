@@ -90,18 +90,16 @@ export function DesktopTerritoryRegions({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ display: 'grid', gap: 2 }}>
                     <button
-                      className="ds-btn"
+                      className="region-order-btn"
                       disabled={i === 0 || busy}
                       onClick={() => void onMoveRegion(r.id, 'up')}
-                      style={{ padding: '1px 7px', fontSize: 11, lineHeight: 1.4 }}
                       title="위로"
                       type="button"
                     >▲</button>
                     <button
-                      className="ds-btn"
+                      className="region-order-btn"
                       disabled={i === regions.length - 1 || busy}
                       onClick={() => void onMoveRegion(r.id, 'down')}
-                      style={{ padding: '1px 7px', fontSize: 11, lineHeight: 1.4 }}
                       title="아래로"
                       type="button"
                     >▼</button>

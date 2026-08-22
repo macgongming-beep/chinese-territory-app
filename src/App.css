@@ -29848,3 +29848,30 @@ input[type="time"] {
 button > svg {
   flex-shrink: 0;
 }
+
+/* 지역 관리 — 순서 바꾸기 버튼.
+   .ds-btn 은 min-height:36px 이라 이 자리에 쓰면 이름보다 커진다.
+   곁다리 조작이므로 작게 둔다. */
+.region-order-btn {
+  width: 24px;
+  height: 18px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  border-radius: 5px;
+  background: var(--bg-card);
+  color: var(--gray-500);
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+}
+.region-order-btn:hover:not(:disabled) {
+  background: var(--gray-50);
+  color: var(--gray-700);
+}
+.region-order-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
