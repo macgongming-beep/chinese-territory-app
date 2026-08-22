@@ -176,6 +176,9 @@ export function DesktopMap({
   const [addingBuilding, setAddingBuilding] = useState(false)
   // 비공식 봉사 장소 (docs/비공식-봉사-재설계.md)
   const [addingInformal, setAddingInformal] = useState(false)
+  // 비공식은 기본으로 감춘다. 호별방문 지도에 섞이면 구역이 안 보인다.
+  // 비공식 화면에서 '지도에서 보기' 로 들어온 경우(informalId)에는 켜고 시작한다.
+  const [showInformal, setShowInformal] = useState<boolean>(() => Boolean(focusedInformalId))
   const [informalDraft, setInformalDraft] = useState<{ lat: number; lng: number; name: string; memo: string } | null>(null)
   const [savingInformal, setSavingInformal] = useState(false)
   const [showMapActionMenu, setShowMapActionMenu] = useState(false)
@@ -331,7 +334,7 @@ export function DesktopMap({
   }
 
   const informalPins = useMemo(
-    () => informalAssets
+    () => (!showInformal ? [] : informalAssets)
       .filter((a) => typeof a.lat === 'number' && typeof a.lng === 'number')
       .map((a) => ({ id: a.id, name: a.name, lat: a.lat as number, lng: a.lng as number })),
     [informalAssets],
@@ -406,6 +409,7 @@ export function DesktopMap({
     setEditingPinMode(false)
     setAddingBuilding(false)
     setAddingInformal(true)
+    setShowInformal(true)
     showToast(msg('지도에서 비공식 봉사 장소를 누르세요'), 'info')
   }
 
@@ -1795,6 +1799,12 @@ export function DesktopMap({
                 {onCreateInformalPlace && (actualRole === 'admin' || actualRole === 'developer') && (
                   <button onClick={openAddInformalMode} type="button">비공식 장소 추가</button>
                 )}
+                <button
+                  onClick={() => { setShowInformal((v) => !v); setShowMapActionMenu(false) }}
+                  type="button"
+                >
+                  {showInformal ? '비공식 숨기기' : '비공식 보기'}
+                </button>
                 <button onClick={toggleEditPinMode} type="button">
                   {editingPinMode ? '핀 수정 종료' : '핀 위치 수정'}
                 </button>
