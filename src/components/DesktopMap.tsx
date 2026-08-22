@@ -82,11 +82,14 @@ export function DesktopMap({
   onSwitchToList,
   informalAssets = [],
   onCreateInformalPlace,
+  focusedInformalId,
 }: {
   language: AppLanguage;
   buildings: Building[]
   /** 비공식 봉사 장소 — 핀이 찍힌 것만 지도에 뜬다 (docs/비공식-봉사-재설계.md) */
   informalAssets?: InformalAsset[]
+  /** 비공식 화면에서 '지도에서 보기' 로 들어왔을 때 그 장소로 옮긴다 */
+  focusedInformalId?: number | null
   onCreateInformalPlace?: (input: {
     name: string; createdBy: string; groupId?: number | null
     lat: number; lng: number; memo?: string; zoom?: number | null
@@ -380,6 +383,13 @@ export function DesktopMap({
       </div>
     </div>
   ) : null
+
+  const informalFocusPoint = useMemo(() => {
+    if (!focusedInformalId) return null
+    const place = informalAssets.find((a) => a.id === focusedInformalId)
+    if (!place || typeof place.lat !== 'number' || typeof place.lng !== 'number') return null
+    return { lat: place.lat, lng: place.lng, zoom: place.zoom ?? null }
+  }, [focusedInformalId, informalAssets])
 
   const handleMapClick = (lat: number, lng: number) => {
     // 비공식 추가 중이면 그쪽이 우선이다. 두 모드가 동시에 켜지지 않게 서로 끈다.
@@ -1742,6 +1752,7 @@ export function DesktopMap({
               onSelectCardBoundary={handleSelectCardForMap}
               onUpdateBoundaryPoint={updateDraftBoundaryPoint}
               onMapRightClick={handleMapRightClick}
+              focusPoint={informalFocusPoint}
               informalPlaces={informalPins}
               onSelectInformal={(id) => {
                 const place = informalAssets.find((a) => a.id === id)

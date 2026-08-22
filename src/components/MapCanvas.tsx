@@ -410,6 +410,7 @@ function NaverMapCanvas({
   buildings,
   informalPlaces = [],
   onSelectInformal,
+  focusPoint,
   aggregateMarkers = [],
   cardBoundaries,
   cards,
@@ -453,6 +454,8 @@ function NaverMapCanvas({
   buildings: Building[]
   informalPlaces?: InformalPlacePin[]
   onSelectInformal?: (id: number) => void
+  /** 이 좌표로 지도를 옮긴다. 마커는 그리지 않는다 — 이미 그려진 핀을 보여 주려는 것이다 */
+  focusPoint?: { lat: number; lng: number; zoom?: number | null } | null
   aggregateMarkers?: MapAggregateMarker[]
   cardBoundaries: CardBoundary[]
   cards: TerritoryCard[]
@@ -1501,6 +1504,19 @@ function NaverMapCanvas({
     rebuildMarkers()
   }, [virtualPinLat, virtualPinLng, virtualPinLabel])
 
+  // 좌표가 바뀐 순간에만 옮긴다. 매 렌더마다 옮기면 사용자가 지도를 만질 수 없다.
+  const lastFocusPointRef = useRef<string>('')
+  useEffect(() => {
+    if (!scriptLoadedRef.current || !focusPoint) return
+    const naver = (window as any).naver
+    if (!naver?.maps || !mapInstanceRef.current) return
+    const key = `${focusPoint.lat},${focusPoint.lng}`
+    if (lastFocusPointRef.current === key) return
+    lastFocusPointRef.current = key
+    mapInstanceRef.current.setCenter(new naver.maps.LatLng(focusPoint.lat, focusPoint.lng))
+    mapInstanceRef.current.setZoom(focusPoint.zoom ?? 17)
+  }, [focusPoint])
+
   // 비공식 장소는 건물과 다른 레이어라 따로 다시 그린다.
   // 줌마다 건물 클러스터가 재계산되는 것과 엮이면 깜빡인다.
   useEffect(() => {
@@ -1761,10 +1777,12 @@ export function MapCanvas({
   hideBuildingMarkers = false,
   informalPlaces = [],
   onSelectInformal,
+  focusPoint,
 }: {
   buildings: Building[]
   informalPlaces?: InformalPlacePin[]
   onSelectInformal?: (id: number) => void
+  focusPoint?: { lat: number; lng: number; zoom?: number | null } | null
   aggregateMarkers?: MapAggregateMarker[]
   cardBoundaries?: CardBoundary[]
   cards: TerritoryCard[]
@@ -1817,6 +1835,7 @@ export function MapCanvas({
           buildings={validBuildings}
           informalPlaces={informalPlaces}
           onSelectInformal={onSelectInformal}
+          focusPoint={focusPoint}
           aggregateMarkers={aggregateMarkers}
           cardBoundaries={cardBoundaries}
           cards={cards}

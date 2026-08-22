@@ -175,6 +175,8 @@ type Props = {
     name: string; createdBy: string; groupId?: number | null
     lat: number; lng: number; memo?: string
   }) => Promise<boolean>
+  /** 핀이 찍힌 장소를 지도에서 보여 준다 */
+  onOpenOnMap?: (assetId: number) => void
   currentVisitor: string
   informalAssets: InformalAsset[]
   informalGroups: InformalGroup[]
@@ -192,6 +194,7 @@ export function InformalCardsTab({
   role, currentVisitor, informalAssets, informalGroups,
   onUpload, onDelete, onCreateGroup, onRenameGroup, onDeleteGroup, onMoveAsset,
   onCreatePlace,
+  onOpenOnMap,
   language = 'ko',
 }: Props) {
   const copy = informalCopy[language]
@@ -861,10 +864,16 @@ export function InformalCardsTab({
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'var(--ink)', whiteSpace: 'pre-wrap' }}>
                 {preview.memo?.trim() || '메모가 없습니다.'}
               </p>
-              {typeof preview.lat === 'number' && (
-                <p style={{ margin: '12px 0 0', fontSize: 12.5, color: 'var(--muted)' }}>
-                  지도에 핀이 찍혀 있습니다.
-                </p>
+              {typeof preview.lat === 'number' && onOpenOnMap && (
+                <button
+                  onClick={() => { const id = preview.id; setPreview(null); onOpenOnMap(id) }}
+                  type="button"
+                  style={{
+                    marginTop: 14, width: '100%', height: 38,
+                    borderRadius: 8, border: 'none', background: '#7A5C8A', color: '#fff',
+                    fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >지도에서 보기</button>
               )}
             </div>
           )}

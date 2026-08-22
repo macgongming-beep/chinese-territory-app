@@ -350,6 +350,7 @@ export function DesktopApp({
 
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
   const focusedMapBuildingId = searchParams.get('buildingId') ? Number(searchParams.get('buildingId')) : null
+  const focusedInformalId = searchParams.get('informalId') ? Number(searchParams.get('informalId')) : null
   // 지역 관리 화면에서 '지워도 되는지' 를 보여 준다 — 카드가 있으면 지우면 안 된다
   const regionCardCounts = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -405,6 +406,11 @@ export function DesktopApp({
     } else {
       navigate(`/map?cardId=${cardId}`)
     }
+  }
+
+  const openInformalOnMap = (assetId: number) => {
+    if (viewMode === 'leader') navigate(`/zone?view=map&informalId=${assetId}`)
+    else navigate(`/map?informalId=${assetId}`)
   }
 
   const openBuildingOnMap = (buildingId: number) => {
@@ -670,6 +676,7 @@ export function DesktopApp({
                 buildings={buildings}
                 informalAssets={informalAssets}
                 onCreateInformalPlace={onCreateInformalPlace}
+                focusedInformalId={focusedInformalId}
                 boundaryEditRequest={boundaryEditRequest}
                 cardBoundaries={cardBoundaries}
                 cards={cards}
@@ -712,6 +719,7 @@ export function DesktopApp({
                 onCreateCard={onCreateCard}
                 onCreateTerritoryRegion={onCreateTerritoryRegion}
                 onCreateInformalPlace={onCreateInformalPlace}
+                onOpenInformalOnMap={openInformalOnMap}
                 onImportBuildings={onImportBuildings}
                 onDeleteBuildings={onDeleteBuildings}
                 onDeleteCards={onDeleteCards}
@@ -760,6 +768,7 @@ export function DesktopApp({
             buildings={mapBuildings}
             informalAssets={informalAssets}
             onCreateInformalPlace={onCreateInformalPlace}
+            focusedInformalId={focusedInformalId}
             boundaryEditRequest={boundaryEditRequest}
             cardBoundaries={mapCardBoundaries}
             cards={mapCards}
