@@ -337,7 +337,7 @@ export function DesktopMap({
     () => (!showInformal ? [] : informalAssets)
       .filter((a) => typeof a.lat === 'number' && typeof a.lng === 'number')
       .map((a) => ({ id: a.id, name: a.name, lat: a.lat as number, lng: a.lng as number })),
-    [informalAssets],
+    [informalAssets, showInformal],
   )
 
   const informalDraftModal = informalDraft ? (
