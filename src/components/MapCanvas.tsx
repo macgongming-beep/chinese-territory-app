@@ -1401,7 +1401,9 @@ function NaverMapCanvas({
       // 선택된 카드나 범위가 있으면 해당 경계로 줌인, 없으면 전체 영역
       // (건물을 지정해서 들어온 경우엔 이미 그 건물에 맞춰져 있으므로 건너뛴다)
       const initialCardId = selectedCardIdRef.current
-      if (hasFocusTarget) {
+      // 좌표를 지정해 들어온 경우(비공식 장소)도 건물과 같다 — 이미 그 자리에
+      // 맞춰 뒀는데 아래 fitTerritoryBoundary() 가 용인 전체로 되돌려 버린다
+      if (hasFocusTarget || hasFocusPoint) {
         hasFitBoundaryRef.current = true
         suppressNextCardFitRef.current = true
         mountedWithFocusRef.current = true
