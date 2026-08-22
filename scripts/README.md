@@ -14,75 +14,106 @@ VITE_SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
-## 자동화 (macOS launchd, 매주 일요일 03:00)
+## 자동 백업 (macOS launchd, 매일 새벽 3시)
 
-다음 plist 파일을 만들어서 등록:
+⚠️ **아래 명령을 그대로 붙여넣으면 등록된다.** 지금은 등록돼 있지 않아
+손으로 `npm run backup` 할 때만 백업된다 — 기억하는 날에만 돌아간다는 뜻이다.
 
 ```bash
-# 1. plist 파일 생성
-cat > ~/Library/LaunchAgents/com.chinese-territory.backup.plist <<EOF
+cat > ~/Library/LaunchAgents/com.fieldmap.backup.plist <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.chinese-territory.backup</string>
+  <string>com.fieldmap.backup</string>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>-c</string>
-    <string>cd "/Users/gm/Documents/New project/chinese-territory-app" && /usr/local/bin/npm run backup</string>
+    <string>-lc</string>
+    <string>cd "/Users/gm/Documents/New project/chinese-territory-app" && /opt/homebrew/bin/npm run backup</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>
-    <key>Weekday</key>
-    <integer>0</integer>
-    <key>Hour</key>
-    <integer>3</integer>
-    <key>Minute</key>
-    <integer>0</integer>
+    <key>Hour</key><integer>3</integer>
+    <key>Minute</key><integer>0</integer>
   </dict>
   <key>StandardOutPath</key>
-  <string>/tmp/chinese-territory-backup.log</string>
+  <string>/tmp/fieldmap-backup.log</string>
   <key>StandardErrorPath</key>
-  <string>/tmp/chinese-territory-backup-error.log</string>
+  <string>/tmp/fieldmap-backup-error.log</string>
 </dict>
 </plist>
-EOF
-
-# 2. 등록
-launchctl load ~/Library/LaunchAgents/com.chinese-territory.backup.plist
-
-# 3. 확인
-launchctl list | grep chinese-territory
+PLIST
+launchctl unload ~/Library/LaunchAgents/com.fieldmap.backup.plist 2>/dev/null
+launchctl load ~/Library/LaunchAgents/com.fieldmap.backup.plist
+launchctl list | grep fieldmap
 ```
 
-해제:
+`npm` 경로에 주의할 것. 이 맥은 `/opt/homebrew/bin/npm` 이다
+(예전 안내문에 적혀 있던 `/usr/local/bin/npm` 은 인텔 맥 경로라, 그대로
+등록했으면 **오류도 없이 조용히 아무 일도 안 일어났을 것이다**).
+
+### 잘 돌고 있는지 보기
+
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.chinese-territory.backup.plist
-rm ~/Library/LaunchAgents/com.chinese-territory.backup.plist
+ls -1 backups/ | tail -5          # 날짜 폴더가 매일 늘어나는지
+cat /tmp/fieldmap-backup.log      # 마지막 실행 결과
+npm run restore                   # 최신 백업이 되돌릴 수 있는 상태인지
+```
+
+맥이 꺼져 있으면 그 시각은 건너뛴다. 다음에 켜져 있을 때 돈다.
+
+### 그만두려면
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.fieldmap.backup.plist
+rm ~/Library/LaunchAgents/com.fieldmap.backup.plist
 ```
 
 ## 복원 (수동)
 
 전체 복원은 위험하므로 신중히 진행. 일반적으로 특정 테이블 일부만 복원합니다.
 
-### 옵션 A: 단일 행 복원 (Supabase Dashboard)
-1. `backups/YYYY-MM-DD/<table>.json` 열기
-2. 잃어버린 행 찾기
-3. Supabase Table Editor 에서 직접 INSERT
+### `npm run restore` — 되돌리기
 
-### 옵션 B: 전체 테이블 복원 (SQL Editor)
-```sql
--- 1. 기존 데이터 삭제 (주의!)
-TRUNCATE public.<table_name> CASCADE;
+**기본은 검사만 한다. 아무것도 쓰지 않는다.**
 
--- 2. JSON 데이터 복원 (psql 또는 pg_restore 필요)
--- backups/YYYY-MM-DD/<table>.json 의 내용을 INSERT 문으로 변환 필요
+```bash
+npm run restore                        # 오늘 백업이 되돌릴 수 있는 상태인지 검사
+npm run restore -- 2026-08-22          # 그 날짜 백업으로
+npm run restore -- --table units       # 한 표만
+npm run restore -- --write             # 실제로 넣기 (빠진 행만)
+npm run restore -- --write --replace   # 있는 행도 덮어쓰기
 ```
 
-### 옵션 C: Node.js 스크립트로 복원
-필요시 `scripts/restore.js` 작성. 현재 미구현.
+검사 모드는 표마다 `백업 N행 / 지금 M행` 을 보여 준다.
+
+```
+✅ 같음      ↑ 백업이 더 많음(잃어버린 행이 있다)      ↓ 지금이 더 많음
+```
+
+**아무것도 지우지 않는다.** `--replace` 도 덮어쓰기지 삭제가 아니다.
+기본값은 빠진 행만 넣으므로, 잘못 돌려도 멀쩡한 데이터가 상하지 않는다.
+
+넣기가 끝나면 **시퀀스를 맞추는 SQL** 을 찍어 준다. 그걸 Supabase SQL Editor 에서
+실행해야 한다. 안 하면 새 글을 쓸 때 이미 쓰인 id 를 다시 내주어 충돌한다.
+
+#### 표를 새로 만들면 두 곳에 등록할 것
+
+1. `scripts/backup.js` 의 `TABLES` — 없으면 백업이 안 된다
+   (2026-08-22 에 42개 중 24개가 빠져 있는 걸 발견했다)
+2. `scripts/restore.js` 의 `RESTORE_ORDER` — 부모 표보다 뒤에 둔다.
+   순서가 틀리면 외래키에 막혀 중간에 멈춘다
+
+`id` 가 없는 표는 `restore.js` 의 `CONFLICT_KEYS` 에 무엇으로 같은 행인지 적는다.
+안 적으면 **넣지 않고 건너뛴다** — 기준 없이 넣으면 있는 행이 통째로 복제되기 때문이다.
+
+#### 실제로 되돌아오는지 확인한 적 있나
+
+있다 (2026-08-22). 카드가 0장인 시험용 지역을 만들어 백업 → 지움 → `--write` 로
+되살아나는 것까지 확인했다. **파일이 쌓이는 것과 되돌아오는 것은 다른 문제다** —
+표를 크게 바꾼 뒤에는 한 번씩 이렇게 확인하는 편이 좋다.
 
 ## 백업 보관
 
