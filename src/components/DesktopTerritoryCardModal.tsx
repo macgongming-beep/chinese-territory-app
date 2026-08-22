@@ -1,6 +1,10 @@
-import { useState } from 'react'
-import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
+import { useMemo, useState } from 'react'
+import { territoryRegions } from '../data/territoryStructure'
+import { getAreaOptions, findSimilarArea, normalizeAreaName } from '../utils/areaOptions'
 import type { TerritoryCard, TerritoryRegion } from '../types'
+
+/** 목록에 없는 동을 직접 적을 때 고르는 값 */
+const NEW_AREA = '__new__'
 
 /** 카드 목록에서 특정 지역/동의 다음 카드 번호를 반환 */
 function getNextCardIndex(cards: TerritoryCard[], region: string, area: string): number {
@@ -36,33 +40,49 @@ export function CardCreateModal({
   onCreated: (newCardId: number, newCardName: string) => void
 }) {
   const defaultRegion = territoryRegions[0] as TerritoryRegion
-  const defaultArea = territoryAreasByRegion[defaultRegion]?.[0] ?? ''
+  const defaultArea = getAreaOptions(cards, defaultRegion)[0] ?? ''
 
   const [region, setRegion] = useState<string>(defaultRegion)
   const [area, setArea] = useState<string>(defaultArea)
+  /** 직접 입력 중이면 그 글자, 아니면 null */
+  const [newArea, setNewArea] = useState<string | null>(null)
   const [index, setIndex] = useState<number>(() => getNextCardIndex(cards, defaultRegion, defaultArea))
   const [pinCount, setPinCount] = useState(5)
   const [creating, setCreating] = useState(false)
 
-  const cardName = `${region} ${area} ${index}`
+  const areaOptions = useMemo(() => getAreaOptions(cards, region), [cards, region])
+  const finalArea = newArea === null ? area : normalizeAreaName(newArea)
+  // 하드코딩 목록이 맞춤법 검사기 노릇을 하던 걸 대신한다.
+  // 오타 하나로 '백암면' 이 둘로 갈라지면 통계·배정이 조용히 어긋난다.
+  const similarArea = newArea === null ? null : findSimilarArea(newArea, areaOptions)
+
+  const cardName = `${region} ${finalArea} ${index}`
   const isDuplicate = cards.some((card) => card.name === cardName)
 
   const handleRegionChange = (nextRegion: string) => {
-    const nextArea = territoryAreasByRegion[nextRegion as keyof typeof territoryAreasByRegion]?.[0] ?? ''
+    const nextArea = getAreaOptions(cards, nextRegion)[0] ?? ''
     setRegion(nextRegion)
     setArea(nextArea)
+    setNewArea(null)
     setIndex(getNextCardIndex(cards, nextRegion, nextArea))
   }
 
   const handleAreaChange = (nextArea: string) => {
+    if (nextArea === NEW_AREA) { setNewArea(''); return }
+    setNewArea(null)
     setArea(nextArea)
     setIndex(getNextCardIndex(cards, region, nextArea))
   }
 
+  const handleNewAreaChange = (value: string) => {
+    setNewArea(value)
+    setIndex(getNextCardIndex(cards, region, normalizeAreaName(value)))
+  }
+
   const handleCreate = async () => {
-    if (isDuplicate || creating) return
+    if (isDuplicate || creating || !finalArea) return
     setCreating(true)
-    const newCardId = await onCreateCard({ area, region, index, pinCount })
+    const newCardId = await onCreateCard({ area: finalArea, region, index, pinCount })
     setCreating(false)
     if (!newCardId) return
     onClose()
@@ -104,15 +124,42 @@ export function CardCreateModal({
               <label>동</label>
               <select
                 className="cal-input"
-                value={area}
+                value={newArea === null ? area : NEW_AREA}
                 onChange={(e) => handleAreaChange(e.target.value)}
               >
-                {(territoryAreasByRegion[region as keyof typeof territoryAreasByRegion] ?? []).map((a) => (
+                {areaOptions.map((a) => (
                   <option key={a} value={a}>{a}</option>
                 ))}
+                <option value={NEW_AREA}>+ 새 동 직접 입력</option>
               </select>
             </div>
           </div>
+
+          {newArea !== null && (
+            <div className="cal-field">
+              <label>새 동 이름</label>
+              <input
+                autoFocus
+                className="cal-input"
+                placeholder="예: 백암면"
+                value={newArea}
+                onChange={(e) => handleNewAreaChange(e.target.value)}
+              />
+              {similarArea && (
+                <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--warn-600, #b45309)', fontWeight: 700 }}>
+                  혹시 <b>{similarArea}</b> 인가요? 이름이 조금 다르면 같은 동이 둘로 갈라집니다.{' '}
+                  <button
+                    className="cal-cancel-btn"
+                    onClick={() => handleAreaChange(similarArea)}
+                    style={{ padding: '2px 8px', fontSize: 12 }}
+                    type="button"
+                  >
+                    {similarArea} 선택
+                  </button>
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="cal-field-row">
             <div className="cal-field">
@@ -154,7 +201,7 @@ export function CardCreateModal({
           <button className="cal-cancel-btn" onClick={onClose} type="button">취소</button>
           <button
             className="cal-save-btn"
-            disabled={creating || isDuplicate}
+            disabled={creating || isDuplicate || !finalArea}
             onClick={handleCreate}
             type="button"
           >

@@ -2,7 +2,8 @@ import { t } from '../i18n'
 import type { AppLanguage } from '../i18n'
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { territoryAreasByRegion, territoryRegions } from '../data/territoryStructure'
+import { territoryRegions } from '../data/territoryStructure'
+import { getAreaFilterOptions } from '../utils/areaOptions'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { geocodeFirstMatch } from '../lib/naverGeocode'
@@ -375,10 +376,9 @@ export function DesktopTerritory({
     setOpenHistoryActionId(null)
   }
 
-  const areaFilterOptions =
-    regionFilter === '전체'
-      ? Array.from(new Set(cards.map((card) => card.area))).sort()
-      : territoryAreasByRegion[regionFilter]
+  // 실제 카드에서 뽑는다. 예전에는 지역을 좁히면 하드코딩된 5개만 남아
+  // 백암면·양지면처럼 카드가 수십 장인 동이 필터에서 사라졌다.
+  const areaFilterOptions = getAreaFilterOptions(cards, regionFilter === '전체' ? '' : regionFilter)
 
   const getAreaCardCount = (area: string) =>
     cards.filter((card) => {
