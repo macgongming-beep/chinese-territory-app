@@ -121,6 +121,9 @@ function escapeAttr(value: string): string {
 // (예전엔 모든 건물 쌍의 거리를 재느라 1,000개 기준 약 50만 번 계산이 들어갔고,
 //  줌을 한 칸 옮길 때마다 그걸 다시 했다 — 지도 진입이 느리던 주된 원인)
 
+/** 지도에 찍을 비공식 장소. 지도는 이름과 좌표만 알면 된다 */
+export type InformalPlacePin = { id: number; name: string; lat: number; lng: number }
+
 type BuildingCluster = { buildings: Building[]; lat: number; lng: number }
 export type MapAggregateMarker = {
   id: string
@@ -240,6 +243,20 @@ function pointInRing(x: number, y: number, ring: [number, number][]): boolean {
 
 // 폴리곤 라벨 위치: 면적 가중 중심(centroid). 중심이 폴리곤 밖이면 bbox 중심으로 폴백.
 // → 삐뚤어진/사다리꼴 구역에서도 라벨이 안쪽에 들어옴.
+/** 비공식 장소 핀. 건물 핀과 색을 달리해 섞이지 않게 한다 */
+function informalMarkerHtml(name: string): string {
+  const safe = String(name ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .slice(0, 20)
+  return `
+    <div style="position:relative;transform:translateZ(0)">
+      <div style="width:26px;height:26px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);
+                  background:#7A5C8A;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>
+      <div style="position:absolute;left:31px;top:2px;white-space:nowrap;font-size:11.5px;font-weight:700;
+                  color:#4b3a58;background:rgba(255,255,255,.88);padding:1px 5px;border-radius:4px">${safe}</div>
+    </div>`
+}
+
 function boundaryLabelCenter(points: { lat: number; lng: number }[]): { lat: number; lng: number } | null {
   const pts = points.filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number' && !isNaN(p.lat) && !isNaN(p.lng))
   if (pts.length === 0) return null
@@ -391,6 +408,8 @@ function markerHtml(
 
 function NaverMapCanvas({
   buildings,
+  informalPlaces = [],
+  onSelectInformal,
   aggregateMarkers = [],
   cardBoundaries,
   cards,
@@ -432,6 +451,8 @@ function NaverMapCanvas({
   hideBuildingMarkers = false,
 }: {
   buildings: Building[]
+  informalPlaces?: InformalPlacePin[]
+  onSelectInformal?: (id: number) => void
   aggregateMarkers?: MapAggregateMarker[]
   cardBoundaries: CardBoundary[]
   cards: TerritoryCard[]
@@ -537,6 +558,13 @@ function NaverMapCanvas({
   const onSelectCardBoundaryRef = useRef(onSelectCardBoundary)
   onSelectCardBoundaryRef.current = onSelectCardBoundary
   const previewMarkerRef = useRef<any>(null)
+  // 비공식 봉사 장소 — 건물 마커와 다른 레이어다. 같이 관리하면
+  // 건물 갱신(클러스터 재계산) 때마다 같이 지워졌다 다시 그려진다.
+  const informalMarkersRef = useRef<any[]>([])
+  const informalPlacesRef = useRef(informalPlaces)
+  informalPlacesRef.current = informalPlaces
+  const onSelectInformalRef = useRef(onSelectInformal)
+  onSelectInformalRef.current = onSelectInformal
   const userLocationMarkerRef = useRef<any>(null)
   const previewPinLatRef = useRef(previewPinLat)
   previewPinLatRef.current = previewPinLat
@@ -551,6 +579,38 @@ function NaverMapCanvas({
   virtualPinLabelRef.current = virtualPinLabel
   // 가상 핀: 최초 배치 시에만 지도 중심/줌 이동 (zoom_changed 때마다 리셋 방지)
   const lastVirtualPinPosRef = useRef<{ lat: number; lng: number } | null>(null)
+
+  /**
+   * 비공식 봉사 장소 핀. 건물과 색을 달리해 한눈에 구분되게 한다.
+   * 건물 마커 재계산(줌마다 클러스터를 다시 묶는다)과 엮이면 안 되므로 따로 그린다.
+   */
+  const rebuildInformalMarkers = () => {
+    const naver = (window as any).naver
+    if (!naver?.maps || !mapInstanceRef.current) return
+
+    informalMarkersRef.current.forEach((m) => m.setMap(null))
+    informalMarkersRef.current = []
+
+    for (const place of informalPlacesRef.current) {
+      const lat = Number(place.lat)
+      const lng = Number(place.lng)
+      if (!isValidMapCoordinate(lat, lng)) continue
+      const marker = new naver.maps.Marker({
+        map: mapInstanceRef.current,
+        position: new naver.maps.LatLng(lat, lng),
+        icon: {
+          content: informalMarkerHtml(place.name),
+          anchor: new naver.maps.Point(13, 30),
+        },
+        zIndex: 6,
+      })
+      naver.maps.Event.addListener(marker, 'click', () => {
+        if (addingBuildingRef.current) return
+        onSelectInformalRef.current?.(place.id)
+      })
+      informalMarkersRef.current.push(marker)
+    }
+  }
 
   const doRebuildMarkers = () => {
     const naver = (window as any).naver
@@ -720,6 +780,7 @@ function NaverMapCanvas({
     rebuildTimerRef.current = window.setTimeout(() => {
       rebuildTimerRef.current = null
       rebuildMarkersCallbackRef.current()
+      rebuildInformalMarkersRef.current()
     }, 120)
   }
   const scheduleRebuildMarkersRef = useRef(scheduleRebuildMarkers)
@@ -731,6 +792,8 @@ function NaverMapCanvas({
   const updateCardLabelVisibilityRef = useRef<() => void>(() => {})
 
   const rebuildMarkers = () => rebuildMarkersCallbackRef.current()
+  const rebuildInformalMarkersRef = useRef(rebuildInformalMarkers)
+  rebuildInformalMarkersRef.current = rebuildInformalMarkers
  
   const getFitMargin = () => {
     if (compact) return [24, 24, 24, 24]
@@ -1438,6 +1501,13 @@ function NaverMapCanvas({
     rebuildMarkers()
   }, [virtualPinLat, virtualPinLng, virtualPinLabel])
 
+  // 비공식 장소는 건물과 다른 레이어라 따로 다시 그린다.
+  // 줌마다 건물 클러스터가 재계산되는 것과 엮이면 깜빡인다.
+  useEffect(() => {
+    if (!scriptLoadedRef.current) return
+    rebuildInformalMarkers()
+  }, [informalPlaces])
+
   // 건물 목록, 선택, 또는 미리보기 핀 변경 시 마커 재생성
   useEffect(() => {
     if (!scriptLoadedRef.current) return
@@ -1689,8 +1759,12 @@ export function MapCanvas({
   compact = false,
   cardColorMap,
   hideBuildingMarkers = false,
+  informalPlaces = [],
+  onSelectInformal,
 }: {
   buildings: Building[]
+  informalPlaces?: InformalPlacePin[]
+  onSelectInformal?: (id: number) => void
   aggregateMarkers?: MapAggregateMarker[]
   cardBoundaries?: CardBoundary[]
   cards: TerritoryCard[]
@@ -1741,6 +1815,8 @@ export function MapCanvas({
       <div className="map-canvas-container" style={{ width: '100%', height: '100%' }}>
         <NaverMapCanvas
           buildings={validBuildings}
+          informalPlaces={informalPlaces}
+          onSelectInformal={onSelectInformal}
           aggregateMarkers={aggregateMarkers}
           cardBoundaries={cardBoundaries}
           cards={cards}

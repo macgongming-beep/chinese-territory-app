@@ -93,6 +93,7 @@ function App() {
     deleteVisitHistory,
     createCard,
     createTerritoryRegion,
+    createInformalPlace,
     updateTerritoryRegion,
     moveTerritoryRegion,
     deleteTerritoryRegion,
@@ -333,6 +334,7 @@ function App() {
             onDeleteCalendarEventSeries={deleteCalendarEventSeries}
             onLinkEventsToSeries={linkEventsToSeries}
             onCreateCard={createCard}
+            onCreateInformalPlace={createInformalPlace}
             onCreateTerritoryRegion={createTerritoryRegion}
             onDeleteTerritoryRegion={deleteTerritoryRegion}
             onMoveTerritoryRegion={moveTerritoryRegion}

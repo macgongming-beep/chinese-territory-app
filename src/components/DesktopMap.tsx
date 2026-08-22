@@ -11,6 +11,7 @@ import type {
   BuildingStatus,
   CardBoundary,
   GeoPoint,
+  InformalAsset,
   Role,
   ServiceSession,
   TerritoryCard,
@@ -79,9 +80,17 @@ export function DesktopMap({
   visitHistories,
   specialPeriods,
   onSwitchToList,
+  informalAssets = [],
+  onCreateInformalPlace,
 }: {
   language: AppLanguage;
   buildings: Building[]
+  /** 비공식 봉사 장소 — 핀이 찍힌 것만 지도에 뜬다 (docs/비공식-봉사-재설계.md) */
+  informalAssets?: InformalAsset[]
+  onCreateInformalPlace?: (input: {
+    name: string; createdBy: string; groupId?: number | null
+    lat: number; lng: number; memo?: string; zoom?: number | null
+  }) => Promise<boolean>
   boundaryEditRequest?: number
   cardBoundaries: CardBoundary[]
   cards: TerritoryCard[]
@@ -162,6 +171,10 @@ export function DesktopMap({
   const creatingBuildingRef = useRef(false)
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'ok' | 'fail'>('idle')
   const [addingBuilding, setAddingBuilding] = useState(false)
+  // 비공식 봉사 장소 (docs/비공식-봉사-재설계.md)
+  const [addingInformal, setAddingInformal] = useState(false)
+  const [informalDraft, setInformalDraft] = useState<{ lat: number; lng: number; name: string; memo: string } | null>(null)
+  const [savingInformal, setSavingInformal] = useState(false)
   const [showMapActionMenu, setShowMapActionMenu] = useState(false)
   const [showBoundaryActionMenu, setShowBoundaryActionMenu] = useState(false)
   const [editingPinMode, setEditingPinMode] = useState(false)
@@ -314,8 +327,91 @@ export function DesktopMap({
     openAddBuildingAt(lat, lng)
   }
 
+  const informalPins = useMemo(
+    () => informalAssets
+      .filter((a) => typeof a.lat === 'number' && typeof a.lng === 'number')
+      .map((a) => ({ id: a.id, name: a.name, lat: a.lat as number, lng: a.lng as number })),
+    [informalAssets],
+  )
+
+  const informalDraftModal = informalDraft ? (
+    <div className="cal-modal-backdrop" onClick={() => setInformalDraft(null)}>
+      <div className="cal-modal" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
+        <div className="cal-modal-head">
+          <div className="cal-modal-title"><h2>비공식 봉사 장소</h2></div>
+          <button className="cal-modal-close" onClick={() => setInformalDraft(null)} type="button">×</button>
+        </div>
+        <div className="cal-modal-body">
+          <div className="cal-field">
+            <label>이름</label>
+            <input
+              autoFocus
+              className="cal-input"
+              placeholder="예: 명지대(함박관)"
+              value={informalDraft.name}
+              onChange={(e) => setInformalDraft({ ...informalDraft, name: e.target.value })}
+            />
+          </div>
+          <div className="cal-field">
+            <label>메모</label>
+            <textarea
+              className="cal-input"
+              placeholder="1층 카페 앞. 점심때 사람 많음"
+              rows={3}
+              value={informalDraft.memo}
+              onChange={(e) => setInformalDraft({ ...informalDraft, memo: e.target.value })}
+            />
+            <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6 }}>
+              사진보다 이런 메모가 실제로 도움이 됩니다. 어디로 들어가는지, 언제 사람이 많은지.
+            </p>
+          </div>
+        </div>
+        <div className="cal-modal-foot">
+          <button className="cal-cancel-btn" onClick={() => setInformalDraft(null)} type="button">취소</button>
+          <button
+            className="cal-save-btn"
+            disabled={savingInformal || !informalDraft.name.trim()}
+            onClick={() => void saveInformalDraft()}
+            type="button"
+          >
+            {savingInformal ? '저장 중…' : '저장'}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
+
   const handleMapClick = (lat: number, lng: number) => {
+    // 비공식 추가 중이면 그쪽이 우선이다. 두 모드가 동시에 켜지지 않게 서로 끈다.
+    if (addingInformal) {
+      setAddingInformal(false)
+      setInformalDraft({ lat, lng, name: '', memo: '' })
+      return
+    }
     openAddBuildingAt(lat, lng)
+  }
+
+  const openAddInformalMode = () => {
+    setShowMapActionMenu(false)
+    setEditingPinMode(false)
+    setAddingBuilding(false)
+    setAddingInformal(true)
+    showToast(msg('지도에서 비공식 봉사 장소를 누르세요'), 'info')
+  }
+
+  const saveInformalDraft = async () => {
+    if (!informalDraft || !onCreateInformalPlace || savingInformal) return
+    if (!informalDraft.name.trim()) return
+    setSavingInformal(true)
+    const ok = await onCreateInformalPlace({
+      name: informalDraft.name,
+      createdBy: currentVisitor,
+      lat: informalDraft.lat,
+      lng: informalDraft.lng,
+      memo: informalDraft.memo,
+    })
+    setSavingInformal(false)
+    if (ok) setInformalDraft(null)
   }
 
   const openAddBuildingMode = () => {
@@ -1646,7 +1742,12 @@ export function DesktopMap({
               onSelectCardBoundary={handleSelectCardForMap}
               onUpdateBoundaryPoint={updateDraftBoundaryPoint}
               onMapRightClick={handleMapRightClick}
-              onMapClick={addingBuilding ? handleMapClick : undefined}
+              informalPlaces={informalPins}
+              onSelectInformal={(id) => {
+                const place = informalAssets.find((a) => a.id === id)
+                if (place) showToast(place.memo?.trim() || place.name, 'info')
+              }}
+              onMapClick={(addingBuilding || addingInformal) ? handleMapClick : undefined}
               onMovePreviewPin={(lat, lng) => {
                 setNewBuildingLat(lat)
                 setNewBuildingLng(lng)
@@ -1680,6 +1781,9 @@ export function DesktopMap({
             {showMapActionMenu && (
               <div className="desktop-map-action-popover">
                 <button onClick={openAddBuildingMode} type="button">건물 추가</button>
+                {onCreateInformalPlace && (actualRole === 'admin' || actualRole === 'developer' || actualRole === 'leader') && (
+                  <button onClick={openAddInformalMode} type="button">비공식 장소 추가</button>
+                )}
                 <button onClick={toggleEditPinMode} type="button">
                   {editingPinMode ? '핀 수정 종료' : '핀 위치 수정'}
                 </button>
@@ -2490,6 +2594,8 @@ export function DesktopMap({
           </div>
         </div>
       )}
+
+      {informalDraftModal}
     </section>
   )
 }

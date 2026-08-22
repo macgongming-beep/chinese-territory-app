@@ -146,6 +146,7 @@ export function DesktopApp({
   eventInformalAssignments = [],
   eventRestaurantAssignments = [],
   informalGroups = [],
+  onCreateInformalPlace,
   onUploadInformalAsset,
   onDeleteInformalAsset,
   onCreateInformalGroup,
@@ -292,6 +293,7 @@ export function DesktopApp({
   onDeleteReviewTask: (id: number) => Promise<void>
   // v2 신 배정 모델
   informalAssets?: InformalAsset[]
+  onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   informalGroups?: InformalGroup[]
@@ -666,6 +668,8 @@ export function DesktopApp({
             {showZoneMapView ? (
               <DesktopMap language={language}
                 buildings={buildings}
+                informalAssets={informalAssets}
+                onCreateInformalPlace={onCreateInformalPlace}
                 boundaryEditRequest={boundaryEditRequest}
                 cardBoundaries={cardBoundaries}
                 cards={cards}
@@ -753,6 +757,8 @@ export function DesktopApp({
         <Route path="/map" element={
           <DesktopMap language={language}
             buildings={mapBuildings}
+            informalAssets={informalAssets}
+            onCreateInformalPlace={onCreateInformalPlace}
             boundaryEditRequest={boundaryEditRequest}
             cardBoundaries={mapCardBoundaries}
             cards={mapCards}
