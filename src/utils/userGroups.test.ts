@@ -11,14 +11,23 @@ describe('parseUserGroups', () => {
     expect(parseUserGroups('{oops')).toEqual(DEFAULT_USER_GROUPS)
     expect(parseUserGroups('{"a":1}')).toEqual(DEFAULT_USER_GROUPS)
   })
-  it('빈 배열이면 기본값 (집단이 전부 사라지지 않게)', () => {
-    expect(parseUserGroups('[]')).toEqual(DEFAULT_USER_GROUPS)
+  it('기본값에 특정 회중의 이름이 들어 있으면 안 된다', () => {
+    // 예전 기본값은 ['처인','신갈','동백','동탄'] — 용인 회중의 동네 이름이었다.
+    // 다른 회중이 설치하면 첫 화면부터 남의 동네가 떠 있게 된다.
+    expect(DEFAULT_USER_GROUPS).toEqual([])
+  })
+  it('빈 배열은 그대로 빈 배열 — 집단을 안 쓰는 회중도 있다', () => {
+    expect(parseUserGroups('[]')).toEqual([])
   })
 })
 
 describe('normalizeUserGroups', () => {
   it('공백 정리·빈값 제거·중복 제거', () => {
     expect(normalizeUserGroups([' 처인 ', '처인', '', '  ', '신갈'])).toEqual(['처인', '신갈'])
+  })
+  it('전부 걸러지면 빈 목록 — 기본값으로 되돌리지 않는다', () => {
+    // 되돌리면 '집단을 쓰지 않음' 을 저장할 수 없게 된다
+    expect(normalizeUserGroups(['', '  ', 1, null])).toEqual([])
   })
   it('문자열 아닌 값 무시', () => {
     expect(normalizeUserGroups(['처인', 1, null, undefined, {}])).toEqual(['처인'])

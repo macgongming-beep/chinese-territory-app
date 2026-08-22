@@ -496,8 +496,13 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
           <h2>{msg('집단 관리')}</h2>
           <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 10px' }}>
             집단 이름을 누르면 수정할 수 있고, ×로 삭제합니다. 이름을 바꾸면 소속된 사용자도 함께 옮겨집니다.
-            삭제해도 사용자 정보는 유지되며 해당 집단은 msg('미지정')으로 표시됩니다.
+            삭제해도 사용자 정보는 유지되며 해당 집단은 미지정으로 표시됩니다.
           </p>
+          {groups.length === 0 && (
+            <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 10px' }}>
+              아직 집단이 없습니다. 아래에 이름을 넣어 만드세요. 집단을 쓰지 않는다면 비워 둬도 됩니다.
+            </p>
+          )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
             {groups.map((g) => (
               editingGroup === g ? (
