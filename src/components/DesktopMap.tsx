@@ -5,7 +5,7 @@ import { MapCanvas } from './MapCanvas'
 import type { MapAggregateMarker } from './MapCanvas'
 import { SpecialPeriodBanner } from './SpecialPeriodBanner'
 import { UnitSlotGrid } from './UnitSlotGrid'
-import { territoryRegions } from '../data/territoryStructure'
+import { getRegionNames } from '../lib/regions'
 import type {
   Building,
   BuildingStatus,
@@ -138,6 +138,8 @@ export function DesktopMap({
   specialPeriods?: SpecialPeriod[]
   onSwitchToList?: () => void
 }) {
+  // 지역 목록·순서는 DB 에서 온다 (lib/regions). 렌더마다 최신 값을 읽는다
+  const regionNames = getRegionNames()
   const [cardFilter, setCardFilter] = useState<number | '전체'>('전체')
   const [regionFilter, setRegionFilter] = useState<TerritoryRegion | '전체'>('전체')
   const [areaFilter, setAreaFilter] = useState('전체')
@@ -364,7 +366,7 @@ export function DesktopMap({
     const card = cards.find((item) => item.id === cardId)
     if (card) {
       setRegionFilter(
-        territoryRegions.includes(card.region as TerritoryRegion)
+        regionNames.includes(card.region as TerritoryRegion)
           ? (card.region as TerritoryRegion)
           : '전체',
       )
@@ -504,7 +506,7 @@ export function DesktopMap({
   // 카드 정렬: 대권역 순서 + 미배정 마지막
   const orderedCards = useMemo(() => {
     const regionOrder = new Map<TerritoryRegion, number>();
-    territoryRegions.forEach((r, i) => regionOrder.set(r, i));
+    regionNames.forEach((r, i) => regionOrder.set(r, i));
     const sorted = [...structureFilteredCards].sort((a, b) => {
       // 미배정 카드 최하단
       if (a.status === '미배정' && b.status !== '미배정') return 1;
@@ -517,7 +519,7 @@ export function DesktopMap({
       return a.area.localeCompare(b.area, 'ko');
     });
     return sorted;
-  }, [structureFilteredCards]);
+  }, [structureFilteredCards, regionNames]);
 
   // 필터링된 카드 ID 세트 (하이라이트용)
   const highlightedCardIds = useMemo(() => new Set(orderedCards.map((c) => c.id)), [orderedCards])
@@ -737,7 +739,7 @@ export function DesktopMap({
     if (!focusedCard) return
 
     setRegionFilter(
-      territoryRegions.includes(focusedCard.region as TerritoryRegion)
+      regionNames.includes(focusedCard.region as TerritoryRegion)
         ? (focusedCard.region as TerritoryRegion)
         : '전체',
     )
@@ -747,7 +749,7 @@ export function DesktopMap({
     setCardFilter(focusedCardId)
     setBoundaryCardId(focusedCardId)
     setVisibleBoundarySelection(focusedCardId)
-  }, [cards, focusedCardId])
+  }, [cards, focusedCardId, regionNames])
 
   useEffect(() => {
     if (!focusedBuildingId) return
@@ -757,7 +759,7 @@ export function DesktopMap({
 
     if (focusedCard) {
       setRegionFilter(
-        territoryRegions.includes(focusedCard.region as TerritoryRegion)
+        regionNames.includes(focusedCard.region as TerritoryRegion)
           ? (focusedCard.region as TerritoryRegion)
           : '전체',
       )
@@ -779,7 +781,7 @@ export function DesktopMap({
     window.setTimeout(() => {
       document.getElementById(`bld-row-${focusedBuilding.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 120)
-  }, [buildings, cards, focusedBuildingId])
+  }, [buildings, cards, focusedBuildingId, regionNames])
 
   useEffect(() => {
     if (cards.length > 0 && !cards.some((card) => card.id === boundaryCardId)) {
@@ -1214,7 +1216,7 @@ export function DesktopMap({
             return (
               <>
                 {renderChip('전체', '전체', cards.length)}
-                {territoryRegions.map((r) => renderChip(r, r, regionCounts.get(r) ?? 0))}
+                {regionNames.map((r) => renderChip(r, r, regionCounts.get(r) ?? 0))}
               </>
             )
           })()}
@@ -1387,7 +1389,7 @@ export function DesktopMap({
               {/* 1단계: 구/시 목록 */}
               {regionFilter === '전체' && (
                 <>
-                  {territoryRegions.map((region) => {
+                  {regionNames.map((region) => {
                     const count = regionCardCounts.get(region) ?? 0
                     if (count === 0) return null
                     return (

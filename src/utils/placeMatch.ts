@@ -10,6 +10,8 @@
 //   3. 주소만      같은 건물인데 이름이 다름 → 사람이 판단
 //   없으면 신규
 
+import { getAddressStripPattern } from '../lib/regions'
+
 export type SurveyRow = {
   placeId: string
   name: string
@@ -56,8 +58,9 @@ export function normalizeRoadAddress(address: string): string {
   if (!address) return ''
   const cleaned = address
     .replace(/경기도|경기/g, ' ')
-    .replace(/용인시|화성시|수원시|성남시/g, ' ')
-    .replace(/처인구|기흥구|수지구|영통구/g, ' ')
+    // 시·구 이름은 지역 목록에서 만든다. 예전에는 여기에 따로 적혀 있어서
+    // 지역이 늘어도 이 줄만 옛날 목록으로 남았다 (다른 회중에서 대조가 전멸한다)
+    .replace(getAddressStripPattern(), ' ')
   const m = cleaned.match(/([가-힣0-9]+(?:대?로|길))\s*([0-9]+(?:-[0-9]+)?)/)
   return m ? `${m[1]} ${m[2]}` : ''
 }

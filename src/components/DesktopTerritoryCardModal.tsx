@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { territoryRegions } from '../data/territoryStructure'
+import { getRegionNames } from '../lib/regions'
 import { getAreaOptions, findSimilarArea, normalizeAreaName } from '../utils/areaOptions'
 import type { TerritoryCard, TerritoryRegion } from '../types'
 
@@ -39,7 +39,8 @@ export function CardCreateModal({
   /** 카드 생성 성공 시 호출 — 부모에서 선택 카드 변경·구역선 안내 등에 활용 */
   onCreated: (newCardId: number, newCardName: string) => void
 }) {
-  const defaultRegion = territoryRegions[0] as TerritoryRegion
+  const regionNames = getRegionNames()
+  const defaultRegion = regionNames[0] as TerritoryRegion
   const defaultArea = getAreaOptions(cards, defaultRegion)[0] ?? ''
 
   const [region, setRegion] = useState<string>(defaultRegion)
@@ -115,7 +116,7 @@ export function CardCreateModal({
                 value={region}
                 onChange={(e) => handleRegionChange(e.target.value)}
               >
-                {territoryRegions.map((r) => (
+                {regionNames.map((r) => (
                   <option key={r} value={r}>{r}</option>
                 ))}
               </select>

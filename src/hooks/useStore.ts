@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { trackFetch } from '../lib/perfTracker'
 import { findActivePeriodId } from '../utils/specialPeriod'
+import { setRegions } from '../lib/regions'
 import type {
   Building,
   CalendarEvent,
@@ -207,6 +208,22 @@ export function useStore() {
       }
 
       case 'cards': {
+        // 지역 목록도 여기서 받는다 — 카드의 region 값을 해석하는 재료라 늘 함께 쓰인다.
+        // 표가 아직 없거나 실패하면 lib/regions 의 기본값이 그대로 남는다 (화면이 비지 않는다).
+        void supabase.from('territory_regions')
+          .select('name, city, sort_order, name_zh, name_en')
+          .order('sort_order')
+          .then(({ data, error }) => {
+            if (error || !data) return
+            setRegions(data.map((r) => ({
+              name: r.name,
+              city: r.city ?? '',
+              sortOrder: r.sort_order ?? 0,
+              nameZh: r.name_zh ?? '',
+              nameEn: r.name_en ?? '',
+            })))
+          })
+
         // cards에 card_leader_assignments 컬럼이 없으면 폴백
         const cardsQueryPromise = (async () => {
           const withLeader = await fetchAllPages((from, to) => supabase

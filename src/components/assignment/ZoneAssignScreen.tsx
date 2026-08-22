@@ -6,6 +6,7 @@
 // 모든 상태는 draft 단일 reducer에서 파생.
 
 import { useMemo, useState } from 'react'
+import { stripRegionPrefix } from '../../lib/regions'
 import type { Dispatch } from 'react'
 import type { Building, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, TerritoryCard, VisitHistory } from '../../types'
 import { matchesName } from '../../utils/koreanSearch'
@@ -149,7 +150,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
   const shortName = (id: number) => {
     const c = cards.find((x) => x.id === id)
     if (!c) return `카드 ${id}`
-    return c.name.replace(/^(처인구|기흥구|수지구|영통구|화성시)\s*/, '')
+    return stripRegionPrefix(c.name)
   }
   const teamAreaNames = (t: DraftTeam) =>
     t.cardIds.length ? t.cardIds.map(shortName).slice(0, 3).join(', ') + (t.cardIds.length > 3 ? msg(' 외 {n}', { n: t.cardIds.length - 3 }) : '') : null

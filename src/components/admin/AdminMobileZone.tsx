@@ -1,4 +1,5 @@
 import { t, translateKoreanAddress } from '../../i18n'
+import { getRegionNames } from '../../lib/regions'
 import type { AppLanguage } from '../../i18n'
 // 관리자 모바일 구역 — design_handoff 04 화면 (구역 시·구 단위)
 // + 20 / 21 / 22 drill-down 일부
@@ -27,8 +28,6 @@ type ZoneKind = 'territory' | 'informal' | 'restaurant'
 type Scope = 'mine' | 'all'
 type ViewMode = 'list' | 'map'
 type Level = 'regions' | 'dongs' | 'cards'
-
-const REGION_ORDER = ['처인구', '기흥구', '수지구', '영통구', '화성시']
 
 function extractDong(name: string, region: string): string {
   // "처인구 김량장동 001" → "김량장동"
@@ -136,6 +135,8 @@ export function AdminMobileZone({
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
 }: Props) {
+  // 지역 목록·순서는 DB 에서 온다. 모듈 상수로 두면 불러오기 전 기본값이 굳어 버린다
+  const REGION_ORDER = getRegionNames()
   // URL 쿼리로 드릴 상태 보존 — 지도 진입 후 뒤로 오면 같은 위치로 복귀
   const [searchParams, setSearchParams] = useSearchParams()
   const urlLevel = (searchParams.get('level') as Level | null) ?? 'regions'
@@ -355,7 +356,7 @@ export function AdminMobileZone({
       })
       .filter((c) => !query || c.name.includes(query))
       .sort(compareTerritoryCardsByOperationalPriority)
-  }, [baseCards, selectedRegion, selectedDong, query])
+  }, [baseCards, selectedRegion, selectedDong, query, REGION_ORDER])
 
   const isDoneExcludedCard = (card: TerritoryCard) => {
     const state = getTerritoryCardOperationalState(card)

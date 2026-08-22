@@ -5,7 +5,15 @@ export type UnitStatus = '미방문' | '만남' | '부재' | '대상외' | '거�
 export type BuildingStatus = '방문필요' | '방문완료' | '방문금지' | '정기방문'
 export type TimeSlot = '오전' | '오후' | '저녁'
 export type ServiceSessionStatus = 'active' | 'ended' | 'expired'
-export type TerritoryRegion = '처인구' | '기흥구' | '수지구' | '영통구' | '화성시'
+/**
+ * 지역(구·시) 이름. 값은 DB 의 territory_regions 에서 온다 (lib/regions).
+ *
+ * 예전에는 다섯 이름을 나열한 union 이었다. 오타를 막으려던 것인데, DB 에서
+ * 오는 값은 그냥 글자라 곳곳에서 `as TerritoryRegion` 으로 억지로 끼워 맞추게 됐고
+ * (types.ts 자체가 `TerritoryRegion | string` 을 쓰고 있었다) 안전장치 노릇을
+ * 못 한 지 오래다. 지역이 바뀔 때마다 코드를 고쳐야 하는 비용만 남아 있었다.
+ */
+export type TerritoryRegion = string
 export type CardType = '전체'
 export type VisitTargetType = '상가' | '주택' | '전체'
 

@@ -7,6 +7,7 @@ import { getBuildingStatus, getCardName, getMockPosition, isValidMapCoordinate }
 import { TERRITORY_BOUNDARY } from '../data/territoryBoundary'
 import { showToast } from '../lib/toast'
 import { msg } from '../lib/msg'
+import { stripRegionPrefix } from '../lib/regions'
 
 const STATUS_COLORS: Record<BuildingStatus, string> = {
   방문필요: '#2D6CDF',
@@ -223,7 +224,7 @@ function virtualPinHtml(label: string): string {
 
 // 구역선 중앙 카드 라벨 — 짧은 이름(구/시 접두어 제거)
 function shortCardLabel(name: string): string {
-  return name.replace(/^(처인구|기흥구|수지구|영통구|화성시)\s*/, '')
+  return stripRegionPrefix(name)
 }
 
 // 점이 폴리곤 내부인지 (ring: [x=lng, y=lat][])

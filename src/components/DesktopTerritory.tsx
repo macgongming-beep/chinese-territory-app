@@ -2,7 +2,7 @@ import { t } from '../i18n'
 import type { AppLanguage } from '../i18n'
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { territoryRegions } from '../data/territoryStructure'
+import { getRegionNames, getRegions } from '../lib/regions'
 import { getAreaFilterOptions } from '../utils/areaOptions'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
@@ -879,9 +879,10 @@ export function DesktopTerritory({
 
   // 구(區) → 상위 시. 구만 적힌 주소는 동명 도로가 타 지역에 있으면 엉뚱한 곳에
   // 찍히므로 시까지 붙인 후보를 함께 시도한다.
-  const GU_TO_CITY: Record<string, string> = {
-    처인구: '용인시', 기흥구: '용인시', 수지구: '용인시', 영통구: '수원시',
-  }
+  // 지역 목록에서 만든다 — 지역을 늘려도 이 매핑만 옛날 값으로 남지 않게
+  const GU_TO_CITY: Record<string, string> = Object.fromEntries(
+    getRegions().filter((r) => r.city).map((r) => [r.name, r.city]),
+  )
 
   const getGeocodeCandidates = (address: string) => {
     const normalized = address.replace(/\s+/g, ' ').trim()
@@ -1021,7 +1022,7 @@ export function DesktopTerritory({
       const visitTimeSlotValue = findValue(row, ['시간대', 'timeSlot', 'time_slot'])
       const visitMemoValue = findValue(row, ['방문메모', 'visitMemo', 'visitNote'])
 
-      const inferredRegion = territoryRegions.find((region) => regionValue === region || fullRegionValue.includes(region))
+      const inferredRegion = getRegionNames().find((region) => regionValue === region || fullRegionValue.includes(region))
       const inferredArea = areaValue || cards.find((item) => item.area && detailAddressValue.includes(item.area))?.area
       const inferredCardName = inferredRegion && inferredArea && cardIndexValue
         ? `${inferredRegion} ${inferredArea} ${cardIndexValue}`
@@ -2278,7 +2279,7 @@ export function DesktopTerritory({
           <div className="tbl-filter-layer">
             <span className="tbl-filter-label">지역</span>
             <div className="tbl-chip-row">
-              {(['전체', ...territoryRegions] as Array<TerritoryRegion | '전체'>).map((r) => {
+              {(['전체', ...getRegionNames()] as Array<TerritoryRegion | '전체'>).map((r) => {
                 const count = r === '전체' ? cards.length : cards.filter((c) => c.region === r).length
                 return (
                   <button key={r} className={`tbl-chip${regionFilter === r ? ' active' : ''}`} onClick={() => { setRegionFilter(r); setAreaFilter('전체'); setAreaExpanded(false) }} type="button">
