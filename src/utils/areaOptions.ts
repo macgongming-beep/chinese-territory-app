@@ -9,13 +9,14 @@
 // 사람 이름이 갈려 통계가 반토막 났던 것과 같은 사고라, 여기서 미리 막는다.
 
 import { territoryAreasByRegion } from '../data/territoryStructure'
+import { findSimilarName, normalizeName } from './nameSimilarity'
 import type { TerritoryCard } from '../types'
 
 export const UNASSIGNED_AREA = '미배정'
 
 /** 앞뒤·가운데 공백을 정리한다. '백암면 ' 과 '백암면' 이 갈리지 않게. */
 export function normalizeAreaName(raw: string): string {
-  return raw.trim().replace(/\s+/g, ' ')
+  return normalizeName(raw)
 }
 
 /**
@@ -45,37 +46,10 @@ export function getAreaFilterOptions(cards: TerritoryCard[], region: string): st
   return hasUnassigned ? [...options, UNASSIGNED_AREA] : options
 }
 
-/** 한 글자 고치면 같아지는가 (백앙면 ↔ 백암면) */
-function isOneEditApart(a: string, b: string): boolean {
-  if (Math.abs(a.length - b.length) > 1) return false
-  const [short, long] = a.length <= b.length ? [a, b] : [b, a]
-  let i = 0
-  let j = 0
-  let edits = 0
-  while (i < short.length && j < long.length) {
-    if (short[i] === long[j]) { i += 1; j += 1; continue }
-    edits += 1
-    if (edits > 1) return false
-    if (short.length === long.length) i += 1
-    j += 1
-  }
-  return edits + (long.length - j) <= 1
-}
-
 /**
  * 이미 있는 동 중에 '이걸 말한 것 같은' 이름을 찾는다. 없으면 null.
- * 똑같은 이름은 오타가 아니므로 제외한다.
+ * 판정은 utils/nameSimilarity 에 모아 뒀다 — 지역 이름도 같은 규칙을 쓴다.
  */
 export function findSimilarArea(input: string, existing: string[]): string | null {
-  const name = normalizeAreaName(input)
-  if (!name) return null
-  const bare = name.replace(/\s/g, '')
-  for (const other of existing) {
-    if (other === name) continue
-    const otherBare = other.replace(/\s/g, '')
-    // '백암 면' 처럼 공백만 다른 경우
-    if (otherBare === bare) return other
-    if (isOneEditApart(bare, otherBare)) return other
-  }
-  return null
+  return findSimilarName(input, existing)
 }

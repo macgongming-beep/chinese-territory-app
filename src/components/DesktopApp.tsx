@@ -18,6 +18,7 @@ import { MobileSignupRequests } from './MobileSignupRequests'
 import { DesktopProfileSettings } from './DesktopProfileSettings'
 import { DesktopDataManagement } from './DesktopDataManagement'
 import { DesktopSpecialPeriods } from './DesktopSpecialPeriods'
+import { DesktopTerritoryRegions } from './DesktopTerritoryRegions'
 import { DesktopNotificationSettings } from './DesktopNotificationSettings'
 import { LocationPermissionSettings } from './LocationPermissionSettings'
 import { ServiceLogPage } from './ServiceLogPage'
@@ -85,6 +86,10 @@ export function DesktopApp({
   onDeleteCalendarEventSeries,
   onLinkEventsToSeries,
   onCreateCard,
+  onCreateTerritoryRegion,
+  onUpdateTerritoryRegion,
+  onMoveTerritoryRegion,
+  onDeleteTerritoryRegion,
   onCreateBuilding,
   onImportBuildings,
   onCreateNotice,
@@ -212,6 +217,10 @@ export function DesktopApp({
     index: number
     pinCount: number
   }) => Promise<number | null> | number | null
+  onCreateTerritoryRegion?: (input: { name: string; city?: string }) => Promise<boolean>
+  onUpdateTerritoryRegion?: (id: number, input: { city?: string; nameZh?: string; nameEn?: string }) => Promise<void>
+  onMoveTerritoryRegion?: (id: number, direction: 'up' | 'down') => Promise<void>
+  onDeleteTerritoryRegion?: (id: number, name: string) => Promise<void>
   onCreateBuilding: (input: {
     cardId: number
     name: string
@@ -339,6 +348,16 @@ export function DesktopApp({
 
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
   const focusedMapBuildingId = searchParams.get('buildingId') ? Number(searchParams.get('buildingId')) : null
+  // 지역 관리 화면에서 '지워도 되는지' 를 보여 준다 — 카드가 있으면 지우면 안 된다
+  const regionCardCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const card of cards) {
+      if (!card.region) continue
+      counts[card.region] = (counts[card.region] ?? 0) + 1
+    }
+    return counts
+  }, [cards])
+
   const userVisibleMapCardIds = useMemo(() => {
     const ids = new Set<number>()
     cards.forEach((card) => {
@@ -582,6 +601,7 @@ export function DesktopApp({
               onSetCardLeaders={onSetCardLeaders}
               onSetMultipleCardLeaders={onSetMultipleCardLeaders}
               onCreateCard={onCreateCard}
+              onCreateTerritoryRegion={onCreateTerritoryRegion}
               onImportBuildings={onImportBuildings}
               onDeleteBuildings={onDeleteBuildings}
               onDeleteCards={onDeleteCards}
@@ -686,6 +706,7 @@ export function DesktopApp({
                 onSetCardLeaders={onSetCardLeaders}
                 onSetMultipleCardLeaders={onSetMultipleCardLeaders}
                 onCreateCard={onCreateCard}
+                onCreateTerritoryRegion={onCreateTerritoryRegion}
                 onImportBuildings={onImportBuildings}
                 onDeleteBuildings={onDeleteBuildings}
                 onDeleteCards={onDeleteCards}
@@ -843,6 +864,16 @@ export function DesktopApp({
           <Route path="data-management" element={
             (viewMode === 'admin' || viewMode === 'developer')
               ? <DesktopDataManagement />
+              : <Navigate to="/settings/profile" replace />
+          } />
+          <Route path="territory-regions" element={
+            (viewMode === 'admin' || viewMode === 'developer')
+              ? <DesktopTerritoryRegions
+                  cardCounts={regionCardCounts}
+                  onDeleteRegion={async (id, name) => { await onDeleteTerritoryRegion?.(id, name) }}
+                  onMoveRegion={async (id, dir) => { await onMoveTerritoryRegion?.(id, dir) }}
+                  onUpdateRegion={async (id, input) => { await onUpdateTerritoryRegion?.(id, input) }}
+                />
               : <Navigate to="/settings/profile" replace />
           } />
           <Route path="special-periods" element={

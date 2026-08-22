@@ -11,6 +11,8 @@
 import { territoryRegions as FALLBACK_NAMES } from '../data/territoryStructure'
 
 export type TerritoryRegionInfo = {
+  /** DB 의 territory_regions.id. 기본값(아직 안 불러옴)은 0 — 고칠 수 없다는 뜻 */
+  id: number
   name: string
   /** 구를 품은 시 ('수지구' → '용인시'). 시 자체면 빈 값 */
   city: string
@@ -24,6 +26,7 @@ export type TerritoryRegionInfo = {
  * 정답이 아니다 — 불러오면 곧바로 덮인다.
  */
 const FALLBACK: TerritoryRegionInfo[] = FALLBACK_NAMES.map((name, i) => ({
+  id: 0,
   name,
   city: name === '영통구' ? '수원시' : name.endsWith('구') ? '용인시' : '',
   sortOrder: i + 1,

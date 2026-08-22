@@ -80,6 +80,7 @@ export function DesktopTerritory({
   onSetCardLeaders,
   onSetMultipleCardLeaders,
   onCreateCard,
+  onCreateTerritoryRegion,
   onDeleteBuildings,
   onDeleteCards,
   onMergeDuplicateBuildings,
@@ -170,6 +171,8 @@ export function DesktopTerritory({
     index: number
     pinCount: number
   }) => Promise<number | null> | number | null
+  /** 지역 추가 — 관리자·개발자만 호출된다 (모달에서 canAddRegion 으로 막는다) */
+  onCreateTerritoryRegion?: (input: { name: string; city?: string }) => Promise<boolean>
   onCreateBuilding?: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => Promise<boolean | void> | boolean | void
   onSwitchToMap?: () => void
   currentVisitor?: string
@@ -1533,9 +1536,11 @@ export function DesktopTerritory({
       {/* ── 카드 추가 모달 ── */}
       {showCardModal && (
         <CardCreateModal
+          canAddRegion={role === 'admin' || role === 'developer'}
           cards={cards}
           onClose={() => setShowCardModal(false)}
           onCreateCard={onCreateCard}
+          onCreateRegion={onCreateTerritoryRegion}
           onCreated={(id, name) => {
             setSelectedCardId(id)
             setPendingBoundaryCard({ id, name })

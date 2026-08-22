@@ -92,6 +92,10 @@ function App() {
     updateVisitHistory,
     deleteVisitHistory,
     createCard,
+    createTerritoryRegion,
+    updateTerritoryRegion,
+    moveTerritoryRegion,
+    deleteTerritoryRegion,
     createBuilding,
     importBuildings,
     addUnitToBuilding,
@@ -329,6 +333,10 @@ function App() {
             onDeleteCalendarEventSeries={deleteCalendarEventSeries}
             onLinkEventsToSeries={linkEventsToSeries}
             onCreateCard={createCard}
+            onCreateTerritoryRegion={createTerritoryRegion}
+            onDeleteTerritoryRegion={deleteTerritoryRegion}
+            onMoveTerritoryRegion={moveTerritoryRegion}
+            onUpdateTerritoryRegion={updateTerritoryRegion}
             onCreateBuilding={createBuilding}
             onImportBuildings={importBuildings}
             onCreateNotice={createNotice}

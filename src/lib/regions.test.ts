@@ -11,10 +11,10 @@ import {
 } from './regions'
 
 const YONGIN: TerritoryRegionInfo[] = [
-  { name: '처인구', city: '용인시', sortOrder: 1, nameZh: '处仁区', nameEn: 'Cheoin-gu' },
-  { name: '기흥구', city: '용인시', sortOrder: 2, nameZh: '器兴区', nameEn: 'Giheung-gu' },
-  { name: '영통구', city: '수원시', sortOrder: 4, nameZh: '灵通区', nameEn: 'Yeongton-gu' },
-  { name: '화성시', city: '', sortOrder: 5, nameZh: '华城市', nameEn: 'Hwaseong-si' },
+  { id: 1, name: '처인구', city: '용인시', sortOrder: 1, nameZh: '处仁区', nameEn: 'Cheoin-gu' },
+  { id: 2, name: '기흥구', city: '용인시', sortOrder: 2, nameZh: '器兴区', nameEn: 'Giheung-gu' },
+  { id: 3, name: '영통구', city: '수원시', sortOrder: 4, nameZh: '灵通区', nameEn: 'Yeongton-gu' },
+  { id: 4, name: '화성시', city: '', sortOrder: 5, nameZh: '华城市', nameEn: 'Hwaseong-si' },
 ]
 
 beforeEach(() => setRegions(YONGIN))
@@ -87,7 +87,7 @@ describe('주소 정규화 재료', () => {
 
   it('지역이 새로 생기면 주소 정규화도 함께 따라온다', () => {
     // 예전에는 여기가 따로 적혀 있어서, 지역을 늘려도 주소 정규화만 옛날 목록이었다
-    setRegions([{ name: '남동구', city: '인천시', sortOrder: 1, nameZh: '', nameEn: '' }])
+    setRegions([{ id: 9, name: '남동구', city: '인천시', sortOrder: 1, nameZh: '', nameEn: '' }])
     const out = '인천시 남동구 구월로 10'.replace(getAddressStripPattern(), ' ')
     expect(out.trim()).toBe('구월로 10')
   })

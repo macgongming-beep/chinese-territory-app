@@ -43,6 +43,7 @@ import {
 import {
   makeNoticeMutations,
   makeSpecialPeriodMutations,
+  makeTerritoryRegionMutations,
   makeReviewTaskMutations,
   makeCardBoundaryMutations,
   makeCalendarMutations,
@@ -211,11 +212,12 @@ export function useStore() {
         // 지역 목록도 여기서 받는다 — 카드의 region 값을 해석하는 재료라 늘 함께 쓰인다.
         // 표가 아직 없거나 실패하면 lib/regions 의 기본값이 그대로 남는다 (화면이 비지 않는다).
         void supabase.from('territory_regions')
-          .select('name, city, sort_order, name_zh, name_en')
+          .select('id, name, city, sort_order, name_zh, name_en')
           .order('sort_order')
           .then(({ data, error }) => {
             if (error || !data) return
             setRegions(data.map((r) => ({
+              id: r.id,
               name: r.name,
               city: r.city ?? '',
               sortOrder: r.sort_order ?? 0,
@@ -737,6 +739,9 @@ export function useStore() {
   const { createNotice, deleteNotice } = makeNoticeMutations({ fetchAll: refetchCommunication })
   const { createSpecialPeriod, updateSpecialPeriod, deleteSpecialPeriod } = makeSpecialPeriodMutations({ fetchAll: refetchSpecialPeriods })
   const {
+    createTerritoryRegion, updateTerritoryRegion, moveTerritoryRegion, deleteTerritoryRegion,
+  } = makeTerritoryRegionMutations({ fetchAll: refetchCards })
+  const {
     createReviewTask,
     completeReviewTask,
     uncompleteReviewTask,
@@ -852,6 +857,10 @@ export function useStore() {
     deleteNotice,
     specialPeriods,
     createSpecialPeriod,
+    createTerritoryRegion,
+    updateTerritoryRegion,
+    moveTerritoryRegion,
+    deleteTerritoryRegion,
     updateSpecialPeriod,
     deleteSpecialPeriod,
     getActiveSpecialPeriodIdForDate,
