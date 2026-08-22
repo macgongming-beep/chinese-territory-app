@@ -535,16 +535,40 @@ export function InformalCardsTab({
                         else setPreview(asset)
                       }}
                     >
-                      <img
-                        src={asset.imageUrl}
-                        alt={asset.name}
-                        style={{
-                          width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                      {asset.imageUrl ? (
+                        <img
+                          src={asset.imageUrl}
+                          alt={asset.name}
+                          style={{
+                            width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                            opacity: isSelectionMode && !isSelected ? 0.6 : 1,
+                            transition: 'opacity 0.15s',
+                          }}
+                          loading="lazy"
+                        />
+                      ) : (
+                        /* 사진 없이 지도 핀으로 만든 장소. 빈 src 를 그대로 두면
+                           깨진 이미지 아이콘이 뜬다 (docs/비공식-봉사-재설계.md) */
+                        <div style={{
+                          width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+                          alignItems: 'center', justifyContent: 'center', gap: 6, padding: 10,
+                          background: 'linear-gradient(160deg,#f3f0f7,#e8e2ef)', textAlign: 'center',
                           opacity: isSelectionMode && !isSelected ? 0.6 : 1,
-                          transition: 'opacity 0.15s',
-                        }}
-                        loading="lazy"
-                      />
+                        }}>
+                          <svg width={26} height={26} viewBox="0 0 24 24" fill="none"
+                               stroke="#7A5C8A" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
+                            <circle cx="12" cy="10" r="2.5" />
+                          </svg>
+                          {asset.memo?.trim() && (
+                            <span style={{
+                              fontSize: 11.5, lineHeight: 1.45, color: '#5b4a68',
+                              display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}>{asset.memo}</span>
+                          )}
+                        </div>
+                      )}
                       {isSelectionMode && (
                         <span
                           aria-hidden
@@ -590,6 +614,7 @@ export function InformalCardsTab({
         <span style={{ fontSize: 13, color: 'var(--muted)' }}>
           {copy.countLine(totalAssets, informalGroups.length)}
         </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {admin && (
           <button
             type="button"
@@ -620,6 +645,7 @@ export function InformalCardsTab({
             }}
           >{copy.addPlace}</button>
         )}
+        </div>
       </div>
 
       {/* 업로드 input + 대상 그룹 선택 + 큐 */}
@@ -805,15 +831,43 @@ export function InformalCardsTab({
             cursor: 'zoom-out',
           }}
         >
-          <img
-            src={preview.imageUrl}
-            alt={preview.name}
-            style={{
-              maxWidth: '100%', maxHeight: '90vh',
-              borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          />
+          {preview.imageUrl ? (
+            <img
+              src={preview.imageUrl}
+              alt={preview.name}
+              style={{
+                maxWidth: '100%', maxHeight: '90vh',
+                borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            /* 지도 핀으로 만든 장소 — 사진 대신 이름과 메모를 보여 준다 */
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: 420, width: '100%', background: 'var(--surface, #fff)',
+                borderRadius: 12, padding: 20, boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <svg width={20} height={20} viewBox="0 0 24 24" fill="none"
+                     stroke="#7A5C8A" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+                <strong style={{ fontSize: 16 }}>{preview.name}</strong>
+              </div>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'var(--ink)', whiteSpace: 'pre-wrap' }}>
+                {preview.memo?.trim() || '메모가 없습니다.'}
+              </p>
+              {typeof preview.lat === 'number' && (
+                <p style={{ margin: '12px 0 0', fontSize: 12.5, color: 'var(--muted)' }}>
+                  지도에 핀이 찍혀 있습니다.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
