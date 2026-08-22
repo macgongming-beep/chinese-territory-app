@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- 네이버 지도 SDK(window.naver)는 공식 TS 타입이 없어 any 사용이 불가피함 */
-import { useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import type { MouseEvent } from 'react'
 import type { Building, BuildingStatus, CardBoundary, GeoPoint, TerritoryCard } from '../types'
 import { clusterByGrid, getClusterThresholdKm } from '../utils/mapClustering'
@@ -507,6 +507,9 @@ function NaverMapCanvas({
   const draftMidpointMarkerRefs = useRef<any[]>([])
   const clickListenerRef = useRef<any>(null)
   const scriptLoadedRef = useRef(false)
+  // 지도가 준비됐다는 걸 '상태'로도 알린다. ref 만 쓰면 스크립트가 늦게 떴을 때
+  // 이미 지나간 효과가 다시 돌지 않아 '지도만 뜨고 그 자리로 안 가는' 일이 생긴다
+  const [mapReady, setMapReady] = useState(false)
   const hasFitBoundaryRef = useRef(false)
   // 건물을 지정해 들어온 직후, 화면 밖에서 카드 필터가 뒤늦게 세팅되며
   // 지도를 카드 범위로 끌고 가던 것을 막는다 (전체 → 구 → 건물 처럼 보이던 잔상)
@@ -1343,20 +1346,28 @@ function NaverMapCanvas({
         : undefined
       const hasFocusTarget = !!focusTarget && isValidMapCoordinate(Number(focusTarget.lat), Number(focusTarget.lng))
 
-      const center = hasFocusTarget
-        ? new naver.maps.LatLng(Number(focusTarget!.lat), Number(focusTarget!.lng))
-        : buildingsRef.current.length > 0
-          ? new naver.maps.LatLng(buildingsRef.current[0].lat, buildingsRef.current[0].lng)
-          : new naver.maps.LatLng(37.2384, 127.2142)
+      // 비공식 장소로 들어온 경우 — 처음부터 거기서 시작한다
+      const fp = focusPointRef.current
+      const hasFocusPoint = !!fp && isValidMapCoordinate(Number(fp.lat), Number(fp.lng))
+      if (hasFocusPoint) lastFocusPointRef.current = `${fp!.lat},${fp!.lng}`
+
+      const center = hasFocusPoint
+        ? new naver.maps.LatLng(Number(fp!.lat), Number(fp!.lng))
+        : hasFocusTarget
+          ? new naver.maps.LatLng(Number(focusTarget!.lat), Number(focusTarget!.lng))
+          : buildingsRef.current.length > 0
+            ? new naver.maps.LatLng(buildingsRef.current[0].lat, buildingsRef.current[0].lng)
+            : new naver.maps.LatLng(37.2384, 127.2142)
 
       mapInstanceRef.current = new naver.maps.Map(mapRef.current, {
         center,
-        zoom: hasFocusTarget ? 17 : 15,
+        zoom: hasFocusPoint ? (fp!.zoom ?? 17) : hasFocusTarget ? 17 : 15,
         mapTypeControl: false,
         zoomControl: false,
       })
       if (isMobile) (window as any).__mobileMapInstance = mapInstanceRef.current
       else (window as any).__desktopMapInstance = mapInstanceRef.current
+      setMapReady(true)
 
       // ResizeObserver: 컨테이너 크기 변경 시 Naver 지도에 알림 (패널 열림/닫힘 보정)
       if (mapRef.current) {
@@ -1504,10 +1515,13 @@ function NaverMapCanvas({
     rebuildMarkers()
   }, [virtualPinLat, virtualPinLng, virtualPinLabel])
 
+  const focusPointRef = useRef(focusPoint)
+  focusPointRef.current = focusPoint
+
   // 좌표가 바뀐 순간에만 옮긴다. 매 렌더마다 옮기면 사용자가 지도를 만질 수 없다.
   const lastFocusPointRef = useRef<string>('')
   useEffect(() => {
-    if (!scriptLoadedRef.current || !focusPoint) return
+    if (!mapReady || !focusPoint) return
     const naver = (window as any).naver
     if (!naver?.maps || !mapInstanceRef.current) return
     const key = `${focusPoint.lat},${focusPoint.lng}`
@@ -1515,7 +1529,7 @@ function NaverMapCanvas({
     lastFocusPointRef.current = key
     mapInstanceRef.current.setCenter(new naver.maps.LatLng(focusPoint.lat, focusPoint.lng))
     mapInstanceRef.current.setZoom(focusPoint.zoom ?? 17)
-  }, [focusPoint])
+  }, [focusPoint, mapReady])
 
   // 비공식 장소는 건물과 다른 레이어라 따로 다시 그린다.
   // 줌마다 건물 클러스터가 재계산되는 것과 엮이면 깜빡인다.
