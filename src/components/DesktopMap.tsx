@@ -1781,7 +1781,7 @@ export function DesktopMap({
             {showMapActionMenu && (
               <div className="desktop-map-action-popover">
                 <button onClick={openAddBuildingMode} type="button">건물 추가</button>
-                {onCreateInformalPlace && (actualRole === 'admin' || actualRole === 'developer' || actualRole === 'leader') && (
+                {onCreateInformalPlace && (actualRole === 'admin' || actualRole === 'developer') && (
                   <button onClick={openAddInformalMode} type="button">비공식 장소 추가</button>
                 )}
                 <button onClick={toggleEditPinMode} type="button">

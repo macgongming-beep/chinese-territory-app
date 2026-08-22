@@ -288,6 +288,7 @@ export function MobileHome({
   onUploadInformalAsset,
   onDeleteInformalAsset,
   onCreateInformalGroup,
+  onCreateInformalPlace,
   onRenameInformalGroup,
   onDeleteInformalGroup,
   onMoveAssetToGroup,
@@ -386,6 +387,8 @@ export function MobileHome({
   onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
   onDeleteInformalAsset?: (assetId: number) => Promise<void>
   onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
+  /** 사진 없이 지도 핀으로 장소 만들기 (docs/비공식-봉사-재설계.md) */
+  onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
   onRenameInformalGroup?: (groupId: number, name: string) => Promise<void>
   onDeleteInformalGroup?: (groupId: number) => Promise<void>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
@@ -988,6 +991,7 @@ export function MobileHome({
               {/* 디자인 v2: 모든 역할이 AdminMobileZone 사용 — 권한별 콜백 가시성으로 차등.
                   admin: 모든 콜백 / leader: 식당 토글만 / user: 자료 관리 콜백 일체 차단 */}
               <AdminMobileZone
+                onCreateInformalPlace={role === 'admin' || role === 'developer' ? onCreateInformalPlace : undefined}
                 language={language}
                 translatePlaceNames={translatePlaceNames}
                 cards={cards}

@@ -491,6 +491,7 @@ function App() {
               onUploadInformalAsset={uploadInformalAsset}
               onDeleteInformalAsset={deleteInformalAsset}
               onCreateInformalGroup={createInformalGroup}
+              onCreateInformalPlace={createInformalPlace}
               onRenameInformalGroup={renameInformalGroup}
               onDeleteInformalGroup={deleteInformalGroup}
               onMoveAssetToGroup={moveAssetToGroup}

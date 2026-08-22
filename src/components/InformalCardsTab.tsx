@@ -1,5 +1,6 @@
 // 비공식 카드 탭 — 자료 풀 + 그룹화 + 업로드 (admin/dev)
 // 구역 탭 > 비공식 카드 sub-tab 안에 렌더링
+import { MapCanvas } from './MapCanvas'
 import { useRef, useState } from 'react'
 import type { InformalAsset, InformalGroup, Role } from '../types'
 import { showToast } from '../lib/toast'
@@ -47,6 +48,7 @@ const informalCopy = {
     noAssets: '자료 없음',
     countLine: (assets: number, groups: number) => `전체 ${assets}개 · 그룹 ${groups}`,
     addAsset: '+ 자료 추가',
+    addPlace: '+ 장소 추가',
     targetGroup: '대상 그룹',
     remove: '제거',
     clearDone: '완료 항목 비우기',
@@ -92,6 +94,7 @@ const informalCopy = {
     noAssets: '没有资料',
     countLine: (assets: number, groups: number) => `共 ${assets} 个 · 分组 ${groups}`,
     addAsset: '+ 添加资料',
+    addPlace: '+ 添加地点',
     targetGroup: '目标分组',
     remove: '移除',
     clearDone: '清除已完成',
@@ -137,6 +140,7 @@ const informalCopy = {
     noAssets: 'No items',
     countLine: (assets: number, groups: number) => `${assets} total · ${groups} groups`,
     addAsset: '+ Add item',
+    addPlace: '+ Add place',
     targetGroup: 'Target group',
     remove: 'Remove',
     clearDone: 'Clear completed',
@@ -166,6 +170,11 @@ const informalCopy = {
 
 type Props = {
   role: Role
+  /** 사진 없이 지도 핀으로 장소 만들기 (docs/비공식-봉사-재설계.md) */
+  onCreatePlace?: (input: {
+    name: string; createdBy: string; groupId?: number | null
+    lat: number; lng: number; memo?: string
+  }) => Promise<boolean>
   currentVisitor: string
   informalAssets: InformalAsset[]
   informalGroups: InformalGroup[]
@@ -182,6 +191,7 @@ type Props = {
 export function InformalCardsTab({
   role, currentVisitor, informalAssets, informalGroups,
   onUpload, onDelete, onCreateGroup, onRenameGroup, onDeleteGroup, onMoveAsset,
+  onCreatePlace,
   language = 'ko',
 }: Props) {
   const copy = informalCopy[language]
@@ -195,6 +205,11 @@ export function InformalCardsTab({
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<InformalGroup | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Set<number | 'null'>>(new Set())
   const [moveTargetAsset, setMoveTargetAsset] = useState<InformalAsset | null>(null)
+  // 장소 추가 — 지도에서 한 점을 고른 뒤 이름·메모를 받는다
+  const [placeDraft, setPlaceDraft] = useState<
+    { groupId: number | null; lat: number | null; lng: number | null; name: string; memo: string } | null
+  >(null)
+  const [savingPlace, setSavingPlace] = useState(false)
   // ⋮ 메뉴 / 선택 모드
   const [openGroupMenu, setOpenGroupMenu] = useState<number | 'null' | null>(null)
   const [selectionGroup, setSelectionGroup] = useState<number | 'null' | null>(null)
@@ -591,6 +606,19 @@ export function InformalCardsTab({
               letterSpacing: '-0.005em',
             }}
           >{copy.addAsset}</button>
+        )}
+        {admin && onCreatePlace && (
+          <button
+            onClick={() => setPlaceDraft({ groupId: uploadGroupId, lat: null, lng: null, name: '', memo: '' })}
+            type="button"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              height: 32, minHeight: 32, padding: '0 12px',
+              borderRadius: 8, border: '1px solid var(--line)',
+              background: 'var(--surface)', color: 'var(--ink)',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}
+          >{copy.addPlace}</button>
         )}
       </div>
 
@@ -1113,6 +1141,88 @@ export function InformalCardsTab({
           </div>
         </div>
       )}
+      {placeDraft && (
+        <div className="cal-modal-backdrop" onClick={() => setPlaceDraft(null)}>
+          <div className="cal-modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
+            <div className="cal-modal-head">
+              <div className="cal-modal-title"><h2>비공식 봉사 장소 추가</h2></div>
+              <button className="cal-modal-close" onClick={() => setPlaceDraft(null)} type="button">×</button>
+            </div>
+            <div className="cal-modal-body">
+              <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--muted)' }}>
+                {placeDraft.lat == null
+                  ? '지도에서 장소를 눌러 위치를 정하세요.'
+                  : '위치를 다시 누르면 옮길 수 있습니다.'}
+              </p>
+              <div style={{ height: 280, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
+                {/* 위치를 고르기만 하는 지도 — 건물·구역을 안 넘기므로 선택 상태는 뜻이 없다 */}
+                <MapCanvas
+                  buildings={[]}
+                  cards={[]}
+                  cardBoundaries={[]}
+                  compact
+                  addingBuilding
+                  selectedBuildingId={0}
+                  selectedCardId={'전체'}
+                  onSelectBuilding={() => {}}
+                  previewPinLat={placeDraft.lat ?? undefined}
+                  previewPinLng={placeDraft.lng ?? undefined}
+                  onMapClick={(lat, lng) => setPlaceDraft({ ...placeDraft, lat, lng })}
+                  onMovePreviewPin={(lat, lng) => setPlaceDraft({ ...placeDraft, lat, lng })}
+                />
+              </div>
+
+              <div className="cal-field" style={{ marginTop: 12 }}>
+                <label>이름</label>
+                <input
+                  className="cal-input"
+                  placeholder="예: 명지대(함박관)"
+                  value={placeDraft.name}
+                  onChange={(e) => setPlaceDraft({ ...placeDraft, name: e.target.value })}
+                />
+              </div>
+              <div className="cal-field">
+                <label>메모</label>
+                <textarea
+                  className="cal-input"
+                  placeholder="1층 카페 앞. 점심때 사람 많음"
+                  rows={2}
+                  value={placeDraft.memo}
+                  onChange={(e) => setPlaceDraft({ ...placeDraft, memo: e.target.value })}
+                />
+                <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6 }}>
+                  사진보다 이런 메모가 실제로 도움이 됩니다. 어디로 들어가는지, 언제 사람이 많은지.
+                </p>
+              </div>
+            </div>
+            <div className="cal-modal-foot">
+              <button className="cal-cancel-btn" onClick={() => setPlaceDraft(null)} type="button">취소</button>
+              <button
+                className="cal-save-btn"
+                disabled={savingPlace || !placeDraft.name.trim() || placeDraft.lat == null}
+                onClick={async () => {
+                  if (!onCreatePlace || placeDraft.lat == null || placeDraft.lng == null) return
+                  setSavingPlace(true)
+                  const ok = await onCreatePlace({
+                    name: placeDraft.name,
+                    createdBy: currentVisitor,
+                    groupId: placeDraft.groupId,
+                    lat: placeDraft.lat,
+                    lng: placeDraft.lng,
+                    memo: placeDraft.memo,
+                  })
+                  setSavingPlace(false)
+                  if (ok) setPlaceDraft(null)
+                }}
+                type="button"
+              >
+                {savingPlace ? '저장 중…' : '저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+
   )
 }

@@ -58,6 +58,8 @@ type Props = {
   onRenameInformalGroup?: (groupId: number, name: string) => Promise<void>
   onDeleteInformalGroup?: (groupId: number) => Promise<void>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
+  /** 사진 없이 지도 핀으로 장소 만들기 (docs/비공식-봉사-재설계.md) */
+  onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
   restaurantRequests?: import('../../types').RestaurantRequest[]
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
@@ -131,6 +133,7 @@ export function AdminMobileZone({
   onRenameInformalGroup,
   onDeleteInformalGroup,
   onMoveAssetToGroup,
+  onCreateInformalPlace,
   onToggleBuildingRestaurant,
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
@@ -399,6 +402,7 @@ export function AdminMobileZone({
         <TerritoryInlineTabs language={language} active="informal" onChange={setZoneKind} cardCount={cards.length} informalCount={informalCount} restaurantCount={restaurantCount} />
         <InformalCardsTab
           role={role}
+          onCreatePlace={onCreateInformalPlace}
           currentVisitor={currentVisitor}
           informalAssets={informalAssets}
           informalGroups={informalGroups}

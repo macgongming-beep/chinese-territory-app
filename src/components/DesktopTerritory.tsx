@@ -81,6 +81,7 @@ export function DesktopTerritory({
   onSetMultipleCardLeaders,
   onCreateCard,
   onCreateTerritoryRegion,
+  onCreateInformalPlace,
   onDeleteBuildings,
   onDeleteCards,
   onMergeDuplicateBuildings,
@@ -172,6 +173,7 @@ export function DesktopTerritory({
     pinCount: number
   }) => Promise<number | null> | number | null
   /** 지역 추가 — 관리자·개발자만 호출된다 (모달에서 canAddRegion 으로 막는다) */
+  onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
   onCreateTerritoryRegion?: (input: { name: string; city?: string }) => Promise<boolean>
   onCreateBuilding?: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => Promise<boolean | void> | boolean | void
   onSwitchToMap?: () => void
@@ -2112,6 +2114,7 @@ export function DesktopTerritory({
             {onUploadInformalAsset && onDeleteInformalAsset && onCreateInformalGroup && onRenameInformalGroup && onDeleteInformalGroup && onMoveAssetToGroup ? (
               <InformalCardsTab
                 role={role}
+                onCreatePlace={onCreateInformalPlace}
                 currentVisitor={currentVisitor}
                 informalAssets={informalAssets}
                 informalGroups={informalGroups}

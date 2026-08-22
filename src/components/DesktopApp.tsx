@@ -711,6 +711,7 @@ export function DesktopApp({
                 onSetMultipleCardLeaders={onSetMultipleCardLeaders}
                 onCreateCard={onCreateCard}
                 onCreateTerritoryRegion={onCreateTerritoryRegion}
+                onCreateInformalPlace={onCreateInformalPlace}
                 onImportBuildings={onImportBuildings}
                 onDeleteBuildings={onDeleteBuildings}
                 onDeleteCards={onDeleteCards}
