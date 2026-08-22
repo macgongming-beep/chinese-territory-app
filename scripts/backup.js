@@ -81,11 +81,43 @@ const TABLES = [
   'event_card_assignments',
   'event_card_assignment_cards',
 
+  // 구역/방문 (추가)
+  'territory_regions',     // 지역 목록 — 없으면 카드의 region 을 해석할 수 없다
+  'return_visits',
+  'return_visit_logs',
+  'phone_surveys',         // 전화 조사 대장 — 어디에 걸었는지의 유일한 기록
+  'restaurant_requests',
+
+  // 배정 (추가)
+  'event_restaurant_assignments',
+  'event_informal_assignments',
+  'informal_groups',
+  'informal_assets',
+
+  // 소통 (추가)
+  'chat_messages',
+  'chat_read_status',
+  'chat_message_signals',
+  'chat_room_mutes',
+  'comments',
+  'notifications',
+  'notification_preferences',
+  'user_notification_prefs',
+  'push_subscriptions',    // 없으면 복구 후 전원에게 알림을 다시 켜 달라고 해야 한다
+
   // 기타
   'notices',
   'special_periods',
   'review_tasks',
+  'app_settings',
+  'service_logs',
+  'service_suggestions',
 ]
+
+// 일부러 백업하지 않는 표 — 왜인지 적어 둔다. 안 그러면 "빠뜨렸나?" 를 매번 다시 조사하게 된다.
+//   auth_sessions              로그인 토큰. 되살리면 옛 세션이 되살아난다. 다시 로그인하면 그만이다
+//   app_private_settings       푸시 비밀키 등. 평문 파일로 내려받지 않는다
+//   app_users_backup_20260430  2026-04-30 작업 때의 임시 사본. app_users 가 원본이다
 
 function todayStamp() {
   const d = new Date()
