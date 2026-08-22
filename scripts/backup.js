@@ -117,7 +117,9 @@ const TABLES = [
 // 일부러 백업하지 않는 표 — 왜인지 적어 둔다. 안 그러면 "빠뜨렸나?" 를 매번 다시 조사하게 된다.
 //   auth_sessions              로그인 토큰. 되살리면 옛 세션이 되살아난다. 다시 로그인하면 그만이다
 //   app_private_settings       푸시 비밀키 등. 평문 파일로 내려받지 않는다
-//   app_users_backup_20260430  2026-04-30 작업 때의 임시 사본. app_users 가 원본이다
+//   app_users_backup_20260430  2026-04-30 작업 때의 임시 사본. 평문 PIN 이 담겨 있고
+//                              anon 키로 읽히던 것을 확인해 제거했다
+//                              (supabase/applied/v3_drop_leaked_user_backup.sql)
 
 function todayStamp() {
   const d = new Date()
