@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { getRegions } from '../lib/regions'
 import { confirmDialog } from '../lib/confirm'
+import { msg } from '../lib/msg'
 
 type RegionRow = {
   name: string
@@ -94,14 +95,14 @@ export function DesktopTerritoryRegions({
                       className="region-order-btn"
                       disabled={i === 0 || busy}
                       onClick={() => void onMoveRegion(r.id, 'up')}
-                      title="위로"
+                      title={msg('위로')}
                       type="button"
                     >▲</button>
                     <button
                       className="region-order-btn"
                       disabled={i === regions.length - 1 || busy}
                       onClick={() => void onMoveRegion(r.id, 'down')}
-                      title="아래로"
+                      title={msg('아래로')}
                       type="button"
                     >▼</button>
                   </div>

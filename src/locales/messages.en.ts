@@ -548,4 +548,6 @@ export const messagesEn: Record<string, string> = {
   "신규 인도자 (담당 없음)": "New leaders (unassigned)",
   "비공식 봉사 장소": "Informal witnessing spot",
   "메모가 없습니다. PC 에서 이 장소를 열어 적을 수 있습니다.": "No note yet. Open this place on a computer to add one.",
+  "위로": "Move up",
+  "아래로": "Move down",
 }
