@@ -546,4 +546,8 @@ export const messagesEn: Record<string, string> = {
   "채팅에서 언급됨": "Mentioned in chat",
   "구역 선택": "Choose territory",
   "신규 인도자 (담당 없음)": "New leaders (unassigned)",
+  "비공식 봉사 장소": "Informal witnessing spot",
+  "메모가 없습니다. PC 에서 이 장소를 열어 적을 수 있습니다.": "No note yet. Open this place on a computer to add one.",
+  "빨간 선이 도는 순서입니다. 화살표가 마지막 방향입니다.": "The red line is the walking order; the arrow points to the end.",
+  "지도의 보라색 핀이 이 장소입니다.": "The purple pin on the map is this place.",
 }
