@@ -431,6 +431,24 @@ App.css          [모바일 공통] 0px~
 - ⚠️ **번역된 문자열을 값 비교에 쓰지 말 것.** 라벨은 표시 전용이고, 판단은 코드 내부
   값(행 번호·상태 코드)으로 한다. (요일 라벨을 '주말' 과 비교해 생긴 버그 있었음)
 
+### 데이터 접근 규칙 (2026-08-23 ~ ESLint 가 강제)
+
+**화면 컴포넌트에서 `lib/supabase` 를 직접 import 하지 않는다.**
+`src/components/**` 에 `no-restricted-imports` 가 걸려 있어 lint 가 실패한다.
+
+```
+데이터 읽기/쓰기 → hooks/storeMutations/* 또는 feature api 모듈
+```
+
+왜: 화면마다 실패 처리가 갈리고(어디는 토스트, 어디는 조용히), 저장한 뒤
+다른 화면이 갱신되지 않고(fetchAll 을 안 부르니까), 테이블 이름이 화면에
+흩어져 스키마를 바꿀 때 다 찾아야 한다.
+
+**기존 위반 9개는 `eslint.config.js` 의 allowlist 에 사유와 함께 있다.**
+⚠ **여기에 파일을 추가하지 말 것.** `scripts/check-supabase-allowlist.js` 가
+개수를 지키고 `npm run lint` 에 물려 있어서, 늘리면 CI 가 실패한다.
+파일을 옮길 때마다 그 스크립트의 `MAX` 를 **줄인다.**
+
 ### 절대 하지 말 것
 - ❌ `.env.local` 커밋
 - ❌ `backups/` 커밋
