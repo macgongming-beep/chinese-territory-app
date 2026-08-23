@@ -33,6 +33,7 @@ import { AddUnitRow } from './AddUnitRow'
 import { useSessionState } from '../hooks/useSessionState'
 import { BuildingEditCells, UnitEditForm, type BuildingEditDraft } from './BuildingEditRows'
 import { CardCreateModal } from './DesktopTerritoryCardModal'
+import { BoundaryDrawPrompt } from './BoundaryDrawPrompt'
 import { msg } from '../lib/msg'
 import { getRestaurantUnits } from '../utils/restaurants'
 
@@ -1554,31 +1555,11 @@ export function DesktopTerritory({
 
       {/* ── 구역선 그리기 제안 모달 ── */}
       {pendingBoundaryCard && (
-        <div className="cal-modal-backdrop" onClick={() => setPendingBoundaryCard(null)}>
-          <div className="cal-modal" style={{ maxWidth: '380px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="cal-modal-head">
-              <div className="cal-modal-title">
-                <h2>카드 생성 완료</h2>
-              </div>
-            </div>
-            <div className="cal-modal-body">
-              <p style={{ margin: 0, fontSize: '15px', color: '#374151', fontWeight: 600 }}>
-                <strong style={{ color: 'var(--ink-900)' }}>{pendingBoundaryCard.name}</strong> 카드가 생성됐습니다.<br />
-                지도에서 구역선을 바로 그릴까요?
-              </p>
-            </div>
-            <div className="cal-modal-foot">
-              <button className="cal-cancel-btn" onClick={() => setPendingBoundaryCard(null)} type="button">나중에</button>
-              <button
-                className="cal-save-btn"
-                onClick={() => { onOpenCardMap(pendingBoundaryCard.id, true); setPendingBoundaryCard(null) }}
-                type="button"
-              >
-                구역선 그리기
-              </button>
-            </div>
-          </div>
-        </div>
+        <BoundaryDrawPrompt
+          card={pendingBoundaryCard}
+          onDismiss={() => setPendingBoundaryCard(null)}
+          onDraw={(cardId) => { onOpenCardMap(cardId, true); setPendingBoundaryCard(null) }}
+        />
       )}
 
       {cardMergeUndo && (
