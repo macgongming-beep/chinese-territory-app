@@ -56,19 +56,12 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
+        // ⚠ 예전에는 경로로 desktop/mobile/map 청크를 강제로 갈랐다. 그러면
+        // lazy() 경계가 무너져 Vite 가 desktop 청크까지 modulepreload 에 넣고,
+        // 폰이 PC 전용 코드를 통째로 받는다 (실측 495KB → 아래 참고).
+        // 라이브러리만 묶고 나머지는 import 그래프를 따르게 둔다.
         manualChunks(id) {
           if (id.includes('node_modules')) return 'vendor'
-          if (
-            id.includes('/src/components/MapCanvas') ||
-            id.includes('/src/components/DesktopMap') ||
-            id.includes('/src/components/MobileMap') ||
-            id.includes('/src/utils/mapUtils') ||
-            id.includes('/src/lib/preloadMap')
-          ) {
-            return 'map'
-          }
-          if (id.includes('/src/components/Desktop')) return 'desktop'
-          if (id.includes('/src/components/Mobile')) return 'mobile'
           return undefined
         },
       },
