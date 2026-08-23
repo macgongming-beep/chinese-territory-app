@@ -1744,7 +1744,14 @@ export function DesktopMap({
               draftBoundaryPoints={draftBoundaryPoints}
               selectedBuildingId={selectedBuildingId ?? 0}
               focusBuildingId={focusedBuildingId}
-              selectedCardId={drawingBoundary ? boundaryCardId : visibleBoundarySelection}
+              selectedCardId={
+                // 비공식 모양을 그리는 중에는 구역 카드를 고르지 않는다.
+                // boundaryCardId 로 바뀌면 지도가 그 카드 범위로 맞춰지면서
+                // 방금 보고 있던 자리에서 튕겨 나간다 (줌이 풀린다)
+                informalShapeTarget ? visibleBoundarySelection
+                  : drawingBoundary ? boundaryCardId
+                    : visibleBoundarySelection
+              }
               onAddBoundaryPoint={(point) => {
                 setUndoStack((prev) => [...prev, draftBoundaryPoints])
                 setDraftBoundaryPoints((points) => [...points, point])
