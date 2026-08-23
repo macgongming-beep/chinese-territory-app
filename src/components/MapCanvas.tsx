@@ -1563,16 +1563,24 @@ function NaverMapCanvas({
         path: toPath(shape.route),
         strokeColor: '#C44536', strokeOpacity: 0.9, strokeWeight: 4,
         // 어느 쪽으로 가는지 — 끝에 화살표를 붙인다
+        // 어느 쪽으로 가는지. 선이 4px 이라 화살표가 작으면 묻힌다
         endIcon: naver.maps.PointingIcon.OPEN_ARROW,
-        endIconSize: 14,
+        endIconSize: 20,
       }))
-      // 순서를 알려 주는 Ⓐ Ⓑ Ⓒ
+      // 순서를 알려 주는 Ⓐ Ⓑ Ⓒ.
+      // 점이 가까우면 라벨이 서로 덮으므로, 겹치는 것끼리 조금씩 어긋나게 놓는다.
+      const placed: { lat: number; lng: number; n: number }[] = []
       shape.route.forEach((p, i) => {
+        const near = placed.filter((q) =>
+          Math.abs(q.lat - p.lat) < 0.00025 && Math.abs(q.lng - p.lng) < 0.00025)
+        placed.push({ lat: p.lat, lng: p.lng, n: near.length })
+        // 겹친 순서대로 왼쪽 위 → 오른쪽 아래로 조금씩 비껴 놓는다
+        const shift = near.length * 11
         informalShapeOverlaysRef.current.push(new naver.maps.Marker({
           map: mapInstanceRef.current,
           position: new naver.maps.LatLng(p.lat, p.lng),
-          icon: { content: routeStepHtml(i), anchor: new naver.maps.Point(9, 9) },
-          zIndex: 7,
+          icon: { content: routeStepHtml(i), anchor: new naver.maps.Point(9 - shift, 9 + shift) },
+          zIndex: 7 + near.length,
         }))
       })
     }

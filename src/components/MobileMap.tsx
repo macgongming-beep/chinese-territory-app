@@ -795,7 +795,18 @@ export function MobileMap({
         <div className="mobile-map-header-content">
           <div className="mobile-map-title-row">
             <div className="mobile-map-title-copy">
-              {navLevel === 'map' ? (
+              {navLevel === 'map' && selectedInformal ? (
+                /* 비공식 장소를 보러 온 화면 — 구역 통계(전체/주택/상가)는 이 장소와
+                   아무 상관이 없다. 숨기고 장소 이름과 메모만 보여 준다 */
+                <>
+                  <h1>{selectedInformal.name}</h1>
+                  {selectedInformal.memo?.trim() && (
+                    <span className="mm-stats-sub" style={{ display: 'block', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>
+                      {selectedInformal.memo}
+                    </span>
+                  )}
+                </>
+              ) : navLevel === 'map' ? (
                 <>
                   <h1>{selectedCardId ? translateKoreanAddress(cards.find(c => c.id === selectedCardId)?.name ?? t(language, 'map.zoneMap'), language, translatePlaceNames) : t(language, 'map.zoneMap')}</h1>
                   <span className="mm-stats-sub" role="tablist">
@@ -1155,6 +1166,7 @@ export function MobileMap({
               drawingBoundary={drawingBoundaryMode}
               onToggleDrawingBoundary={setDrawingBoundaryMode}
             />
+            {!selectedInformal && (
             <div className="mobile-map-legend-card" aria-label={t(language, 'map.status')}>
               {([
                 { status: '방문필요', label: t(language, 'zone.summaryNeed') },
@@ -1178,6 +1190,7 @@ export function MobileMap({
                 )
               })}
             </div>
+            )}
             {showMapActionMenu && (
               <div className="mobile-map-action-popover">
                 <button onClick={openAddBuildingMode} type="button">{t(language, 'map.addBuilding')}</button>
@@ -1228,12 +1241,27 @@ export function MobileMap({
               onPointerCancel={handlePointerEnd}
               onClick={handleSheetHandleClick}
             >
-              <span>
-                {mapAggregateMarkers.length > 0
-                  ? `${aggregateScopeLabel} ${mapAggregateMarkers.length}${t(language, 'calendar.countSuffix')}`
-                  : `${t(language, 'map.building')} ${filteredBuildings.length}${t(language, 'calendar.countSuffix')}`}
-              </span>
-              <em>{completionRate}% · {visitedTotal}/{unitTotal} {t(language, 'map.unit')}</em>
+              {selectedInformal ? (
+                /* 비공식 장소 화면 — 구역 진척률은 이 장소와 상관없다 */
+                <>
+                  <span>{selectedInformal.name}</span>
+                  <em>
+                    {[
+                      selectedInformal.boundary?.length ? '구역선' : null,
+                      selectedInformal.route?.length ? `동선 ${selectedInformal.route.length}곳` : null,
+                    ].filter(Boolean).join(' · ') || '핀'}
+                  </em>
+                </>
+              ) : (
+                <>
+                  <span>
+                    {mapAggregateMarkers.length > 0
+                      ? `${aggregateScopeLabel} ${mapAggregateMarkers.length}${t(language, 'calendar.countSuffix')}`
+                      : `${t(language, 'map.building')} ${filteredBuildings.length}${t(language, 'calendar.countSuffix')}`}
+                  </span>
+                  <em>{completionRate}% · {visitedTotal}/{unitTotal} {t(language, 'map.unit')}</em>
+                </>
+              )}
             </div>
 
             {!canRecordVisits && (
