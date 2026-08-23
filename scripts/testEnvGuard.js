@@ -31,6 +31,15 @@ export const KNOWN_PRODUCTION_REFS = [
   'qdxemvdorasoryfysuoq',   // 용인 중국어 (운영)
 ]
 
+// 쓰기가 허용된 테스트 프로젝트. **여기 없으면 못 쓴다.**
+//
+// 운영 목록으로 막는 방식은 위험하다 — 회중을 늘렸는데 그 ref 를 위에 적는 걸
+// 잊으면, 그 회중의 운영 DB 가 "운영이 아니다" 로 통과해 테스트가 쓰기를 한다.
+// 빠뜨리는 쪽이 안전한 결과를 내야 한다. 그래서 허용목록으로 뒤집었다.
+export const KNOWN_TEST_REFS = [
+  // 예: 'abcdefghijklmnop',   // 필드맵 테스트 (2026-08-23 생성)
+]
+
 /** 운영 project ref. supabase link 정보가 진짜 출처다. */
 export function productionRef() {
   const linked = join(root, 'supabase/.temp/project-ref')
@@ -106,10 +115,32 @@ export function loadTestEnv() {
     process.exit(1)
   }
 
+  // 쓰기는 등록된 테스트 프로젝트에만. 둘 다 만족해야 한다.
+  const wantsWrites = process.env.PLAYWRIGHT_ALLOW_WRITES === 'true'
+  const registered = KNOWN_TEST_REFS.includes(ref)
+
+  if (wantsWrites && !registered) {
+    console.error('')
+    console.error('  ╔══════════════════════════════════════════════════════╗')
+    console.error('  ║  등록되지 않은 프로젝트에 쓰기를 하려 했다. 중단.    ║')
+    console.error('  ╚══════════════════════════════════════════════════════╝')
+    console.error('')
+    console.error(`  project ref : ${ref}`)
+    console.error('')
+    console.error('  쓰기는 KNOWN_TEST_REFS 에 적힌 프로젝트에만 허용된다.')
+    console.error('  운영 목록으로 막으면, 새 회중 ref 를 적는 걸 잊었을 때')
+    console.error('  그 운영 DB 가 통과해 버린다. 빠뜨리면 막히는 쪽이 맞다.')
+    console.error('')
+    console.error('  정말 테스트 프로젝트라면 scripts/testEnvGuard.js 의')
+    console.error('  KNOWN_TEST_REFS 에 만든 날짜와 함께 추가할 것.')
+    console.error('')
+    process.exit(1)
+  }
+
   return {
     url,
     anonKey: env.VITE_SUPABASE_ANON_KEY ?? '',
     ref,
-    allowWrites: process.env.PLAYWRIGHT_ALLOW_WRITES === 'true',
+    allowWrites: wantsWrites && registered,
   }
 }
