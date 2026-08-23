@@ -40,7 +40,13 @@ export function DesktopSettings({
       
       {/* Sidebar */}
       <aside style={{ width: 260, flexShrink: 0, paddingRight: 24, borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gray-900)', marginBottom: 24, paddingLeft: 8 }}>설정</h1>
+        {/* 다른 화면과 같은 제목 스타일을 쓴다. 예전에는 여기만 24px·왼쪽 여백 8px 이라
+            설정에 들어올 때 제목이 커지고 밀려 보였다 */}
+        <header className="page-header" style={{ marginBottom: 24 }}>
+          <div className="page-header-text">
+            <h1 className="page-header-title">설정</h1>
+          </div>
+        </header>
         
         <div style={{ display: 'grid', gap: 4, marginBottom: 24 }}>
           <SidebarLink

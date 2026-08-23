@@ -69,8 +69,9 @@ export function DesktopTerritoryRegions({
   return (
     <section className="la-page" style={{ alignItems: 'center' }}>
       <div style={{ maxWidth: 720, width: '100%', padding: '24px 0' }}>
-        <h1 style={{ margin: '0 0 6px', fontSize: 22 }}>지역 관리</h1>
-        <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7 }}>
+        {/* 설정 하위 화면들과 같은 제목 (내 정보·데이터 관리·특별 봉사 시즌) */}
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gray-900)', marginBottom: 8 }}>지역 관리</h2>
+        <p style={{ margin: '0 0 24px', fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7 }}>
           구역 카드 이름의 맨 앞에 붙는 지역입니다. 순서를 바꾸면 지도·구역 화면의
           지역 차례가 함께 바뀝니다. 새 지역은 <b>구역 → 새 구역 카드 추가</b>에서 만듭니다.
         </p>
