@@ -313,16 +313,19 @@ button:focus-visible {
    ⚠ 위쪽 음수 마진은 헤더를 끌어올려 safe-area(노치·다이나믹 아일랜드)
      여백까지 깎으므로, 상쇄한 만큼 padding-top 으로 되돌려 준다.
      (아이폰 16 Pro 등 아일랜드가 큰 기기에서 제목이 가려지던 문제) */
-.mobile-settings-page > .app-header--mobile {
-  margin: -24px -30px 12px;
-  padding-top: calc(10px + 24px + var(--safe-top));
-}
+/* 위쪽은 끌어올리지 않는다.
+   예전에는 wrapper 의 위쪽 여백(24/18px)을 음수 마진으로 상쇄하고, 노치에
+   제목이 가리지 않도록 그만큼을 padding-top 으로 되돌려 넣었다. 그러면
+   헤더 상자가 24px 두꺼워져 홈·캘린더에서 설정으로 넘어갈 때 툭 튀어나와 보인다.
 
+   대신 wrapper 의 위쪽 여백 자체를 0 으로 두어(아래 .mobile-*-page 규칙)
+   끌어올릴 것을 없앤다. 헤더는 제자리에서 기본 padding(10px + safe-top)만
+   쓰므로 다른 화면과 높이가 같고, 노치 여백도 그대로 지킨다. */
+.mobile-settings-page > .app-header--mobile,
 .mobile-signup-requests-page > .app-header--mobile,
 .mobile-profile-page > .app-header--mobile,
 .mobile-users-page > .app-header--mobile {
-  margin: -18px -30px 12px;
-  padding-top: calc(10px + 18px + var(--safe-top));
+  margin: 0 -30px 12px;
 }
 
 .desktop-header-actions {
@@ -2285,7 +2288,8 @@ button:focus-visible {
 
 .mobile-settings-page {
   min-height: 100%;
-  padding: 24px 14px 116px;
+  /* 위쪽 0 — 헤더가 맨 위에 붙는다 (위 .app-header--mobile 규칙 참고) */
+  padding: 0 14px 116px;
 }
 
 .mobile-settings-page > .mobile-page-title {
@@ -2549,7 +2553,7 @@ button:focus-visible {
 
 .mobile-signup-requests-page {
   min-height: 100%;
-  padding: 18px 14px 116px;
+  padding: 0 14px 116px;
 }
 
 .signup-request-tabs {
@@ -2738,7 +2742,7 @@ button:focus-visible {
 
 .mobile-profile-page {
   min-height: 100%;
-  padding: 18px 14px 112px;
+  padding: 0 14px 112px;
 }
 
 .mobile-profile-hero,
@@ -2905,7 +2909,7 @@ button:focus-visible {
 
 .mobile-users-page {
   min-height: 100%;
-  padding: 18px 14px 112px;
+  padding: 0 14px 112px;
 }
 
 .mobile-subpage-head {
@@ -3301,8 +3305,10 @@ button:focus-visible {
 }
 
 /* Admin mobile redesign: screens 13/14 사용자 목록 · 편집 */
+/* ⚠ 위 .mobile-users-page 규칙과 중복이다. 나중에 나온 이쪽이 이긴다 —
+   위쪽 여백은 0 으로 맞춘다 (헤더가 맨 위에 붙는다) */
 .mobile-users-page {
-  padding: 14px 14px 112px;
+  padding: 0 14px 112px;
   background: var(--bg);
 }
 
