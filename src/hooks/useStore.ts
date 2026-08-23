@@ -558,6 +558,7 @@ export function useStore(enabled: boolean = true) {
   // 효과: 빠르게 탭 전환·앱 전환 시 불필요한 전체 fetchAll 방지.
   //       (자주 화면 켰다 끄는 모바일 환경에서 큰 절감)
   useEffect(() => {
+    if (!enabled) return   // 로그인 전에는 창을 다시 켜도 받지 않는다
     let lastFetchAt = Date.now()
     const VISIBILITY_DEBOUNCE_MS = 2 * 60 * 1000  // 2분
     const onVisible = () => {
@@ -572,7 +573,7 @@ export function useStore(enabled: boolean = true) {
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', onVisible)
     }
-  }, [fetchAll])
+  }, [fetchAll, enabled])
 
   // ── Phase 3: Mutation별 slice-scoped refetcher ─────────────
   // mutation 파일은 fetchAll: () => Promise<void> 를 기대하므로,

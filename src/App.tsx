@@ -186,7 +186,7 @@ function App() {
   // (useUserChats가 이 책임을 갖고 있었으나 전체 fetchAll 호출하던 증폭점 제거)
   useCalendarRealtime(() => {
     void refetchSlices(['calendar'], { triggeredBy: 'realtime:calendar' })
-  })
+  }, { enabled: Boolean(user) })   // 로그인 전에는 웹소켓을 열지 않는다
 
   // role이 leader 또는 admin인 유저만 인도자 목록으로
   const leaderNames = allUsers
