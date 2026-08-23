@@ -1693,11 +1693,25 @@ export function DesktopMap({
                     </button>
                     <button
                       className="primary-boundary-action"
-                      disabled={draftBoundaryPoints.length < 3 || savingBoundary}
+                      disabled={savingBoundary || (
+                        informalShapeTarget
+                          // 비공식: 0점은 '지운다' 는 뜻이라 눌릴 수 있어야 한다.
+                          // 막아 두면 한번 그린 동선·구역선을 없앨 방법이 없다.
+                          // 동선은 선이라 2점, 구역선은 도형이라 3점부터.
+                          ? draftBoundaryPoints.length > 0 && (
+                            informalShapeTarget.field === 'route'
+                              ? draftBoundaryPoints.length < 2
+                              : draftBoundaryPoints.length < 3
+                          )
+                          // 구역 카드는 지우는 버튼이 따로 있어 기존 규칙 그대로 둔다
+                          : draftBoundaryPoints.length < 3
+                      )}
                       onClick={handleSaveBoundary}
                       type="button"
                     >
-                      {savingBoundary ? '저장 중...' : '저장'}
+                      {savingBoundary
+                        ? '저장 중...'
+                        : (informalShapeTarget && draftBoundaryPoints.length === 0) ? '지우기' : '저장'}
                     </button>
                     <button
                       onClick={() => {
