@@ -97,7 +97,13 @@ async function fetchAllPages<T>(
   return { data: rows, error: null }
 }
 
-export function useStore() {
+/**
+ * @param enabled 로그인했는가. false 면 아무것도 받지 않는다.
+ *
+ * 예전에는 로그인 화면에서도 전부 받았다 (App.tsx 는 인증 판단보다 먼저
+ * useStore() 를 호출한다). 실측으로 API 만 약 2.2MB · 47개 요청이었다.
+ */
+export function useStore(enabled: boolean = true) {
   const [cards, setCards] = useState<TerritoryCard[]>([])
   const [buildings, setBuildings] = useState<Building[]>([])
   // buildings는 cards transform에서 참조됨. fetchSlice가 useCallback([])이라
@@ -516,6 +522,13 @@ export function useStore() {
   }, [fetchSlices])
 
   useEffect(() => {
+    if (!enabled) {
+      // 로그인 전에는 받지 않는다. 다만 loading 을 반드시 내려야 한다 —
+      // 안 그러면 로그인 화면이 '데이터 불러오는 중' 에서 멈춘다 (App.tsx:249)
+      setLoading(false)
+      return
+    }
+    setLoading(true)
     fetchAll().then(async () => {
       // "미배정 건물" 카드가 없으면 자동 생성
       const { data: existing } = await supabase
@@ -534,7 +547,7 @@ export function useStore() {
         await fetchAll()
       }
     })
-  }, [fetchAll])
+  }, [fetchAll, enabled])
 
   // PWA 백그라운드 → 포어그라운드 복귀 시 자동 갱신
   // (브라우저 새로고침이 없는 PWA에서 최신 데이터 확보)
