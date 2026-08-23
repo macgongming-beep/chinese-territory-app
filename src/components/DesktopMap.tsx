@@ -961,14 +961,27 @@ export function DesktopMap({
     setDrawingBoundary(true)
   }, [boundaryEditRequest, cardBoundaries, cards, focusedCardId])
 
-  // 안전망 — 비공식 화면을 벗어나면 그리기 대상도 놓는다.
-  // 세 곳에서 지우고 있지만, '무엇을 그리는가' 를 진위값 하나에 태운 구조라
-  // 새 경로가 생기면 또 새어 나갈 수 있다.
+  // 안전망 — 비공식 화면을 벗어나면 그리기를 통째로 끝낸다.
+  //
+  // ⚠ 예전에는 informalShapeTarget 만 null 로 만들었다. 그러면 그리기는 켜진 채
+  //   대상만 사라져, 저장이 '구역 카드' 분기로 빠지고 실제 카드 구역선이
+  //   비공식 좌표로 덮어써졌다 (URL 에서 informalId 가 빠지는 순간 — 뒤로가기·
+  //   알림 탭·헤더 링크). 고치려던 사고의 정확히 반대 방향이었다.
+  //   그리기를 끝내야 저장 자체가 불가능해진다.
   useEffect(() => {
-    if (!focusedInformalId) setInformalShapeTarget(null)
+    if (focusedInformalId) return
+    setInformalShapeTarget((target) => {
+      if (!target) return null
+      setDrawingBoundary(false)
+      setDraftBoundaryPoints([])
+      setUndoStack([])
+      return null
+    })
   }, [focusedInformalId])
 
   const handleSaveBoundary = async () => {
+    // 그리기가 꺼져 있으면 저장할 것이 없다 — 위 안전망이 끈 뒤 눌린 경우
+    if (!drawingBoundary) return
     setSavingBoundary(true)
     if (informalShapeTarget && onSaveInformalShape) {
       await onSaveInformalShape(informalShapeTarget.assetId, informalShapeTarget.field, draftBoundaryPoints)

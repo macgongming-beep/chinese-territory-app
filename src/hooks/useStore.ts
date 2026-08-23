@@ -125,6 +125,15 @@ export function useStore(enabled: boolean = true) {
   const [restaurantRequests, setRestaurantRequests] = useState<RestaurantRequest[]>([])
   const [globalSettings, setGlobalSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
+  /**
+   * 이번 로그인에서 fetchAll 을 시작했는가.
+   *
+   * loading 상태만으로는 부족하다 — 로그인 화면에서 loading 을 false 로 내려
+   * 두었기 때문에, 로그인한 순간(enabled false→true)부터 아래 useEffect 가
+   * 돌기 전까지 한 프레임 동안 loading 이 false 다. 그 사이 본 화면이 빈
+   * 데이터로 한 번 그려진다.
+   */
+  const fetchStartedRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [, setMissingCardLeaderAssignmentsTable] = useState(false)
   // 마지막 auto_close 호출 시각 (5분 디바운스)
@@ -524,10 +533,12 @@ export function useStore(enabled: boolean = true) {
   useEffect(() => {
     if (!enabled) {
       // 로그인 전에는 받지 않는다. 다만 loading 을 반드시 내려야 한다 —
-      // 안 그러면 로그인 화면이 '데이터 불러오는 중' 에서 멈춘다 (App.tsx:249)
+      // 안 그러면 로그인 화면이 '데이터 불러오는 중' 에서 멈춘다 (App.tsx)
+      fetchStartedRef.current = false
       setLoading(false)
       return
     }
+    fetchStartedRef.current = true
     setLoading(true)
     fetchAll().then(async () => {
       // "미배정 건물" 카드가 없으면 자동 생성
@@ -811,7 +822,9 @@ export function useStore(enabled: boolean = true) {
     calendarEvents,
     cardBoundaries,
     notices,
-    loading,
+    // 로그인했는데 아직 받기 시작도 안 했다면 '불러오는 중' 으로 본다.
+    // 그래야 로그인 직후 한 프레임 동안 빈 화면이 그려지지 않는다.
+    loading: enabled ? (loading || !fetchStartedRef.current) : false,
     error,
     assignLeaderToCard,
     setCardLeaders,

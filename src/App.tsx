@@ -246,15 +246,7 @@ function App() {
     }
   }
 
-  if (authLoading || loading) {
-    return (
-      <div className="app-loading">
-        <div className="app-loading-spinner" />
-        <p>데이터 불러오는 중...</p>
-      </div>
-    )
-  }
-
+  // 로그인 검사가 먼저다. 로그아웃 직후 스피너를 거치지 않고 바로 로그인 화면으로.
   if (!user) {
     return (
       <>
@@ -278,6 +270,16 @@ function App() {
       </>
     )
   }
+
+  if (authLoading || loading) {
+    return (
+      <div className="app-loading">
+        <div className="app-loading-spinner" />
+        <p>데이터 불러오는 중...</p>
+      </div>
+    )
+  }
+
 
   if (error) {
     return (
