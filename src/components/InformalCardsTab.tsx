@@ -528,7 +528,10 @@ export function InformalCardsTab({
                   >
                     <div
                       style={{
-                        position: 'relative', aspectRatio: '4 / 3', borderRadius: 10,
+                        position: 'relative', borderRadius: 10,
+                        // 사진은 4:3 비율을 지켜야 하지만, 핀 장소는 보여 줄 그림이
+                        // 없어 같은 비율을 쓰면 빈 상자만 크게 남는다
+                        ...(asset.imageUrl ? { aspectRatio: '4 / 3' } : { height: 108 }),
                         border: isSelected ? '2px solid var(--ink)' : '1px solid var(--line)',
                         overflow: 'hidden', background: 'var(--paper)',
                         cursor: 'pointer',
@@ -554,19 +557,19 @@ export function InformalCardsTab({
                            깨진 이미지 아이콘이 뜬다 (docs/비공식-봉사-재설계.md) */
                         <div style={{
                           width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-                          alignItems: 'center', justifyContent: 'center', gap: 6, padding: 10,
+                          alignItems: 'center', justifyContent: 'center', gap: 4, padding: '8px 10px',
                           background: 'linear-gradient(160deg,#f3f0f7,#e8e2ef)', textAlign: 'center',
                           opacity: isSelectionMode && !isSelected ? 0.6 : 1,
                         }}>
-                          <svg width={26} height={26} viewBox="0 0 24 24" fill="none"
+                          <svg width={20} height={20} viewBox="0 0 24 24" fill="none"
                                stroke="#7A5C8A" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
                             <circle cx="12" cy="10" r="2.5" />
                           </svg>
                           {asset.memo?.trim() && (
                             <span style={{
-                              fontSize: 11.5, lineHeight: 1.45, color: '#5b4a68',
-                              display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
+                              fontSize: 11.5, lineHeight: 1.4, color: '#5b4a68',
+                              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                               overflow: 'hidden',
                             }}>{asset.memo}</span>
                           )}
