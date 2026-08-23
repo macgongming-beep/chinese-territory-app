@@ -491,6 +491,7 @@ export function MobileHome({
 
   // (정기방문 미리보기는 활동 탭으로 이동, 홈에서는 미사용)
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
+  const focusedInformalId = searchParams.get('informalId') ? Number(searchParams.get('informalId')) : null
   const mapScope = searchParams.get('scope')
   const isRegularVisitMapScope = mapScope === 'regularVisits'
   const focusedReturnVisitId = searchParams.get('returnVisitId') ? Number(searchParams.get('returnVisitId')) : null
@@ -672,6 +673,8 @@ export function MobileHome({
         <>
           <MobileMap language={language}
             translatePlaceNames={translatePlaceNames}
+            informalAssets={informalAssets}
+            focusedInformalId={focusedInformalId}
             buildings={mapBuildings}
             cardBoundaries={mapCardBoundaries}
             cards={mapCards}
@@ -992,6 +995,7 @@ export function MobileHome({
                   admin: 모든 콜백 / leader: 식당 토글만 / user: 자료 관리 콜백 일체 차단 */}
               <AdminMobileZone
                 onCreateInformalPlace={role === 'admin' || role === 'developer' ? onCreateInformalPlace : undefined}
+                onOpenInformalOnMap={(assetId) => navigate(`/map?informalId=${assetId}`)}
                 language={language}
                 translatePlaceNames={translatePlaceNames}
                 cards={cards}

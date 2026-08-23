@@ -58,6 +58,8 @@ type Props = {
   onRenameInformalGroup?: (groupId: number, name: string) => Promise<void>
   onDeleteInformalGroup?: (groupId: number) => Promise<void>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
+  /** 핀이 찍힌 장소를 지도에서 보여 준다 */
+  onOpenInformalOnMap?: (assetId: number) => void
   /** 사진 없이 지도 핀으로 장소 만들기 (docs/비공식-봉사-재설계.md) */
   onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
@@ -134,6 +136,7 @@ export function AdminMobileZone({
   onDeleteInformalGroup,
   onMoveAssetToGroup,
   onCreateInformalPlace,
+  onOpenInformalOnMap,
   onToggleBuildingRestaurant,
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
@@ -403,6 +406,7 @@ export function AdminMobileZone({
         <InformalCardsTab
           role={role}
           onCreatePlace={onCreateInformalPlace}
+          onOpenOnMap={onOpenInformalOnMap}
           currentVisitor={currentVisitor}
           informalAssets={informalAssets}
           informalGroups={informalGroups}

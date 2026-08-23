@@ -3,7 +3,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { MapCanvas } from './MapCanvas'
 import type { MapAggregateMarker } from './MapCanvas'
-import type { Building, BuildingStatus, CalendarEvent, CardBoundary, EventRestaurantAssignment, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, BuildingStatus, CalendarEvent, CardBoundary, EventRestaurantAssignment, InformalAsset, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t, translateKoreanAddress, currentLang } from '../i18n'
 import { getBuildingStatus, findCardForCoordinates } from '../utils/mapUtils'
@@ -36,6 +36,8 @@ export function MobileMap({
   actualRole,
   serviceSessions,
   focusedCardId,
+  informalAssets = [],
+  focusedInformalId,
   focusedCardIds = [],
   focusedBuildingId,
   regularVisitScope = false,
@@ -71,6 +73,10 @@ export function MobileMap({
   actualRole: Role
   serviceSessions: ServiceSession[]
   focusedCardId?: number | null
+  /** 비공식 봉사 장소 — 핀이 찍힌 것만 지도에 뜬다 (docs/비공식-봉사-재설계.md) */
+  informalAssets?: InformalAsset[]
+  /** 비공식 화면에서 '지도에서 보기' 로 들어왔을 때 그 장소로 옮긴다 */
+  focusedInformalId?: number | null
   focusedCardIds?: number[]
   focusedBuildingId?: number | null
   regularVisitScope?: boolean
@@ -157,6 +163,30 @@ export function MobileMap({
   const [hiddenMapStatuses, setHiddenMapStatuses] = useState<Set<BuildingStatus>>(new Set())
   const [fullScreenUnit, setFullScreenUnit] = useState<{ unit: Unit; building: Building; unitHistories: VisitHistory[] } | null>(null)
   // buildings가 fetchAll 후 업데이트될 때 스냅샷이 아닌 최신 unit 사용
+  // 비공식 봉사 장소 — PC 와 같은 규칙이다.
+  // 기본은 감추고, 비공식 화면에서 '지도에서 보기' 로 들어왔을 때만 보인다.
+  // 호별방문 지도에 섞이면 구역이 안 보인다 (docs/비공식-봉사-재설계.md)
+  const showInformal = Boolean(focusedInformalId)
+  const informalPins = useMemo(
+    () => (!showInformal ? [] : informalAssets)
+      .filter((a) => typeof a.lat === 'number' && typeof a.lng === 'number')
+      .map((a) => ({ id: a.id, name: a.name, lat: a.lat as number, lng: a.lng as number })),
+    [informalAssets, showInformal],
+  )
+  const selectedInformal = useMemo(
+    () => (focusedInformalId ? informalAssets.find((a) => a.id === focusedInformalId) ?? null : null),
+    [focusedInformalId, informalAssets],
+  )
+  // 선택한 장소의 모양만 그린다 — 전부 그리면 감춘 이유가 없어진다
+  const informalShape = useMemo(
+    () => (selectedInformal ? { boundary: selectedInformal.boundary, route: selectedInformal.route } : null),
+    [selectedInformal],
+  )
+  const informalFocusPoint = useMemo(() => {
+    if (!selectedInformal || typeof selectedInformal.lat !== 'number' || typeof selectedInformal.lng !== 'number') return null
+    return { lat: selectedInformal.lat, lng: selectedInformal.lng, zoom: selectedInformal.zoom ?? null }
+  }, [selectedInformal])
+
   const liveFullScreenUnit = useMemo(() => {
     if (!fullScreenUnit) return null
     const b = buildings.find(b => b.id === fullScreenUnit.building.id)
@@ -1029,6 +1059,13 @@ export function MobileMap({
               </div>
             )}
             <MapCanvas
+              informalPlaces={informalPins}
+              informalShape={informalShape}
+              focusPoint={informalFocusPoint}
+              onSelectInformal={(id) => {
+                const place = informalAssets.find((a) => a.id === id)
+                if (place) showToast(place.memo?.trim() || place.name, 'info')
+              }}
               buildings={mapAggregateMarkers.length > 0 ? [] : mapBuildings}
               aggregateMarkers={mapAggregateMarkers}
               cardBoundaries={mapAggregateMarkers.length > 0 ? [] : mapBoundaries}
