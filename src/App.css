@@ -29861,6 +29861,10 @@ button > svg {
 .region-order-btn {
   width: 24px;
   height: 18px;
+  /* 전역 `button { min-height: 40px }` 이 height 를 이긴다 (손가락으로 누르기
+     좋으라고 둔 규칙이다). 이 버튼은 목록의 곁다리라 작아야 하므로 풀어 준다.
+     .ds-btn 의 min-height 에도 같은 이유로 한 번 걸렸었다. */
+  min-height: 0;
   padding: 0;
   display: flex;
   align-items: center;
