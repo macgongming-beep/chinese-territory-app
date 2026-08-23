@@ -1507,6 +1507,10 @@ export function MobileHome({
                 <p className="mobile-settings-version">{t(language, 'settings.version')}</p>
               </div>
             } />
+            {/* 모르는 경로는 홈으로. 없으면 아래 탭만 남고 본문이 빈 화면이 된다 —
+                PC 에서 복사한 주소(예: /settings/territory-regions)를 폰으로 열면
+                실제로 그렇게 됐다. DesktopApp 에는 같은 폴백이 이미 있다 */}
+            <Route path="*" element={<Navigate replace to="/" />} />
           </Routes>
 
           {BottomNav}
