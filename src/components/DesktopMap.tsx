@@ -405,12 +405,15 @@ export function DesktopMap({
   const informalShape = useMemo(() => {
     if (!selectedInformal || !showInformal) return null
     if (informalShapeTarget?.assetId === selectedInformal.id) {
+      // 편집 중인 쪽은 그리지 않는다 — MapCanvas 의 draft 레이어가 이미 같은
+      // 좌표를 그리고 있어 두 겹으로 쌓이고, 꼭짓점을 끌 때는 draft 만 실시간으로
+      // 움직여 두 도형이 어긋나 보인다. 반대편 필드는 참고 표시로 남긴다.
       return informalShapeTarget.field === 'boundary'
-        ? { boundary: draftBoundaryPoints, route: selectedInformal.route }
-        : { boundary: selectedInformal.boundary, route: draftBoundaryPoints }
+        ? { boundary: null, route: selectedInformal.route }
+        : { boundary: selectedInformal.boundary, route: null }
     }
     return { boundary: selectedInformal.boundary, route: selectedInformal.route }
-  }, [selectedInformal, showInformal, informalShapeTarget, draftBoundaryPoints])
+  }, [selectedInformal, showInformal, informalShapeTarget])
 
   const informalFocusPoint = useMemo(() => {
     if (!focusedInformalId) return null
@@ -939,6 +942,8 @@ export function DesktopMap({
 
   const handleStartBoundaryDrawing = () => {
     setShowBoundaryActionMenu(false)
+    // 지금부터는 구역 카드를 그린다 — 비공식 대상이 남아 있으면 거기 저장된다
+    setInformalShapeTarget(null)
     const points = savedBoundary?.points ?? []
     setDraftBoundaryPoints(points)
     setUndoStack([]) // history 초기화
@@ -949,11 +954,19 @@ export function DesktopMap({
     if (!boundaryEditRequest || !focusedCardId || !cards.some((card) => card.id === focusedCardId)) return
     const boundary = cardBoundaries.find((item) => item.cardId === focusedCardId)
     setBoundaryCardId(focusedCardId)
+    setInformalShapeTarget(null)   // 카드를 그리는 흐름이다
     const points = boundary?.points ?? []
     setDraftBoundaryPoints(points)
     setUndoStack([]) // history 초기화
     setDrawingBoundary(true)
   }, [boundaryEditRequest, cardBoundaries, cards, focusedCardId])
+
+  // 안전망 — 비공식 화면을 벗어나면 그리기 대상도 놓는다.
+  // 세 곳에서 지우고 있지만, '무엇을 그리는가' 를 진위값 하나에 태운 구조라
+  // 새 경로가 생기면 또 새어 나갈 수 있다.
+  useEffect(() => {
+    if (!focusedInformalId) setInformalShapeTarget(null)
+  }, [focusedInformalId])
 
   const handleSaveBoundary = async () => {
     setSavingBoundary(true)
@@ -1718,6 +1731,9 @@ export function DesktopMap({
                         setDrawingBoundary(false)
                         setDraftBoundaryPoints([])
                         setUndoStack([])
+                        // 대상을 안 지우면 다음에 구역 카드를 그려 저장할 때
+                        // 그 좌표가 이 비공식 자료에 덮어써진다
+                        setInformalShapeTarget(null)
                       }}
                       type="button"
                     >
@@ -2701,14 +2717,14 @@ export function DesktopMap({
           )}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <button className="ds-btn" onClick={() => startInformalShapeDrawing('boundary')} type="button">
-              {selectedInformal.boundary?.length ? '구역선 수정' : '구역선 그리기'}
+              {selectedInformal.boundary?.length ? msg('구역선 수정') : msg('구역선 그리기')}
             </button>
             <button className="ds-btn" onClick={() => startInformalShapeDrawing('route')} type="button">
-              {selectedInformal.route?.length ? '동선 수정' : '동선 그리기'}
+              {selectedInformal.route?.length ? msg('동선 수정') : msg('동선 그리기')}
             </button>
           </div>
           <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.55 }}>
-            지도를 눌러 점을 찍습니다. 구역선은 3점, 동선은 2점부터 저장됩니다.
+            {msg('지도를 눌러 점을 찍습니다. 구역선은 3점, 동선은 2점부터 저장됩니다.')}
           </p>
         </div>
       )}

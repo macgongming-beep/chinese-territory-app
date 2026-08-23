@@ -1242,9 +1242,9 @@ export function MobileMap({
                   <span>{msg('비공식 봉사 장소')}</span>
                   <em>
                     {[
-                      selectedInformal.boundary?.length ? '구역선' : null,
-                      selectedInformal.route?.length ? `동선 ${selectedInformal.route.length}곳` : null,
-                    ].filter(Boolean).join(' · ') || '핀'}
+                      selectedInformal.boundary?.length ? msg('구역선') : null,
+                      selectedInformal.route?.length ? msg('동선 {n}곳', { n: selectedInformal.route.length }) : null,
+                    ].filter(Boolean).join(' · ') || msg('핀')}
                   </em>
                 </>
               ) : (

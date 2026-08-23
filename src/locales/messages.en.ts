@@ -550,4 +550,12 @@ export const messagesEn: Record<string, string> = {
   "메모가 없습니다. PC 에서 이 장소를 열어 적을 수 있습니다.": "No note yet. Open this place on a computer to add one.",
   "위로": "Move up",
   "아래로": "Move down",
+  "구역선": "Boundary",
+  "동선 {n}곳": "Route, {n} stops",
+  "핀": "Pin",
+  "구역선 수정": "Edit boundary",
+  "구역선 그리기": "Draw boundary",
+  "동선 수정": "Edit route",
+  "동선 그리기": "Draw route",
+  "지도를 눌러 점을 찍습니다. 구역선은 3점, 동선은 2점부터 저장됩니다.": "Tap the map to add points. A boundary needs 3, a route needs 2.",
 }
