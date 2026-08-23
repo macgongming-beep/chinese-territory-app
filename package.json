@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "backup": "node scripts/backup.js",
-    "restore": "node scripts/restore.js"
+    "restore": "node scripts/restore.js",
+    "verify-install": "node scripts/verify-install.js"
   },
   "dependencies": {
     "@sentry/react": "^10.53.1",
