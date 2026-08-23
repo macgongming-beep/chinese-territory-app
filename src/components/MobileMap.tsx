@@ -798,14 +798,9 @@ export function MobileMap({
               {navLevel === 'map' && selectedInformal ? (
                 /* 비공식 장소를 보러 온 화면 — 구역 통계(전체/주택/상가)는 이 장소와
                    아무 상관이 없다. 숨기고 장소 이름과 메모만 보여 준다 */
-                <>
-                  <h1>{selectedInformal.name}</h1>
-                  {selectedInformal.memo?.trim() && (
-                    <span className="mm-stats-sub" style={{ display: 'block', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>
-                      {selectedInformal.memo}
-                    </span>
-                  )}
-                </>
+                /* 메모는 아래 시트에 있다. 헤더에도 넣으면 같은 글이 두 번 보이고,
+                   긴 메모는 헤더에서 잘린다 */
+                <h1>{selectedInformal.name}</h1>
               ) : navLevel === 'map' ? (
                 <>
                   <h1>{selectedCardId ? translateKoreanAddress(cards.find(c => c.id === selectedCardId)?.name ?? t(language, 'map.zoneMap'), language, translatePlaceNames) : t(language, 'map.zoneMap')}</h1>
@@ -1244,7 +1239,7 @@ export function MobileMap({
               {selectedInformal ? (
                 /* 비공식 장소 화면 — 구역 진척률은 이 장소와 상관없다 */
                 <>
-                  <span>{selectedInformal.name}</span>
+                  <span>비공식 봉사 장소</span>
                   <em>
                     {[
                       selectedInformal.boundary?.length ? '구역선' : null,
@@ -1272,6 +1267,27 @@ export function MobileMap({
             )}
 
             <div className="mobile-sheet-scroll">
+              {selectedInformal ? (
+                /* 비공식 장소 화면 — 구역 목록(처인구·기흥구…)은 이 장소와 상관없다.
+                   그 자리를 메모에 준다. 헤더보다 넓어 길게 적어도 읽힌다 */
+                <div style={{ padding: '4px 2px 20px' }}>
+                  {selectedInformal.memo?.trim() ? (
+                    <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.75, color: 'var(--ink)', whiteSpace: 'pre-wrap' }}>
+                      {selectedInformal.memo}
+                    </p>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: 13.5, color: 'var(--muted)' }}>
+                      메모가 없습니다. PC 에서 이 장소를 열어 적을 수 있습니다.
+                    </p>
+                  )}
+                  <p style={{ margin: '16px 0 0', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6 }}>
+                    {selectedInformal.route?.length
+                      ? '빨간 선이 도는 순서입니다 (Ⓐ → Ⓑ → …). 화살표가 마지막 방향입니다.'
+                      : '지도의 보라색 핀이 이 장소입니다.'}
+                  </p>
+                </div>
+              ) : (
+              <>
               {mapAggregateMarkers.length > 0 && (
                 <div className="mobile-map-aggregate-list">
                   {mapAggregateMarkers.map((marker) => (
@@ -1580,6 +1596,8 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                   </section>
                 )
               })}
+              </>
+              )}
             </div>
           </section>
 
