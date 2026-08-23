@@ -9,8 +9,10 @@ select coalesce(string_agg(
 from cron.job;
 
 -- ② 스토리지 버킷 (채팅 첨부 등)
+-- ⚠ b."public" 처럼 별칭+따옴표를 반드시 붙일 것.
+--    맨 이름 public 은 컬럼이 아니라 스키마 이름으로 해석돼 42P01 이 난다.
 select coalesce(string_agg(
          format('insert into storage.buckets (id, name, public) values (%L, %L, %L) on conflict (id) do nothing;',
-                id, name, public),
-         E'\n' order by id), '-- 버킷 없음') as buckets
-from storage.buckets;
+                b.id, b.name, b."public"),
+         E'\n' order by b.id), '-- 버킷 없음') as buckets
+from storage.buckets b;
