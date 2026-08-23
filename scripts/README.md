@@ -54,6 +54,42 @@ launchctl list | grep fieldmap
 (예전 안내문에 적혀 있던 `/usr/local/bin/npm` 은 인텔 맥 경로라, 그대로
 등록했으면 **오류도 없이 조용히 아무 일도 안 일어났을 것이다**).
 
+### ⚠️ 처음 등록하면 십중팔구 조용히 실패한다 — 권한
+
+프로젝트가 `~/Documents` 안에 있어서 macOS 가 접근을 막는다. 터미널에서
+`npm run backup` 은 잘 되는데(터미널 앱에는 권한이 있다) 자동 실행은 안 된다.
+**`launchctl list` 에 줄이 떠도 실제로는 안 돌 수 있다.**
+
+증상은 `/tmp/fieldmap-backup-error.log` 에 이렇게 남는다:
+
+```
+Error: EPERM: operation not permitted, uv_cwd
+```
+
+**시스템 설정 → 개인 정보 보호 및 보안 → 전체 디스크 접근 권한** 에서
+`[+]` → `⌘⇧G` 로 아래 **둘 다** 넣고 스위치를 켜야 한다.
+
+```
+/bin/bash                                          폴더로 들어가는 쪽
+/opt/homebrew/Cellar/node@22/22.22.1_3/bin/node    실제로 파일을 읽고 쓰는 쪽
+```
+
+bash 만 주면 안 된다 — 2026-08-23 에 실제로 겪었다. macOS 는 파일을 만지는
+프로그램에 권한을 묻는데, 백업하는 것은 node 다.
+
+**node 를 새 버전으로 올리면 경로가 바뀌어 권한이 풀리고 백업이 조용히 멈춘다.**
+(`node@22/22.22.1_3` → `node@22/22.23.0_1` 같은 식) 아래 확인을 가끔 해야 하는
+이유가 이것이다.
+
+### 등록한 뒤에는 반드시 한 번 돌려 볼 것
+
+```bash
+launchctl start com.fieldmap.backup && sleep 30 && tail -5 /tmp/fieldmap-backup.log
+```
+
+`🎉 백업 완료` 가 나와야 진짜 된 것이다. 새벽 3시에 안 되는 걸 몇 달 뒤에
+아는 것보다 낫다.
+
 ### 잘 돌고 있는지 보기
 
 ```bash
