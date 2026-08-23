@@ -1280,11 +1280,6 @@ export function MobileMap({
                       {msg('메모가 없습니다. PC 에서 이 장소를 열어 적을 수 있습니다.')}
                     </p>
                   )}
-                  <p style={{ margin: '16px 0 0', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6 }}>
-                    {selectedInformal.route?.length
-                      ? msg('빨간 선이 도는 순서입니다. 화살표가 마지막 방향입니다.')
-                      : msg('지도의 보라색 핀이 이 장소입니다.')}
-                  </p>
                 </div>
               ) : (
               <>
