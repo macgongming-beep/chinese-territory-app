@@ -94,6 +94,7 @@ function App() {
     createCard,
     createTerritoryRegion,
     createInformalPlace,
+    saveInformalShape,
     updateTerritoryRegion,
     moveTerritoryRegion,
     deleteTerritoryRegion,
@@ -335,6 +336,7 @@ function App() {
             onLinkEventsToSeries={linkEventsToSeries}
             onCreateCard={createCard}
             onCreateInformalPlace={createInformalPlace}
+            onSaveInformalShape={saveInformalShape}
             onCreateTerritoryRegion={createTerritoryRegion}
             onDeleteTerritoryRegion={deleteTerritoryRegion}
             onMoveTerritoryRegion={moveTerritoryRegion}

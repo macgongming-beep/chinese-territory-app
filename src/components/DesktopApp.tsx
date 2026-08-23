@@ -147,6 +147,7 @@ export function DesktopApp({
   eventRestaurantAssignments = [],
   informalGroups = [],
   onCreateInformalPlace,
+  onSaveInformalShape,
   onUploadInformalAsset,
   onDeleteInformalAsset,
   onCreateInformalGroup,
@@ -294,6 +295,7 @@ export function DesktopApp({
   // v2 신 배정 모델
   informalAssets?: InformalAsset[]
   onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
+  onSaveInformalShape?: (assetId: number, field: 'boundary' | 'route', points: GeoPoint[]) => Promise<boolean>
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   informalGroups?: InformalGroup[]
@@ -677,6 +679,7 @@ export function DesktopApp({
                 informalAssets={informalAssets}
                 onCreateInformalPlace={onCreateInformalPlace}
                 focusedInformalId={focusedInformalId}
+                onSaveInformalShape={onSaveInformalShape}
                 boundaryEditRequest={boundaryEditRequest}
                 cardBoundaries={cardBoundaries}
                 cards={cards}
@@ -769,6 +772,7 @@ export function DesktopApp({
             informalAssets={informalAssets}
             onCreateInformalPlace={onCreateInformalPlace}
             focusedInformalId={focusedInformalId}
+            onSaveInformalShape={onSaveInformalShape}
             boundaryEditRequest={boundaryEditRequest}
             cardBoundaries={mapCardBoundaries}
             cards={mapCards}

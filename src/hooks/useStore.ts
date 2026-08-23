@@ -752,6 +752,7 @@ export function useStore() {
   const {
     createInformalPlace,
     updateInformalPlace,
+    saveInformalShape,
     uploadInformalAsset,
     deleteInformalAsset,
     createInformalGroup,
@@ -879,6 +880,7 @@ export function useStore() {
     informalGroups,
     createInformalPlace,
     updateInformalPlace,
+    saveInformalShape,
     uploadInformalAsset,
     deleteInformalAsset,
     createInformalGroup,

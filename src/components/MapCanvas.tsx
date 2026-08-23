@@ -244,6 +244,14 @@ function pointInRing(x: number, y: number, ring: [number, number][]): boolean {
 // 폴리곤 라벨 위치: 면적 가중 중심(centroid). 중심이 폴리곤 밖이면 bbox 중심으로 폴백.
 // → 삐뚤어진/사다리꼴 구역에서도 라벨이 안쪽에 들어옴.
 /** 비공식 장소 핀. 건물 핀과 색을 달리해 섞이지 않게 한다 */
+/** 동선의 순서 표시. A, B, C … 26곳을 넘으면 숫자로 */
+function routeStepHtml(index: number): string {
+  const label = index < 26 ? String.fromCharCode(65 + index) : String(index + 1)
+  return `<div style="width:18px;height:18px;border-radius:50%;background:#C44536;color:#fff;
+    font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;
+    border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35)">${label}</div>`
+}
+
 function informalMarkerHtml(name: string): string {
   const safe = String(name ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -410,6 +418,7 @@ function NaverMapCanvas({
   buildings,
   informalPlaces = [],
   onSelectInformal,
+  informalShape,
   focusPoint,
   aggregateMarkers = [],
   cardBoundaries,
@@ -454,6 +463,8 @@ function NaverMapCanvas({
   buildings: Building[]
   informalPlaces?: InformalPlacePin[]
   onSelectInformal?: (id: number) => void
+  /** 선택한 장소의 모양만 그린다. 전부 그리면 지도가 못 볼 지경이 된다 */
+  informalShape?: { boundary?: GeoPoint[] | null; route?: GeoPoint[] | null } | null
   /** 이 좌표로 지도를 옮긴다. 마커는 그리지 않는다 — 이미 그려진 핀을 보여 주려는 것이다 */
   focusPoint?: { lat: number; lng: number; zoom?: number | null } | null
   aggregateMarkers?: MapAggregateMarker[]
@@ -1517,6 +1528,56 @@ function NaverMapCanvas({
     rebuildMarkers()
   }, [virtualPinLat, virtualPinLng, virtualPinLabel])
 
+  const informalShapeRef = useRef(informalShape)
+  informalShapeRef.current = informalShape
+  const informalShapeOverlaysRef = useRef<any[]>([])
+
+  /**
+   * 선택한 장소의 구역선(닫힌 도형)과 동선(열린 선)을 그린다.
+   * 같은 좌표 목록이고 그리는 도구도 같다 — 닫느냐 마느냐만 다르다.
+   */
+  const rebuildInformalShape = () => {
+    const naver = (window as any).naver
+    if (!naver?.maps || !mapInstanceRef.current) return
+
+    informalShapeOverlaysRef.current.forEach((o) => o.setMap(null))
+    informalShapeOverlaysRef.current = []
+
+    const shape = informalShapeRef.current
+    if (!shape) return
+    const toPath = (points: GeoPoint[]) =>
+      points.map((p) => new naver.maps.LatLng(p.lat, p.lng))
+
+    if (shape.boundary && shape.boundary.length >= 3) {
+      informalShapeOverlaysRef.current.push(new naver.maps.Polygon({
+        map: mapInstanceRef.current,
+        paths: toPath(shape.boundary),
+        fillColor: '#7A5C8A', fillOpacity: 0.1,
+        strokeColor: '#7A5C8A', strokeOpacity: 0.7, strokeWeight: 2,
+      }))
+    }
+
+    if (shape.route && shape.route.length >= 2) {
+      informalShapeOverlaysRef.current.push(new naver.maps.Polyline({
+        map: mapInstanceRef.current,
+        path: toPath(shape.route),
+        strokeColor: '#C44536', strokeOpacity: 0.9, strokeWeight: 4,
+        // 어느 쪽으로 가는지 — 끝에 화살표를 붙인다
+        endIcon: naver.maps.PointingIcon.OPEN_ARROW,
+        endIconSize: 14,
+      }))
+      // 순서를 알려 주는 Ⓐ Ⓑ Ⓒ
+      shape.route.forEach((p, i) => {
+        informalShapeOverlaysRef.current.push(new naver.maps.Marker({
+          map: mapInstanceRef.current,
+          position: new naver.maps.LatLng(p.lat, p.lng),
+          icon: { content: routeStepHtml(i), anchor: new naver.maps.Point(9, 9) },
+          zIndex: 7,
+        }))
+      })
+    }
+  }
+
   const focusPointRef = useRef(focusPoint)
   focusPointRef.current = focusPoint
 
@@ -1539,6 +1600,11 @@ function NaverMapCanvas({
     if (!scriptLoadedRef.current) return
     rebuildInformalMarkers()
   }, [informalPlaces])
+
+  useEffect(() => {
+    if (!mapReady) return
+    rebuildInformalShape()
+  }, [informalShape, mapReady])
 
   // 건물 목록, 선택, 또는 미리보기 핀 변경 시 마커 재생성
   useEffect(() => {
@@ -1793,11 +1859,13 @@ export function MapCanvas({
   hideBuildingMarkers = false,
   informalPlaces = [],
   onSelectInformal,
+  informalShape,
   focusPoint,
 }: {
   buildings: Building[]
   informalPlaces?: InformalPlacePin[]
   onSelectInformal?: (id: number) => void
+  informalShape?: { boundary?: GeoPoint[] | null; route?: GeoPoint[] | null } | null
   focusPoint?: { lat: number; lng: number; zoom?: number | null } | null
   aggregateMarkers?: MapAggregateMarker[]
   cardBoundaries?: CardBoundary[]
@@ -1851,6 +1919,7 @@ export function MapCanvas({
           buildings={validBuildings}
           informalPlaces={informalPlaces}
           onSelectInformal={onSelectInformal}
+          informalShape={informalShape}
           focusPoint={focusPoint}
           aggregateMarkers={aggregateMarkers}
           cardBoundaries={cardBoundaries}

@@ -83,6 +83,7 @@ export function DesktopMap({
   informalAssets = [],
   onCreateInformalPlace,
   focusedInformalId,
+  onSaveInformalShape,
 }: {
   language: AppLanguage;
   buildings: Building[]
@@ -90,6 +91,7 @@ export function DesktopMap({
   informalAssets?: InformalAsset[]
   /** 비공식 화면에서 '지도에서 보기' 로 들어왔을 때 그 장소로 옮긴다 */
   focusedInformalId?: number | null
+  onSaveInformalShape?: (assetId: number, field: 'boundary' | 'route', points: GeoPoint[]) => Promise<boolean>
   onCreateInformalPlace?: (input: {
     name: string; createdBy: string; groupId?: number | null
     lat: number; lng: number; memo?: string; zoom?: number | null
@@ -181,6 +183,13 @@ export function DesktopMap({
   const [showInformal, setShowInformal] = useState<boolean>(() => Boolean(focusedInformalId))
   const [informalDraft, setInformalDraft] = useState<{ lat: number; lng: number; name: string; memo: string } | null>(null)
   const [savingInformal, setSavingInformal] = useState(false)
+  /**
+   * 구역선 그리기의 대상. null 이면 구역 카드(기존 동작).
+   * 도구는 그대로 쓰고 '어디에 저장하느냐' 만 바꾼다.
+   */
+  const [informalShapeTarget, setInformalShapeTarget] = useState<
+    { assetId: number; field: 'boundary' | 'route' } | null
+  >(null)
   const [showMapActionMenu, setShowMapActionMenu] = useState(false)
   const [showBoundaryActionMenu, setShowBoundaryActionMenu] = useState(false)
   const [editingPinMode, setEditingPinMode] = useState(false)
@@ -386,6 +395,22 @@ export function DesktopMap({
       </div>
     </div>
   ) : null
+
+  const selectedInformal = useMemo(
+    () => (focusedInformalId ? informalAssets.find((a) => a.id === focusedInformalId) ?? null : null),
+    [focusedInformalId, informalAssets],
+  )
+
+  // 그리는 중에는 원본 대신 지금 찍고 있는 점을 보여 준다
+  const informalShape = useMemo(() => {
+    if (!selectedInformal || !showInformal) return null
+    if (informalShapeTarget?.assetId === selectedInformal.id) {
+      return informalShapeTarget.field === 'boundary'
+        ? { boundary: draftBoundaryPoints, route: selectedInformal.route }
+        : { boundary: selectedInformal.boundary, route: draftBoundaryPoints }
+    }
+    return { boundary: selectedInformal.boundary, route: selectedInformal.route }
+  }, [selectedInformal, showInformal, informalShapeTarget, draftBoundaryPoints])
 
   const informalFocusPoint = useMemo(() => {
     if (!focusedInformalId) return null
@@ -932,11 +957,27 @@ export function DesktopMap({
 
   const handleSaveBoundary = async () => {
     setSavingBoundary(true)
-    await onSaveCardBoundary(boundaryCardId, draftBoundaryPoints)
+    if (informalShapeTarget && onSaveInformalShape) {
+      await onSaveInformalShape(informalShapeTarget.assetId, informalShapeTarget.field, draftBoundaryPoints)
+      setInformalShapeTarget(null)
+    } else {
+      await onSaveCardBoundary(boundaryCardId, draftBoundaryPoints)
+    }
     setSavingBoundary(false)
     setDrawingBoundary(false)
     setDraftBoundaryPoints([])
     setUndoStack([])
+  }
+
+  /** 비공식 장소의 구역선·동선 그리기 시작. 도구는 구역 카드와 같은 것을 쓴다 */
+  const startInformalShapeDrawing = (field: 'boundary' | 'route') => {
+    if (!selectedInformal) return
+    setShowMapActionMenu(false)
+    setShowInformal(true)
+    setInformalShapeTarget({ assetId: selectedInformal.id, field })
+    setDraftBoundaryPoints((field === 'boundary' ? selectedInformal.boundary : selectedInformal.route) ?? [])
+    setUndoStack([])
+    setDrawingBoundary(true)
   }
 
   const handleSelectCardForMap = (cardId: number) => {
@@ -1757,6 +1798,7 @@ export function DesktopMap({
               onUpdateBoundaryPoint={updateDraftBoundaryPoint}
               onMapRightClick={handleMapRightClick}
               focusPoint={informalFocusPoint}
+              informalShape={informalShape}
               informalPlaces={informalPins}
               onSelectInformal={(id) => {
                 const place = informalAssets.find((a) => a.id === id)
@@ -2617,6 +2659,38 @@ export function DesktopMap({
       )}
 
       {informalDraftModal}
+
+      {/* 비공식 장소로 들어왔을 때 — 그 장소의 모양을 그리는 자리.
+          그리는 중에는 아래쪽 구역선 도구(저장/취소)가 그대로 뜬다 */}
+      {selectedInformal && showInformal && !drawingBoundary && onSaveInformalShape && (
+        <div style={{
+          position: 'absolute', left: 16, bottom: 16, zIndex: 30,
+          background: 'var(--surface, #fff)', border: '1px solid var(--line)',
+          borderRadius: 12, padding: 12, boxShadow: '0 8px 24px rgba(0,0,0,.14)',
+          maxWidth: 280,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: '#7A5C8A' }} />
+            <strong style={{ fontSize: 13.5 }}>{selectedInformal.name}</strong>
+          </div>
+          {selectedInformal.memo?.trim() && (
+            <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6 }}>
+              {selectedInformal.memo}
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button className="ds-btn" onClick={() => startInformalShapeDrawing('boundary')} type="button">
+              {selectedInformal.boundary?.length ? '구역선 수정' : '구역선 그리기'}
+            </button>
+            <button className="ds-btn" onClick={() => startInformalShapeDrawing('route')} type="button">
+              {selectedInformal.route?.length ? '동선 수정' : '동선 그리기'}
+            </button>
+          </div>
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.55 }}>
+            지도를 눌러 점을 찍습니다. 구역선은 3점, 동선은 2점부터 저장됩니다.
+          </p>
+        </div>
+      )}
     </section>
   )
 }

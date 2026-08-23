@@ -60,6 +60,37 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     return true
   }
 
+  /**
+   * 비공식 장소의 구역선·동선 저장.
+   *
+   * 둘은 같은 좌표 목록이고 그리는 도구도 같다 — 그리는 방식이 아니라
+   * 어디에 담느냐만 다르다 (구역선은 닫힌 도형, 동선은 열린 선).
+   * 빈 목록을 주면 지운다.
+   */
+  const saveInformalShape = async (
+    assetId: number,
+    field: 'boundary' | 'route',
+    points: { lat: number; lng: number }[],
+  ): Promise<boolean> => {
+    const value = points.length >= 2 ? points : null
+    const { error } = await supabase
+      .from('informal_assets')
+      .update({ [field]: value })
+      .eq('id', assetId)
+    if (error) {
+      const message = (error as { message?: string }).message ?? ''
+      if (/boundary|route|column/.test(message)) {
+        showToast(msg('지도 칸이 아직 없습니다. supabase/v3_informal_map.sql 을 실행해 주세요.'), 'error')
+      } else {
+        reportMutationError(msg('지도 모양을 저장하지 못했습니다.'), error)
+      }
+      return false
+    }
+    await fetchAll()
+    showToast(value ? msg('저장했습니다') : msg('지웠습니다'))
+    return true
+  }
+
   /** 핀·메모 고치기. 사진이 있는 기존 자료에도 그대로 쓴다 */
   const updateInformalPlace = async (
     assetId: number,
@@ -315,6 +346,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
   return {
     createInformalPlace,
     updateInformalPlace,
+    saveInformalShape,
     uploadInformalAsset,
     deleteInformalAsset,
     createInformalGroup,
