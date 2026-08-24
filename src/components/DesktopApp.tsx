@@ -184,7 +184,7 @@ export function DesktopApp({
   leaderNames: string[]
   notices: Notice[]
   serviceSessions: ServiceSession[]
-  onAddUnit: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void | number[]>
+  onAddUnit: (buildingId: number, unitNumber: string | string[]) => Promise<number[] | false>
   onApplyToEvent: (eventId: number) => void
   onSetCardLeaders: (cardId: number, leaderNames: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
   onSetMultipleCardLeaders: (cardIds: number[], leaderNames: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void

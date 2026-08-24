@@ -324,7 +324,7 @@ export function MobileHome({
   onChangeViewMode: (role: Role) => void
   onChangeLanguage: (language: AppLanguage) => void
   onSetCardLeaders: (cardId: number, leaderNames: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
-  onAddUnit: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void | number[]>
+  onAddUnit: (buildingId: number, unitNumber: string | string[]) => Promise<number[] | false>
   allUsers?: Array<{ id: number; name: string; phone?: string | null; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked'; groupName?: string | null }>
   onChangePin: (newPin: string) => Promise<boolean>
   onUpdateMyProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>

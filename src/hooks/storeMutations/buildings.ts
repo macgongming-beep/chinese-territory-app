@@ -196,7 +196,11 @@ export function makeBuildingMutations(deps: {
     return { inserted, skipped }
   }
 
-  const addUnitToBuilding = async (buildingId: number, unitNumber: string | string[]) => {
+  /** 성공하면 새로 만든 호수 id 들, 실패하면 false. 화면이 입력을 지킬 수 있어야 한다 */
+  const addUnitToBuilding = async (
+    buildingId: number,
+    unitNumber: string | string[],
+  ): Promise<number[] | false> => {
     const unitNumbers = [...new Set(
       (Array.isArray(unitNumber) ? unitNumber : [unitNumber])
         .map((number) => number.trim())

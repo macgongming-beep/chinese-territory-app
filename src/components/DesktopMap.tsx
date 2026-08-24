@@ -104,7 +104,7 @@ export function DesktopMap({
   serviceSessions: ServiceSession[]
   focusedCardId?: number | null
   focusedBuildingId?: number | null
-  onAddUnit: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void | number[]>
+  onAddUnit: (buildingId: number, unitNumber: string | string[]) => Promise<number[] | false>
   onCreateBuilding: (input: {
     cardId: number
     name: string
@@ -112,7 +112,7 @@ export function DesktopMap({
     type: Building['type']
     lat: number
     lng: number
-  }) => Promise<boolean | void> | boolean | void
+  }) => Promise<boolean>
   onDeleteBuilding: (buildingId: number) => void
   onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => void
   onDeleteCardBoundary: (cardId: number) => void
@@ -195,6 +195,12 @@ export function DesktopMap({
   const [editingPinMode, setEditingPinMode] = useState(false)
   const [showAddBuildingModal, setShowAddBuildingModal] = useState(false)
   const [newUnitNumber, setNewUnitNumber] = useState('101')
+  /** 호수 추가. 결과를 보고 나서 입력을 비운다 — 실패했는데 비우면 적은 호수가 사라진다 */
+  const submitUnit = async (buildingId: number) => {
+    const number = newUnitNumber.trim()
+    if (!number) return
+    if (await onAddUnit(buildingId, number)) setNewUnitNumber('')
+  }
   const [boundaryCardId, setBoundaryCardId] = useState<number>(cards[0]?.id ?? 1)
   const [visibleBoundarySelection, setVisibleBoundarySelection] = useState<number | '전체' | null>('전체')
   const [boundaryMultiSelectMode, setBoundaryMultiSelectMode] = useState(false)
@@ -538,7 +544,7 @@ export function DesktopMap({
           lat: newBuildingLat,
           lng: newBuildingLng,
         })
-        if (created === false) return
+        if (!created) return
 
         setNewBuildingCardId(targetCardId)
         revealAddedBuildingCard(targetCardId)
@@ -2309,8 +2315,8 @@ export function DesktopMap({
 
                     {addingUnitToBuildingId === building.id ? (
                       <div className="inline-add-unit-form bld-add-unit-form">
-                        <input autoFocus placeholder={t(currentLang(), 'unit.addUnitPlaceholder')} value={newUnitNumber} onChange={(e) => setNewUnitNumber(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newUnitNumber.trim()) { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') } }} />
-                        <button disabled={!newUnitNumber.trim()} onClick={() => { onAddUnit(building.id, newUnitNumber.trim()); setNewUnitNumber('') }}>{t(language, 'map.add')}</button>
+                        <input autoFocus placeholder={t(currentLang(), 'unit.addUnitPlaceholder')} value={newUnitNumber} onChange={(e) => setNewUnitNumber(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newUnitNumber.trim()) void submitUnit(building.id) }} />
+                        <button disabled={!newUnitNumber.trim()} onClick={() => void submitUnit(building.id)}>{t(language, 'map.add')}</button>
                         <button onClick={() => setAddingUnitToBuildingId(null)} style={{ background: '#f1f5f9', color: 'var(--ink-500)' }}>✕</button>
                       </div>
                     ) : (

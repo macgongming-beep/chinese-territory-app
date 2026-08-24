@@ -83,7 +83,7 @@ export function MobileMap({
   focusedScopeLabel?: string
   onOpenLocationSettings?: () => void
   onBack: () => void
-  onAddUnit: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void | number[]>
+  onAddUnit: (buildingId: number, unitNumber: string | string[]) => Promise<number[] | false>
   onCreateBuilding: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => void
   onDeleteBuilding: (buildingId: number) => void
   onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number) => void
@@ -1540,10 +1540,10 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                           // 입력이 비어 있으면 이미 있는 호수 다음 번호를 알아서 붙인다
                           const existingNumbers = building.units.map((u) => u.number)
                           const suggested = suggestNextUnitNumber(existingNumbers)
-                          const submitUnit = () => {
+                          const submitUnit = async () => {
                             const number = newUnitNumber.trim() || suggested
-                            onAddUnit(building.id, number)
-                            setNewUnitNumber('')
+                            // 결과를 보고 나서 비운다 — 실패했는데 비우면 적은 호수가 사라진다
+                            if (await onAddUnit(building.id, number)) setNewUnitNumber('')
                           }
                           const noEntryLabel = t(language, 'unit.noEntry')
                           const addNoEntry = async () => {
@@ -1569,7 +1569,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                           return (
                           <div className="mm-unit-add-row">
                             <input autoFocus placeholder={suggested} value={newUnitNumber} onChange={e => setNewUnitNumber(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') submitUnit() }}
+                              onKeyDown={e => { if (e.key === 'Enter') void submitUnit() }}
                               className="mm-unit-add-input" />
                             <button onClick={submitUnit}
                               className="mm-unit-add-btn">{t(language, 'common.add')}</button>
