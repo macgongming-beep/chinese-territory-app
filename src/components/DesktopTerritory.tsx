@@ -154,12 +154,12 @@ export function DesktopTerritory({
     buildingId: number,
     unitId: number,
     input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string },
-  ) => void
+  ) => Promise<boolean>
   onUpdateVisitHistory: (
     historyId: number,
     unitId: number,
     input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string },
-  ) => void
+  ) => Promise<boolean>
   onDeleteVisitHistory?: (historyId: number, unitId: number) => void
   onRestoreCardBoundaries?: (boundaries: CardBoundary[]) => Promise<void> | void
   onMergeCardBoundaries?: (input: {
@@ -360,15 +360,16 @@ export function DesktopTerritory({
     })
   }
 
-  const savePointVisitEditor = (payload: VisitDraft) => {
-    if (!pointVisitEditor) return
-    if (pointVisitEditor.mode === 'edit' && pointVisitEditor.historyId) {
-      onUpdateVisitHistory(pointVisitEditor.historyId, pointVisitEditor.unitId, payload)
-    } else {
-      onAddVisitHistory(pointVisitEditor.buildingId, pointVisitEditor.unitId, payload)
-    }
-    setPointVisitEditor(null)
+  const savePointVisitEditor = async (payload: VisitDraft): Promise<boolean> => {
+    if (!pointVisitEditor) return false
+    const ok = pointVisitEditor.mode === 'edit' && pointVisitEditor.historyId
+      ? await onUpdateVisitHistory(pointVisitEditor.historyId, pointVisitEditor.unitId, payload)
+      : await onAddVisitHistory(pointVisitEditor.buildingId, pointVisitEditor.unitId, payload)
+    // 닫는 것은 편집기가 한다 — 실패했는데 닫히면 적은 내용이 사라진다
+    if (ok) setPointVisitEditor(null)
+    return ok
   }
+
 
   const deletePointVisitHistory = async (history: VisitHistory) => {
     if (!onDeleteVisitHistory) return

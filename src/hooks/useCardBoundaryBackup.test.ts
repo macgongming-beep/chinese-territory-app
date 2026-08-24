@@ -22,7 +22,8 @@ function fileEvent(content: string) {
 }
 
 function setup(onRestore = vi.fn()) {
-  const { result } = renderHook(() => useCardBoundaryBackup([], [], onRestore))
+  const { result } = renderHook(() => useCardBoundaryBackup(
+    CARDS.map((c) => ({ ...c, region: '수지구', area: '죽전동' })), [], onRestore))
   return { restore: onRestore, hook: result }
 }
 
@@ -32,12 +33,15 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
-const backup = (cards: unknown[]) => JSON.stringify({ cards })
+const backup = (cards: unknown[]) => JSON.stringify({ type: 'chs-yongin-card-boundaries', version: 1, cards })
+const entry = (cardId: number, cardName: string, boundary: unknown = square) =>
+  ({ cardId, cardName, region: '수지구', area: '죽전동', boundary })
+const CARDS = [{ id: 5, name: '수지구 죽전동 1' }, { id: 1, name: 'A' }, { id: 2, name: 'B' }]
 
 describe('구역선 복구', () => {
   test('확인을 누르면 복구한다', async () => {
     const { restore, hook } = setup()
-    await hook.current.importBackup(fileEvent(backup([{ cardId: 5, boundary: square }])))
+    await hook.current.importBackup(fileEvent(backup([entry(5, '수지구 죽전동 1')])))
 
     expect(confirmMock).toHaveBeenCalled()
     expect(restore).toHaveBeenCalledWith([{ cardId: 5, points: square }])
@@ -46,7 +50,7 @@ describe('구역선 복구', () => {
   test('확인을 취소하면 아무것도 안 한다', async () => {
     confirmMock.mockResolvedValue(false)
     const { restore, hook } = setup()
-    await hook.current.importBackup(fileEvent(backup([{ cardId: 5, boundary: square }])))
+    await hook.current.importBackup(fileEvent(backup([entry(5, '수지구 죽전동 1')])))
 
     expect(restore).not.toHaveBeenCalled()
   })
@@ -63,8 +67,8 @@ describe('구역선 복구', () => {
   test('좌표 하나만 깨져도 통째로 안 넣는다', async () => {
     const { restore, hook } = setup()
     await hook.current.importBackup(fileEvent(backup([
-      { cardId: 1, boundary: square },
-      { cardId: 2, boundary: [{ lat: 'x', lng: 1 }, { lat: 1, lng: 1 }, { lat: 2, lng: 2 }] },
+      entry(1, 'A'),
+      entry(2, 'B', [{ lat: 'x', lng: 1 }, { lat: 1, lng: 1 }, { lat: 2, lng: 2 }]),
     ])))
 
     expect(restore).not.toHaveBeenCalled()
@@ -73,9 +77,7 @@ describe('구역선 복구', () => {
   test('쓸 만한 구역선이 없으면 확인조차 묻지 않는다', async () => {
     const { restore, hook } = setup()
     // 꼭짓점 2개짜리는 면이 안 된다 → 걸러지면 빈 목록
-    await hook.current.importBackup(fileEvent(backup([
-      { cardId: 1, boundary: [{ lat: 1, lng: 1 }, { lat: 2, lng: 2 }] },
-    ])))
+    await hook.current.importBackup(fileEvent(backup([entry(1, 'A', [{ lat: 1, lng: 1 }, { lat: 2, lng: 2 }])])))
 
     expect(confirmMock).not.toHaveBeenCalled()
     expect(restore).not.toHaveBeenCalled()
@@ -83,17 +85,46 @@ describe('구역선 복구', () => {
   })
 
   test('복구 콜백이 없으면 아무것도 안 한다', async () => {
-    const { result } = renderHook(() => useCardBoundaryBackup([], [] as CardBoundary[], undefined))
-    await result.current.importBackup(fileEvent(backup([{ cardId: 1, boundary: square }])))
+      const { result } = renderHook(() => useCardBoundaryBackup([], [] as CardBoundary[], undefined))
+    await result.current.importBackup(fileEvent(backup([entry(1, 'A')])))
 
     expect(confirmMock).not.toHaveBeenCalled()
   })
 
   test('같은 파일을 다시 골라도 열리게 input 을 비운다', async () => {
     const { hook } = setup()
-    const ev = fileEvent(backup([{ cardId: 1, boundary: square }]))
+    const ev = fileEvent(backup([entry(1, 'A')]))
     await hook.current.importBackup(ev)
 
     expect((ev as unknown as { target: { value: string } }).target.value).toBe('')
+  })
+})
+
+describe('신원이 안 맞는 백업', () => {
+  test('id 는 같은데 다른 회중 카드면 복구하지 않는다', async () => {
+    const { restore, hook } = setup()
+    await hook.current.importBackup(fileEvent(backup([entry(5, '안성시 공도읍 3')])))
+
+    expect(confirmMock).not.toHaveBeenCalled()
+    expect(restore).not.toHaveBeenCalled()
+    expect(toastMock).toHaveBeenCalledWith(expect.stringContaining('맞지 않습니다'), 'error')
+  })
+
+  test('맞는 것만 넣고, 건너뛴 개수를 확인창에 알린다', async () => {
+    const { restore, hook } = setup()
+    await hook.current.importBackup(fileEvent(backup([
+      entry(5, '수지구 죽전동 1'),
+      entry(1, '틀린 이름'),
+    ])))
+
+    expect(confirmMock).toHaveBeenCalledWith({ message: expect.stringContaining('건너뜁니다') })
+    expect(restore).toHaveBeenCalledWith([{ cardId: 5, points: square }])
+  })
+
+  test('복구 중 DB 가 실패하면 알린다 — 파일 탓으로 돌리지 않는다', async () => {
+    const { hook } = setup(vi.fn(async () => { throw new Error('DB 끊김') }))
+    await hook.current.importBackup(fileEvent(backup([entry(5, '수지구 죽전동 1')])))
+
+    expect(toastMock).toHaveBeenCalledWith(expect.stringContaining('복구하지 못했습니다'), 'error')
   })
 })

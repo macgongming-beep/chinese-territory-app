@@ -1,7 +1,7 @@
 // 구역선 백업 파서. **이게 틀리면 진짜 구역선 위에 엉뚱한 게 덮인다.**
 // 되돌리려면 다시 그리는 수밖에 없다 — 카드 하나에 수십 개 꼭짓점이다.
 import { describe, test, expect } from 'vitest'
-import { downloadCardBoundaryBackup, mergeCardBoundaryPoints, parseCardBoundaryBackup } from './boundaryMerge'
+import { downloadCardBoundaryBackup, mergeCardBoundaryPoints, parseCardBoundaryBackup, planBoundaryRestore } from './boundaryMerge'
 import type { CardBoundary } from '../types'
 
 const square = (o = 0) => [
@@ -9,35 +9,56 @@ const square = (o = 0) => [
   { lat: 37.1 + o, lng: 127.1 + o }, { lat: 37.1 + o, lng: 127 + o },
 ]
 
-const backup = (cards: unknown[]) => JSON.stringify({ type: 'chs-yongin-card-boundaries', version: 1, cards })
+const backup = (cards: unknown[], type = 'chs-yongin-card-boundaries') =>
+  JSON.stringify({ type, version: 1, cards })
+const entry = (cardId: number, cardName: string, boundary = square()) =>
+  ({ cardId, cardName, region: '수지구', area: '죽전동', boundary })
 
 describe('parseCardBoundaryBackup', () => {
-  test('정상 백업을 읽는다', () => {
-    const out = parseCardBoundaryBackup(backup([{ cardId: 7, boundary: square() }]))
-    expect(out).toEqual([{ cardId: 7, points: square() }])
+  test('정상 백업을 읽는다 — 이름·지역·동까지 살린다', () => {
+    const out = parseCardBoundaryBackup(backup([entry(7, '수지구 죽전동 1')]))
+    expect(out).toEqual([{ cardId: 7, cardName: '수지구 죽전동 1', region: '수지구', area: '죽전동', points: square() }])
+  })
+
+  test('구역선 백업이 아닌 JSON 은 거절한다', () => {
+    // 아무 JSON 이나 받으면 엉뚱한 파일로 구역선을 덮는다
+    expect(() => parseCardBoundaryBackup(JSON.stringify({ cards: [] }))).toThrow()
+    expect(() => parseCardBoundaryBackup(backup([], '다른 앱 백업'))).toThrow()
+  })
+
+  test('지구 밖 좌표는 거절한다', () => {
+    expect(() => parseCardBoundaryBackup(backup([
+      entry(1, 'A', [{ lat: 999, lng: 127 }, { lat: 37, lng: 127 }, { lat: 37.1, lng: 127.1 }]),
+    ]))).toThrow()
+  })
+
+  test('면이 안 되는 도형은 버린다 (같은 점 · 일직선)', () => {
+    const same = [{ lat: 37, lng: 127 }, { lat: 37, lng: 127 }, { lat: 37, lng: 127 }]
+    const line = [{ lat: 37, lng: 127 }, { lat: 37.1, lng: 127.1 }, { lat: 37.2, lng: 127.2 }]
+    expect(parseCardBoundaryBackup(backup([entry(1, 'A', same)]))).toEqual([])
+    expect(parseCardBoundaryBackup(backup([entry(2, 'B', line)]))).toEqual([])
   })
 
   test('꼭짓점이 3개 미만이면 버린다 — 면이 안 되는 도형이다', () => {
     const out = parseCardBoundaryBackup(backup([
-      { cardId: 1, boundary: square() },
-      { cardId: 2, boundary: [{ lat: 37, lng: 127 }, { lat: 37.1, lng: 127.1 }] },
+      entry(1, 'A'),
+      entry(2, 'B', [{ lat: 37, lng: 127 }, { lat: 37.1, lng: 127.1 }]),
     ]))
     expect(out.map((b) => b.cardId)).toEqual([1])
   })
 
   test('cards 가 배열이 아니면 던진다', () => {
-    expect(() => parseCardBoundaryBackup(JSON.stringify({ cards: '아님' }))).toThrow()
-    expect(() => parseCardBoundaryBackup(JSON.stringify({}))).toThrow()
+    expect(() => parseCardBoundaryBackup(backup('아님' as never))).toThrow()
   })
 
   test('좌표가 숫자가 아니면 통째로 던진다 — 일부만 복구하면 더 위험하다', () => {
     expect(() => parseCardBoundaryBackup(backup([
-      { cardId: 1, boundary: [{ lat: 37, lng: 127 }, { lat: 'x', lng: 127 }, { lat: 37.1, lng: 127.1 }] },
+      entry(1, 'A', [{ lat: 37, lng: 127 }, { lat: 'x', lng: 127 }, { lat: 37.1, lng: 127.1 }] as never),
     ]))).toThrow()
   })
 
   test('cardId 가 숫자가 아니면 던진다', () => {
-    expect(() => parseCardBoundaryBackup(backup([{ cardId: '없음', boundary: square() }]))).toThrow()
+    expect(() => parseCardBoundaryBackup(backup([{ cardId: '없음', cardName: 'A', boundary: square() }]))).toThrow()
   })
 
   test('JSON 이 아니면 던진다', () => {
@@ -61,7 +82,9 @@ describe('parseCardBoundaryBackup', () => {
     } finally {
       globalThis.Blob = origBlob
     }
-    expect(parseCardBoundaryBackup(captured)).toEqual(boundaries)
+    expect(parseCardBoundaryBackup(captured)).toEqual([
+      { cardId: 3, cardName: '수지구 죽전동 1', region: '수지구', area: '죽전동', points: square() },
+    ])
   })
 
   test('구역선이 없는 카드는 백업에 안 들어간다', () => {
@@ -112,5 +135,39 @@ describe('mergeCardBoundaryPoints', () => {
     ])
     expect(merged).not.toBeNull()
     expect(merged!.points.length).toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('planBoundaryRestore — 엉뚱한 카드를 덮지 않는다', () => {
+  const now = [{ id: 1, name: '수지구 죽전동 1' }, { id: 2, name: '수지구 상현동 1' }]
+  const e = (cardId: number, cardName: string) =>
+    ({ cardId, cardName, region: '', area: '', points: square() })
+
+  test('id 와 이름이 맞으면 넣는다', () => {
+    const plan = planBoundaryRestore([e(1, '수지구 죽전동 1')], now)
+    expect(plan.apply).toEqual([{ cardId: 1, points: square() }])
+    expect(plan.refused).toEqual([])
+  })
+
+  test('id 는 같은데 이름이 다르면 거절한다 — 다른 회중 백업이 여기로 온다', () => {
+    const plan = planBoundaryRestore([e(1, '안성시 공도읍 3')], now)
+    expect(plan.apply).toEqual([])
+    expect(plan.refused).toEqual([{ cardId: 1, cardName: '안성시 공도읍 3', reason: '다른 카드' }])
+  })
+
+  test('없는 카드는 거절한다', () => {
+    const plan = planBoundaryRestore([e(99, '어디 카드')], now)
+    expect(plan.refused[0].reason).toBe('없는 카드')
+  })
+
+  test('맞는 것만 넣고 나머지는 건너뛴다', () => {
+    const plan = planBoundaryRestore([e(1, '수지구 죽전동 1'), e(2, '틀린 이름'), e(99, '없음')], now)
+    expect(plan.apply.map((b) => b.cardId)).toEqual([1])
+    expect(plan.refused).toHaveLength(2)
+  })
+
+  test('이름이 안 적힌 옛 백업은 id 로 받는다', () => {
+    const plan = planBoundaryRestore([e(1, '')], now)
+    expect(plan.apply.map((b) => b.cardId)).toEqual([1])
   })
 })

@@ -76,8 +76,10 @@ export function territoryProps(overrides: Record<string, unknown> = {}) {
     onDeleteUnit: vi.fn(noop),
     onUpdateUnitFlags: vi.fn(noop),
     onUpdateUnitStatus: vi.fn(noop),
-    onAddVisitHistory: vi.fn(noop),
-    onUpdateVisitHistory: vi.fn(noop),
+    // 계약이 Promise<boolean> 이다. 기본은 성공.
+    // 실패를 보고 싶은 테스트는 async () => false 로 덮어쓴다.
+    onAddVisitHistory: vi.fn(async () => true),
+    onUpdateVisitHistory: vi.fn(async () => true),
     onOpenCardMap: vi.fn(noop),
     onOpenBuildingMap: vi.fn(noop),
     onCreateCard: vi.fn(async () => 1),

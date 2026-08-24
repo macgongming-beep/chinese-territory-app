@@ -20,16 +20,37 @@ type Props = {
   label: string
   initial: VisitDraft
   onClose: () => void
-  onSave: (draft: VisitDraft) => void
+  /**
+   * 저장. **성공하면 true, 실패하면 false.**
+   * 실패했는데 창이 닫히면 사용자가 적은 내용이 사라진다.
+   */
+  onSave: (draft: VisitDraft) => Promise<boolean>
 }
 
 export function PointVisitEditor({ mode, label, initial, onClose, onSave }: Props) {
   const [draft, setDraft] = useState<VisitDraft>(initial)
+  const [saving, setSaving] = useState(false)
   const set = <K extends keyof VisitDraft>(key: K, value: VisitDraft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }))
 
+  const save = async () => {
+    if (saving || !draft.visitedAt) return
+    setSaving(true)
+    try {
+      if (await onSave(draft)) onClose()
+      // 실패면 창을 열어 둔다 — 적은 내용을 지킨다
+    } catch {
+      // 예상 못 한 장애. 알림은 저장하는 쪽이 띄운다
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /** 저장 중에는 닫지 않는다. 닫아도 저장은 계속돼 결과를 아무도 못 본다 */
+  const requestClose = () => { if (!saving) onClose() }
+
   return (
-    <div className="cal-modal-backdrop" onClick={onClose}>
+    <div className="cal-modal-backdrop" onClick={requestClose}>
       <div className="cal-modal territory-confirm-modal" onClick={(e) => e.stopPropagation()}>
         <div className="cal-modal-head">
           <div className="cal-modal-title">
@@ -75,14 +96,14 @@ export function PointVisitEditor({ mode, label, initial, onClose, onSave }: Prop
           </div>
         </div>
         <div className="cal-modal-foot">
-          <button className="cal-cancel-btn" onClick={onClose} type="button">취소</button>
+          <button className="cal-cancel-btn" disabled={saving} onClick={requestClose} type="button">취소</button>
           <button
             className="cal-save-btn"
-            disabled={!draft.visitedAt}
-            onClick={() => onSave(draft)}
+            disabled={!draft.visitedAt || saving}
+            onClick={() => void save()}
             type="button"
           >
-            저장
+            {saving ? '저장 중…' : '저장'}
           </button>
         </div>
       </div>

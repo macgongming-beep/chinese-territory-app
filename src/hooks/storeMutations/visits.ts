@@ -369,11 +369,12 @@ export function makeVisitMutations(deps: {
     showToast(msg('최근 입력이 취소됐습니다'))
   }
 
+  /** 성공하면 true. 실패하면 false — 화면이 입력을 지킬 수 있어야 한다 */
   const updateVisitHistory = async (
     historyId: number,
     unitId: number,
     input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string },
-  ) => {
+  ): Promise<boolean> => {
     const historyResult = await supabase
       .from('visit_histories')
       .update({
@@ -386,7 +387,7 @@ export function makeVisitMutations(deps: {
 
     if (historyResult.error) {
       reportMutationError(msg('방문 이력을 수정하지 못했습니다.'), historyResult.error)
-      return
+      return false
     }
 
     const latestHistory = visitHistories.find((h) => h.unitId === unitId)
@@ -394,7 +395,7 @@ export function makeVisitMutations(deps: {
       const statusResult = await supabase.from('units').update({ status: input.result }).eq('id', unitId)
       if (statusResult.error) {
         reportMutationError(msg('방문 이력은 수정됐지만 호수 대표 상태를 맞추지 못했습니다.'), statusResult.error)
-        return
+        return false
       }
       patchUnit(unitId, { status: input.result })
     }
@@ -422,17 +423,19 @@ export function makeVisitMutations(deps: {
     })
 
     await fetchAll()
+    return true
   }
 
+  /** 성공하면 true. 실패하면 false — 화면이 입력을 지킬 수 있어야 한다 */
   const addVisitHistory = async (
     buildingId: number,
     unitId: number,
     input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean },
-  ) => {
+  ): Promise<boolean> => {
     const recordSession = getRecordServiceSession(buildingId, input.visitedAt)
     const activePeriodId = getActiveSpecialPeriodIdForDate(input.visitedAt)
     const visitor = requireVisitor()
-    if (!visitor) return
+    if (!visitor) return false
 
     const insertResult = await supabase.from('visit_histories').insert({
       unit_id: unitId,
@@ -448,7 +451,7 @@ export function makeVisitMutations(deps: {
 
     if (insertResult.error) {
       reportMutationError(msg('방문 이력을 추가하지 못했습니다.'), insertResult.error)
-      return
+      return false
     }
 
     const unitHistories = visitHistories.filter((h) => h.unitId === unitId)
@@ -457,7 +460,9 @@ export function makeVisitMutations(deps: {
       const statusResult = await supabase.from('units').update({ status: input.result }).eq('id', unitId)
       if (statusResult.error) {
         reportMutationError(msg('방문 이력은 추가됐지만 호수 대표 상태를 맞추지 못했습니다.'), statusResult.error)
-        return
+        // 기록 자체는 들어갔다. 화면을 닫아도 된다 — 입력을 다시 시키면 중복이 된다
+        await fetchAll()
+        return true
       }
       patchUnit(unitId, { status: input.result })
     }
@@ -483,6 +488,7 @@ export function makeVisitMutations(deps: {
 
     await fetchAll()
     showToast(msg('방문 기록이 추가됐습니다'))
+    return true
   }
 
   const deleteVisitHistory = async (historyId: number, unitId: number) => {

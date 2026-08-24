@@ -267,12 +267,12 @@ export function DesktopApp({
     buildingId: number,
     unitId: number,
     input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string },
-  ) => void
+  ) => Promise<boolean>
   onUpdateVisitHistory: (
     historyId: number,
     unitId: number,
     input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string },
-  ) => void
+  ) => Promise<boolean>
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
   onUpdateUnitStatus: (buildingId: number, unitId: number, status: UnitStatus, memo?: string) => void
   onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus, invitationLeft?: boolean) => void

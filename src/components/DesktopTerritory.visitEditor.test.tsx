@@ -115,10 +115,23 @@ describe('중복 저장', () => {
     await user.click(screen.getByRole('button', { name: '+ 방문 기록 추가' }))
     const btn = within(editor()).getByRole('button', { name: '저장' })
     await user.click(btn)
-    // 저장하면 부모가 편집기를 내린다. 두 번째 클릭은 사라진 버튼을 누르는 셈이다.
+    // 저장에 성공하면 편집기가 닫힌다. 두 번째 클릭은 사라진 버튼을 누르는 셈이다.
     await user.click(btn).catch(() => {})
 
     expect(props.onAddVisitHistory).toHaveBeenCalledTimes(1)
+  })
+
+  test('저장이 실패하면 창을 닫지 않는다 — 적은 내용을 지킨다', async () => {
+    const user = userEvent.setup()
+    open({ onAddVisitHistory: vi.fn(async () => false) })
+
+    await selectUnit(user)
+    await user.click(screen.getByRole('button', { name: '+ 방문 기록 추가' }))
+    await user.type(within(editor()).getByPlaceholderText(/메모/), '잃으면 안 되는 메모')
+    await user.click(within(editor()).getByRole('button', { name: '저장' }))
+
+    const memo = within(editor()).getByPlaceholderText(/메모/) as HTMLTextAreaElement
+    expect(memo.value).toBe('잃으면 안 되는 메모')
   })
 })
 
