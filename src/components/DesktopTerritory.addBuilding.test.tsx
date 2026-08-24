@@ -57,7 +57,10 @@ describe('건물 추가 — 자동 카드 배정', () => {
       cardBoundaries: [testBoundary(2, [37.4, 127.0, 37.6, 127.2])],
     })
 
-    await fillAndSubmit(user, '경기도 용인시 수지구 어딘가 1')
+    // 주소는 일부러 '죽전동'(1번 카드)으로 둔다. 구역선은 2번을 가리킨다.
+    // 구역선이 이겨야 한다 — 이렇게 해야 이 테스트가 구역선 매칭을 실제로 검사한다.
+    // (앞선 판에서는 주소가 어느 쪽도 안 가리켜서, 매칭을 지워도 통과했다)
+    await fillAndSubmit(user, '경기도 용인시 수지구 죽전동 5')
 
     expect(props.onCreateBuilding).toHaveBeenCalledWith(
       expect.objectContaining({ cardId: 2, lat: 37.5, lng: 127.1 }),
