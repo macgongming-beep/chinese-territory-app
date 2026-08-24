@@ -15,17 +15,63 @@ select cron.schedule('cleanup-old-data', '0 19 * * *', 'SELECT cleanup_old_data(
 -- (하루 한 번만 보낸다 — 함수가 daily_service_last_sent 로 막는다)
 select cron.schedule('daily-service-digest', '*/5 * * * *', 'SELECT public.send_daily_service_digest()');
 
--- ── 스토리지 버킷 ────────────────────────────────────────────────
--- storage.buckets 는 소유자만 읽을 수 있어 SQL Editor 에서 42501 이 난다
--- (must be owner of table buckets). 그래서 DB 대신 **코드에서 찾았다.**
---   ChatRoom.tsx            storage.from('chat-attachments').getPublicUrl(...)
---   v2Assignments.ts        storage.from('informal-assets').getPublicUrl(...)
--- 둘 다 getPublicUrl 을 쓰므로 공개 버킷이다.
---
--- ⚠ SQL 로 만들어지지 않으면 Dashboard → Storage → New bucket 에서
---    같은 이름으로, Public 켜서 만든다.
+-- ── 스토리지 ────────────────────────────────────────────────────
+-- storage.buckets 는 소유자만 읽을 수 있어 SQL Editor 에서 뽑지 못했다
+-- (42501 must be owner of table buckets). 그래서 **적용된 마이그레이션에서
+-- 그대로 가져왔다** — 추측보다 정확하다 (용량·MIME 제한까지 들어 있다).
+--   supabase/applied/v1plus_schema.sql            채팅 첨부
+--   supabase/applied/v2_informal_storage_policies.sql  비공식 자료
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('chat-attachments', 'chat-attachments', true, 10485760,
+        array['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
 
 insert into storage.buckets (id, name, public)
-values ('chat-attachments', 'chat-attachments', true),
-       ('informal-assets', 'informal-assets', true)
+values ('informal-assets', 'informal-assets', true)
 on conflict (id) do nothing;
+
+-- ── 스토리지 정책 ────────────────────────────────────────────────
+-- ⚠ 이게 없으면 업로드가 "new row violates row-level security policy" 로 막힌다.
+--    storage.objects 에 RLS 가 켜져 있는데 anon 용 INSERT 정책이 없기 때문이다.
+--    예전에 실제로 겪은 문제라 마이그레이션 주석에 적혀 있다.
+
+drop policy if exists chat_attachments_public_read on storage.objects;
+create policy chat_attachments_public_read on storage.objects
+for select to anon, authenticated
+using (bucket_id = 'chat-attachments');
+
+drop policy if exists chat_attachments_upload on storage.objects;
+create policy chat_attachments_upload on storage.objects
+for insert to anon, authenticated
+with check (bucket_id = 'chat-attachments');
+
+drop policy if exists "informal_assets_anon_read" on storage.objects;
+create policy "informal_assets_anon_read" on storage.objects
+for select to anon, authenticated
+using (bucket_id = 'informal-assets');
+
+drop policy if exists "informal_assets_anon_insert" on storage.objects;
+create policy "informal_assets_anon_insert" on storage.objects
+for insert to anon, authenticated
+with check (bucket_id = 'informal-assets');
+
+drop policy if exists "informal_assets_anon_update" on storage.objects;
+create policy "informal_assets_anon_update" on storage.objects
+for update to anon, authenticated
+using (bucket_id = 'informal-assets')
+with check (bucket_id = 'informal-assets');
+-- 삭제는 정책을 주지 않는다. delete_informal_asset_secure RPC 로만 지운다.
+
+-- ── Edge Function (SQL 로는 못 만든다) ───────────────────────────
+--   supabase/functions/send-push            푸시 발송
+--   supabase/functions/cleanup-chat-images  만료된 채팅 사진 정리
+--
+-- 배포:  supabase functions deploy send-push --project-ref <새 ref>
+-- 그다음 app_private_settings 에 주소와 키를 넣어야 푸시가 나간다
+-- (push_edge_function_url · push_edge_function_key).
+-- VAPID 키는 **회중마다 새로 만든다** — 돌려쓰면 다른 회중 앱이
+-- 우리 교인에게 알림을 보낼 수 있다.
