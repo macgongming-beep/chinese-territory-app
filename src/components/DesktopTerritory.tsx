@@ -1,6 +1,6 @@
 import { t } from '../i18n'
 import type { AppLanguage } from '../i18n'
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { getRegionNames, getRegions } from '../lib/regions'
 import { getAreaFilterOptions } from '../utils/areaOptions'
@@ -8,7 +8,8 @@ import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { geocodeFirstMatch } from '../lib/naverGeocode'
 import { findCardForCoordinates, formatDisplayAddress, isValidMapCoordinate, normalizeMapCoordinates, parseCoordinate } from '../utils/mapUtils'
-import { downloadCardBoundaryBackup, mergeCardBoundaryPoints, parseCardBoundaryBackup } from '../utils/boundaryMerge'
+import { mergeCardBoundaryPoints } from '../utils/boundaryMerge'
+import { useCardBoundaryBackup } from '../hooks/useCardBoundaryBackup'
 import { compareTerritoryCardsByOperationalPriority, getTerritoryCardOperationalState } from '../utils/cardSearch'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 import { compareUnitNumbers } from '../hooks/storeTransforms'
@@ -1398,6 +1399,9 @@ export function DesktopTerritory({
     })
   }
 
+  const { exportBackup: exportCardBoundaries, importBackup: importCardBoundaries } =
+    useCardBoundaryBackup(cards, cardBoundaries, onRestoreCardBoundaries)
+
   const handleDeleteCheckedCards = async () => {
     const ids = Array.from(checkedCardIds)
     if (ids.length === 0) return
@@ -1410,30 +1414,6 @@ export function DesktopTerritory({
     if (selectedCardId && ids.includes(selectedCardId)) setSelectedCardId(null)
   }
 
-  const handleExportCardBoundaries = () => {
-    downloadCardBoundaryBackup(cards, cardBoundaries)
-    showToast(msg('구역선 백업 파일을 내보냈습니다.'), 'success')
-  }
-
-  const handleImportCardBoundaries = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file || !onRestoreCardBoundaries) return
-    try {
-      const text = await file.text()
-      const boundaries = parseCardBoundaryBackup(text)
-      if (boundaries.length === 0) {
-        showToast(msg('가져올 구역선이 없습니다.'), 'error')
-        return
-      }
-      const confirmed = await confirmDialog({ message: msg('백업 파일의 구역선 {length}개를 현재 카드에 복구할까요?', { length: boundaries.length }) })
-      if (!confirmed) return
-      await Promise.resolve(onRestoreCardBoundaries(boundaries))
-    } catch (error) {
-      console.error(error)
-      showToast(msg('구역선 백업 파일을 읽지 못했습니다.'), 'error')
-    }
-  }
 
   const handleOpenCardMergeModal = () => {
     if (!onMergeCardBoundaries) return
@@ -2011,7 +1991,7 @@ export function DesktopTerritory({
                 </button>
                 {isAdmin && (
                   <>
-                    <button className="tbl-ghost-btn" onClick={handleExportCardBoundaries} type="button">
+                    <button className="tbl-ghost-btn" onClick={exportCardBoundaries} type="button">
                       구역선 백업
                     </button>
                     {onRestoreCardBoundaries && (
@@ -2019,7 +1999,7 @@ export function DesktopTerritory({
                         <input
                           ref={boundaryImportInputRef}
                           accept="application/json"
-                          onChange={handleImportCardBoundaries}
+                          onChange={importCardBoundaries}
                           style={{ display: 'none' }}
                           type="file"
                         />
