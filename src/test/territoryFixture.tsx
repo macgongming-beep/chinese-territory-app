@@ -3,7 +3,34 @@
 // 이 화면은 props 를 51개 받는다. 그 자체가 이번 구조 개선의 이유다.
 // 여기서 필수 props 를 가짜로 채워 두면, 각 테스트는 관심 있는 것만 덮어쓰면 된다.
 import { vi } from 'vitest'
-import type { Building, CardBoundary, TerritoryCard, VisitHistory } from '../types'
+import type { Building, CardBoundary, GeoPoint, TerritoryCard, VisitHistory } from '../types'
+
+/**
+ * 구역 카드 하나. 이름은 '지역 동 번호' 형식이라 거기서 region·area 를 뽑는다.
+ * 집계 필드(buildings/units/…)는 화면이 그리다 터지지 않게 0 으로 채운다.
+ */
+export function testCard(id: number, name: string, extra: Partial<TerritoryCard> = {}): TerritoryCard {
+  const [region = '', area = ''] = name.split(' ')
+  return {
+    id, name, area, region,
+    type: '주택',
+    buildings: 0, units: 0, completed: 0,
+    regularVisits: 0, regularVisitPoints: [],
+    progress: 0,
+    assignedLeader: null, assignedUsers: [],
+    status: '미배정',
+    ...extra,
+  } as TerritoryCard
+}
+
+/** 사각형 구역선. [minLat, minLng, maxLat, maxLng] */
+export function testBoundary(cardId: number, [minLat, minLng, maxLat, maxLng]: [number, number, number, number]): CardBoundary {
+  const points: GeoPoint[] = [
+    { lat: minLat, lng: minLng }, { lat: minLat, lng: maxLng },
+    { lat: maxLat, lng: maxLng }, { lat: maxLat, lng: minLng },
+  ]
+  return { cardId, points }
+}
 
 /** 모든 콜백을 기록만 하는 가짜로 채운다. 테스트가 호출 여부를 볼 수 있다. */
 export function territoryProps(overrides: Record<string, unknown> = {}) {

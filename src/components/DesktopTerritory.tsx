@@ -34,6 +34,7 @@ import { useSessionState } from '../hooks/useSessionState'
 import { BuildingEditCells, UnitEditForm, type BuildingEditDraft } from './BuildingEditRows'
 import { CardCreateModal } from './DesktopTerritoryCardModal'
 import { BoundaryDrawPrompt } from './BoundaryDrawPrompt'
+import { AddBuildingModal, type AddBuildingForm } from './AddBuildingModal'
 import { msg } from '../lib/msg'
 import { getRestaurantUnits } from '../utils/restaurants'
 
@@ -268,10 +269,6 @@ export function DesktopTerritory({
   } | null>(null)
   // 건물 추가 모달
   const [addBuildingOpen, setAddBuildingOpen] = useState(false)
-  const [addBuildingForm, setAddBuildingForm] = useState<{ name: string; address: string; type: Building['type']; cardId: number | 'auto' }>({ name: '', address: '', type: '주택', cardId: 'auto' })
-  const [addBuildingGeoState, setAddBuildingGeoState] = useState<'idle' | 'loading' | 'ok' | 'fail'>('idle')
-  const [addBuildingLatLng, setAddBuildingLatLng] = useState<{ lat: number; lng: number } | null>(null)
-  const [addBuildingSubmitting, setAddBuildingSubmitting] = useState(false)
   const [csvPreviewRows, setCsvPreviewRows] = useState<CsvPreviewRow[]>([])
   const [csvSkippedRows, setCsvSkippedRows] = useState(0)
   const [csvSkippedDetails, setCsvSkippedDetails] = useState<CsvSkippedRow[]>([])
@@ -611,22 +608,22 @@ export function DesktopTerritory({
     return filteredCards[0]?.id ?? null
   }
 
-  const handleAddBuildingSubmit = async () => {
-    if (!addBuildingForm.address.trim() || !onCreateBuilding) return
-    setAddBuildingSubmitting(true)
+  /**
+   * 어느 카드에 넣을지 정하고 저장한다. 화면이 아니라 여기가 할 일이다 —
+   * 구역선과 카드 목록을 봐야 알 수 있기 때문이다.
+   *   ① 좌표가 구역선 안이면 그 카드
+   *   ② 아니면 주소의 동 이름으로 찾은 카드
+   *   ③ 그것도 없으면 첫 번째 카드
+   */
+  const handleAddBuildingSubmit = async (
+    form: AddBuildingForm,
+    latLng: { lat: number; lng: number } | null,
+  ): Promise<boolean> => {
+    if (!onCreateBuilding) return false
 
-    // 1. 좌표 확보 (이미 찾았으면 재사용)
-    let latLng = addBuildingLatLng
-    if (!latLng) {
-      setAddBuildingGeoState('loading')
-      latLng = await geocodeAddress(addBuildingForm.address)
-      setAddBuildingGeoState(latLng ? 'ok' : 'fail')
-    }
-
-    // 2. 카드 자동 배정: 좌표 → 경계선 매칭 → 동 이름 매칭 → 첫 번째 카드 순
     let cardId: number
-    if (addBuildingForm.cardId !== 'auto') {
-      cardId = addBuildingForm.cardId
+    if (form.cardId !== 'auto') {
+      cardId = form.cardId
     } else if (latLng) {
       const byBoundary = findCardForCoordinates(latLng.lat, latLng.lng, cardBoundaries)
       if (byBoundary) {
@@ -634,30 +631,23 @@ export function DesktopTerritory({
         const matchedCard = cards.find((c) => c.id === byBoundary)
         if (matchedCard) showToast(msg('"{name}" 카드에 자동 배정됐습니다', { name: matchedCard.name }), 'success')
       } else {
-        cardId = findCardForAddress(addBuildingForm.address) ?? cards[0]?.id ?? 0
+        cardId = findCardForAddress(form.address) ?? cards[0]?.id ?? 0
       }
     } else {
-      cardId = findCardForAddress(addBuildingForm.address) ?? cards[0]?.id ?? 0
+      cardId = findCardForAddress(form.address) ?? cards[0]?.id ?? 0
     }
 
     const created = await onCreateBuilding({
       cardId,
-      name: addBuildingForm.name,
-      address: addBuildingForm.address,
-      type: addBuildingForm.type,
+      name: form.name,
+      address: form.address,
+      type: form.type,
       lat: latLng?.lat ?? 0,
       lng: latLng?.lng ?? 0,
     })
-    if (created === false) {
-      setAddBuildingSubmitting(false)
-      return
-    }
-    setAddBuildingOpen(false)
-    setAddBuildingForm({ name: '', address: '', type: '주택', cardId: 'auto' })
-    setAddBuildingLatLng(null)
-    setAddBuildingGeoState('idle')
-    setAddBuildingSubmitting(false)
+    return created !== false
   }
+
 
   // 정렬 적용
   const naturalCompare = (x: string, y: string) =>
@@ -1736,95 +1726,12 @@ export function DesktopTerritory({
 
       {/* 건물 추가 모달 */}
       {addBuildingOpen && (
-        <div className="cal-modal-backdrop" onClick={() => setAddBuildingOpen(false)}>
-          <div className="cal-modal add-building-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="cal-modal-head">
-              <div className="cal-modal-title">
-                <h2>건물 추가</h2>
-                <p className="merge-name-modal-sub">주소 입력 후 자동으로 좌표를 찾고 카드에 배정됩니다.</p>
-              </div>
-              <button className="cal-modal-close" onClick={() => setAddBuildingOpen(false)} type="button">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-            <div className="add-building-modal-body">
-              <label className="add-building-field">
-                <span>주소 <em className="add-building-required">*</em></span>
-                <div className="add-building-address-row">
-                  <input
-                    className="add-building-input"
-                    placeholder="예) 경기도 용인시 처인구 언동로 213"
-                    value={addBuildingForm.address}
-                    onChange={(e) => {
-                      setAddBuildingForm((f) => ({ ...f, address: e.target.value }))
-                      setAddBuildingLatLng(null)
-                      setAddBuildingGeoState('idle')
-                    }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); geocodeAddress(addBuildingForm.address).then((r) => { setAddBuildingLatLng(r); setAddBuildingGeoState(r ? 'ok' : 'fail') }) }}}
-                  />
-                  <button
-                    className="add-building-geocode-btn"
-                    type="button"
-                    disabled={!addBuildingForm.address.trim() || addBuildingGeoState === 'loading'}
-                    onClick={async () => {
-                      setAddBuildingGeoState('loading')
-                      const r = await geocodeAddress(addBuildingForm.address)
-                      setAddBuildingLatLng(r)
-                      setAddBuildingGeoState(r ? 'ok' : 'fail')
-                    }}
-                  >
-                    {addBuildingGeoState === 'loading' ? '검색 중...' : '좌표 찾기'}
-                  </button>
-                </div>
-                {addBuildingGeoState === 'ok' && addBuildingLatLng && (
-                  <span className="add-building-geo-ok">📍 좌표 확인 ({addBuildingLatLng.lat.toFixed(5)}, {addBuildingLatLng.lng.toFixed(5)})</span>
-                )}
-                {addBuildingGeoState === 'fail' && (
-                  <span className="add-building-geo-fail">주소를 찾지 못했습니다. 핀 없이 건물이 생성됩니다.</span>
-                )}
-              </label>
-              <label className="add-building-field">
-                <span>건물명 <em className="add-building-hint">(비워두면 주소에서 자동 설정)</em></span>
-                <input
-                  className="add-building-input"
-                  placeholder="예) 언동로빌라, 고진로상가 등"
-                  value={addBuildingForm.name}
-                  onChange={(e) => setAddBuildingForm((f) => ({ ...f, name: e.target.value }))}
-                />
-              </label>
-              <div className="add-building-row2">
-                <label className="add-building-field">
-                  <span>유형</span>
-                  <select className="add-building-select" value={addBuildingForm.type} onChange={(e) => setAddBuildingForm((f) => ({ ...f, type: e.target.value as Building['type'] }))}>
-                    <option value="주택">주택</option>
-                    <option value="상가">상가</option>
-                  </select>
-                </label>
-                <label className="add-building-field">
-                  <span>카드 배정</span>
-                  <select className="add-building-select" value={addBuildingForm.cardId === 'auto' ? 'auto' : String(addBuildingForm.cardId)} onChange={(e) => setAddBuildingForm((f) => ({ ...f, cardId: e.target.value === 'auto' ? 'auto' : Number(e.target.value) }))}>
-                    <option value="auto">자동 (주소 기준)</option>
-                    {cards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </label>
-              </div>
-            </div>
-            <div className="merge-name-modal-footer">
-              <button className="cal-cancel-btn" onClick={() => setAddBuildingOpen(false)} type="button">취소</button>
-              <button
-                className="dup-address-merge-btn"
-                type="button"
-                disabled={!addBuildingForm.address.trim() || addBuildingSubmitting}
-                onClick={handleAddBuildingSubmit}
-                style={{ background: '#2563eb' }}
-              >
-                {addBuildingSubmitting ? '추가 중...' : '건물 추가'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <AddBuildingModal
+          cards={cards}
+          onClose={() => setAddBuildingOpen(false)}
+          onGeocode={geocodeAddress}
+          onSubmit={handleAddBuildingSubmit}
+        />
       )}
 
       {/* 중복 주소 건물 이름 선택 모달 */}
@@ -2218,7 +2125,7 @@ export function DesktopTerritory({
                   {reassigningByBoundary ? '재배정 중...' : '좌표 기준 재배정'}
                 </button>
                 {onCreateBuilding && (
-                  <button className="tbl-ghost-btn" onClick={() => { setAddBuildingForm({ name: '', address: '', type: '주택', cardId: 'auto' }); setAddBuildingLatLng(null); setAddBuildingGeoState('idle'); setAddBuildingOpen(true) }} type="button">
+                  <button className="tbl-ghost-btn" onClick={() => setAddBuildingOpen(true)} type="button">
                     + 건물 추가
                   </button>
                 )}
