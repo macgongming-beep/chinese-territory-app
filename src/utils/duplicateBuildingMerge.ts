@@ -33,6 +33,26 @@ export type MergePlan = {
   conflicts: ConflictGroup[]
 }
 
+/**
+ * 호수 비교용 정규화. **병합 충돌 판정에만 쓴다** (화면 표시는 원래 값 그대로).
+ *
+ * 실제 데이터가 섞여 있다. 1,572개 중 숫자만 394개 · '호' 붙은 것 337개,
+ * 지하도 B02 와 B02호 가 같이 있다. 그대로 비교하면 같은 호수를 다른 것으로 보고
+ * **겹치는데 안 겹친다고 판단해 합쳐 버린다** — 그러면 방문 기록이 사라진다.
+ *
+ * 판단이 애매하면 **같은 것으로 본다.** 잘못 합치면 되돌릴 수 없고,
+ * 잘못 안 합치면 사람이 보고 정리하면 된다.
+ */
+export function normalizeUnitNumber(raw: string): string {
+  const trimmed = (raw ?? '').trim().replace(/\s+/g, '')
+  if (!trimmed) return ''
+  // B02호 · 101호 · 101 → B2 · 101 · 101
+  const m = /^([A-Za-z]*)0*(\d+)호?$/.exec(trimmed)
+  if (m) return `${m[1].toUpperCase()}${m[2]}`
+  // '호별 방문' 같은 글자 라벨은 공백만 없앤 채로 비교한다
+  return trimmed
+}
+
 /** 주소 비교용 정규화 — 공백과 하이픈 차이로 중복을 놓치지 않게 */
 export function normalizeAddress(address: string): string {
   return address.trim().toLowerCase().replace(/\s+/g, '').replace(/[-‐]/g, '-')
@@ -66,13 +86,15 @@ export function planDuplicateBuildingMerge(
     if (selected && !selected.has(primary.id)) continue
 
     // 호수 번호가 하나라도 겹치면 손대지 않는다
-    const seen = new Set(primary.units.map((u) => u.number))
+    // 101 과 101호 는 같은 호수다. 문자열 그대로 비교하면 겹침을 놓친다.
+    const seen = new Set(primary.units.map((u) => normalizeUnitNumber(u.number)))
     const conflicting: string[] = []
     let movingUnits = 0
     for (const dup of absorbed) {
       for (const unit of dup.units) {
-        if (seen.has(unit.number)) conflicting.push(unit.number)
-        else { seen.add(unit.number); movingUnits++ }
+        const key = normalizeUnitNumber(unit.number)
+        if (seen.has(key)) conflicting.push(unit.number)   // 알릴 때는 원래 표기로
+        else { seen.add(key); movingUnits++ }
       }
     }
 
