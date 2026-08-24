@@ -1,6 +1,7 @@
 import type { Building, TerritoryCard, Unit, UnitStatus } from '../../types'
 import type { CsvBuildingImport } from '../../utils/csvBuildingImport'
 import { isValidMapCoordinate } from '../../utils/mapUtils'
+import { planDuplicateBuildingMerge } from '../../utils/duplicateBuildingMerge'
 import { supabase, showToast, reportMutationError } from './shared'
 import { logServiceAction } from './serviceLog'
 import { msg } from '../../lib/msg'
@@ -274,44 +275,36 @@ export function makeBuildingMutations(deps: {
    * - 호수 번호가 겹칠 경우 기준 건물의 호수를 유지 (중복 삽입 스킵)
    * - 나머지 건물 삭제
    */
+  /**
+   * 같은 주소로 두 번 등록된 건물을 합친다.
+   *
+   * ⚠ 호수 번호가 겹치는 묶음은 **손대지 않는다.** 예전에는 겹치는 호수를
+   *   "이동 건너뛰기" 하고 원본 건물을 지웠는데, units 가 visit_histories ·
+   *   regular_visits 에 on delete cascade 로 물려 있어서 그 호수의
+   *   **방문 기록이 조용히 사라졌다.** 무엇을 남길지는 사람이 볼 판단이다.
+   *   판단은 utils/duplicateBuildingMerge.ts 에 있고 테스트로 덮여 있다.
+   */
   const mergeDuplicateBuildings = async (
     scopeCardId?: number,
     nameOverrides?: Record<number, string>,
     selectedPrimaryIds?: number[],
   ) => {
-    const scope = scopeCardId
-      ? buildings.filter((b) => b.cardId === scopeCardId)
-      : buildings
+    const plan = planDuplicateBuildingMerge(buildings, { scopeCardId, selectedPrimaryIds })
 
-    const normalizeAddr = (addr: string) =>
-      addr.trim().toLowerCase().replace(/\s+/g, '').replace(/[-‐]/g, '-')
-
-    const groups = new Map<string, typeof scope>()
-    for (const b of scope) {
-      const key = `${b.cardId}::${normalizeAddr(b.address)}`
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push(b)
-    }
-
-    const selectedPrimaryIdSet = selectedPrimaryIds ? new Set(selectedPrimaryIds) : null
-    const duplicateGroups = Array.from(groups.values()).filter((g) => {
-      if (g.length <= 1) return false
-      if (!selectedPrimaryIdSet) return true
-      const primaryId = [...g].sort((a, b) => a.id - b.id)[0].id
-      return selectedPrimaryIdSet.has(primaryId)
-    })
-    if (duplicateGroups.length === 0) {
-      showToast(msg('중복 주소 건물이 없습니다.'), 'info')
+    if (plan.merge.length === 0) {
+      showToast(
+        plan.conflicts.length > 0
+          ? msg('호수 번호가 겹쳐 병합할 수 없는 주소가 {n}곳 있습니다. 직접 정리해 주세요.', { n: plan.conflicts.length })
+          : msg('중복 주소 건물이 없습니다.'),
+        'info',
+      )
       return
     }
 
     let mergedBuildings = 0
     let movedUnits = 0
 
-    for (const group of duplicateGroups) {
-      const sorted = [...group].sort((a, b) => a.id - b.id)
-      const [primary, ...rest] = sorted
-
+    for (const { primary, absorbed } of plan.merge) {
       const chosenName = nameOverrides?.[primary.id]
       if (chosenName && chosenName !== primary.name) {
         const nameRes = await supabase
@@ -320,29 +313,29 @@ export function makeBuildingMutations(deps: {
           .eq('id', primary.id)
         if (nameRes.error) {
           reportMutationError(msg('건물 이름 변경 중 오류가 발생했습니다.'), nameRes.error)
+          await fetchAll()   // 여기까지 바뀐 것을 화면에 맞춘다
           return
         }
       }
 
-      const existingNumbers = new Set(primary.units.map((u) => u.number))
-
-      for (const duplicate of rest) {
+      for (const duplicate of absorbed) {
+        // 계획이 이미 충돌을 걸렀다. 여기 오는 호수는 겹치지 않는다.
         for (const unit of duplicate.units) {
-          if (existingNumbers.has(unit.number)) continue
           const res = await supabase
             .from('units')
             .update({ building_id: primary.id })
             .eq('id', unit.id)
           if (res.error) {
             reportMutationError(msg('호수 이전 중 오류가 발생했습니다.'), res.error)
+            await fetchAll()
             return
           }
-          existingNumbers.add(unit.number)
           movedUnits++
         }
         const delRes = await supabase.from('buildings').delete().eq('id', duplicate.id)
         if (delRes.error) {
           reportMutationError(msg('중복 건물 삭제 중 오류가 발생했습니다.'), delRes.error)
+          await fetchAll()
           return
         }
         mergedBuildings++
@@ -350,7 +343,11 @@ export function makeBuildingMutations(deps: {
     }
 
     await fetchAll()
-    showToast(msg('중복 건물 {mergedBuildings}개 합병 완료 (호수 {movedUnits}개 이전)', { mergedBuildings: mergedBuildings, movedUnits: movedUnits }))
+    showToast(
+      plan.conflicts.length > 0
+        ? msg('중복 건물 {mergedBuildings}개 합병 완료 (호수 {movedUnits}개 이전).\n호수가 겹치는 {skipped}곳은 건드리지 않았습니다.', { mergedBuildings: mergedBuildings, movedUnits: movedUnits, skipped: plan.conflicts.length })
+        : msg('중복 건물 {mergedBuildings}개 합병 완료 (호수 {movedUnits}개 이전)', { mergedBuildings: mergedBuildings, movedUnits: movedUnits }),
+    )
   }
 
   const updateBuilding = async (
