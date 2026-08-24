@@ -1,1 +1,1 @@
-select 'v4-2026-08-24' as query_version;
+select 'v5-2026-08-24' as query_version;

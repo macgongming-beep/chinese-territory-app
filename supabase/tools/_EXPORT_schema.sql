@@ -108,12 +108,18 @@ with objs as (
   join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
   where not t.tgisinternal
 
-  union all  -- RLS 켜기
+  union all  -- RLS 켜기 / **끄기**
+  --
+  -- 끄는 것도 적어야 한다. 새 Supabase 프로젝트는 테이블을 만들 때 RLS 를
+  -- 켜 두는 경우가 있는데, 정책이 없으면 **에러 없이 빈 결과**가 온다.
+  -- 실제로 걸렸다: special_periods 를 화면이 직접 읽어서, 특별봉사 시즌이
+  -- 조용히 사라졌다. baseline 은 운영 상태를 그대로 못박아야 한다.
   select 10, c.relname::text,
-         format('alter' || ' table public.%I enable row level security;', c.relname)
+         format('alter' || ' table public.%I %s row level security;',
+                c.relname, case when c.relrowsecurity then 'enable' else 'disable' end)
   from pg_class c
   join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
-  where c.relkind = 'r' and c.relrowsecurity
+  where c.relkind = 'r'
 
   union all  -- 정책
   select 11, pol.tablename || '.' || pol.policyname,
@@ -157,6 +163,6 @@ with objs as (
 )
 -- query_version 은 '이 결과가 어느 파일에서 나왔는지' 를 알려 준다.
 -- 지난번 실패가 옛 탭 실행 때문인지 구분하려고 넣었다.
-select 'v4-2026-08-24' as query_version,
+select 'v5-2026-08-24' as query_version,
        string_agg(ddl, E'\n\n' order by ord, obj) as ddl
 from objs;

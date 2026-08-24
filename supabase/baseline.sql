@@ -5197,3 +5197,10 @@ alter table public.informal_assets replica identity full;
 alter table public.informal_groups replica identity full;
 
 alter table public.notifications replica identity full;
+
+-- ── 임시 보정 (v5 로 다시 뽑으면 이 칸은 없어진다) ──────────────
+-- 새 Supabase 프로젝트가 테이블을 만들 때 RLS 를 켜 두는데, 운영에서는
+-- 이 둘이 꺼져 있다. 정책이 없는 채로 켜져 있으면 **에러 없이 빈 결과**가 온다.
+-- special_periods 는 화면이 직접 읽으므로 특별봉사 시즌이 조용히 사라진다.
+alter table public.special_periods disable row level security;
+alter table public.login_logs disable row level security;
