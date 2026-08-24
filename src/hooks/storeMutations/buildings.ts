@@ -19,6 +19,7 @@ export function makeBuildingMutations(deps: {
 }) {
   const { fetchAll, buildings, cards, appendUnits, removeUnit } = deps
 
+  /** 성공하면 true, 실패하면 false. 이 계약이 화면까지 그대로 간다. */
   const createBuilding = async (input: {
     cardId: number
     name: string
@@ -26,7 +27,7 @@ export function makeBuildingMutations(deps: {
     type: Building['type']
     lat: number
     lng: number
-  }) => {
+  }): Promise<boolean> => {
     if (!input.address.trim()) {
       showToast(msg('주소를 입력해 주세요.'), 'error')
       return false

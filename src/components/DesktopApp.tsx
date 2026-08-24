@@ -223,6 +223,9 @@ export function DesktopApp({
   onUpdateTerritoryRegion?: (id: number, input: { city?: string; nameZh?: string; nameEn?: string }) => Promise<void>
   onMoveTerritoryRegion?: (id: number, direction: 'up' | 'down') => Promise<void>
   onDeleteTerritoryRegion?: (id: number, name: string) => Promise<void>
+  // ⚠ 예전에 => void 였다. TypeScript 는 반환값 있는 함수를 void 콜백에 넣게
+  //    해 주므로 컴파일은 됐지만, **실패 계약이 이 층에서 지워졌다.**
+  //    저장이 실패해도 화면은 성공으로 알았다.
   onCreateBuilding: (input: {
     cardId: number
     name: string
@@ -230,7 +233,7 @@ export function DesktopApp({
     type: Building['type']
     lat: number
     lng: number
-  }) => void
+  }) => Promise<boolean>
   onImportBuildings: (inputs: CsvBuildingImport[]) => Promise<{ inserted: number; skipped: number }>
   onCreateNotice: (input: { title: string; content: string; priority: Notice['priority']; author: string }) => void
   onCreateSpecialPeriod: (input: { label: string; startDate: string; endDate: string; color: string }) => void

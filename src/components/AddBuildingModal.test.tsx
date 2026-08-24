@@ -3,10 +3,17 @@
 // 좌표 찾기는 사용자가 저장 전에 눌러 확인하는 단계다. 여기가 깨지면
 // "핀 없이 생성됩니다" 를 못 보고 저장해 버린다 — 지도에 안 뜨는 건물이 생긴다.
 import { describe, test, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AddBuildingModal } from './AddBuildingModal'
 import { testCard } from '../test/territoryFixture'
+
+/** 원할 때 응답시키는 지오코더. 경쟁 상태를 만들려면 순서를 우리가 쥐어야 한다. */
+function deferredGeocoder() {
+  const pending: Array<{ address: string; resolve: (v: unknown) => void }> = []
+  const fn = vi.fn((address: string) => new Promise((resolve) => { pending.push({ address, resolve }) }))
+  return { fn, pending }
+}
 
 function setup(geocode: ReturnType<typeof vi.fn>) {
   const onSubmit = vi.fn(async () => true)
@@ -90,5 +97,103 @@ describe('AddBuildingModal — 좌표 찾기', () => {
     await user.click(screen.getByRole('button', { name: '건물 추가' }))
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ cardId: 1 }), null)
+  })
+})
+
+describe('AddBuildingModal — 늦게 온 결과 / 예외 / 저장 중', () => {
+  test('주소를 바꾸면, 뒤늦게 온 옛 주소 좌표를 쓰지 않는다', async () => {
+    const user = userEvent.setup()
+    const geo = deferredGeocoder()
+    const { onSubmit } = setup(geo.fn as never)
+
+    // A 주소로 검색을 시작해 두고 (아직 응답 안 옴)
+    await user.type(address(), 'A동 1')
+    await user.click(screen.getByRole('button', { name: '좌표 찾기' }))
+    expect(geo.pending).toHaveLength(1)
+
+    // 응답 전에 주소를 B 로 바꾼다
+    await user.clear(address())
+    await user.type(address(), 'B동 2')
+
+    // 이제야 A 결과가 도착한다
+    await act(async () => { geo.pending[0].resolve({ lat: 11, lng: 11 }) })
+
+    // A 좌표가 화면에 붙으면 안 된다
+    expect(screen.queryByText(/좌표 확인/)).toBeNull()
+
+    // B 를 검색해 저장하면 B 좌표여야 한다
+    await user.click(screen.getByRole('button', { name: '좌표 찾기' }))
+    await act(async () => { geo.pending[1].resolve({ lat: 22, lng: 22 }) })
+    await user.click(screen.getByRole('button', { name: '건물 추가' }))
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ address: 'B동 2' }),
+      { lat: 22, lng: 22 },
+    )
+  })
+
+  test('저장이 예외를 던져도 "추가 중..." 에 갇히지 않는다', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn(async () => { throw new Error('네트워크 끊김') })
+    render(
+      <AddBuildingModal
+        cards={[testCard(1, '수지구 죽전동 1')]}
+        onClose={vi.fn()}
+        onGeocode={vi.fn(async () => ({ lat: 37.5, lng: 127.1 }))}
+        onSubmit={onSubmit as never}
+      />,
+    )
+
+    await user.type(address(), '어딘가')
+    await user.click(screen.getByRole('button', { name: '건물 추가' }))
+
+    // 버튼이 다시 눌리는 상태로 돌아와야 한다
+    expect(await screen.findByRole('button', { name: '건물 추가' })).toHaveProperty('disabled', false)
+    expect((address() as HTMLInputElement).value).toBe('어딘가')   // 입력도 살아 있어야
+  })
+
+  test('지오코딩이 예외를 던져도 저장은 진행된다 (핀 없이)', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn(async () => true)
+    render(
+      <AddBuildingModal
+        cards={[]}
+        onClose={vi.fn()}
+        onGeocode={vi.fn(async () => { throw new Error('지도 SDK 없음') })}
+        onSubmit={onSubmit}
+      />,
+    )
+
+    await user.type(address(), '어딘가')
+    await user.click(screen.getByRole('button', { name: '건물 추가' }))
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ address: '어딘가' }), null)
+  })
+
+  test('저장 중에는 취소·닫기로 창을 닫을 수 없다', async () => {
+    const user = userEvent.setup()
+    let release: (v: boolean) => void = () => {}
+    const onClose = vi.fn()
+    render(
+      <AddBuildingModal
+        cards={[]}
+        onClose={onClose}
+        onGeocode={vi.fn(async () => ({ lat: 37.5, lng: 127.1 }))}
+        onSubmit={vi.fn(() => new Promise<boolean>((r) => { release = r }))}
+      />,
+    )
+
+    await user.type(address(), '어딘가')
+    await user.click(screen.getByRole('button', { name: '건물 추가' }))
+
+    // 저장이 끝나기 전 — 닫으면 결과를 아무도 못 본다.
+    // 취소 버튼은 disabled 로 막히고, 배경 클릭은 requestClose 가 막는다.
+    await user.click(screen.getByRole('button', { name: '취소' }))
+    const backdrop = document.querySelector('.cal-modal-backdrop') as HTMLElement
+    await user.click(backdrop)
+    expect(onClose).not.toHaveBeenCalled()
+
+    await act(async () => { release(true) })
+    expect(onClose).toHaveBeenCalled()
   })
 })

@@ -179,7 +179,7 @@ export function DesktopTerritory({
   onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
   onOpenInformalOnMap?: (assetId: number) => void
   onCreateTerritoryRegion?: (input: { name: string; city?: string }) => Promise<boolean>
-  onCreateBuilding?: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => Promise<boolean | void> | boolean | void
+  onCreateBuilding?: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => Promise<boolean>
   onSwitchToMap?: () => void
   currentVisitor?: string
   informalAssets?: InformalAsset[]
@@ -637,7 +637,7 @@ export function DesktopTerritory({
       cardId = findCardForAddress(form.address) ?? cards[0]?.id ?? 0
     }
 
-    const created = await onCreateBuilding({
+    return onCreateBuilding({
       cardId,
       name: form.name,
       address: form.address,
@@ -645,7 +645,6 @@ export function DesktopTerritory({
       lat: latLng?.lat ?? 0,
       lng: latLng?.lng ?? 0,
     })
-    return created !== false
   }
 
 

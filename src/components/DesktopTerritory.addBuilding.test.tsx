@@ -122,3 +122,20 @@ describe('건물 추가 — 자동 카드 배정', () => {
     expect(screen.queryByText('건물 추가', { selector: 'h2' })).toBeNull()
   })
 })
+
+describe('건물 추가 — 다시 열기', () => {
+  test('닫았다 열면 입력이 비어 있다', async () => {
+    const user = userEvent.setup()
+    geocode.mockResolvedValue(null)
+    open({ cards: [testCard(1, '수지구 죽전동 1')] })
+
+    const modal = await openAddBuilding(user)
+    await user.type(within(modal).getByPlaceholderText(/경기도 용인시/), '지우고 싶은 주소')
+    await user.click(within(modal).getByRole('button', { name: '취소' }))
+
+    // 지금은 조건부 렌더링이라 언마운트되며 상태가 사라진다.
+    // 나중에 '숨김' 방식으로 바꾸면 옛 입력이 남는다 — 그때 이 테스트가 잡는다.
+    const again = await openAddBuilding(user)
+    expect((within(again).getByPlaceholderText(/경기도 용인시/) as HTMLInputElement).value).toBe('')
+  })
+})

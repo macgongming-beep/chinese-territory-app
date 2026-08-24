@@ -42,6 +42,25 @@ export default defineConfig([
   //
   // 데이터 접근은 hooks/storeMutations 또는 feature api 모듈에 둔다.
   // 아래 allowlist 는 **줄어들기만 해야 한다.** 늘리지 말 것.
+  // ── Supabase 클라이언트는 한 곳에서만 만든다 ──────────────────────
+  //
+  // 다른 파일이 createClient 를 직접 부르면 두 가지가 동시에 무너진다.
+  //   · 테스트의 stub alias 를 우회해 **진짜 운영 DB 로 나간다**
+  //   · 아래 화면 allowlist 도 우회한다 (경로가 다르니까)
+  // 타입만 가져오는 것은 괜찮다 — 값이 아니라 모양일 뿐이다.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/lib/supabase.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': ['error', {
+        paths: [{
+          name: '@supabase/supabase-js',
+          message: 'ﾠSupabase 클라이언트는 src/lib/supabase.ts 한 곳에서만 만듭니다. (타입 import 는 허용)',
+          allowTypeImports: true,
+        }],
+      }],
+    },
+  },
   {
     files: ['src/components/**/*.{ts,tsx}'],
     rules: {
