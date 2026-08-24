@@ -37,7 +37,7 @@ export const KNOWN_PRODUCTION_REFS = [
 // 잊으면, 그 회중의 운영 DB 가 "운영이 아니다" 로 통과해 테스트가 쓰기를 한다.
 // 빠뜨리는 쪽이 안전한 결과를 내야 한다. 그래서 허용목록으로 뒤집었다.
 export const KNOWN_TEST_REFS = [
-  // 예: 'abcdefghijklmnop',   // 필드맵 테스트 (2026-08-23 생성)
+  'itjlykpjmlcvanqpmkmc',   // field-map-test (2026-08-24 생성, Singapore)
 ]
 
 /** 운영 project ref. supabase link 정보가 진짜 출처다. */
