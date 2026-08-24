@@ -17,7 +17,8 @@
     "restore": "node scripts/restore.js",
     "verify-install": "node scripts/verify-install.js",
     "db:schema": "node scripts/dump-schema.js",
-    "db:baseline": "node scripts/csv-to-baseline.js"
+    "db:baseline": "node scripts/csv-to-baseline.js",
+    "smoke:db": "node scripts/smoke-test-db.js"
   },
   "dependencies": {
     "@sentry/react": "^10.53.1",
