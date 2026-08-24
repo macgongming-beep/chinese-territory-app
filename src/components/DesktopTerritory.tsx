@@ -35,6 +35,7 @@ import { BuildingEditCells, UnitEditForm, type BuildingEditDraft } from './Build
 import { CardCreateModal } from './DesktopTerritoryCardModal'
 import { BoundaryDrawPrompt } from './BoundaryDrawPrompt'
 import { AddBuildingModal, type AddBuildingForm } from './AddBuildingModal'
+import { PointVisitEditor, type VisitDraft } from './PointVisitEditor'
 import { msg } from '../lib/msg'
 import { getRestaurantUnits } from '../utils/restaurants'
 
@@ -290,10 +291,8 @@ export function DesktopTerritory({
     unitId: number
     historyId?: number
     label: string
-    result: UnitStatus
-    timeSlot: TimeSlot
-    visitedAt: string
-    memo: string
+    /** 폼 초기값. 이후 값은 모달이 들고 있다 */
+    draft: VisitDraft
   } | null>(null)
   const [selectedPointDetail, setSelectedPointDetail] = useState<{ buildingId: number; unitId: number } | null>(null)
   const [selectedPointDetailOffset, setSelectedPointDetailOffset] = useState(386)
@@ -349,23 +348,19 @@ export function DesktopTerritory({
       unitId: unit.id,
       historyId: history?.id,
       label: `${building.name || formatDisplayAddress(building.address)} · ${unit.number}`,
-      result: history?.result ?? unit.status,
-      timeSlot: history?.timeSlot ?? getDefaultTimeSlot(),
-      visitedAt: history?.visitedAt?.slice(0, 10) ?? getTodayDateInputValue(),
-      // 세대 메모를 방문 기록 메모에 미리 채우지 않는다 —
-      // 그대로 저장되면 같은 문장이 방문할 때마다 기록에 복제된다
-      memo: history?.memo ?? '',
+      draft: {
+        result: history?.result ?? unit.status,
+        timeSlot: history?.timeSlot ?? getDefaultTimeSlot(),
+        visitedAt: history?.visitedAt?.slice(0, 10) ?? getTodayDateInputValue(),
+        // 세대 메모를 방문 기록 메모에 미리 채우지 않는다 —
+        // 그대로 저장되면 같은 문장이 방문할 때마다 기록에 복제된다
+        memo: history?.memo ?? '',
+      },
     })
   }
 
-  const savePointVisitEditor = () => {
+  const savePointVisitEditor = (payload: VisitDraft) => {
     if (!pointVisitEditor) return
-    const payload = {
-      result: pointVisitEditor.result,
-      timeSlot: pointVisitEditor.timeSlot,
-      memo: pointVisitEditor.memo,
-      visitedAt: pointVisitEditor.visitedAt,
-    }
     if (pointVisitEditor.mode === 'edit' && pointVisitEditor.historyId) {
       onUpdateVisitHistory(pointVisitEditor.historyId, pointVisitEditor.unitId, payload)
     } else {
@@ -1657,70 +1652,13 @@ export function DesktopTerritory({
       )}
 
       {pointVisitEditor && (
-        <div className="cal-modal-backdrop" onClick={() => setPointVisitEditor(null)}>
-          <div className="cal-modal territory-confirm-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="cal-modal-head">
-              <div className="cal-modal-title">
-                <h2>{pointVisitEditor.mode === 'edit' ? '방문 기록 수정' : '방문 기록 등록'}</h2>
-                <p className="merge-name-modal-sub">{pointVisitEditor.label}</p>
-              </div>
-            </div>
-            <div className="cal-modal-body">
-              <div className="point-visit-editor-form">
-                <label>
-                  <span>방문일</span>
-                  <input
-                    type="date"
-                    value={pointVisitEditor.visitedAt}
-                    onChange={(event) => setPointVisitEditor((prev) => prev ? { ...prev, visitedAt: event.target.value } : prev)}
-                  />
-                </label>
-                <label>
-                  <span>시간대</span>
-                  <select
-                    value={pointVisitEditor.timeSlot}
-                    onChange={(event) => setPointVisitEditor((prev) => prev ? { ...prev, timeSlot: event.target.value as TimeSlot } : prev)}
-                  >
-                    <option value="오전">오전</option>
-                    <option value="오후">오후</option>
-                    <option value="저녁">저녁</option>
-                  </select>
-                </label>
-                <label>
-                  <span>결과</span>
-                  <select
-                    value={pointVisitEditor.result}
-                    onChange={(event) => setPointVisitEditor((prev) => prev ? { ...prev, result: event.target.value as UnitStatus } : prev)}
-                  >
-                    <option value="미방문">미방문</option>
-                    <option value="만남">만남</option>
-                    <option value="부재">부재</option>
-                    <option value="대상외">대상외</option>
-                  </select>
-                </label>
-                <label className="wide">
-                  <span>메모</span>
-                  <textarea
-                    value={pointVisitEditor.memo}
-                    onChange={(event) => setPointVisitEditor((prev) => prev ? { ...prev, memo: event.target.value } : prev)}
-                    placeholder="방문 당시 메모"
-                  />
-                </label>
-              </div>
-            </div>
-            <div className="cal-modal-foot">
-              <button className="cal-cancel-btn" onClick={() => setPointVisitEditor(null)} type="button">취소</button>
-              <button
-                className="cal-save-btn"
-                disabled={!pointVisitEditor.visitedAt}
-                onClick={savePointVisitEditor}
-                type="button"
-              >
-                저장
-              </button>
-            </div>
-          </div>
-        </div>
+        <PointVisitEditor
+          initial={pointVisitEditor.draft}
+          label={pointVisitEditor.label}
+          mode={pointVisitEditor.mode}
+          onClose={() => setPointVisitEditor(null)}
+          onSave={savePointVisitEditor}
+        />
       )}
 
       {/* 건물 추가 모달 */}

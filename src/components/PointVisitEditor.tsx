@@ -1,0 +1,91 @@
+// 세대 하나의 방문 기록을 적는다. DesktopTerritory 에서 떼어냈다.
+//
+// 폼 값은 여기가 들고 있다. 부모는 "어느 세대인가" 와 "저장" 만 안다.
+// 새 기록인지 수정인지도 부모가 판단한다 — 두 콜백이 갈리는 지점이라
+// 화면이 헷갈리면 기록을 덮어쓴다.
+import { useState } from 'react'
+import type { TimeSlot, UnitStatus } from '../types'
+
+export type VisitDraft = {
+  result: UnitStatus
+  timeSlot: TimeSlot
+  visitedAt: string
+  memo: string
+}
+
+type Props = {
+  /** '수정' 이면 제목이 바뀐다. 저장 경로는 부모가 고른다 */
+  mode: 'add' | 'edit'
+  /** 어느 건물 · 어느 세대인지 사람이 읽는 형태 */
+  label: string
+  initial: VisitDraft
+  onClose: () => void
+  onSave: (draft: VisitDraft) => void
+}
+
+export function PointVisitEditor({ mode, label, initial, onClose, onSave }: Props) {
+  const [draft, setDraft] = useState<VisitDraft>(initial)
+  const set = <K extends keyof VisitDraft>(key: K, value: VisitDraft[K]) =>
+    setDraft((d) => ({ ...d, [key]: value }))
+
+  return (
+    <div className="cal-modal-backdrop" onClick={onClose}>
+      <div className="cal-modal territory-confirm-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cal-modal-head">
+          <div className="cal-modal-title">
+            <h2>{mode === 'edit' ? '방문 기록 수정' : '방문 기록 등록'}</h2>
+            <p className="merge-name-modal-sub">{label}</p>
+          </div>
+        </div>
+        <div className="cal-modal-body">
+          <div className="point-visit-editor-form">
+            <label>
+              <span>방문일</span>
+              <input
+                type="date"
+                value={draft.visitedAt}
+                onChange={(e) => set('visitedAt', e.target.value)}
+              />
+            </label>
+            <label>
+              <span>시간대</span>
+              <select value={draft.timeSlot} onChange={(e) => set('timeSlot', e.target.value as TimeSlot)}>
+                <option value="오전">오전</option>
+                <option value="오후">오후</option>
+                <option value="저녁">저녁</option>
+              </select>
+            </label>
+            <label>
+              <span>결과</span>
+              <select value={draft.result} onChange={(e) => set('result', e.target.value as UnitStatus)}>
+                <option value="미방문">미방문</option>
+                <option value="만남">만남</option>
+                <option value="부재">부재</option>
+                <option value="대상외">대상외</option>
+              </select>
+            </label>
+            <label className="wide">
+              <span>메모</span>
+              <textarea
+                value={draft.memo}
+                onChange={(e) => set('memo', e.target.value)}
+                placeholder="방문 당시 메모"
+              />
+            </label>
+          </div>
+        </div>
+        <div className="cal-modal-foot">
+          <button className="cal-cancel-btn" onClick={onClose} type="button">취소</button>
+          <button
+            className="cal-save-btn"
+            disabled={!draft.visitedAt}
+            onClick={() => onSave(draft)}
+            type="button"
+          >
+            저장
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

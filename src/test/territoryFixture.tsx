@@ -3,7 +3,7 @@
 // 이 화면은 props 를 51개 받는다. 그 자체가 이번 구조 개선의 이유다.
 // 여기서 필수 props 를 가짜로 채워 두면, 각 테스트는 관심 있는 것만 덮어쓰면 된다.
 import { vi } from 'vitest'
-import type { Building, CardBoundary, GeoPoint, TerritoryCard, VisitHistory } from '../types'
+import type { Building, CardBoundary, GeoPoint, TerritoryCard, Unit, VisitHistory } from '../types'
 
 /**
  * 구역 카드 하나. 이름은 '지역 동 번호' 형식이라 거기서 region·area 를 뽑는다.
@@ -21,6 +21,22 @@ export function testCard(id: number, name: string, extra: Partial<TerritoryCard>
     status: '미배정',
     ...extra,
   } as TerritoryCard
+}
+
+/** 건물 하나. units 를 안 주면 세대 하나가 딸린다. */
+export function testBuilding(id: number, cardId: number, name: string, units?: Unit[]): Building {
+  return {
+    id, cardId, name,
+    address: `경기도 용인시 수지구 ${name}로 ${id}`,
+    type: '주택',
+    lat: 37.5, lng: 127.1,
+    units: units ?? [testUnit(id * 100 + 1, '101호')],
+  }
+}
+
+/** 세대 하나 */
+export function testUnit(id: number, number: string, extra: Partial<Unit> = {}): Unit {
+  return { id, number, status: '미방문', ...extra } as Unit
 }
 
 /** 사각형 구역선. [minLat, minLng, maxLat, maxLng] */
