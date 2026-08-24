@@ -130,6 +130,38 @@ with objs as (
                 coalesce(' with check (' || pol.with_check || ')', ''))
   from pg_policies pol where pol.schemaname = 'public'
 
+  union all  -- **먼저 회수한다.** 이게 없으면 대상 프로젝트의 기본 권한이 남는다.
+  --
+  -- 운영의 PIN 보호는 '테이블 SELECT 를 주지 않고 컬럼별로만 준다' 에 기대고 있다.
+  -- 그런데 새 Supabase 프로젝트는 만들 때 테이블 권한을 통째로 주므로,
+  -- 회수하지 않으면 **anon 이 app_users.pin(bcrypt 해시)을 읽을 수 있다.**
+  -- baseline 은 운영 상태를 못박아야 한다 — 주는 것만 적으면 안 된다.
+  select 11, c.relname::text,
+         format('revoke' || ' all on public.%I from anon, authenticated;', c.relname)
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+  where c.relkind in ('r', 'v')
+
+  union all  -- 함수 실행 권한도 같은 이유로 회수 후 다시 준다
+  select 11, p.proname::text,
+         format('revoke' || ' all on function %s from public, anon, authenticated;',
+                p.oid::regprocedure)
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+  where p.prokind in ('f', 'p')
+
+  union all  -- 함수 실행 권한 (실제 ACL 그대로)
+  select 12, p.proname::text,
+         format('grant' || ' %s on function %s to %s;',
+                a.privilege_type, p.oid::regprocedure,
+                case when a.grantee = 0 then 'public' else quote_ident(r.rolname) end)
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+  cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+  left join pg_roles r on r.oid = a.grantee
+  where p.prokind in ('f', 'p')
+    and (a.grantee = 0 or r.rolname in ('anon', 'authenticated', 'service_role'))
+
   union all  -- 테이블 권한
   select 12, g.table_name || '.' || g.grantee || '.' || g.privilege_type,
          format('grant' || ' %s on public.%I to %I;', g.privilege_type, g.table_name, g.grantee)
@@ -163,6 +195,6 @@ with objs as (
 )
 -- query_version 은 '이 결과가 어느 파일에서 나왔는지' 를 알려 준다.
 -- 지난번 실패가 옛 탭 실행 때문인지 구분하려고 넣었다.
-select 'v5-2026-08-24' as query_version,
+select 'v6-2026-08-24' as query_version,
        string_agg(ddl, E'\n\n' order by ord, obj) as ddl
 from objs;

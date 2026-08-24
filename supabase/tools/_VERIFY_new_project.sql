@@ -1,4 +1,9 @@
--- 새로 세운 프로젝트가 운영과 같은지 센다 (읽기 전용).
+-- 새로 세운 프로젝트에 **필요한 종류와 수가 있는지** 센다 (읽기 전용).
+--
+-- ⚠ 이건 '구조가 같다' 를 증명하지 않는다. 개수만 본다.
+--    컬럼 타입·기본값·제약 정의·함수 본문·정책 조건·권한(REVOKE 포함)은 안 본다.
+--    실제로 개수가 맞는 채로 두 가지가 틀려 있었다 —
+--    새 프로젝트가 RLS 를 더 켜 뒀고, app_users 테이블 권한이 더 열려 있었다.
 -- 운영 기준값은 supabase/baseline.sql 을 만든 2026-08-24 시점이다.
 select '테이블'    as 항목, count(*)::text as 이곳, '40' as 운영 from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r'
 union all select '뷰',      count(*)::text, '1'  from pg_views where schemaname='public'
