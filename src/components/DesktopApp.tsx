@@ -31,6 +31,7 @@ import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import { roleLabels } from '../types'
 import type { AppLanguage } from '../i18n'
 import { msg } from '../lib/msg'
+import type { MergeResult } from '../utils/duplicateBuildingMerge'
 
 const pageToPath: Record<DesktopPage, string> = {
   '홈': '/',
@@ -241,7 +242,7 @@ export function DesktopApp({
   onDeleteBuilding: (buildingId: number) => void
   onDeleteBuildings: (buildingIds: number[]) => void
   onDeleteCards: (cardIds: number[]) => void
-  onMergeDuplicateBuildings: (scopeCardId?: number, nameOverrides?: Record<number, string>, selectedPrimaryIds?: number[]) => Promise<void>
+  onMergeDuplicateBuildings: (scopeCardId?: number, nameOverrides?: Record<number, string>, selectedPrimaryIds?: number[]) => Promise<MergeResult>
   onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => void
   onMoveBuildingToCard: (buildingId: number, cardId: number) => void
   onReassignBuildingsToCards: (updates: Array<{ buildingId: number; cardId: number }>) => Promise<{ updated: number; failed: number }>

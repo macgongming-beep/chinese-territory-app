@@ -107,3 +107,15 @@ export function planDuplicateBuildingMerge(
 
   return { merge, conflicts }
 }
+
+/**
+ * DB 의 merge_duplicate_buildings_tx 가 돌려주는 것.
+ * 성공·건너뜀·실패를 화면까지 그대로 전달한다 — void 로는 구분할 수 없다.
+ */
+export type MergeResult = {
+  ok: boolean
+  mergedBuildings: number
+  movedUnits: number
+  /** 호수가 겹쳐 건드리지 않은 묶음 */
+  conflicts: Array<{ primaryId: number; conflictingNumbers: string[] }>
+}

@@ -1,7 +1,8 @@
 import type { Building, TerritoryCard, Unit, UnitStatus } from '../../types'
 import type { CsvBuildingImport } from '../../utils/csvBuildingImport'
 import { isValidMapCoordinate } from '../../utils/mapUtils'
-import { planDuplicateBuildingMerge } from '../../utils/duplicateBuildingMerge'
+import { getAuthToken } from '../../lib/authToken'
+import type { MergeResult } from '../../utils/duplicateBuildingMerge'
 import { supabase, showToast, reportMutationError } from './shared'
 import { logServiceAction } from './serviceLog'
 import { msg } from '../../lib/msg'
@@ -280,78 +281,58 @@ export function makeBuildingMutations(deps: {
    * - 나머지 건물 삭제
    */
   /**
-   * 같은 주소로 두 번 등록된 건물을 합친다.
+   * 같은 주소로 두 번 등록된 건물을 합친다. **DB 안에서 한 트랜잭션으로 돈다.**
    *
-   * ⚠ 호수 번호가 겹치는 묶음은 **손대지 않는다.** 예전에는 겹치는 호수를
-   *   "이동 건너뛰기" 하고 원본 건물을 지웠는데, units 가 visit_histories ·
-   *   regular_visits 에 on delete cascade 로 물려 있어서 그 호수의
-   *   **방문 기록이 조용히 사라졌다.** 무엇을 남길지는 사람이 볼 판단이다.
-   *   판단은 utils/duplicateBuildingMerge.ts 에 있고 테스트로 덮여 있다.
+   * 예전에는 여기서 이름변경 → 호수이동 → 건물삭제를 순서대로 쐈다. 중간에
+   * 실패하면 앞의 변경이 남아 DB 와 화면이 어긋났고, 되돌릴 방법이 없었다.
+   * 그리고 계획을 화면의 옛 데이터로 세워서, 그 사이 다른 사람이 호수를 추가하면
+   * 서버에는 충돌이 생겼는데 모르고 진행했다.
+   *
+   * ⚠ **RPC 가 없으면 옛 경로로 돌아가지 않는다.** 조용히 폴백하면 지금 상황이
+   *   그대로 반복된다. 명확히 실패시킨다.
+   *
+   * 호수가 겹치는 묶음은 건드리지 않고 conflicts 로 돌려준다 —
+   * units 가 visit_histories · regular_visits 에 cascade 로 물려 있어서,
+   * 겹치는 호수를 두고 원본을 지우면 방문 기록이 조용히 사라진다.
    */
   const mergeDuplicateBuildings = async (
     scopeCardId?: number,
     nameOverrides?: Record<number, string>,
     selectedPrimaryIds?: number[],
-  ) => {
-    const plan = planDuplicateBuildingMerge(buildings, { scopeCardId, selectedPrimaryIds })
-
-    if (plan.merge.length === 0) {
-      showToast(
-        plan.conflicts.length > 0
-          ? msg('호수 번호가 겹쳐 병합할 수 없는 주소가 {n}곳 있습니다. 직접 정리해 주세요.', { n: plan.conflicts.length })
-          : msg('중복 주소 건물이 없습니다.'),
-        'info',
-      )
-      return
+  ): Promise<MergeResult> => {
+    const token = getAuthToken()
+    if (!token) {
+      showToast(msg('로그인 정보가 없습니다. 다시 로그인해 주세요.'), 'error')
+      return { ok: false, mergedBuildings: 0, movedUnits: 0, conflicts: [] }
     }
 
-    let mergedBuildings = 0
-    let movedUnits = 0
+    const { data, error } = await supabase.rpc('merge_duplicate_buildings_tx', {
+      p_token: token,
+      p_scope_card_id: scopeCardId ?? null,
+      p_name_overrides: nameOverrides ?? {},
+      p_selected_primary_ids: selectedPrimaryIds ?? null,
+    })
 
-    for (const { primary, absorbed } of plan.merge) {
-      const chosenName = nameOverrides?.[primary.id]
-      if (chosenName && chosenName !== primary.name) {
-        const nameRes = await supabase
-          .from('buildings')
-          .update({ name: chosenName })
-          .eq('id', primary.id)
-        if (nameRes.error) {
-          reportMutationError(msg('건물 이름 변경 중 오류가 발생했습니다.'), nameRes.error)
-          await fetchAll()   // 여기까지 바뀐 것을 화면에 맞춘다
-          return
-        }
-      }
-
-      for (const duplicate of absorbed) {
-        // 계획이 이미 충돌을 걸렀다. 여기 오는 호수는 겹치지 않는다.
-        for (const unit of duplicate.units) {
-          const res = await supabase
-            .from('units')
-            .update({ building_id: primary.id })
-            .eq('id', unit.id)
-          if (res.error) {
-            reportMutationError(msg('호수 이전 중 오류가 발생했습니다.'), res.error)
-            await fetchAll()
-            return
-          }
-          movedUnits++
-        }
-        const delRes = await supabase.from('buildings').delete().eq('id', duplicate.id)
-        if (delRes.error) {
-          reportMutationError(msg('중복 건물 삭제 중 오류가 발생했습니다.'), delRes.error)
-          await fetchAll()
-          return
-        }
-        mergedBuildings++
-      }
+    if (error) {
+      reportMutationError(msg('중복 건물 병합에 실패했습니다. 아무것도 바뀌지 않았습니다.'), error)
+      return { ok: false, mergedBuildings: 0, movedUnits: 0, conflicts: [] }
     }
 
+    const result = data as MergeResult
     await fetchAll()
-    showToast(
-      plan.conflicts.length > 0
-        ? msg('중복 건물 {mergedBuildings}개 합병 완료 (호수 {movedUnits}개 이전).\n호수가 겹치는 {skipped}곳은 건드리지 않았습니다.', { mergedBuildings: mergedBuildings, movedUnits: movedUnits, skipped: plan.conflicts.length })
-        : msg('중복 건물 {mergedBuildings}개 합병 완료 (호수 {movedUnits}개 이전)', { mergedBuildings: mergedBuildings, movedUnits: movedUnits }),
-    )
+
+    if (result.mergedBuildings === 0 && result.conflicts.length === 0) {
+      showToast(msg('중복 주소 건물이 없습니다.'), 'info')
+    } else if (result.mergedBuildings === 0) {
+      showToast(msg('호수 번호가 겹쳐 병합할 수 없는 주소가 {n}곳 있습니다. 직접 정리해 주세요.', { n: result.conflicts.length }), 'info')
+    } else {
+      showToast(
+        result.conflicts.length > 0
+          ? msg('중복 건물 {mergedBuildings}개 합병 완료 (호수 {movedUnits}개 이전).\n호수가 겹치는 {skipped}곳은 건드리지 않았습니다.', { mergedBuildings: result.mergedBuildings, movedUnits: result.movedUnits, skipped: result.conflicts.length })
+          : msg('중복 건물 {mergedBuildings}개 합병 완료 (호수 {movedUnits}개 이전)', { mergedBuildings: result.mergedBuildings, movedUnits: result.movedUnits }),
+      )
+    }
+    return result
   }
 
   const updateBuilding = async (

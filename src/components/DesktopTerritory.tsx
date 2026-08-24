@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { getRegionNames, getRegions } from '../lib/regions'
 import { getAreaFilterOptions } from '../utils/areaOptions'
+import { planDuplicateBuildingMerge } from '../utils/duplicateBuildingMerge'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { geocodeFirstMatch } from '../lib/naverGeocode'
@@ -37,6 +38,7 @@ import { CardCreateModal } from './DesktopTerritoryCardModal'
 import { BoundaryDrawPrompt } from './BoundaryDrawPrompt'
 import { AddBuildingModal, type AddBuildingForm } from './AddBuildingModal'
 import { PointVisitEditor, type VisitDraft } from './PointVisitEditor'
+import type { MergeResult } from '../utils/duplicateBuildingMerge'
 import { msg } from '../lib/msg'
 import { getRestaurantUnits } from '../utils/restaurants'
 
@@ -138,7 +140,7 @@ export function DesktopTerritory({
   onSetMultipleCardLeaders: (cardIds: number[], leaderNames: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
   onDeleteBuildings: (buildingIds: number[]) => void
   onDeleteCards: (cardIds: number[]) => void
-  onMergeDuplicateBuildings: (scopeCardId?: number, nameOverrides?: Record<number, string>, selectedPrimaryIds?: number[]) => Promise<void>
+  onMergeDuplicateBuildings: (scopeCardId?: number, nameOverrides?: Record<number, string>, selectedPrimaryIds?: number[]) => Promise<MergeResult>
   onImportBuildings: (inputs: CsvBuildingImport[]) => Promise<{ inserted: number; skipped: number }>
   onMoveBuildingToCard: (buildingId: number, cardId: number) => void
   onReassignBuildingsToCards: (updates: Array<{ buildingId: number; cardId: number }>) => Promise<{ updated: number; failed: number }>
@@ -262,6 +264,8 @@ export function DesktopTerritory({
   const [mergeModalGroups, setMergeModalGroups] = useState<Array<{ primaryId: number; address: string; cardName: string; buildingCount: number; unitCount: number; names: string[] }> | null>(null)
   const [mergeNameChoices, setMergeNameChoices] = useState<Record<number, string>>({})
   const [mergeSelectedPrimaryIds, setMergeSelectedPrimaryIds] = useState<Set<number>>(new Set())
+  /** 병합 중에는 창을 닫지 않는다. 닫아도 작업은 계속돼 결과를 아무도 못 본다 */
+  const [merging, setMerging] = useState(false)
   const [pendingChineseToggle, setPendingChineseToggle] = useState<{
     buildingId: number
     unitId: number
@@ -698,20 +702,16 @@ export function DesktopTerritory({
 
   // const buildingUnitsTotal = filteredBuildings.reduce((sum, building) => sum + building.units.length, 0)
 
-  // 중복 주소 그룹 탐지 (필터된 건물 기준)
-  // 주소 정규화: 공백 통일, 소문자, 숫자 앞뒤 공백 제거 (진덕로19-3 == 진덕로 19-3)
-  const normalizeAddress = (addr: string) =>
-    addr.trim().toLowerCase().replace(/\s+/g, '').replace(/[-‐]/g, '-')
 
-  const duplicateAddressGroups = (() => {
-    const groupMap = new Map<string, Building[]>()
-    for (const b of filteredBuildings) {
-      const key = `${b.cardId}::${normalizeAddress(b.address)}`
-      if (!groupMap.has(key)) groupMap.set(key, [])
-      groupMap.get(key)!.push(b)
-    }
-    return Array.from(groupMap.values()).filter((g) => g.length > 1)
-  })()
+  // 묶는 규칙과 충돌 판정을 utils 의 순수 함수 하나로 모은다.
+  // 예전에는 여기서 따로 묶어서, 호수가 겹쳐 병합되지 않을 묶음도 그냥 보여 줬다.
+  // 사용자는 고르고 눌렀는데 아무 일도 안 일어났다. 이제 미리 갈라서 보여 준다.
+  // (실제 판정은 DB 안에서 다시 한다 — 화면 데이터는 낡을 수 있다)
+  const mergePlan = planDuplicateBuildingMerge(filteredBuildings)
+  const duplicateAddressGroups = [
+    ...mergePlan.merge.map((g) => [g.primary, ...g.absorbed]),
+    ...mergePlan.conflicts.map((c) => [c.primary]),
+  ]
   const duplicateBuildingIds = new Set(duplicateAddressGroups.flatMap((g) => g.map((b) => b.id)))
   const matchesPointKind = (unit: Building['units'][number]) => {
     if (pointKindFilter === '중국어') return !!unit.isChinese
@@ -1726,21 +1726,35 @@ export function DesktopTerritory({
               ))}
             </div>
             <div className="merge-name-modal-footer">
-              <button className="cal-cancel-btn" onClick={() => setMergeModalGroups(null)} type="button">취소</button>
+              {mergePlan.conflicts.length > 0 && (
+                <span style={{ marginRight: 'auto', fontSize: 12.5, color: 'var(--warn-600, #b45309)', fontWeight: 700 }}>
+                  호수가 겹치는 {mergePlan.conflicts.length}곳은 제외했습니다
+                </span>
+              )}
+              <button className="cal-cancel-btn" disabled={merging} onClick={() => { if (!merging) setMergeModalGroups(null) }} type="button">취소</button>
               <button
                 className="dup-address-merge-btn"
-                disabled={mergeSelectedPrimaryIds.size === 0}
+                disabled={mergeSelectedPrimaryIds.size === 0 || merging}
                 type="button"
                 onClick={async () => {
+                  if (merging) return
                   // 빈 입력은 첫 번째 이름으로 fallback
                   const finalChoices: Record<number, string> = {}
                   const selectedPrimaryIds = Array.from(mergeSelectedPrimaryIds)
                   mergeModalGroups.filter((g) => mergeSelectedPrimaryIds.has(g.primaryId)).forEach((g) => {
                     finalChoices[g.primaryId] = mergeNameChoices[g.primaryId]?.trim() || g.names[0]
                   })
-                  setMergeModalGroups(null)
-                  setMergeSelectedPrimaryIds(new Set())
-                  await onMergeDuplicateBuildings(undefined, finalChoices, selectedPrimaryIds)
+                  setMerging(true)
+                  try {
+                    const result = await onMergeDuplicateBuildings(undefined, finalChoices, selectedPrimaryIds)
+                    // 실패했으면 창을 열어 둔다 — 고른 것과 적은 이름을 지킨다.
+                    // 예전에는 부르기 전에 닫아서, 실패해도 아무도 몰랐다.
+                    if (!result.ok) return
+                    setMergeModalGroups(null)
+                    setMergeSelectedPrimaryIds(new Set())
+                  } finally {
+                    setMerging(false)
+                  }
                 }}
               >
                 선택한 주소 합치기
@@ -2548,12 +2562,13 @@ export function DesktopTerritory({
                 className="dup-address-merge-btn"
                 onClick={() => {
                   // 각 그룹의 이름 목록 수집
-                  const groups = duplicateAddressGroups.map((group) => {
-                    const sorted = [...group].sort((a, b) => a.id - b.id)
+                  // 합칠 수 있는 것만 보여 준다. 겹치는 것은 아래에서 따로 알린다
+                  const groups = mergePlan.merge.map((g) => {
+                    const sorted = [g.primary, ...g.absorbed]
                     return {
-                      primaryId: sorted[0].id,
-                      address: sorted[0].address,
-                      cardName: cardMap.get(sorted[0].cardId)?.name ?? '카드 없음',
+                      primaryId: g.primary.id,
+                      address: g.primary.address,
+                      cardName: cardMap.get(g.primary.cardId)?.name ?? '카드 없음',
                       buildingCount: sorted.length,
                       unitCount: sorted.reduce((sum, building) => sum + building.units.length, 0),
                       names: sorted.map((b) => b.name),
