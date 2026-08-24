@@ -121,6 +121,8 @@ export function mergeCardBoundaryPoints(boundaries: CardBoundary[]): BoundaryMer
 }
 
 const BACKUP_TYPE = 'chs-yongin-card-boundaries'
+/** 지금까지 이 형식 하나뿐이다 (2026-05-22 최초 커밋부터). 늘어나면 여기 추가한다 */
+const SUPPORTED_VERSIONS = [1]
 
 export function downloadCardBoundaryBackup(cards: Array<{ id: number; name: string; region: string; area: string }>, boundaries: CardBoundary[]) {
   const boundaryMap = new Map(boundaries.map((boundary) => [boundary.cardId, boundary.points]))
@@ -176,10 +178,12 @@ function hasArea(points: GeoPoint[]): boolean {
 export function parseCardBoundaryBackup(text: string): BoundaryBackupEntry[] {
   const parsed = JSON.parse(text) as {
     type?: unknown
+    version?: unknown
     cards?: Array<{ cardId?: unknown; cardName?: unknown; region?: unknown; area?: unknown; boundary?: unknown }>
   }
   // 아무 JSON 이나 받으면 엉뚱한 파일로 구역선을 덮게 된다
   if (parsed.type !== BACKUP_TYPE) throw new Error('not a boundary backup')
+  if (!SUPPORTED_VERSIONS.includes(Number(parsed.version))) throw new Error('unsupported version')
   if (!Array.isArray(parsed.cards)) throw new Error('invalid backup')
 
   return parsed.cards.map((item) => {
@@ -205,7 +209,7 @@ export function parseCardBoundaryBackup(text: string): BoundaryBackupEntry[] {
   }).filter((entry) => entry.points.length >= 3 && hasArea(entry.points))
 }
 
-export type RestoreRefusal = { cardId: number; cardName: string; reason: '없는 카드' | '다른 카드' }
+export type RestoreRefusal = { cardId: number; cardName: string; reason: '없는 카드' | '다른 카드' | '이름 없음' }
 
 export type RestorePlan = {
   apply: CardBoundary[]
@@ -221,20 +225,30 @@ export type RestorePlan = {
  */
 export function planBoundaryRestore(
   entries: BoundaryBackupEntry[],
-  currentCards: Array<{ id: number; name: string }>,
+  currentCards: Array<{ id: number; name: string; region?: string; area?: string }>,
 ): RestorePlan {
   const byId = new Map(currentCards.map((c) => [c.id, c]))
   const apply: CardBoundary[] = []
   const refused: RestoreRefusal[] = []
 
   for (const entry of entries) {
+    // 이름이 없으면 신원을 확인할 방법이 없다. id 만 믿으면 덮어쓴다.
+    // 이 형식은 최초 커밋부터 이름을 적었으므로, 이름이 없는 파일은
+    // 우리 백업이 아니거나 손을 댄 것이다.
+    if (!entry.cardName) {
+      refused.push({ cardId: entry.cardId, cardName: '', reason: '이름 없음' })
+      continue
+    }
     const card = byId.get(entry.cardId)
     if (!card) {
       refused.push({ cardId: entry.cardId, cardName: entry.cardName, reason: '없는 카드' })
       continue
     }
-    // 이름이 안 적힌 옛 백업은 id 만으로 받는다 — 그 시절엔 이름을 안 적었다
-    if (entry.cardName && entry.cardName !== card.name) {
+    const sameName = entry.cardName === card.name
+    // 지역·동은 적혀 있을 때만 본다 (카드 쪽에 없을 수도 있다)
+    const sameRegion = !entry.region || !card.region || entry.region === card.region
+    const sameArea = !entry.area || !card.area || entry.area === card.area
+    if (!sameName || !sameRegion || !sameArea) {
       refused.push({ cardId: entry.cardId, cardName: entry.cardName, reason: '다른 카드' })
       continue
     }

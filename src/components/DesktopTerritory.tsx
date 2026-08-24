@@ -365,8 +365,7 @@ export function DesktopTerritory({
     const ok = pointVisitEditor.mode === 'edit' && pointVisitEditor.historyId
       ? await onUpdateVisitHistory(pointVisitEditor.historyId, pointVisitEditor.unitId, payload)
       : await onAddVisitHistory(pointVisitEditor.buildingId, pointVisitEditor.unitId, payload)
-    // 닫는 것은 편집기가 한다 — 실패했는데 닫히면 적은 내용이 사라진다
-    if (ok) setPointVisitEditor(null)
+    // 닫는 것은 편집기가 한다. 두 곳에서 닫으면 책임이 겹친다.
     return ok
   }
 

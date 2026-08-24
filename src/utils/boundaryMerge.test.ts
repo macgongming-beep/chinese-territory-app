@@ -20,6 +20,12 @@ describe('parseCardBoundaryBackup', () => {
     expect(out).toEqual([{ cardId: 7, cardName: '수지구 죽전동 1', region: '수지구', area: '죽전동', points: square() }])
   })
 
+  test('모르는 version 은 거절한다', () => {
+    expect(() => parseCardBoundaryBackup(
+      JSON.stringify({ type: 'chs-yongin-card-boundaries', version: 2, cards: [] }),
+    )).toThrow()
+  })
+
   test('구역선 백업이 아닌 JSON 은 거절한다', () => {
     // 아무 JSON 이나 받으면 엉뚱한 파일로 구역선을 덮는다
     expect(() => parseCardBoundaryBackup(JSON.stringify({ cards: [] }))).toThrow()
@@ -166,8 +172,19 @@ describe('planBoundaryRestore — 엉뚱한 카드를 덮지 않는다', () => {
     expect(plan.refused).toHaveLength(2)
   })
 
-  test('이름이 안 적힌 옛 백업은 id 로 받는다', () => {
+  test('이름이 없으면 거절한다 — id 만으로는 신원을 못 믿는다', () => {
+    // 이 형식은 최초 커밋(2026-05-22)부터 이름을 적었다.
+    // 이름 없는 파일은 우리 백업이 아니거나 손을 댄 것이다.
     const plan = planBoundaryRestore([e(1, '')], now)
-    expect(plan.apply.map((b) => b.cardId)).toEqual([1])
+    expect(plan.apply).toEqual([])
+    expect(plan.refused[0].reason).toBe('이름 없음')
+  })
+
+  test('지역이나 동이 다르면 거절한다', () => {
+    const cards = [{ id: 1, name: '수지구 죽전동 1', region: '수지구', area: '죽전동' }]
+    const same = { cardId: 1, cardName: '수지구 죽전동 1', points: square() }
+    expect(planBoundaryRestore([{ ...same, region: '처인구', area: '죽전동' }], cards).refused).toHaveLength(1)
+    expect(planBoundaryRestore([{ ...same, region: '수지구', area: '상현동' }], cards).refused).toHaveLength(1)
+    expect(planBoundaryRestore([{ ...same, region: '수지구', area: '죽전동' }], cards).apply).toHaveLength(1)
   })
 })
