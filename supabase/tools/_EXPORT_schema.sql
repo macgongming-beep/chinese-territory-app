@@ -126,4 +126,8 @@ with objs as (
   join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
   where c.relkind = 'r' and c.relreplident = 'f'
 )
-select string_agg(ddl, E'\n\n' order by ord, obj) as ddl from objs;
+-- query_version 은 '이 결과가 어느 파일에서 나왔는지' 를 알려 준다.
+-- 지난번 실패가 옛 탭 실행 때문인지 구분하려고 넣었다.
+select 'v2-2026-08-24' as query_version,
+       string_agg(ddl, E'\n\n' order by ord, obj) as ddl
+from objs;

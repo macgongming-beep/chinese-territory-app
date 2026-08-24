@@ -24,35 +24,51 @@ if (!existsSync(path)) {
   process.exit(1)
 }
 
-/** RFC4180 CSV 에서 첫 데이터 칸만 꺼낸다. 따옴표 안의 줄바꿈을 살린다. */
-function firstCell(text) {
-  let i = 0
-  // 헤더 줄 건너뛰기 (따옴표 밖의 첫 개행까지)
-  let inQ = false
+/** RFC4180 CSV 한 줄을 칸별로 쪼갠다. 따옴표 안의 줄바꿈과 "" 를 살린다. */
+function parseCells(text) {
+  const cells = []
+  let cur = '', inQ = false, i = 0
   for (; i < text.length; i++) {
     const c = text[i]
-    if (c === '"') { inQ = !inQ; continue }
-    if (!inQ && (c === '\n')) { i++; break }
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { cur += '"'; i++ }
+        else inQ = false
+      } else cur += c
+    } else if (c === '"') inQ = true
+    else if (c === ',') { cells.push(cur); cur = '' }
+    else if (c === '\n') { cells.push(cur); return cells }
+    else if (c !== '\r') cur += c
   }
-  // 데이터 칸 읽기
-  let out = ''
-  if (text[i] === '"') {
-    i++
-    for (; i < text.length; i++) {
-      if (text[i] === '"') {
-        if (text[i + 1] === '"') { out += '"'; i++; continue }  // "" → "
-        break
-      }
-      out += text[i]
+  cells.push(cur)
+  return cells
+}
+
+/**
+ * 데이터 줄에서 DDL 칸을 꺼낸다.
+ * 결과에 query_version 칸이 같이 오므로, **가장 긴 칸**이 DDL 이다.
+ */
+function extractDdl(text) {
+  const nl = (() => {           // 헤더 줄 끝 (따옴표 밖의 첫 개행)
+    let inQ = false
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === '"') inQ = !inQ
+      else if (!inQ && text[i] === '\n') return i + 1
     }
-  } else {
-    out = text.slice(i).replace(/\r?\n$/, '')
-  }
-  return out.replace(/\r\n/g, '\n').trim()
+    return 0
+  })()
+  const header = parseCells(text.slice(0, nl))
+  const cells = parseCells(text.slice(nl))
+  const version = header.indexOf('query_version') >= 0
+    ? cells[header.indexOf('query_version')]?.trim()
+    : null
+  const ddl = cells.reduce((a, b) => (b.length > a.length ? b : a), '')
+  return { ddl: ddl.replace(/\r\n/g, '\n').trim(), version }
 }
 
 const raw = readFileSync(path, 'utf8')
-const ddl = firstCell(raw)
+const { ddl, version } = extractDdl(raw)
+if (version) console.log(`  쿼리 버전: ${version}`)
 
 if (!ddl || ddl.length < 100) {
   console.error('✗ 내용이 비었거나 너무 짧다. 쿼리 결과를 제대로 받았는지 확인할 것.')
