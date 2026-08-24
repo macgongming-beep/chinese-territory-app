@@ -88,8 +88,21 @@ const header = `-- 운영 스키마 baseline — supabase/tools/_EXPORT_schema.s
 -- 만든 날: ${new Date().toISOString().slice(0, 10)}
 --
 -- 빈 Supabase 프로젝트의 SQL Editor 에서 이 파일을 통째로 실행하면 구조가 선다.
--- ⚠ 데이터는 들어 있지 않다. 구조뿐이다.
--- ⚠ 손으로 고치지 말 것 — 다시 뽑는다.
+-- 순서: 확장 → 시퀀스 → 테이블 → 제약 → 인덱스 → 뷰 → 함수 → 트리거
+--       → RLS → 정책 → 권한 → realtime → replica identity
+--
+-- ⚠ 데이터는 없다. 구조뿐이다.
+-- ⚠ 손으로 고치지 말 것 — 다시 뽑는다 (npm run db:baseline).
+--
+-- ⚠ 확장 여섯 개 중 pg_cron · pg_net 은 프로젝트에 따라 SQL 로 못 켤 수 있다.
+--    그때는 Dashboard → Database → Extensions 에서 먼저 켜고 다시 실행한다.
+--    pg_stat_statements · pgcrypto · supabase_vault · uuid-ossp 는 보통 이미 있다.
+--
+-- ⚠ 이 파일에 없는 것 (따로 챙긴다):
+--    · pg_cron 예약 작업 · 스토리지 버킷  → supabase/tools/_EXPORT_extras.sql
+--    · 첫 관리자 계정 · 지역 목록          → 새 회중 설치 시 손으로
+--    · 푸시 VAPID 키                      → 회중마다 **새로 만든다** (돌려쓰면
+--      다른 회중 앱이 우리 교인에게 알림을 보낼 수 있다)
 
 `
 
