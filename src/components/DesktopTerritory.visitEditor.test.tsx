@@ -106,6 +106,22 @@ describe('방문 기록 편집기', () => {
   })
 })
 
+describe('중복 저장', () => {
+  test('저장을 두 번 눌러도 기록은 하나만 생긴다', async () => {
+    const user = userEvent.setup()
+    const props = open()
+
+    await selectUnit(user)
+    await user.click(screen.getByRole('button', { name: '+ 방문 기록 추가' }))
+    const btn = within(editor()).getByRole('button', { name: '저장' })
+    await user.click(btn)
+    // 저장하면 부모가 편집기를 내린다. 두 번째 클릭은 사라진 버튼을 누르는 셈이다.
+    await user.click(btn).catch(() => {})
+
+    expect(props.onAddVisitHistory).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('방문 기록 수정 — 새 기록과 갈리는 지점', () => {
   const history: VisitHistory = {
     id: 900, unitId: unit.id, visitor: '김민준', result: '부재',
