@@ -3,6 +3,13 @@
 //
 //   node scripts/csv-to-baseline.js ~/Downloads/result.csv [--append]
 //
+// ⚠ Supabase SQL Editor 는 쿼리 글자에서 'create table <이름>' 을 찾아 그 관계를
+//    조회한다. 문자열 안이든 아니든 상관 안 한다 — 확인:
+//      select 'create table public.x'  → 42P01 relation "public.x" does not exist
+//      select 'public.x'               → 정상
+//    그래서 _EXPORT_schema.sql 은 DDL 키워드를 'create' || ' table …' 로 끊어 쓴다.
+//    결과물에는 정상적으로 붙어 나온다.
+//
 // _EXPORT_schema.sql 결과로 baseline 을 만들고,
 // _EXPORT_extras.sql 결과는 --append 로 뒤에 붙인다.
 import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs'

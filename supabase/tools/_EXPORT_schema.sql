@@ -12,19 +12,19 @@ with objs as (
 
   -- 확장
   select 1 as ord, e.extname::text as obj,
-         format('create extension if not exists %I with schema %I;', e.extname, n.nspname) as ddl
+         format('create' || ' extension if not exists %I with schema %I;', e.extname, n.nspname) as ddl
   from pg_extension e
   join pg_namespace n on n.oid = e.extnamespace
   where e.extname <> 'plpgsql'
 
   union all  -- 시퀀스 (테이블 기본값이 참조하므로 먼저)
   select 2, s.sequencename::text,
-         format('create sequence if not exists public.%I;', s.sequencename)
+         format('create' || ' sequence if not exists public.%I;', s.sequencename)
   from pg_sequences s where s.schemaname = 'public'
 
   union all  -- 테이블
   select 3, c.relname::text,
-         format(E'create table if not exists public.%I (\n  %s\n);', c.relname, cols.def)
+         format('create' || E' table if not exists public.%I (\n  %s\n);', c.relname, cols.def)
   from pg_class c
   join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
   cross join lateral (
@@ -45,7 +45,7 @@ with objs as (
   union all  -- 제약: PK/UNIQUE/CHECK 먼저, FK 는 뒤 (참조 대상이 있어야 한다)
   select case when con.contype = 'f' then 5 else 4 end,
          c.relname || '.' || con.conname,
-         format('alter table public.%I add constraint %I %s;',
+         format('alter' || ' table public.%I add constraint %I %s;',
                 c.relname, con.conname, pg_get_constraintdef(con.oid))
   from pg_constraint con
   join pg_class c on c.oid = con.conrelid
@@ -63,7 +63,7 @@ with objs as (
 
   union all  -- 뷰
   select 7, v.viewname::text,
-         format(E'create or replace view public.%I as\n%s', v.viewname, v.definition)
+         format('create' || E' or replace view public.%I as\n%s', v.viewname, v.definition)
   from pg_views v where v.schemaname = 'public'
 
   union all  -- 함수 / 프로시저 (auth_login, verify_session 등)
@@ -81,14 +81,14 @@ with objs as (
 
   union all  -- RLS 켜기
   select 10, c.relname::text,
-         format('alter table public.%I enable row level security;', c.relname)
+         format('alter' || ' table public.%I enable row level security;', c.relname)
   from pg_class c
   join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
   where c.relkind = 'r' and c.relrowsecurity
 
   union all  -- 정책
   select 11, pol.tablename || '.' || pol.policyname,
-         format('create policy %I on public.%I as %s for %s to %s%s%s;',
+         format('create' || ' policy %I on public.%I as %s for %s to %s%s%s;',
                 pol.policyname, pol.tablename, pol.permissive, pol.cmd,
                 array_to_string(pol.roles, ', '),
                 coalesce(' using (' || pol.qual || ')', ''),
@@ -97,14 +97,14 @@ with objs as (
 
   union all  -- 테이블 권한
   select 12, g.table_name || '.' || g.grantee || '.' || g.privilege_type,
-         format('grant %s on public.%I to %I;', g.privilege_type, g.table_name, g.grantee)
+         format('grant' || ' %s on public.%I to %I;', g.privilege_type, g.table_name, g.grantee)
   from information_schema.role_table_grants g
   where g.table_schema = 'public'
     and g.grantee in ('anon','authenticated','service_role')
 
   union all  -- 컬럼 권한만 따로 준 것 (app_users.pin 차단이 이 방식이다)
   select 13, cp.table_name || '.' || cp.column_name || '.' || cp.grantee,
-         format('grant %s (%I) on public.%I to %I;',
+         format('grant' || ' %s (%I) on public.%I to %I;',
                 cp.privilege_type, cp.column_name, cp.table_name, cp.grantee)
   from information_schema.column_privileges cp
   where cp.table_schema = 'public'
@@ -116,18 +116,18 @@ with objs as (
 
   union all  -- realtime publication (채팅·일정 즉시 반영이 여기 달려 있다)
   select 14, pt.pubname || '.' || pt.tablename,
-         format('alter publication %I add table public.%I;', pt.pubname, pt.tablename)
+         format('alter' || ' publication %I add table public.%I;', pt.pubname, pt.tablename)
   from pg_publication_tables pt where pt.schemaname = 'public'
 
   union all  -- replica identity full (postgres_changes 필터링에 필요)
   select 15, c.relname::text,
-         format('alter table public.%I replica identity full;', c.relname)
+         format('alter' || ' table public.%I replica identity full;', c.relname)
   from pg_class c
   join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
   where c.relkind = 'r' and c.relreplident = 'f'
 )
 -- query_version 은 '이 결과가 어느 파일에서 나왔는지' 를 알려 준다.
 -- 지난번 실패가 옛 탭 실행 때문인지 구분하려고 넣었다.
-select 'v2-2026-08-24' as query_version,
+select 'v3-2026-08-24' as query_version,
        string_agg(ddl, E'\n\n' order by ord, obj) as ddl
 from objs;
