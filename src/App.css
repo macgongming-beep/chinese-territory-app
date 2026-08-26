@@ -29807,7 +29807,11 @@ button:focus-visible {
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   border: none;
-  /* 위아래를 얇게 — 두 줄이 돼도 지도를 조금만 가린다 */
+  /* 위아래를 얇게 — 두 줄이 돼도 지도를 조금만 가린다.
+     ⚠ 전역 `button { min-height: 40px }` 을 풀어야 실제로 얇아진다.
+     이걸 안 풀면 padding 을 아무리 줄여도 40px 로 버틴다.
+     .ds-btn / .region-order-btn 도 같은 데 걸렸었다 — 세 번째다. */
+  min-height: 0;
   font-size: 11.5px;
   line-height: 1.15;
   padding: 3px 8px;
