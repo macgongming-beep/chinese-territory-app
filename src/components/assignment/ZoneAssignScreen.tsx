@@ -11,6 +11,7 @@ import type { Dispatch } from 'react'
 import type { Building, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, TerritoryCard, VisitHistory } from '../../types'
 import { matchesName } from '../../utils/koreanSearch'
 import { getRestaurantUnits } from '../../utils/restaurants'
+import { t, currentLang } from '../../i18n'
 import { showToast } from '../../lib/toast'
 import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
@@ -65,11 +66,19 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
     cards.forEach((c) => counts.set(c.region, (counts.get(c.region) ?? 0) + 1))
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).map(([r]) => r)
   }, [cards])
-  // 기본: 카드가 가장 많은 구 (한 구만 보기). regions가 1개면 그것.
-  const [selectedRegion, setSelectedRegion] = useState<string>(() => regions[0] ?? '전체')
+  // 기본은 전체. 구를 누르면 **더해지고**, 다시 누르면 빠진다.
+  // (예전엔 하나만 골라져서 처인구를 보다 기흥구를 누르면 처인구가 사라졌다)
+  const [selectedRegions, setSelectedRegions] = useState<Set<string>>(() => new Set())
+  const toggleRegion = (r: string) =>
+    setSelectedRegions((prev) => {
+      const next = new Set(prev)
+      if (next.has(r)) next.delete(r)
+      else next.add(r)
+      return next
+    })
   const regionCards = useMemo(
-    () => (selectedRegion === '전체' ? cards : cards.filter((c) => c.region === selectedRegion)),
-    [cards, selectedRegion],
+    () => (selectedRegions.size === 0 ? cards : cards.filter((c) => selectedRegions.has(c.region))),
+    [cards, selectedRegions],
   )
 
   // cardId → 이 카드를 맡은 팀들 (한 카드를 여러 팀이 함께 맡을 수 있음)
@@ -421,10 +430,14 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
           {/* 오버레이 필터: 구 선택 (좌측 상단) */}
           {regions.length > 1 && (
             <div className="asg-map-overlay-regions">
+              <button type="button"
+                className={`asg-filter-pill${selectedRegions.size === 0 ? ' is-on' : ''}`}
+                onClick={() => setSelectedRegions(new Set())}
+              >{t(currentLang(), 'map.filterAll')} <span className="asg-filter-cnt">{cards.length}</span></button>
               {regions.map((r) => (
                 <button key={r} type="button"
-                  className={`asg-filter-pill${selectedRegion === r ? ' is-on' : ''}`}
-                  onClick={() => setSelectedRegion(r)}
+                  className={`asg-filter-pill${selectedRegions.has(r) ? ' is-on' : ''}`}
+                  onClick={() => toggleRegion(r)}
                 >{r} <span className="asg-filter-cnt">{regionCount.get(r) ?? 0}</span></button>
               ))}
             </div>

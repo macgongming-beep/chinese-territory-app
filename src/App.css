@@ -29792,13 +29792,22 @@ button:focus-visible {
   position: absolute;
   top: 12px;
   left: 12px;
+  /* 지도 우측의 확대/축소 버튼을 비켜 간다 */
+  right: 64px;
   z-index: 10;
   display: flex;
-  flex-wrap: wrap;
+  /* 한 줄로 두고 옆으로 민다. 예전엔 줄바꿈해서 지도를 절반 가렸다 */
+  flex-wrap: nowrap;
   gap: 6px;
-  max-width: 220px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.asg-map-overlay-regions::-webkit-scrollbar { display: none; }
 .asg-map-overlay-regions .asg-filter-pill {
+  flex: 0 0 auto;
+  white-space: nowrap;
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   border: none;
