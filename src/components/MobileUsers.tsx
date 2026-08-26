@@ -4,6 +4,7 @@ import { useAuth, type LoginLogRecord } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
+import { pushBackHandler } from '../lib/backStack'
 import {
   DEFAULT_USER_GROUPS,
   USER_GROUPS_SETTING_KEY,
@@ -175,6 +176,13 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
   }
 
   const selectedUser = users.find((item) => item.id === selectedUserId) ?? null
+
+  // 사용자 상세에서 OS·스와이프 뒤로가기를 가로채 **목록으로만** 돌아간다.
+  // 등록하지 않으면 바깥 층(설정)의 핸들러가 실행돼 설정까지 나가 버린다.
+  useEffect(() => {
+    if (selectedUserId == null) return
+    return pushBackHandler(() => setSelectedUserId(null))
+  }, [selectedUserId])
   const adminCount = users.filter((item) => item.role === 'admin' || item.role === 'developer').length
 
   useEffect(() => {
