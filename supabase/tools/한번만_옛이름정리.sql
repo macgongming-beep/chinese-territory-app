@@ -1,6 +1,7 @@
 -- 옛 이름 일괄 정리. 이름을 바꾸기 전에 남은 기록을 현재 이름으로 옮긴다.
 -- 짝은 한글끼리 / 한자끼리 정확히 같은 것만 골랐다 (하나로 안 정해지면 뺐다).
--- 남겨둔 것: 김무혁, 위팅, 김지혜, 인도자, 사용자1 — 지금 사용자 중에 짝이 없다.
+-- 이미 지운 사람(김무혁·김지혜)과 안 쓰는 이름(인도자·사용자1)은 잔재를 뗀다.
+-- 위팅은 짝을 못 정해 손대지 않았다.
 do $$
 declare v_token uuid; v_r jsonb;
 begin
@@ -66,4 +67,10 @@ begin
   raise notice '%', v_r;
   v_r := public.rename_user_name_references(v_token, '이주연', '李珠娟이주연');
   raise notice '%', v_r;
+
+  -- 이미 지운 사람 / 안 쓰는 이름 — 지난 기록은 남기고 앞으로의 것만 뗀다
+  v_r := public.purge_user_name_references(v_token, '김무혁');   raise notice '%', v_r;
+  v_r := public.purge_user_name_references(v_token, '김지혜');   raise notice '%', v_r;
+  v_r := public.purge_user_name_references(v_token, '인도자');   raise notice '%', v_r;
+  v_r := public.purge_user_name_references(v_token, '사용자1');  raise notice '%', v_r;
 end $$;

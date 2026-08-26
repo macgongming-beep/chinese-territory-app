@@ -629,15 +629,25 @@ export function useAuth() {
       return false
     }
 
-    // 배정 잔재 정리: 카드 담당/배정, 정기방문 담당에서 이름 제거 (best-effort)
-    // (이름 텍스트로 저장돼 있어 계정 삭제만으로는 배정 화면에 이름이 남음)
+    // 이름 잔재 정리 — 지난 기록은 남기고 앞으로의 것만 뗀다.
+    // (예전에는 세 표만 치워서, 지운 사람이 미래 일정의 인도자 줄과
+    //  팀 배정에 유령으로 남았다. 인도자는 쉼표 목록이라 더 안 걸렸다)
     if (targetName) {
-      const cleanups = await Promise.all([
-        supabase.from('card_leader_assignments').delete().eq('user_name', targetName),
-        supabase.from('card_assignments').delete().eq('user_name', targetName),
-        supabase.from('regular_visits').delete().eq('visitor_name', targetName),
-      ])
-      cleanups.forEach((r) => { if (r.error) console.warn('[deleteUser] 배정 정리 실패', r.error) })
+      const token = getAuthToken()
+      const purge = token
+        ? await supabase.rpc('purge_user_name_references', { p_token: token, p_name: targetName })
+        : { error: { message: 'no token' } }
+      if (purge.error) {
+        console.warn('[deleteUser] 이름 정리 RPC 실패 — 레거시 경로', purge.error)
+        const cleanups = await Promise.all([
+          supabase.from('card_leader_assignments').delete().eq('user_name', targetName),
+          supabase.from('card_assignments').delete().eq('user_name', targetName),
+          supabase.from('regular_visits').delete().eq('visitor_name', targetName),
+        ])
+        if (cleanups.some((r) => r.error)) {
+          showToast(msg('계정은 지웠지만 배정에 남은 이름을 다 치우지 못했습니다.'), 'error')
+        }
+      }
     }
 
     showToast(t(currentLang(), 'auth.userRemoved'), 'success')
