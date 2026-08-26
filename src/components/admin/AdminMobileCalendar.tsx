@@ -15,7 +15,7 @@ import { findActivePeriod } from '../../utils/specialPeriod'
 // 헤더는 상위 MobileHome.tsx 의 AppHeader 가 그림.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, SpecialPeriod, TerritoryCard, VisitHistory } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { AssignmentEditor } from '../assignment/AssignmentEditor'
@@ -216,6 +216,11 @@ export function AdminMobileCalendar({
   const editingEvent = editingEventId !== null ? events.find((e) => e.id === editingEventId) ?? null : null
 
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  // 홈에서 일정을 누르면 /calendar?openEvent=X 로 **넘어와서** 상세를 연다.
+  // 그래서 상세를 닫으면 홈이 아니라 캘린더가 남았다.
+  // 딥링크로 열린 상세는 닫을 때 한 발짝 더 물러난다.
+  const cameFromDeepLinkRef = useRef(false)
   // 알림/딥링크 진입: ?openChat=X → 그 일정 채팅 열기,
   //                  ?openEvent=X → 그 일정 상세 시트 열기
   useEffect(() => {
@@ -246,6 +251,7 @@ export function AdminMobileCalendar({
       }))
     } else if (openEventId) {
       setDetailEventId(targetEvent.id)
+      cameFromDeepLinkRef.current = true
     }
 
     const next = new URLSearchParams(searchParams)
@@ -270,6 +276,15 @@ export function AdminMobileCalendar({
       else setDetailEventId(null)
     })
   }, [overlayOpen])
+
+  // 상세가 닫힌 뒤에 실행된다 (React 는 cleanup 을 먼저 돌린다).
+  // backStack cleanup 이 더미 히스토리를 걷어낸 다음이라야 한 발짝이 정확히 맞는다.
+  useEffect(() => {
+    if (detailEventId !== null) return
+    if (!cameFromDeepLinkRef.current) return
+    cameFromDeepLinkRef.current = false
+    navigate(-1)
+  }, [detailEventId, navigate])
 
   const cells = useMemo(() => buildCalendarDays(year, month), [year, month])
   const selectedDateStr = toDateStr(year, month, selectedDay)
