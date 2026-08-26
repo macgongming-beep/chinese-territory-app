@@ -231,7 +231,7 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
             <h2>{msg('구역이 없는 팀이 있어요')}</h2>
             <p>
               {emptyTeams.map((t) => t.name).join(', ')}에 배정된 구역이 없습니다.
-              지금 공유하면 이 팀은 저장되지 않아요.
+                비공식 봉사만 맡은 팀이면 그대로 공유해도 됩니다.
             </p>
             <button className="asg-confirm-primary" onClick={() => setConfirmShare(false)} type="button">{msg('돌아가서 구역 배정')}</button>
             <button className="asg-confirm-ghost" onClick={() => void doShare()} type="button">{msg('그대로 공유')}</button>

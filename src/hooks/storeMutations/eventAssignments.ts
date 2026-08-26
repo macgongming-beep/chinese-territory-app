@@ -97,8 +97,8 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
     )
 
     // ── 1순위: 트랜잭션 RPC (원자적 + 충돌 감지) ──
+    // 카드 0개인 사람도 보낸다 — 비공식 봉사만 맡은 팀이 여기서 사라졌었다
     const rpcPayload = normalizedAssignments
-      .filter((item) => item.cardIds.length > 0)
       .map((item) => ({ userName: item.userName, cardIds: item.cardIds, teamKey: item.teamKey }))
     const token = (await import('../../lib/authToken')).getAuthToken()
     if (token) {

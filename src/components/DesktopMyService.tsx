@@ -6,9 +6,10 @@ import { getUserReturnVisits } from '../utils/returnVisits'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
   if (!assignment) return []
+  // 비공식 봉사만 맡은 팀은 구역 카드가 없다 (assignedCardId 가 null)
   return assignment.assignedCardIds && assignment.assignedCardIds.length > 0
     ? assignment.assignedCardIds
-    : [assignment.assignedCardId]
+    : assignment.assignedCardId != null ? [assignment.assignedCardId] : []
 }
 
 function getTimeSlotFromTime(time: string): TimeSlot {

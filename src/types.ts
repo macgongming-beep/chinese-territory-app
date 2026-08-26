@@ -50,7 +50,8 @@ export type EventCardAssignment = {
   id: number
   eventId: number
   userName: string
-  assignedCardId: number
+  /** 대표 구역 카드. **비공식 봉사만 맡은 팀은 null 이다** */
+  assignedCardId: number | null
   assignedCardIds?: number[]
   teamKey?: string | null   // 팀 구분 (같은 구역을 여러 팀이 맡을 때 필요)
   assignedBy: string

@@ -22,8 +22,14 @@ function draftKey(eventId: number, visitor: string) {
 function buildInitialDraft(event: CalendarEvent): AssignmentDraft {
   const grouped = new Map<string, { cardIds: number[]; members: string[] }>()
   event.cardAssignments.forEach((a) => {
-    const cardIds = a.assignedCardIds && a.assignedCardIds.length > 0 ? a.assignedCardIds : [a.assignedCardId]
-    const key = cardIds.slice().sort((x, y) => x - y).join(',')
+    // 비공식 봉사만 맡은 팀은 구역 카드가 없다 (assignedCardId 가 null)
+    const cardIds = a.assignedCardIds && a.assignedCardIds.length > 0
+      ? a.assignedCardIds
+      : a.assignedCardId != null ? [a.assignedCardId] : []
+    // 카드가 없으면 팀 이름으로 묶는다 — 안 그러면 전부 한 팀이 된다
+    const key = cardIds.length > 0
+      ? cardIds.slice().sort((x, y) => x - y).join(',')
+      : `team:${a.teamKey ?? a.userName}`
     const cur = grouped.get(key) ?? { cardIds, members: [] }
     cur.members.push(a.userName)
     grouped.set(key, cur)
