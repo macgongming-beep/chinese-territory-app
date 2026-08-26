@@ -525,7 +525,7 @@ export function AdminMobileCalendar({
       )}
 
       {/* ── 일정 상세 시트 ─────────────── */}
-      {detailEvent && (
+      {detailEvent && assignEventId === null && (
         <AdminEventDetailSheet
             informalAssets={informalAssets}
             eventInformalAssignments={eventInformalAssignments}
@@ -547,7 +547,10 @@ export function AdminMobileCalendar({
           onCancelApply={onApplyToEvent ? () => onApplyToEvent(detailEvent.id) : undefined}
           onOpenAssignment={
             onAssignCardsToEventParticipantsBulk && (role === 'admin' || role === 'developer' || role === 'leader')
-              ? () => { setAssignEventId(detailEvent.id); setDetailEventId(null) }
+              // 상세를 닫지 않는다. 닫아버리면 배정에서 뒤로 갈 때
+              // 돌아갈 상세가 없어 캘린더까지 튀어나갔다.
+              // (화면에 겹치지 않게 아래 렌더에서 배정 중엔 상세를 감춘다)
+              ? () => { setAssignEventId(detailEvent.id) }
               : undefined
           }
           onEdit={
