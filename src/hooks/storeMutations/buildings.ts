@@ -314,7 +314,11 @@ export function makeBuildingMutations(deps: {
     })
 
     if (error) {
-      reportMutationError(msg('중복 건물 병합에 실패했습니다. 아무것도 바뀌지 않았습니다.'), error)
+      // ⚠ '아무것도 안 바뀌었다' 고 단정하지 않는다. RPC 가 통째로 도는 것과
+      //   우리가 결과를 받는 것은 별개다 — 서버가 마치고 응답만 유실될 수 있다.
+      //   그래서 목록을 새로 받아 실제 상태를 보여 주고, 확인하라고 말한다.
+      await fetchAll()
+      reportMutationError(msg('병합 결과를 확인하지 못했습니다. 새로고침된 목록을 확인한 뒤 다시 시도해 주세요.'), error)
       return { ok: false, mergedBuildings: 0, movedUnits: 0, conflicts: [] }
     }
 

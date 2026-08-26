@@ -1,18 +1,35 @@
 -- 테스트 DB 씨앗. **여러 번 돌려도 같은 결과가 되게** 만들었다 (지우고 다시 넣는다).
 --
--- ⚠ 테스트 프로젝트에서만 실행할 것. 운영에서 돌리면 데이터가 지워진다.
---    맨 앞에서 project ref 를 확인해 운영이면 멈춘다.
+-- ⚠⚠ 이 파일은 **표식이 있는 DB 에서만** 돈다. ⚠⚠
 --
--- 넣는 것: 관리자 1 · 지역 1 · 카드 2 · 건물 2 · 호수 4 · 방문기록 2 · 정기방문 1
+--   처음에는 '사용자가 5명 넘으면 중단' 으로 막았는데, 그건 막지 못한다.
+--   **새 회중은 첫 관리자 한 명으로 시작한다.** 그대로 통과해서, 공개된
+--   비밀번호(test-admin / 1234)의 developer 계정이 남의 운영 DB 에 생긴다.
+--
+--   그래서 사람 수 대신 **일부러 심은 표식**을 본다. 테스트 DB 에 한 번만
+--   손으로 넣는다. 운영에는 절대 넣지 않는다.
+--
+--     insert into public.app_private_settings (key, value)
+--     values ('environment', 'test');
+--
+--   app_private_settings 는 anon/authenticated 가 못 읽는다 (deny_all 정책).
+--
+-- 넣는 것: 관리자 1 · 지역 1 · 카드 2 · 건물 2 · 호수 4 · 방문기록 2 ·
+--          정기방문 1 · 특별봉사 기간 1
 -- 로그인:  test-admin / 1234
 
 do $$
-declare v_users int;
+declare v_env text;
 begin
-  select count(*) into v_users from public.app_users;
-  -- 운영에는 80명쯤 있다. 테스트 DB 는 비어 있거나 이 씨앗뿐이다.
-  if v_users > 5 then
-    raise exception '사용자가 %명입니다. 운영 DB 로 보입니다 — 중단합니다.', v_users;
+  select value into v_env
+  from public.app_private_settings
+  where key = 'environment';
+
+  if coalesce(v_env, '') <> 'test' then
+    raise exception
+      '이 DB 에는 테스트 표식이 없습니다 — 중단합니다. '
+      '테스트 DB 라면 app_private_settings 에 environment=test 를 먼저 넣으세요. '
+      '(운영에는 절대 넣지 마세요)';
   end if;
 end $$;
 
@@ -23,6 +40,7 @@ delete from public.units where building_id in (select id from public.buildings w
 delete from public.buildings where name like 'T-%';
 delete from public.cards where name like '테스트구 %';
 delete from public.territory_regions where name = '테스트구';
+delete from public.special_periods where label = '테스트 특별봉사';
 delete from public.app_users where login_id = 'test-admin';
 
 -- ── 관리자 ──────────────────────────────────────────────────────
@@ -76,6 +94,12 @@ select u.id, 'test-admin'
 from public.units u join public.buildings b on b.id = u.building_id
 where b.name = 'T-두동상가' and u.number = '201호';
 
+-- ── 특별봉사 기간 ────────────────────────────────────────────────
+-- smoke 가 '조용히 빈 결과' 를 잡으려면 여기에 반드시 한 건이 있어야 한다.
+-- RLS 가 잘못 켜지면 이 표가 에러 없이 0건이 되고, 화면에서 시즌이 사라진다.
+insert into public.special_periods (label, start_date, end_date, color)
+values ('테스트 특별봉사', current_date - 7, current_date + 7, '#7c3aed');
+
 -- ── 확인 ────────────────────────────────────────────────────────
 select '사용자' as 항목, count(*) from public.app_users where login_id = 'test-admin'
 union all select '지역', count(*) from public.territory_regions where name = '테스트구'
@@ -84,4 +108,5 @@ union all select '건물', count(*) from public.buildings where name like 'T-%'
 union all select '호수', count(*) from public.units u join public.buildings b on b.id = u.building_id where b.name like 'T-%'
 union all select '방문기록', count(*) from public.visit_histories where visitor_name = 'test-admin'
 union all select '정기방문', count(*) from public.regular_visits where visitor_name = 'test-admin'
+union all select '특별봉사', count(*) from public.special_periods where label = '테스트 특별봉사'
 order by 1;

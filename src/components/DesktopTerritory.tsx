@@ -1653,14 +1653,14 @@ export function DesktopTerritory({
 
       {/* 중복 주소 건물 이름 선택 모달 */}
       {mergeModalGroups && (
-        <div className="cal-modal-backdrop" onClick={() => setMergeModalGroups(null)}>
+        <div className="cal-modal-backdrop" onClick={() => { if (!merging) setMergeModalGroups(null) }}>
           <div className="cal-modal merge-name-modal" onClick={(e) => e.stopPropagation()}>
             <div className="cal-modal-head">
               <div className="cal-modal-title">
                 <h2>합칠 건물 이름 선택</h2>
                 <p className="merge-name-modal-sub">합칠 주소 그룹을 선택하고, 각 주소별로 남길 건물 이름을 선택해주세요.</p>
               </div>
-              <button className="cal-modal-close" onClick={() => setMergeModalGroups(null)} type="button">
+              <button className="cal-modal-close" disabled={merging} onClick={() => { if (!merging) setMergeModalGroups(null) }} type="button">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -1727,9 +1727,23 @@ export function DesktopTerritory({
             </div>
             <div className="merge-name-modal-footer">
               {mergePlan.conflicts.length > 0 && (
-                <span style={{ marginRight: 'auto', fontSize: 12.5, color: 'var(--warn-600, #b45309)', fontWeight: 700 }}>
-                  호수가 겹치는 {mergePlan.conflicts.length}곳은 제외했습니다
-                </span>
+                <details style={{ marginRight: 'auto', fontSize: 12.5, color: 'var(--warn-600, #b45309)' }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
+                    호수가 겹치는 {mergePlan.conflicts.length}곳은 제외했습니다 (자세히)
+                  </summary>
+                  {/* 어느 호수가 겹치는지 알려 주지 않으면 사용자가 고칠 방법이 없다 */}
+                  <div style={{ marginTop: 6, display: 'grid', gap: 4, maxHeight: 120, overflowY: 'auto' }}>
+                    {mergePlan.conflicts.map((c) => (
+                      <div key={c.primary.id} style={{ color: 'var(--ink-700)' }}>
+                        <b>{cardMap.get(c.primary.cardId)?.name ?? '카드 없음'}</b>{' · '}
+                        {formatDisplayAddress(c.primary.address)}{' — '}
+                        <span style={{ color: 'var(--warn-600, #b45309)', fontWeight: 700 }}>
+                          {c.conflictingNumbers.join(', ')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
               )}
               <button className="cal-cancel-btn" disabled={merging} onClick={() => { if (!merging) setMergeModalGroups(null) }} type="button">취소</button>
               <button

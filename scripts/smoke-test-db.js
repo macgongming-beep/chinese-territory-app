@@ -35,16 +35,20 @@ const users = await db.from('app_users').select('id,name,role').limit(5)
 check(!users.error && (users.data?.length ?? 0) > 0, '허용된 컬럼은 읽힌다', users.error?.message)
 
 // ── 3. 화면이 쓰는 주요 조회 ─────────────────────────────────────
-for (const [table, cols] of [
-  ['cards', 'id,name,region,area'],
-  ['buildings', 'id,name,address'],
-  ['units', 'id,number,status'],
-  ['visit_histories', 'id,result,visited_at'],
-  ['territory_regions', 'id,name'],
-  ['special_periods', 'id,label'],   // RLS 가 잘못 켜지면 조용히 빈 목록이 된다
+// **개수를 본다.** 에러가 없는지만 보면 부족하다 — RLS 가 잘못 켜지면
+// 에러 대신 빈 목록이 오고, 화면에서 그 기능이 조용히 사라진다.
+// 실제로 special_periods 가 그랬다. 씨앗이 넣어 둔 최소 개수를 확인한다.
+for (const [table, cols, least] of [
+  ['cards', 'id,name,region,area', 2],
+  ['buildings', 'id,name,address', 2],
+  ['units', 'id,number,status', 4],
+  ['visit_histories', 'id,result,visited_at', 2],
+  ['territory_regions', 'id,name', 1],
+  ['special_periods', 'id,label', 1],
 ]) {
-  const r = await db.from(table).select(cols).limit(5)
-  check(!r.error, `${table} 조회`, r.error?.message ?? `${r.data?.length ?? 0}건`)
+  const r = await db.from(table).select(cols).limit(50)
+  const n = r.data?.length ?? 0
+  check(!r.error && n >= least, `${table} 조회`, r.error?.message ?? `${n}건 (최소 ${least})`)
 }
 
 // ── 4. 쓰기 (등록된 테스트 프로젝트에서만) ───────────────────────
