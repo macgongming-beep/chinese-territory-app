@@ -37,6 +37,10 @@ declare
   v_removed    jsonb := '{}'::jsonb;
   n            integer;
 begin
+  -- 일괄 정리는 알림을 끈 채로 돈다. 이름 표기만 바뀐 걸 '일정이 변경되었습니다' 로
+  -- 쏘아 회중 전체에 푸시가 갔던 적이 있다. 이 표식은 이 트랜잭션 안에서만 유효하다.
+  perform set_config('app.suppress_notifications', 'on', true);
+
   v_actor_id := public.verify_session(p_token);
   if v_actor_id is null then
     raise exception '세션이 유효하지 않습니다';
