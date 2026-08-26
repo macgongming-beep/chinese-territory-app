@@ -29796,24 +29796,24 @@ button:focus-visible {
   right: 64px;
   z-index: 10;
   display: flex;
-  /* 한 줄로 두고 옆으로 민다. 예전엔 줄바꿈해서 지도를 절반 가렸다 */
-  flex-wrap: nowrap;
-  gap: 6px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  /* 두 줄까지는 접힌다. 대신 칩을 납작하게 만들어 지도를 덜 가린다
+     (옆으로 미는 방식은 매번 드래그해야 해서 불편했다) */
+  flex-wrap: wrap;
+  gap: 4px;
 }
-.asg-map-overlay-regions::-webkit-scrollbar { display: none; }
 .asg-map-overlay-regions .asg-filter-pill {
   flex: 0 0 auto;
   white-space: nowrap;
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   border: none;
-  font-size: 12px;
-  padding: 6px 10px;
+  /* 위아래를 얇게 — 두 줄이 돼도 지도를 조금만 가린다 */
+  font-size: 11.5px;
+  line-height: 1.15;
+  padding: 3px 8px;
+  gap: 3px;
 }
+.asg-map-overlay-regions .asg-filter-cnt { font-size: 10.5px; }
 
 .asg-map-overlay-types {
   position: absolute;

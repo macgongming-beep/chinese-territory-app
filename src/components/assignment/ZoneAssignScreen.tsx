@@ -6,7 +6,7 @@
 // 모든 상태는 draft 단일 reducer에서 파생.
 
 import { useMemo, useState } from 'react'
-import { stripRegionPrefix } from '../../lib/regions'
+import { getRegionNames, stripRegionPrefix } from '../../lib/regions'
 import type { Dispatch } from 'react'
 import type { Building, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, TerritoryCard, VisitHistory } from '../../types'
 import { matchesName } from '../../utils/koreanSearch'
@@ -62,9 +62,12 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
 
   // 구(區) 목록 — 담당 카드가 여러 구에 걸치면 지도가 너무 줌아웃됨 → 한 구만 보기
   const regions = useMemo(() => {
-    const counts = new Map<string, number>()
-    cards.forEach((c) => counts.set(c.region, (counts.get(c.region) ?? 0) + 1))
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).map(([r]) => r)
+    const present = new Set(cards.map((c) => c.region))
+    // 설정에 정해둔 지역 순서를 그대로 쓴다 (처인구 → 기흥구 → 수지구 → …).
+    // 예전엔 카드 개수 순으로 늘어놔서 사람마다·날마다 자리가 바뀌었다.
+    const ordered = getRegionNames().filter((r) => present.has(r))
+    const rest = Array.from(present).filter((r) => !ordered.includes(r)).sort((a, b) => a.localeCompare(b, 'ko'))
+    return [...ordered, ...rest]
   }, [cards])
   // 기본은 전체. 구를 누르면 **더해지고**, 다시 누르면 빠진다.
   // (예전엔 하나만 골라져서 처인구를 보다 기흥구를 누르면 처인구가 사라졌다)
