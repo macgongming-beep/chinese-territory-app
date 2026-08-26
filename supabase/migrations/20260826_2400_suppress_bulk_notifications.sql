@@ -47,9 +47,9 @@ begin
     join public.app_users u on u.name = ep.user_name
     where ep.event_id = new.id
     union
-    select u.id as recipient_id
-    from public.app_users u
-    where u.name = new.leader_name
+    -- 인도자 전원. 쉼표 목록을 통짜로 비교하던 것을 고친다
+    -- (인도자가 둘 이상이면 아무도 못 찾아 알림이 안 나갔다)
+    select unnest(public.user_ids_in_name_list(new.leader_name)) as recipient_id
   ) recipients
   where recipient_id is not null;
 
