@@ -4,7 +4,7 @@
 // 진입: 일정상세에서 풀스크린. draft 단일 reducer 사용.
 // 공유: 일정상세로 돌아가기 전 [배정 공유] 한 번 → 서버 bulk 저장.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, TerritoryCard, VisitHistory } from '../../types'
 import type { AssignmentDraft } from '../../hooks/assignmentDraft'
 import {
@@ -104,9 +104,18 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
     setScreen('zones')
   }
 
-  // 구역 배분 화면에서 OS·스와이프 뒤로가기를 가로채 팀짓기로 한 단계만 복귀.
-  // (에디터 오버레이 위에 한 층 더 쌓임 — backStack 이 최상단 한 층만 닫아준다.
-  //  팀짓기에서 다시 스와이프하면 에디터가 닫혀 캘린더로 나간다)
+  // 뒤로가기는 한 층씩만 돌아간다.
+  //   구역 배분  → 팀짓기
+  //   팀짓기     → 일정 상세 (에디터를 닫는다)
+  //   일정 상세  → 캘린더 (상세가 자기 핸들러로 처리)
+  //
+  // 예전에는 에디터가 자기 층을 등록하지 않아, 팀짓기에서 뒤로 누르면 상세의
+  // 핸들러가 실행돼 **캘린더까지 두 단계가 한꺼번에 닫혔다.**
+  const closeRef = useRef(onClose)
+  useEffect(() => { closeRef.current = onClose }, [onClose])
+  useEffect(() => pushBackHandler(() => closeRef.current()), [])
+
+  // 구역 배분 화면은 그 위에 한 층 더 쌓는다 (backStack 이 최상단만 닫는다)
   useEffect(() => {
     if (screen !== 'zones') return
     return pushBackHandler(() => setScreen('teams'))
