@@ -527,6 +527,8 @@ export function AdminMobileCalendar({
       {/* ── 일정 상세 시트 ─────────────── */}
       {detailEvent && (
         <AdminEventDetailSheet
+            informalAssets={informalAssets}
+            eventInformalAssignments={eventInformalAssignments}
           language={language}
           translatePlaceNames={translatePlaceNames}
           event={detailEvent}

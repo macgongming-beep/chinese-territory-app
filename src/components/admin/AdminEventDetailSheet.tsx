@@ -101,7 +101,7 @@ function getAssignmentCardIds(assignment: CalendarEvent['cardAssignments'][numbe
   return Array.from(new Set(ids.filter((id): id is number => typeof id === 'number' && id > 0))).sort((a, b) => a - b)
 }
 
-function buildSharedAssignmentTeams(
+export function buildSharedAssignmentTeams(
   event: CalendarEvent,
   cards: TerritoryCard[],
   informalAssets: InformalAsset[] = [],
