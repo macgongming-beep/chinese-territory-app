@@ -1,6 +1,7 @@
 import type { Building, CardBoundary } from '../../types'
 import { findCardForCoordinates } from '../../utils/mapUtils'
 import { geocodeQuery } from '../../lib/naverGeocode'
+import { shortAddress } from '../../utils/shortAddress'
 import { supabase, showToast, reportMutationError } from './shared'
 import { msg } from '../../lib/msg'
 
@@ -10,6 +11,8 @@ export function makeRestaurantServiceMutations(deps: {
   cardBoundaries: CardBoundary[]
 }) {
   const { fetchAll, buildings, cardBoundaries } = deps
+
+
 
   /** 봉사자: 식당 방문 기록 직접 추가 (기존 is_restaurant 건물) */
   const addRestaurantVisit = async (
@@ -116,7 +119,7 @@ export function makeRestaurantServiceMutations(deps: {
         // 세대가 없으면 하나 생성
         const uRes = await supabase
           .from('units')
-          .insert({ building_id: resolvedBuildingId, number: '전체', status: '만남', is_chinese: true, is_restaurant: true })
+          .insert({ building_id: resolvedBuildingId, number: opts.name.trim(), status: '만남', is_chinese: true, is_restaurant: true })
           .select('id')
           .single()
         if (uRes.error || !uRes.data) {
@@ -159,7 +162,10 @@ export function makeRestaurantServiceMutations(deps: {
         .from('buildings')
         .insert({
           card_id: cardId,
-          name: opts.name.trim(),
+          // 건물 이름은 **주소**, 가게 이름은 세대로 들어간다.
+          // 기존 식당 200개가 전부 이 모양이고, 한 건물에 가게가 둘 이상인 곳도
+          // 이미 있다. 가게 이름을 건물 이름으로 쓰면 두 번째 가게를 넣을 수 없다.
+          name: shortAddress(opts.address),
           address: opts.address.trim(),
           type: '상가',
           lat,
@@ -177,7 +183,7 @@ export function makeRestaurantServiceMutations(deps: {
 
       const uRes = await supabase
         .from('units')
-        .insert({ building_id: resolvedBuildingId, number: '전체', status: '만남', is_chinese: true, is_restaurant: true })
+        .insert({ building_id: resolvedBuildingId, number: opts.name.trim(), status: '만남', is_chinese: true, is_restaurant: true })
         .select('id')
         .single()
       if (uRes.error || !uRes.data) {
