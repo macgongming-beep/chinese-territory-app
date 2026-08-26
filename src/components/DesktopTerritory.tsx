@@ -2,9 +2,10 @@ import { t } from '../i18n'
 import type { AppLanguage } from '../i18n'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { getRegionNames, getRegions } from '../lib/regions'
+import { getRegionNames } from '../lib/regions'
 import { getAreaFilterOptions } from '../utils/areaOptions'
 import { planDuplicateBuildingMerge } from '../utils/duplicateBuildingMerge'
+import { getGeocodeCandidates } from '../utils/geocodeCandidates'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { geocodeFirstMatch } from '../lib/naverGeocode'
@@ -869,47 +870,6 @@ export function DesktopTerritory({
   const assignedCards = cards.filter((card) => getCardLeaderList(card).length > 0).length
   const totalUnits = cards.reduce((sum, card) => sum + card.units, 0)
   const completedUnits = cards.reduce((sum, card) => sum + card.completed, 0)
-
-  // 구(區) → 상위 시. 구만 적힌 주소는 동명 도로가 타 지역에 있으면 엉뚱한 곳에
-  // 찍히므로 시까지 붙인 후보를 함께 시도한다.
-  // 지역 목록에서 만든다 — 지역을 늘려도 이 매핑만 옛날 값으로 남지 않게
-  const GU_TO_CITY: Record<string, string> = Object.fromEntries(
-    getRegions().filter((r) => r.city).map((r) => [r.name, r.city]),
-  )
-
-  const getGeocodeCandidates = (address: string) => {
-    const normalized = address.replace(/\s+/g, ' ').trim()
-    const tokens = normalized.split(' ')
-    const isDongToken = (token: string) => /동$/.test(token)
-    const isRoadToken = (token: string) => /(로|길)/.test(token)
-    const withoutDongBeforeRoad = tokens
-      .filter((token, index) => !(isDongToken(token) && tokens.slice(index + 1).some(isRoadToken)))
-      .join(' ')
-    const withoutGyeonggiDo = normalized.replace(/^경기도\s+/, '경기 ')
-    const withoutGyeonggiDoAndDong = withoutDongBeforeRoad.replace(/^경기도\s+/, '경기 ')
-
-    // 시/도가 없고 구만 있는 주소 → '경기도 <시> <구> …' 형태 보강
-    const hasCity = /(시|도)\s/.test(normalized) || /^(경기|서울)/.test(normalized)
-    const guToken = tokens.find((token) => token in GU_TO_CITY)
-    const cityQualified: string[] = []
-    if (!hasCity && guToken) {
-      const city = GU_TO_CITY[guToken]
-      cityQualified.push(`경기도 ${city} ${normalized}`, `경기 ${city} ${normalized}`)
-    } else if (!hasCity && !guToken) {
-      // 구도 없는 주소(도로명만) → 용인시 기준으로 보강
-      cityQualified.push(`경기도 용인시 ${normalized}`)
-    }
-
-    return Array.from(
-      new Set([
-        ...cityQualified,
-        normalized,
-        withoutDongBeforeRoad,
-        withoutGyeonggiDo,
-        withoutGyeonggiDoAndDong,
-      ].filter(Boolean)),
-    )
-  }
 
   const geocodeAddress = (address: string) =>
     address.trim() ? geocodeFirstMatch(getGeocodeCandidates(address)) : Promise.resolve(null)
@@ -2708,6 +2668,10 @@ export function DesktopTerritory({
                                   onSave={(draft) => {
                                     onUpdateUnitStatus(building.id, unit.id, draft.status, draft.memo)
                                     onUpdateUnitFlags(unit.id, {
+                                        // 호수 이름도 저장한다. 폼에 칸은 있는데
+                                        // 여기서 안 넘겨서 아무리 고쳐도 그대로였다
+                                        // (식당을 '전체' 에서 가게 이름으로 못 바꿨다)
+                                        number: draft.number.trim() || unit.number,
                                       isChinese: draft.isChinese,
                                       isRegularVisit: draft.isRegularVisit,
                                       isForbidden: draft.isForbidden,

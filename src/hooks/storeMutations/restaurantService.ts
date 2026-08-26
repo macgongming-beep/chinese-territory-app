@@ -1,6 +1,7 @@
 import type { Building, CardBoundary } from '../../types'
 import { findCardForCoordinates } from '../../utils/mapUtils'
-import { geocodeQuery } from '../../lib/naverGeocode'
+import { geocodeFirstMatch } from '../../lib/naverGeocode'
+import { getGeocodeCandidates } from '../../utils/geocodeCandidates'
 import { shortAddress } from '../../utils/shortAddress'
 import { supabase, showToast, reportMutationError } from './shared'
 import { msg } from '../../lib/msg'
@@ -139,7 +140,7 @@ export function makeRestaurantServiceMutations(deps: {
       let lat = opts.lat ?? 0
       let lng = opts.lng ?? 0
       if (!lat || !lng) {
-        const found = await geocodeQuery(opts.address.trim())
+        const found = await geocodeFirstMatch(getGeocodeCandidates(opts.address))
         if (found) { lat = found.lat; lng = found.lng }
       }
 
