@@ -2,7 +2,7 @@
 // 일정 394: 팀 6 여섯 명이 전부 자료 32(경희대(우정원))를 받았는데
 // 화면에는 '카드 미배정' 으로 떴다.
 import { describe, test, expect } from 'vitest'
-import { buildSharedAssignmentTeams } from './AdminEventDetailSheet'
+import { buildSharedAssignmentTeams } from './sharedAssignmentTeams'
 import type { CalendarEvent, EventInformalAssignment, InformalAsset } from '../../types'
 
 const members = ['崔芝園최지원', '全孝元전효원', '姜英银강영은', '徐银美서은미', '杨笑恩양소은', '任昭娟임소연']

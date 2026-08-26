@@ -13,6 +13,7 @@
 
 import { useMemo, useState } from 'react'
 import type { CalendarEvent, EventInformalAssignment, InformalAsset, Role, TerritoryCard } from '../../types'
+import { buildSharedAssignmentTeams } from './sharedAssignmentTeams'
 import { confirmDialog } from '../../lib/confirm'
 import { t, translateKoreanAddress, type AppLanguage } from '../../i18n'
 import { CommentSection, type MentionUser } from '../CommentSection'
@@ -92,59 +93,6 @@ function formatDateHeader(iso: string, language = 'ko') {
   return `${m}월 ${day}일 (${dows[d.getDay()]})`
 }
 
-function getAssignmentCardIds(assignment: CalendarEvent['cardAssignments'][number]) {
-  const ids = assignment.assignedCardIds?.length
-    ? assignment.assignedCardIds
-    : assignment.assignedCardId
-      ? [assignment.assignedCardId]
-      : []
-  return Array.from(new Set(ids.filter((id): id is number => typeof id === 'number' && id > 0))).sort((a, b) => a - b)
-}
-
-export function buildSharedAssignmentTeams(
-  event: CalendarEvent,
-  cards: TerritoryCard[],
-  informalAssets: InformalAsset[] = [],
-  informalAssignments: EventInformalAssignment[] = [],
-) {
-  const cardNameById = new Map(cards.map((card) => [card.id, card.name]))
-  const assetNameById = new Map(informalAssets.map((a) => [a.id, a.name]))
-  const grouped = new Map<string, { members: string[]; cardIds: number[] }>()
-
-  event.cardAssignments.forEach((assignment) => {
-    const cardIds = getAssignmentCardIds(assignment)
-    // teamKey 가 있으면 그걸로 묶는다. 구역 카드가 없어도 팀은 팀이다 —
-    // 예전에는 카드 없는 사람을 각자 한 팀으로 쪼갰다 (비공식만 맡은 6명이 6팀이 됐다)
-    const key = assignment.teamKey
-      ? `team:${assignment.teamKey}`
-      : cardIds.length ? cardIds.join(',') : `member:${assignment.userName}`
-    const existing = grouped.get(key) ?? { members: [], cardIds }
-    existing.members.push(assignment.userName)
-    grouped.set(key, existing)
-  })
-
-  return Array.from(grouped.values()).map((team, index) => {
-    const cardNames = team.cardIds.map((id) => cardNameById.get(id)).filter((name): name is string => Boolean(name))
-    // 구역이 없으면 그 팀이 맡은 비공식 자료 이름을 대신 보여 준다.
-    // 예전에는 그냥 '카드 미배정' 이라, 비공식을 받은 팀이 아무 일도 안 받은
-    // 것처럼 보였다.
-    if (cardNames.length === 0) {
-      const mine = new Set(team.members)
-      cardNames.push(...Array.from(new Set(
-        informalAssignments
-          .filter((a) => mine.has(a.userName))
-          .map((a) => assetNameById.get(a.assetId))
-          .filter((n): n is string => Boolean(n)),
-      )))
-    }
-    return {
-      id: `${team.cardIds.join('-') || 'none'}-${index}`,
-      label: `팀 ${index + 1}`,
-      members: team.members,
-      cardNames,
-    }
-  })
-}
 
 function SharedAssignmentTeams({
   event,
