@@ -13,6 +13,7 @@ import { setSentryUser, clearSentryUser } from '../lib/sentry'
 import type { Role } from '../types'
 import { t, currentLang } from '../i18n'
 import { msg } from '../lib/msg'
+import { renameInNameList } from '../utils/nameList'
 
 export type AuthUser = {
   id: number
@@ -84,6 +85,21 @@ function getDeviceLabel() {
  */
 async function migrateUserNameReferences(oldName: string, newName: string): Promise<void> {
   if (!oldName || oldName === newName) return
+
+  // 1순위: 한 트랜잭션 RPC. 유니크 제약이 걸린 표는 옛 줄을 지워 합치고,
+  // anon 이 못 쓰는 표(chat_messages / service_logs)까지 여기서만 옮길 수 있다.
+  const token = getAuthToken()
+  if (token) {
+    const rpc = await supabase.rpc('rename_user_name_references', {
+      p_token: token,
+      p_old: oldName,
+      p_new: newName,
+    })
+    if (!rpc.error) return
+    console.warn('[migrateUserNameReferences] RPC 실패 — 레거시 경로로 시도', rpc.error)
+  }
+
+  // 폴백: RPC 가 아직 안 올라간 DB. 옮길 수 있는 만큼만 옮기고 실패는 알린다.
   const targets: Array<[table: string, column: string]> = [
     ['visit_histories', 'visitor_name'],
     ['service_sessions', 'user_name'],
@@ -96,14 +112,39 @@ async function migrateUserNameReferences(oldName: string, newName: string): Prom
     ['event_restaurant_assignments', 'user_name'],
     ['event_informal_assignments', 'user_name'],
     ['cards', 'leader_name'],
+    ['comments', 'author_name'],
+    ['notices', 'author'],
+    ['return_visits', 'assigned_user_name'],
+    ['return_visits', 'created_by'],
+    ['restaurant_requests', 'requested_by'],
+    ['restaurant_requests', 'reviewer'],
+    ['phone_surveys', 'checked_by'],
+    ['phone_surveys', 'uploaded_by'],
   ]
   const results = await Promise.all(
     targets.map(([table, column]) =>
       supabase.from(table).update({ [column]: newName }).eq(column, oldName)),
   )
+  const failed = results.filter((r) => r.error)
   results.forEach((r, i) => {
     if (r.error) console.warn('[migrateUserNameReferences] 이관 실패', targets[i][0], r.error)
   })
+
+  // 일정 인도자는 "가, 나, 다" 로 한 칸에 들어 있어 eq 로 안 걸린다
+  const { data: events } = await supabase
+    .from('calendar_events')
+    .select('id, leader_name')
+    .like('leader_name', `%${oldName}%`)
+  for (const ev of (events ?? []) as Array<{ id: number; leader_name: string | null }>) {
+    const next = renameInNameList(ev.leader_name, oldName, newName)
+    if (next === (ev.leader_name ?? '')) continue
+    const { error } = await supabase.from('calendar_events').update({ leader_name: next }).eq('id', ev.id)
+    if (error) failed.push({ error } as (typeof results)[number])
+  }
+
+  if (failed.length > 0) {
+    showToast(msg('옛 이름으로 남은 기록 일부를 옮기지 못했습니다. 관리자에게 알려 주세요.'), 'error')
+  }
 }
 
 export function useAuth() {
