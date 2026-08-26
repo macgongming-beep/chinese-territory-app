@@ -6,7 +6,7 @@
 
 import { useMemo, useState } from 'react'
 import type { Dispatch } from 'react'
-import type { TerritoryCard } from '../../types'
+import type { Building, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, TerritoryCard } from '../../types'
 import type { DraftAction, DraftTeam } from '../../hooks/assignmentDraft'
 import { teamHex } from './teamColors'
 import { confirmDialog } from '../../lib/confirm'
@@ -20,9 +20,43 @@ type Props = {
   canEdit: boolean
   dispatch: Dispatch<DraftAction>
   onOpenTeamZones: (teamId: string) => void
+  /** 비공식 봉사 배정 — 구역 카드가 없어도 '미배정' 이 아니다 */
+  informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
+  buildings?: Building[]
 }
 
-export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch, onOpenTeamZones }: Props) {
+export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch, onOpenTeamZones, informalAssets = [], eventInformalAssignments = [], eventRestaurantAssignments = [], buildings = []}: Props) {
+
+  // 구역 카드가 없어도 비공식·식당을 맡았으면 '미배정' 이 아니다.
+  // 예전에는 cardIds 만 보고 '구역 미배정' 이라고 적어서, 비공식만 맡은 팀이
+  // 아무 일도 안 받은 것처럼 보였다.
+  const teamWorkLabel = (team: DraftTeam): { text: string; empty: boolean } => {
+    if (team.cardIds.length > 0) {
+      const names = team.cardIds.map(cardName).slice(0, 2).join(' · ')
+      const more = team.cardIds.length > 2 ? msg(' 외 {n}', { n: team.cardIds.length - 2 }) : ''
+      return { text: `${names}${more}`, empty: false }
+    }
+    const mine = new Set(team.members)
+    const assetNames = Array.from(new Set(
+      eventInformalAssignments
+        .filter((a) => mine.has(a.userName))
+        .map((a) => informalAssets.find((x) => x.id === a.assetId)?.name)
+        .filter((n): n is string => Boolean(n)),
+    ))
+    const restaurantNames = Array.from(new Set(
+      eventRestaurantAssignments
+        .filter((a) => mine.has(a.userName))
+        .map((a) => buildings.find((b) => b.id === a.buildingId)?.name)
+        .filter((n): n is string => Boolean(n)),
+    ))
+    const all = [...assetNames, ...restaurantNames]
+    if (all.length === 0) return { text: msg('구역 미배정'), empty: true }
+    const shown = all.slice(0, 2).join(' · ')
+    const more = all.length > 2 ? msg(' 외 {n}', { n: all.length - 2 }) : ''
+    return { text: `${shown}${more}`, empty: false }
+  }
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
 
@@ -151,11 +185,14 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
                   <div className="asg-team-members">
                     {team.members.length > 0 ? team.members.join(' · ') : msg('구성원 없음')}
                   </div>
-                  <div className={`asg-team-zones${team.cardIds.length === 0 ? ' is-empty' : ''}`}>
-                    {team.cardIds.length > 0
-                      ? `${team.cardIds.map(cardName).slice(0, 2).join(' · ')}${team.cardIds.length > 2 ? msg(' 외 {n}', { n: team.cardIds.length - 2 }) : ''}`
-                      : msg('구역 미배정')}
-                  </div>
+                  {(() => {
+                    const work = teamWorkLabel(team)
+                    return (
+                      <div className={`asg-team-zones${work.empty ? ' is-empty' : ''}`}>
+                        {work.text}
+                      </div>
+                    )
+                  })()}
                                   </div>
                   <span className="asg-team-chev" aria-hidden="true" style={{ marginRight: canEdit ? 32 : 0 }}>›</span>
                 </button>

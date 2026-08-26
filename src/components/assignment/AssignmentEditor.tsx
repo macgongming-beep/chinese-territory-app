@@ -112,11 +112,18 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
     return pushBackHandler(() => setScreen('teams'))
   }, [screen])
 
-  // 구역 없는 팀 (멤버는 있는데 카드 0)
-  const emptyTeams = useMemo(
-    () => teams.filter((t) => t.members.length > 0 && t.cardIds.length === 0),
-    [teams],
-  )
+  // 아무것도 안 맡은 팀 (멤버는 있는데 구역·비공식·식당이 전부 없음)
+  //
+  // 비공식만 맡은 팀은 여기 들어가면 안 된다. 예전에는 cardIds 만 봐서,
+  // 비공식을 배정해 둔 팀까지 '구역이 없다' 고 경고했다.
+  const emptyTeams = useMemo(() => {
+    const hasWork = (members: string[]) => {
+      const mine = new Set(members)
+      return eventInformalAssignments.some((a) => mine.has(a.userName))
+        || eventRestaurantAssignments.some((a) => mine.has(a.userName))
+    }
+    return teams.filter((t) => t.members.length > 0 && t.cardIds.length === 0 && !hasWork(t.members))
+  }, [teams, eventInformalAssignments, eventRestaurantAssignments])
 
   const doShare = async () => {
     if (sharing) return
@@ -214,6 +221,10 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
         canEdit={canEdit}
         dispatch={dispatch}
         onOpenTeamZones={openTeamZones}
+        buildings={buildings}
+        informalAssets={informalAssets}
+        eventInformalAssignments={eventInformalAssignments}
+        eventRestaurantAssignments={eventRestaurantAssignments}
       />
 
       {canEdit && (
