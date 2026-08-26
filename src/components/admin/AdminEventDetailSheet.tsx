@@ -104,7 +104,11 @@ function buildSharedAssignmentTeams(event: CalendarEvent, cards: TerritoryCard[]
 
   event.cardAssignments.forEach((assignment) => {
     const cardIds = getAssignmentCardIds(assignment)
-    const key = cardIds.length ? cardIds.join(',') : `member:${assignment.userName}`
+    // teamKey 가 있으면 그걸로 묶는다. 구역 카드가 없어도 팀은 팀이다 —
+    // 예전에는 카드 없는 사람을 각자 한 팀으로 쪼갰다 (비공식만 맡은 6명이 6팀이 됐다)
+    const key = assignment.teamKey
+      ? `team:${assignment.teamKey}`
+      : cardIds.length ? cardIds.join(',') : `member:${assignment.userName}`
     const existing = grouped.get(key) ?? { members: [], cardIds }
     existing.members.push(assignment.userName)
     grouped.set(key, existing)

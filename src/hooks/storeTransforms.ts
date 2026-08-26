@@ -362,7 +362,9 @@ export function toEventCardAssignment(raw: RawEventCardAssignment): EventCardAss
     eventId: raw.event_id,
     userName: raw.user_name,
     assignedCardId: raw.assigned_card_id,
-    assignedCardIds: [raw.assigned_card_id],
+    // 구역 카드가 없는 배정(비공식만 맡은 팀)은 빈 목록이다.
+    // [null] 로 두면 화면이 '카드 null' 을 그리고, 개수 검사도 1로 센다.
+    assignedCardIds: raw.assigned_card_id != null ? [raw.assigned_card_id] : [],
     teamKey: raw.team_key ?? null,
     assignedBy: raw.assigned_by ?? '',
     assignedAt: raw.assigned_at,
