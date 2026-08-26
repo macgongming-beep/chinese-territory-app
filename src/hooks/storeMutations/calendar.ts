@@ -256,12 +256,17 @@ export function makeCalendarMutations(deps: {
     showToast(msg('{userName}님을 참가자와 배정에서 제외했습니다', { userName: userName }))
   }
 
-  const addParticipantToEvent = async (eventId: number, userName: string) => {
+  /**
+   * @param role '신청' = 본인이 신청 · '게스트' = 앱 계정이 없는 손님
+   *   게스트도 같은 표에 들어간다. user_name 이 app_users 를 참조하지 않아
+   *   계정 없는 이름을 넣을 수 있다.
+   */
+  const addParticipantToEvent = async (eventId: number, userName: string, role: '신청' | '게스트' = '신청') => {
     const event = calendarEvents.find((e) => e.id === eventId)
     if (!event) return
     if (event.applicants.includes(userName)) return
     const result = await supabase.from('event_participants').upsert(
-      { event_id: eventId, user_name: userName, role: '신청' },
+      { event_id: eventId, user_name: userName, role },
       { onConflict: 'event_id,user_name' },
     )
     if (result.error) {

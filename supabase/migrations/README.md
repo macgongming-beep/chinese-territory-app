@@ -18,3 +18,5 @@
 |---|---|---|
 | `20260825_1000_merge_duplicate_buildings_tx.sql` | 중복 병합 트랜잭션 RPC + 호수·주소 정규화 | ✅ 2026-08-25 |
 | `20260825_1200_merge_conflict_fix.sql` | 위 RPC 고침 — 흡수될 건물끼리의 호수 충돌을 놓쳤다 | ⬜ 아직 |
+| `20260826_1400_team_without_card.sql` | 구역 카드 없는 팀 (비공식만 맡은 팀) | ✅ 2026-08-26 |
+| `20260826_2000_guest_participant.sql` | 게스트 참가자 (role 에 '게스트' 추가) | ⬜ 아직 |

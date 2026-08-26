@@ -347,6 +347,7 @@ export function toCalendarEvent(
     allowApplications: raw.allow_applications ?? true,
     applicants: participants.map((p) => p.user_name),
     assigned: participants.filter((p) => p.role === '입명').map((p) => p.user_name),
+    guests: participants.filter((p) => p.role === '게스트').map((p) => p.user_name),
     cardAssignments,
     assignmentStatus: raw.assignment_status ?? 'draft',
     assignmentSharedAt: raw.assignment_shared_at ?? null,

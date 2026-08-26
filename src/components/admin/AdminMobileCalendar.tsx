@@ -90,7 +90,7 @@ type Props = {
   onUpdateEvent?: (id: number, input: EventInput) => void
   onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput) => void
   onApplyToEvent?: (eventId: number) => void
-  onAddParticipantToEvent?: (eventId: number, userName: string) => void
+  onAddParticipantToEvent?: (eventId: number, userName: string, role?: '신청' | '게스트') => void
   onRemoveParticipantFromEvent?: (eventId: number, userName: string) => void
   specialPeriods?: SpecialPeriod[]
   globalSettings?: Record<string, string>
@@ -585,6 +585,7 @@ export function AdminMobileCalendar({
         const canEdit = role === 'admin' || role === 'developer' || assignEvent.leaders.includes(currentVisitor)
         return (
           <AssignmentEditor
+            onAddGuest={onAddParticipantToEvent ? (eventId, name) => onAddParticipantToEvent(eventId, name, '게스트') : undefined}
             event={assignEvent}
             cards={myCards}
             buildings={buildings}

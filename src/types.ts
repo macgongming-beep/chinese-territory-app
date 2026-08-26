@@ -37,6 +37,8 @@ export type CalendarEvent = {
   hasMeeting: boolean
   allowApplications: boolean
   applicants: string[]
+  /** 앱 계정이 없는 손님. applicants 에도 들어 있고, 여기에 이름이 또 있으면 게스트다 */
+  guests: string[]
   assigned: string[]
   cardAssignments: EventCardAssignment[]
   assignmentStatus?: 'draft' | 'confirmed' | 'shared'

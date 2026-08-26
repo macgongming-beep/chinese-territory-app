@@ -12,9 +12,14 @@ import { teamHex } from './teamColors'
 import { confirmDialog } from '../../lib/confirm'
 import { matchesName } from '../../utils/koreanSearch'
 import { msg } from '../../lib/msg'
+import { showToast } from '../../lib/toast'
 
 type Props = {
   participants: string[]              // 일정 신청자 ∪ 배정자
+  /** 앱 계정이 없는 손님 이름. participants 안에 들어 있고 여기에도 있으면 게스트다 */
+  guests?: string[]
+  /** 게스트 추가 — 없으면 추가 칸을 숨긴다 */
+  onAddGuest?: (name: string) => Promise<void> | void
   teams: DraftTeam[]
   cards: TerritoryCard[]
   canEdit: boolean
@@ -27,7 +32,7 @@ type Props = {
   buildings?: Building[]
 }
 
-export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch, onOpenTeamZones, informalAssets = [], eventInformalAssignments = [], eventRestaurantAssignments = [], buildings = []}: Props) {
+export function TeamBuildScreen({ participants, guests = [], onAddGuest, teams, cards, canEdit, dispatch, onOpenTeamZones, informalAssets = [], eventInformalAssignments = [], eventRestaurantAssignments = [], buildings = []}: Props) {
 
   // 구역 카드가 없어도 비공식·식당을 맡았으면 '미배정' 이 아니다.
   // 예전에는 cardIds 만 보고 '구역 미배정' 이라고 적어서, 비공식만 맡은 팀이
@@ -59,6 +64,26 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
   }
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
+  const [guestInput, setGuestInput] = useState('')
+  const [addingGuest, setAddingGuest] = useState(false)
+  const guestSet = useMemo(() => new Set(guests), [guests])
+
+  /** 손님을 명단에 넣는다. 같은 이름이 이미 있으면 막는다 — 누가 누군지 헷갈린다 */
+  const submitGuest = async () => {
+    const name = guestInput.trim()
+    if (!name || addingGuest || !onAddGuest) return
+    if (participants.some((p) => p === name)) {
+      showToast(msg('이미 있는 이름입니다.'), 'info')
+      return
+    }
+    setAddingGuest(true)
+    try {
+      await onAddGuest(name)
+      setGuestInput('')
+    } finally {
+      setAddingGuest(false)
+    }
+  }
 
   const assignedSet = useMemo(
     () => new Set(teams.flatMap((t) => t.members)),
@@ -154,10 +179,27 @@ export function TeamBuildScreen({ participants, teams, cards, canEdit, dispatch,
               >
                 {isAssigned && <span className="asg-person-dot" style={{ background: memberColor.get(name) }} aria-hidden="true" />}
                 {name}
+                {guestSet.has(name) && <small className="asg-person-guest">{msg('손님')}</small>}
               </button>
             )
           })}
         </div>
+        {canEdit && onAddGuest && (
+          <div className="asg-guest-add">
+            {/* 앱 계정이 없는 손님. 이름만 적어 명단에 넣는다 */}
+            <input
+              className="asg-guest-input"
+              value={guestInput}
+              onChange={(e) => setGuestInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void submitGuest() }}
+              placeholder={msg('손님 이름 추가')}
+              aria-label={msg('손님 이름 추가')}
+            />
+            <button className="asg-guest-btn" type="button" disabled={!guestInput.trim() || addingGuest} onClick={() => void submitGuest()}>
+              {addingGuest ? msg('추가 중…') : msg('추가')}
+            </button>
+          </div>
+        )}
         <p className="asg-build-hint">{msg('사람을 골라 묶으면 팀이 됩니다. 묶은 뒤 팀의 › 를 눌러 구역을 배정하세요.')}</p>
       </section>
 

@@ -330,7 +330,7 @@ export function MobileHome({
   onUpdateMyProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
   onFetchMyLoginLogs: (limit?: number) => Promise<LoginLogRecord[]>
   onApplyToEvent: (eventId: number) => void
-  onAddParticipantToEvent?: (eventId: number, userName: string) => void
+  onAddParticipantToEvent?: (eventId: number, userName: string, role?: '신청' | '게스트') => void
   onRemoveParticipantFromEvent?: (eventId: number, userName: string) => void
   onToggleUser: (cardId: number, userName: string) => void
   onEndServiceSession: (sessionId: number) => void
