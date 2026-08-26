@@ -351,14 +351,18 @@ review_tasks        id, title, content, status, completed_at, created_at
 - `get_login_logs(p_user_id, p_since, p_limit)` — 로그인 기록 조회
 - `hash_pin_if_plain` — 트리거 함수 (자동 호출, 직접 호출 X)
 
-### SQL 파일 위치 → 규칙은 `supabase/README.md`
-- `supabase/schema.sql` — 초기 스키마
-- `supabase/*.sql` — **아직 적용 안 했거나 방금 적용한 것.** 새 SQL 은 여기 만든다
-- `supabase/applied/` — 적용이 끝난 마이그레이션 (기록용, 고치지 말 것)
-- `supabase/tools/` — 읽기 전용 점검 (`_VERIFY_production.sql` 로 적용 여부 확인)
+### SQL 파일 위치 (2026-08-25 개편)
+- `supabase/baseline.sql` + `baseline-extras.sql` — 빈 DB 를 세우는 사진.
+  `schema.sql` 은 12/39 테이블짜리 옛 것이라 쓰지 않는다
+- `supabase/migrations/` — **baseline 뒤에 DB 를 바꾸는 것은 전부 여기.**
+  이름은 `YYYYMMDD_HHMM_무엇.sql`. 운영에 적용한 뒤에도 **여기 남긴다.**
+  빈 DB 를 세울 때 이름 순서대로 전부 실행하기 때문이다
+- `supabase/applied/` — baseline 이전의 옛 기록. 설치 때 실행하지 않는다
+- `supabase/tools/` — 읽기 전용 점검·추출
 
-⚠️ 사용자가 실행했다고 확인해 주면 **그 자리에서 `applied/` 로 옮길 것.**
-미루면 루트가 다시 60개가 된다.
+⚠️ **적용했다고 `migrations/` 밖으로 옮기지 말 것.** 옮기면 새 회중 설치에서
+그 변경이 통째로 빠진다. 실제로 그럴 뻔했다 — 중복 병합 RPC 를 운영에 넣고
+`applied/` 로 옮겼더니, 빈 프로젝트를 세우면 병합이 안 되는 상태가 됐다.
 
 ---
 
