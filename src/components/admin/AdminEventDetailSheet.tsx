@@ -12,12 +12,15 @@
 // 단순화: 댓글/지도 썸네일은 기본 placeholder 만, 본격 기능은 다음 라운드.
 
 import { useMemo, useState } from 'react'
-import type { CalendarEvent, Role, TerritoryCard } from '../../types'
+import type { CalendarEvent, EventInformalAssignment, InformalAsset, Role, TerritoryCard } from '../../types'
 import { confirmDialog } from '../../lib/confirm'
 import { t, translateKoreanAddress, type AppLanguage } from '../../i18n'
 import { CommentSection, type MentionUser } from '../CommentSection'
 
 type Props = {
+  /** 비공식 봉사 배정 — 구역이 없어도 맡은 일이 있으면 보여 준다 */
+  informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
   language?: AppLanguage
   translatePlaceNames?: boolean
   event: CalendarEvent
@@ -98,8 +101,14 @@ function getAssignmentCardIds(assignment: CalendarEvent['cardAssignments'][numbe
   return Array.from(new Set(ids.filter((id): id is number => typeof id === 'number' && id > 0))).sort((a, b) => a - b)
 }
 
-function buildSharedAssignmentTeams(event: CalendarEvent, cards: TerritoryCard[]) {
+function buildSharedAssignmentTeams(
+  event: CalendarEvent,
+  cards: TerritoryCard[],
+  informalAssets: InformalAsset[] = [],
+  informalAssignments: EventInformalAssignment[] = [],
+) {
   const cardNameById = new Map(cards.map((card) => [card.id, card.name]))
+  const assetNameById = new Map(informalAssets.map((a) => [a.id, a.name]))
   const grouped = new Map<string, { members: string[]; cardIds: number[] }>()
 
   event.cardAssignments.forEach((assignment) => {
@@ -114,12 +123,27 @@ function buildSharedAssignmentTeams(event: CalendarEvent, cards: TerritoryCard[]
     grouped.set(key, existing)
   })
 
-  return Array.from(grouped.values()).map((team, index) => ({
-    id: `${team.cardIds.join('-') || 'none'}-${index}`,
-    label: `팀 ${index + 1}`,
-    members: team.members,
-    cardNames: team.cardIds.map((id) => cardNameById.get(id)).filter((name): name is string => Boolean(name)),
-  }))
+  return Array.from(grouped.values()).map((team, index) => {
+    const cardNames = team.cardIds.map((id) => cardNameById.get(id)).filter((name): name is string => Boolean(name))
+    // 구역이 없으면 그 팀이 맡은 비공식 자료 이름을 대신 보여 준다.
+    // 예전에는 그냥 '카드 미배정' 이라, 비공식을 받은 팀이 아무 일도 안 받은
+    // 것처럼 보였다.
+    if (cardNames.length === 0) {
+      const mine = new Set(team.members)
+      cardNames.push(...Array.from(new Set(
+        informalAssignments
+          .filter((a) => mine.has(a.userName))
+          .map((a) => assetNameById.get(a.assetId))
+          .filter((n): n is string => Boolean(n)),
+      )))
+    }
+    return {
+      id: `${team.cardIds.join('-') || 'none'}-${index}`,
+      label: `팀 ${index + 1}`,
+      members: team.members,
+      cardNames,
+    }
+  })
 }
 
 function SharedAssignmentTeams({
@@ -127,15 +151,20 @@ function SharedAssignmentTeams({
   cards,
   language,
   translatePlaceNames,
+  informalAssets = [],
+  eventInformalAssignments = [],
 }: {
   event: CalendarEvent
   cards: TerritoryCard[]
+  /** 비공식 봉사 배정 — 구역이 없어도 맡은 일이 있으면 보여 준다 */
+  informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
   language: AppLanguage
   translatePlaceNames: boolean
 }) {
   if (event.assignmentStatus !== 'shared') return null
 
-  const teams = buildSharedAssignmentTeams(event, cards)
+  const teams = buildSharedAssignmentTeams(event, cards, informalAssets, eventInformalAssignments)
   if (teams.length === 0) return null
 
   return (
@@ -185,6 +214,8 @@ export function AdminEventDetailSheet({
   onRemoveParticipant,
   onOpenAssignment,
   globalSettings = {},
+  informalAssets = [],
+  eventInformalAssignments = [],
 }: Props) {
   const isApplied = useMemo(() => event.applicants.includes(currentVisitor), [event.applicants, currentVisitor])
   const canApply = event.allowApplications
@@ -648,7 +679,7 @@ export function AdminEventDetailSheet({
           </button>
         )}
 
-        <SharedAssignmentTeams event={event} cards={cards} language={language} translatePlaceNames={translatePlaceNames} />
+        <SharedAssignmentTeams event={event} cards={cards} language={language} translatePlaceNames={translatePlaceNames} informalAssets={informalAssets} eventInformalAssignments={eventInformalAssignments} />
 
         <CommentSection
           compact

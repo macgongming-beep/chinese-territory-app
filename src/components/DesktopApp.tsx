@@ -576,6 +576,8 @@ export function DesktopApp({
         } />
         <Route path="/calendar" element={
           <DesktopCalendar
+            informalAssets={informalAssets}
+            eventInformalAssignments={eventInformalAssignments}
             currentVisitor={currentVisitor}
             currentUserId={currentUserId}
             leaderNames={leaderNames}

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { confirmDialog } from '../lib/confirm'
 import { showToast } from '../lib/toast'
 import { findActivePeriod } from '../utils/specialPeriod'
-import type { CalendarEvent, SpecialPeriod, TerritoryCard } from '../types'
+import type { CalendarEvent, EventInformalAssignment, InformalAsset, SpecialPeriod, TerritoryCard } from '../types'
 import { PERIOD_COLORS } from '../types'
 import { ChatRoom } from './ChatRoom'
 import { CommentSection, type MentionUser } from './CommentSection'
@@ -60,6 +60,8 @@ type ScopeModal =
   | { kind: 'delete'; id: number; date: string; seriesId: string; title: string }
 
 export function DesktopCalendar({
+  informalAssets = [],
+  eventInformalAssignments = [],
   currentVisitor,
   currentUserId,
   leaderNames = [],
@@ -86,6 +88,8 @@ export function DesktopCalendar({
   globalSettings = {},
   onUpsertGlobalSetting,
 }: {
+  informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
   currentVisitor: string
   currentUserId?: number | null
   leaderNames?: string[]
@@ -714,6 +718,8 @@ export function DesktopCalendar({
 
                 return (
                   <EventDetailCard
+                    informalAssets={informalAssets}
+                    eventInformalAssignments={eventInformalAssignments}
                     key={event.id}
                     event={event}
                     cards={cards}
@@ -799,8 +805,14 @@ function getAssignmentCardIds(assignment: CalendarEvent['cardAssignments'][numbe
   return Array.from(new Set(ids.filter((id): id is number => typeof id === 'number' && id > 0))).sort((a, b) => a - b)
 }
 
-function buildSharedAssignmentTeams(event: CalendarEvent, cards: TerritoryCard[]) {
+function buildSharedAssignmentTeams(
+  event: CalendarEvent,
+  cards: TerritoryCard[],
+  informalAssets: InformalAsset[] = [],
+  informalAssignments: EventInformalAssignment[] = [],
+) {
   const cardNameById = new Map(cards.map((card) => [card.id, card.name]))
+  const assetNameById = new Map(informalAssets.map((a) => [a.id, a.name]))
   const grouped = new Map<string, { members: string[]; cardIds: number[] }>()
 
   event.cardAssignments.forEach((assignment) => {
@@ -817,6 +829,18 @@ function buildSharedAssignmentTeams(event: CalendarEvent, cards: TerritoryCard[]
 
   return Array.from(grouped.values()).map((team, index) => {
     const cardNames = team.cardIds.map((id) => cardNameById.get(id)).filter((name): name is string => Boolean(name))
+    // 구역이 없으면 그 팀이 맡은 비공식 자료 이름을 대신 보여 준다.
+    // 예전에는 그냥 '카드 미배정' 이라, 비공식을 받은 팀이 아무 일도 안 받은
+    // 것처럼 보였다.
+    if (cardNames.length === 0) {
+      const mine = new Set(team.members)
+      cardNames.push(...Array.from(new Set(
+        informalAssignments
+          .filter((a) => mine.has(a.userName))
+          .map((a) => assetNameById.get(a.assetId))
+          .filter((n): n is string => Boolean(n)),
+      )))
+    }
     return {
       id: `${team.cardIds.join('-') || 'none'}-${index}`,
       label: `팀 ${index + 1}`,
@@ -826,10 +850,15 @@ function buildSharedAssignmentTeams(event: CalendarEvent, cards: TerritoryCard[]
   })
 }
 
-function SharedAssignmentTeams({ event, cards }: { event: CalendarEvent; cards: TerritoryCard[] }) {
+function SharedAssignmentTeams({ event, cards, informalAssets = [], eventInformalAssignments = [] }: {
+  event: CalendarEvent
+  cards: TerritoryCard[]
+  informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
+}) {
   if (event.assignmentStatus !== 'shared') return null
 
-  const teams = buildSharedAssignmentTeams(event, cards)
+  const teams = buildSharedAssignmentTeams(event, cards, informalAssets, eventInformalAssignments)
   if (teams.length === 0) return null
 
   return (
@@ -864,6 +893,8 @@ function SharedAssignmentTeams({ event, cards }: { event: CalendarEvent; cards: 
 function EventDetailCard({
   event,
   cards,
+  informalAssets = [],
+  eventInformalAssignments = [],
   role,
   globalSettings,
   canEdit,
@@ -889,6 +920,9 @@ function EventDetailCard({
   setAddParticipantEventId,
   setAddParticipantQuery,
 }: {
+  /** 비공식 봉사 배정 — 구역이 없어도 맡은 일이 있으면 보여 준다 */
+  informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
   event: CalendarEvent
   cards: TerritoryCard[]
   role: import('../types').Role
@@ -1129,7 +1163,7 @@ function EventDetailCard({
       </div>
       )}
 
-      <SharedAssignmentTeams event={event} cards={cards} />
+      <SharedAssignmentTeams event={event} cards={cards} informalAssets={informalAssets} eventInformalAssignments={eventInformalAssignments} />
 
       {/* 댓글 + 채팅 열기 — 모바일 방식: CommentSection headerRight 로 통합 */}
       <div className="event-collab-grid">
