@@ -799,7 +799,7 @@ export function useStore(enabled: boolean = true) {
     updateRestaurantRequestMemo,
     approveRestaurantRequest,
     rejectRestaurantRequest,
-  } = makeRestaurantServiceMutations({ fetchAll: refetchRestaurantRequests, buildings })
+  } = makeRestaurantServiceMutations({ fetchAll: refetchRestaurantRequests, buildings, cardBoundaries })
 
   // app_settings 키/값 서버 저장 (기기 간 공유). 캘린더 프리셋 등에 사용.
   const upsertGlobalSetting = async (key: string, value: string): Promise<boolean> => {

@@ -1,12 +1,15 @@
-import type { Building } from '../../types'
+import type { Building, CardBoundary } from '../../types'
+import { findCardForCoordinates } from '../../utils/mapUtils'
+import { geocodeQuery } from '../../lib/naverGeocode'
 import { supabase, showToast, reportMutationError } from './shared'
 import { msg } from '../../lib/msg'
 
 export function makeRestaurantServiceMutations(deps: {
   fetchAll: () => Promise<void>
   buildings: Building[]
+  cardBoundaries: CardBoundary[]
 }) {
-  const { fetchAll, buildings } = deps
+  const { fetchAll, buildings, cardBoundaries } = deps
 
   /** 봉사자: 식당 방문 기록 직접 추가 (기존 is_restaurant 건물) */
   const addRestaurantVisit = async (
@@ -125,23 +128,32 @@ export function makeRestaurantServiceMutations(deps: {
         resolvedUnitId = firstUnit.id
       }
     } else {
-      // 새 건물 생성 (미배정 건물 카드에 넣기)
-      const unassignedCard = buildings.find((b) => b.cardId)
-        ? null
-        : null // fallback — 아래에서 DB에서 직접 찾음
-      const { data: cardData } = await supabase
-        .from('cards')
-        .select('id')
-        .eq('name', '미배정 건물')
-        .limit(1)
-        .single()
+      // 새 건물을 만든다.
+      //
+      // 예전에는 좌표를 안 찾고(0, 0) 무조건 '미배정 건물' 카드에 넣었다.
+      // 그래서 승인해도 **지도에 안 뜨고** 그 지역 구역 카드에도 안 들어갔다.
+      // 건물 추가 화면과 같은 순서로 맞춘다: 주소 → 좌표 → 구역선으로 카드 찾기.
+      let lat = opts.lat ?? 0
+      let lng = opts.lng ?? 0
+      if (!lat || !lng) {
+        const found = await geocodeQuery(opts.address.trim())
+        if (found) { lat = found.lat; lng = found.lng }
+      }
 
-      const cardId = cardData?.id
+      let cardId: number | undefined
+      if (lat && lng) {
+        cardId = findCardForCoordinates(lat, lng, cardBoundaries) ?? undefined
+      }
+      if (!cardId) {
+        // 좌표를 못 찾았거나 어느 구역선에도 안 들어간다 — 미배정으로 둔다
+        const { data: cardData } = await supabase
+          .from('cards').select('id').eq('name', '미배정 건물').limit(1).single()
+        cardId = cardData?.id
+      }
       if (!cardId) {
         showToast(msg('미배정 건물 카드를 찾을 수 없습니다.'), 'error')
         return
       }
-      void unassignedCard // suppress unused var
 
       const bRes = await supabase
         .from('buildings')
@@ -150,8 +162,8 @@ export function makeRestaurantServiceMutations(deps: {
           name: opts.name.trim(),
           address: opts.address.trim(),
           type: '상가',
-          lat: opts.lat ?? 0,
-          lng: opts.lng ?? 0,
+          lat,
+          lng,
           is_restaurant: true,
         })
         .select('id')
