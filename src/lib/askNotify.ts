@@ -21,9 +21,16 @@ export async function askNotifyOnEventEdit(opts: {
   recipientCount: number
   /** 반복 일정이면 몇 개가 바뀌는지 */
   seriesCount?: number
+  /** 반복이면 바뀌는 회차들의 날짜. 하나라도 오늘 이후면 알림이 나간다 */
+  affectedDates?: string[]
 }): Promise<boolean> {
   if (!willNotifyOnEventChange(opts.before, opts.after)) return false
-  if (opts.after.date && !isNotifiableDate(opts.after.date, getLocalDateString())) return false
+  // 반복 수정이면 **바뀌는 회차 중 하나라도 오늘 이후**면 알림이 나간다.
+  // 고른 회차 하나만 보면, 지난 회차에서 '이후 모두' 를 골랐을 때
+  // 묻지도 않고 미래 회차가 조용히 바뀐다.
+  const today = getLocalDateString()
+  const dates = opts.affectedDates ?? (opts.after.date ? [opts.after.date] : [])
+  if (dates.length > 0 && !dates.some((d) => isNotifiableDate(d, today))) return false
   if (opts.recipientCount <= 0) return false
 
   const who = `참여자 ${opts.recipientCount}명`

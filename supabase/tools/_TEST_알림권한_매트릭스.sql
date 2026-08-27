@@ -9,6 +9,12 @@
 --
 -- 끝나면 만든 자료를 지우고 결과표만 남긴다.
 --
+-- ⚠ 이 스크립트는 열 칸이 **한 트랜잭션**에서 돈다. 운영은 호출마다 트랜잭션이 다르다.
+--   그 차이 때문에 억제 표식이 앞 칸에서 뒤 칸으로 새는 일이 있었다.
+--   그래서 칸마다 표식을 초기화한다. **RPC 가 표식을 지우게 만들면 안 된다** —
+--   그건 시험 사정 때문에 운영 코드를 굽히는 것이다.
+--   API 를 실제로 거치는 검증은 `npm run smoke:notify` 가 따로 한다.
+--
 -- ⚠ 알림 건수는 **id 물길**로 센다. 시각으로 세면 안 된다 —
 --   notifications.created_at 의 기본값은 now() 이고, now() 는 **트랜잭션 시작 시각**이라
 --   블록 안에서 clock_timestamp() 로 찍은 기준보다 항상 이르다.
@@ -93,6 +99,7 @@ begin
     (v_e3, '매트릭스관리자', '신청');
 
   -- ═══ 칸 1: 관리자 · 반복 · notify=true ═══
+  perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_series_tx(
     v_admin_tok, v_series, current_date + 7,
@@ -108,6 +115,7 @@ begin
          else '⚠ 확인' end);
 
   -- ═══ 칸 2: 관리자 · 반복 · notify=false ═══
+  perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_series_tx(
     v_admin_tok, v_series, current_date + 7,
@@ -118,6 +126,7 @@ begin
     case when v_cnt = 0 then 'OK (0건)' else '⚠ 알림이 나갔다' end);
 
   -- ═══ 칸 3: 전담 인도자 · 반복 · notify=true ═══
+  perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_series_tx(
     v_lead_all_tok, v_series, current_date + 7,
@@ -159,6 +168,7 @@ begin
   end;
 
   -- ═══ 칸 6: 관리자 · 단일 · notify=false ═══
+  perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_tx(v_admin_tok, v_e1, jsonb_build_object('place', '단일변경'), false);
   select count(*) into v_cnt from public.notifications where id > v_mark;
@@ -167,6 +177,7 @@ begin
     case when v_cnt = 0 and (v_res->>'updated')::int = 1 then 'OK' else '⚠ 확인' end);
 
   -- ═══ 칸 7: 알림 대상 아닌 칸(메모)만 바꾸면 notify=true 여도 안 나간다 ═══
+  perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_series_tx(
     v_admin_tok, v_series, current_date + 7,
@@ -187,6 +198,7 @@ begin
   end;
 
   -- ═══ 칸 9: 공지 — 관리자 · notify=false ═══
+  perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.create_notice_tx(v_admin_tok, '매트릭스공지-조용히', '내용', 'normal', false);
   select count(*) into v_cnt from public.notifications where id > v_mark;
@@ -195,6 +207,7 @@ begin
     case when v_cnt = 0 then 'OK (0건)' else '⚠ 알림이 나갔다' end);
 
   -- ═══ 칸 10: 공지 — 관리자 · notify=true (본인 제외 확인) ═══
+  perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.create_notice_tx(v_admin_tok, '매트릭스공지-알림', '내용', 'normal', true);
   select count(*), count(distinct user_id), bool_or(user_id = v_admin)

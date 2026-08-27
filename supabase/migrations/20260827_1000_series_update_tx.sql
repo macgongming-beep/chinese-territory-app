@@ -1,3 +1,37 @@
+-- 알림을 실제로 받을 사람만 남긴다.
+--
+-- ⚠ 지금까지 insert_notifications 만 걸렀고 dispatch_push_notification 은
+--   **거르지 않은 목록**을 그대로 받았다. 그래서 '이 알림 끄기' 를 해도
+--   휴대폰 푸시는 갔고, 비활성·미승인 사용자의 옛 구독에도 갔다.
+--   앱 전체에 있던 문제다 (댓글·채팅·배정도 같다). 여기서 공용 함수를 만들고
+--   새 RPC 부터 쓴다. 나머지 트리거는 뒤이어 옮긴다.
+create or replace function public.filter_notification_recipients(
+  p_user_ids integer[], p_type text
+)
+returns integer[]
+language sql
+stable
+as $$
+  select coalesce(array_agg(distinct u.id), '{}'::integer[])
+  from unnest(coalesce(p_user_ids, '{}'::integer[])) as t(uid)
+  join public.app_users u on u.id = t.uid
+  left join public.notification_preferences pref on pref.user_id = u.id
+  where coalesce(u.is_active, true) is true
+    and coalesce(u.approval_status, 'approved') = 'approved'
+    and case p_type
+      when 'notice' then coalesce(pref.push_new_notice, true)
+      when 'event_change' then coalesce(pref.push_event_change, true)
+      when 'comment' then coalesce(pref.push_comment, true)
+      when 'mention' then coalesce(pref.push_mention, true)
+      when 'chat' then coalesce(pref.push_chat, true)
+      when 'service_started' then coalesce(pref.push_service_status, true)
+      when 'service_ended' then coalesce(pref.push_service_status, true)
+      else true
+    end
+$$;
+
+grant execute on function public.filter_notification_recipients(integer[], text) to anon, authenticated;
+
 -- 반복 일정을 고치면 알림이 일정 수만큼 나가던 문제.
 --
 -- 한 번 고쳤는데 알림이 46번 갔다. 트리거가 **줄마다** 돌기 때문이다.
@@ -52,9 +86,19 @@ begin
   -- 알림 대상 칸이 **실제로** 바뀌는지 서버가 직접 본다.
   -- 화면의 판단(willNotifyOnEventChange)은 물어볼지 정하는 용도일 뿐이고,
   -- 보낼지 말지는 여기서 정한다. 두 곳이 어긋나도 잘못 나가지 않는다.
+  -- ⑤ 먼저 정해진 순서로 잠근다. 두 사람이 동시에 저장하면
+  --    둘 다 옛 값을 보고 알림을 두 번 보낼 수 있었다.
+  perform 1 from public.calendar_events
+   where series_id = p_series_id and event_date >= p_from_date
+   order by id for update;
+
+  -- ② 알림 판단은 **오늘 이후 회차만** 본다.
+  --    지난 회차에서 '이후 모두' 를 고르면 미래 회차가 조용히 바뀌었고,
+  --    반대로 p_notify=true 면 지난 회차 참가자까지 수신자에 들어갔다.
   select exists (
     select 1 from public.calendar_events e
     where e.series_id = p_series_id and e.event_date >= p_from_date
+      and e.event_date >= current_date
       and (
         (p_payload ? 'time'            and e.time            is distinct from p_payload->>'time') or
         (p_payload ? 'title'           and e.title           is distinct from p_payload->>'title') or
@@ -103,13 +147,17 @@ begin
     select u.id as rid
     from public.event_participants ep
     join public.app_users u on u.name = ep.user_name
-    where ep.event_id = any (v_ids)
+    join public.calendar_events ce on ce.id = ep.event_id
+    where ep.event_id = any (v_ids) and ce.event_date >= current_date
     union
     select unnest(public.user_ids_in_name_list(e.leader_name)) as rid
     from public.calendar_events e
-    where e.id = any (v_ids)
+    where e.id = any (v_ids) and e.event_date >= current_date
   ) r
   where rid is not null and rid is distinct from v_actor_id;
+
+  -- ① 푸시도 같은 필터를 거친 목록만 받는다
+  v_recipients := public.filter_notification_recipients(v_recipients, 'event_change');
 
   if v_recipients is null or cardinality(v_recipients) = 0 then
     return jsonb_build_object('ok', true, 'updated', cardinality(v_ids), 'notified', 0);
@@ -168,9 +216,12 @@ begin
     raise exception '이 일정을 고칠 권한이 없습니다';
   end if;
 
-  -- 표식을 양쪽 다 명시한다 (공지 RPC 와 같은 이유)
-  perform set_config('app.suppress_notifications',
-                     case when p_notify then '' else 'on' end, true);
+  -- 안 보낼 때만 표식을 켠다. **켜져 있는 걸 끄지는 않는다** —
+  -- 바깥의 관리 작업이 일부러 켜뒀을 수 있다.
+  -- (한때 끄게 했는데, 그건 매트릭스를 한 트랜잭션에서 돌려 생긴 문제를 덮은 것이었다)
+  if not p_notify then
+    perform set_config('app.suppress_notifications', 'on', true);
+  end if;
 
   update public.calendar_events e set
     time               = case when p_payload ? 'time'               then p_payload->>'time'                        else e.time end,

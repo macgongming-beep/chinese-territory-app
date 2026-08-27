@@ -80,11 +80,11 @@ export function makeCalendarMutations(deps: {
   //   떨어졌는데, 그 경로에는 권한 검사도 알림 억제도 없다. 그래서
   //   '권한 없음' 을 우회하고, '보내지 않기' 를 골라도 알림이 나갔다.
   //   실패하면 실패로 끝낸다.
-  const updateCalendarEvent = async (eventId: number, input: CalendarEventInput, notify = true) => {
+  const updateCalendarEvent = async (eventId: number, input: CalendarEventInput, notify = true): Promise<boolean> => {
     const token = getAuthToken()
     if (!token) {
       showToast(msg('로그인 정보가 없습니다. 다시 로그인해 주세요.'), 'error')
-      return
+      return false
     }
     const rpc = await supabase.rpc('update_calendar_event_tx', {
       p_token: token, p_event_id: eventId,
@@ -92,15 +92,16 @@ export function makeCalendarMutations(deps: {
     })
     if (rpc.error) {
       reportMutationError(msg('일정을 수정하지 못했습니다.'), rpc.error)
-      return
+      return false
     }
     const r = rpc.data as { ok?: boolean } | null
     if (!r?.ok) {
       showToast(msg('일정을 수정하지 못했습니다.'), 'error')
-      return
+      return false
     }
     await fetchAll()
     showToast(msg('일정이 수정됐습니다'))
+    return true
   }
 
   // 반복 일정은 줄마다 트리거가 돌아 알림이 일정 수만큼 나갔다 (한 번에 92건 나간 적 있다).
@@ -110,13 +111,13 @@ export function makeCalendarMutations(deps: {
     fromDate: string,
     input: CalendarEventInput,
     notify = true,
-  ) => {
+  ): Promise<boolean> => {
     // ⚠ 여기도 직접 쓰기로 물러서지 않는다. 레거시 경로로 떨어지면
     //   줄마다 트리거가 돌아 **알림이 다시 폭주한다.** 실패하면 실패로 끝낸다.
     const token = getAuthToken()
     if (!token) {
       showToast(msg('로그인 정보가 없습니다. 다시 로그인해 주세요.'), 'error')
-      return
+      return false
     }
     const rpc = await supabase.rpc('update_calendar_event_series_tx', {
       p_token: token, p_series_id: seriesId, p_from_date: fromDate,
@@ -124,15 +125,16 @@ export function makeCalendarMutations(deps: {
     })
     if (rpc.error) {
       reportMutationError(msg('반복 일정을 수정하지 못했습니다.'), rpc.error)
-      return
+      return false
     }
     const r = rpc.data as { ok?: boolean; updated?: number } | null
     if (!r?.ok) {
       showToast(msg('반복 일정을 수정하지 못했습니다.'), 'error')
-      return
+      return false
     }
     await fetchAll()
     showToast(msg('이후 반복 일정 {n}개가 수정됐습니다', { n: r.updated ?? 0 }))
+    return true
   }
 
   const deleteCalendarEvent = async (eventId: number) => {

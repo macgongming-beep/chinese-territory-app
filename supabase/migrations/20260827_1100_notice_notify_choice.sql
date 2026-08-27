@@ -41,11 +41,11 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'empty_title');
   end if;
 
-  -- 표식을 **양쪽 다 명시**한다. 'true 면 안 건드린다' 로 두면
-  -- 같은 트랜잭션에서 앞선 호출이 켜둔 표식에 끌려간다 (매트릭스에서 실제로 그랬다).
-  -- 운영은 호출마다 트랜잭션이 달라 안 나지만, 기대지 않는 편이 낫다.
-  perform set_config('app.suppress_notifications',
-                     case when p_notify then '' else 'on' end, true);
+  -- 안 보낼 때만 표식을 켠다. 켜져 있는 걸 끄지는 않는다
+  -- (바깥의 관리 작업이 일부러 켜뒀을 수 있다)
+  if not p_notify then
+    perform set_config('app.suppress_notifications', 'on', true);
+  end if;
 
   insert into public.notices (title, content, priority, author)
   values (btrim(p_title), btrim(coalesce(p_content, '')), p_priority, v_actor_name)
@@ -103,6 +103,14 @@ begin
     when undefined_column then
       v_title := '새 공지';
   end;
+
+  -- ⚠ 푸시도 같은 필터를 거친 목록만 받아야 한다.
+  --   예전엔 insert_notifications 만 거르고 푸시는 원본 목록을 받아,
+  --   '공지 알림 끄기' 를 해도 휴대폰은 울렸다.
+  v_recipient_ids := public.filter_notification_recipients(v_recipient_ids, 'notice');
+  if v_recipient_ids is null or cardinality(v_recipient_ids) = 0 then
+    return new;
+  end if;
 
   perform public.insert_notifications(
     v_recipient_ids,

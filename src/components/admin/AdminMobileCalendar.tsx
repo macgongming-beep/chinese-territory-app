@@ -90,8 +90,8 @@ type Props = {
   onCreateRepeatEvents?: (dates: string[], input: EventInput) => void
   onDeleteEvent?: (id: number) => void
   onDeleteEventSeries?: (seriesId: string, fromDate: string) => void
-  onUpdateEvent?: (id: number, input: EventInput, notify?: boolean) => void
-  onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput, notify?: boolean) => void
+  onUpdateEvent?: (id: number, input: EventInput, notify?: boolean) => void | Promise<boolean>
+  onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput, notify?: boolean) => void | Promise<boolean>
   onApplyToEvent?: (eventId: number) => void
   onAddParticipantToEvent?: (eventId: number, userName: string, role?: '신청' | '게스트') => void
   onRemoveParticipantFromEvent?: (eventId: number, userName: string) => void
@@ -683,24 +683,27 @@ function SeriesScopeSheet({ language,
   onClose: () => void
   onDeleteEvent?: (id: number) => void
   onDeleteEventSeries?: (seriesId: string, fromDate: string) => void
-  onUpdateEvent?: (id: number, input: EventInput, notify?: boolean) => void
-  onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput, notify?: boolean) => void
+  onUpdateEvent?: (id: number, input: EventInput, notify?: boolean) => void | Promise<boolean>
+  onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput, notify?: boolean) => void | Promise<boolean>
 }) {
   const isEdit = action.kind === 'edit'
   const seriesId = action.event.seriesId
   const handleOnly = () => {
     if (isEdit) {
       // 반복 일정의 '이 일정만' 도 알림이 나간다 — 여기서도 묻는다.
-      // (예전엔 여기만 안 물어서 조용히 나갔다)
+      // 저장이 **성공했을 때만** 닫는다. 실패하면 입력이 사라졌었다.
       void (async () => {
         const notify = await askNotifyOnEventEdit({
           before: action.event,
           after: { ...action.input, date: action.event.date },
           recipientCount: countEventNotifyTargets(action.event),
         })
-        onUpdateEvent?.(action.event.id, action.input, notify)
+        const ok = await onUpdateEvent?.(action.event.id, action.input, notify)
+        if (ok !== false) onClose()
       })()
-    } else onDeleteEvent?.(action.event.id)
+      return
+    }
+    onDeleteEvent?.(action.event.id)
     onClose()
   }
   const handleSeries = () => {
@@ -713,10 +716,14 @@ function SeriesScopeSheet({ language,
           // 회차마다 신청자가 다르다 — 바뀌는 일정 전부의 합집합을 센다
           recipientCount: countEventNotifyTargetsMany(seriesEvents),
           seriesCount: seriesEvents.length,
+          affectedDates: seriesEvents.map((e) => e.date),
         })
-        onUpdateEventSeries?.(seriesId, action.event.date, action.input, notify)
+        const ok = await onUpdateEventSeries?.(seriesId, action.event.date, action.input, notify)
+        if (ok !== false) onClose()
       })()
-    } else onDeleteEventSeries?.(seriesId, action.event.date)
+      return
+    }
+    onDeleteEventSeries?.(seriesId, action.event.date)
     onClose()
   }
 
