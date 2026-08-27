@@ -1,6 +1,7 @@
 import type { Building, TerritoryCard, Unit, UnitStatus } from '../../types'
 import type { CsvBuildingImport } from '../../utils/csvBuildingImport'
 import { isValidMapCoordinate } from '../../utils/mapUtils'
+import { buildImportPayload } from '../../utils/importBuildingPayload'
 import { getAuthToken } from '../../lib/authToken'
 import type { MergeResult } from '../../utils/duplicateBuildingMerge'
 import { supabase, showToast, reportMutationError } from './shared'
@@ -97,6 +98,12 @@ export function makeBuildingMutations(deps: {
     let visitHistoriesInserted = 0
     const existingKeys = new Set(buildings.map((building) => `${building.cardId}|${building.address}|${building.name}`))
 
+    const token = getAuthToken()
+    if (!token) {
+      showToast(msg('로그인 정보가 없습니다. 다시 로그인해 주세요.'), 'error')
+      return { inserted: 0, skipped: cleanedInputs.length }
+    }
+
     for (const input of cleanedInputs) {
       const key = `${input.cardId}|${input.address}|${input.name}`
       if (existingKeys.has(key)) {
@@ -104,88 +111,22 @@ export function makeBuildingMutations(deps: {
         continue
       }
 
-      const buildingResult = await supabase
-        .from('buildings')
-        .insert({
-          card_id: input.cardId,
-          name: input.name,
-          address: input.address,
-          type: input.type,
-          lat: input.lat,
-          lng: input.lng,
-          ...(input.warning ? { warning: input.warning } : {}),
-        })
-        .select('id')
-        .single()
-
-      if (buildingResult.error || !buildingResult.data?.id) {
+      // ⚠ 건물 하나를 **통째로** 한 트랜잭션에 넣는다.
+      //   예전에는 건물 → 세대 → 정기방문 → 방문기록을 따로 넣어서,
+      //   세대나 정기방문이 실패하면 continue 로 넘어가고 **건물만 남았다**
+      //   (세대가 하나도 없는 건물). 방문기록 실패는 아예 조용했다.
+      const payload = buildImportPayload(input)
+      const rpc = await supabase.rpc('import_building_tx', {
+        p_token: token,
+        p_building: payload.building,
+        p_units: payload.units,
+      })
+      if (rpc.error || !(rpc.data as { ok?: boolean } | null)?.ok) {
+        if (rpc.error) console.warn('[importBuildings] 건물 하나 실패 — 통째로 되돌아감', input.address, rpc.error)
         skipped += 1
         continue
       }
-
-      const units = input.units.length > 0
-        ? input.units
-        : [{ number: '101호', status: '미방문' as UnitStatus, isChinese: false, isRestaurant: false, naverPlaceId: undefined, isRegularVisit: false, regularVisitor: undefined, regularVisitorStartDate: undefined, memo: undefined, visitHistories: [] }]
-      const unitsResult = await supabase.from('units').insert(
-        units.map((unit) => ({
-          building_id: buildingResult.data.id,
-          number: unit.number,
-          status: unit.status,
-          is_chinese: unit.isChinese,
-          is_restaurant: unit.isRestaurant ?? false,
-          naver_place_id: unit.naverPlaceId || null,
-          memo: unit.memo || null,
-        })),
-      ).select('id, number')
-
-      if (unitsResult.error) {
-        skipped += 1
-        continue
-      }
-
-      const regularVisitRows = units
-        .filter((unit) => unit.isRegularVisit && unit.regularVisitor)
-        .map((unit) => {
-          const insertedUnit = unitsResult.data?.find((item: { id: number; number: string }) => item.number === unit.number)
-          if (!insertedUnit) return null
-          return {
-            unit_id: insertedUnit.id,
-            visitor_name: unit.regularVisitor,
-            ...(unit.regularVisitorStartDate ? { registered_at: unit.regularVisitorStartDate } : {}),
-          }
-        })
-        .filter(Boolean)
-
-      if (regularVisitRows.length > 0) {
-        const regularResult = await supabase.from('regular_visits').insert(regularVisitRows)
-        if (regularResult.error) {
-          skipped += 1
-          continue
-        }
-      }
-
-      // 방문기록 삽입
-      const visitRows: Array<{ unit_id: number; result: string; visitor_name: string; visited_at: string; time_slot?: string; memo?: string }> = []
-      for (const unit of units) {
-        if (!unit.visitHistories || unit.visitHistories.length === 0) continue
-        const insertedUnit = unitsResult.data?.find((item: { id: number; number: string }) => item.number === unit.number)
-        if (!insertedUnit) continue
-        for (const vh of unit.visitHistories) {
-          visitRows.push({
-            unit_id: insertedUnit.id,
-            result: vh.result,
-            visitor_name: vh.visitor ?? '',
-            visited_at: vh.visitedAt,
-            ...(vh.timeSlot ? { time_slot: vh.timeSlot } : {}),
-            ...(vh.memo ? { memo: vh.memo } : {}),
-          })
-        }
-      }
-
-      if (visitRows.length > 0) {
-        const visitResult = await supabase.from('visit_histories').insert(visitRows)
-        if (!visitResult.error) visitHistoriesInserted += visitRows.length
-      }
+      visitHistoriesInserted += (rpc.data as { visits?: number }).visits ?? 0
 
       existingKeys.add(key)
       inserted += 1
