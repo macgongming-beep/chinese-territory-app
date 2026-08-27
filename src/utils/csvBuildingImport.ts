@@ -101,16 +101,12 @@ export function parseCsv(text: string): string[][] {
   return rows
 }
 
-export function splitUnitNumbers(value: string): string[] {
-  return Array.from(
-    new Set(
-      value
-        .split(/[|;/,\n]+/)
-        .map((unit) => unit.trim())
-        .filter(Boolean),
-    ),
-  )
-}
+// splitUnitNumbers / createCsvUnits 는 여기 있었다. 지웠다.
+// '101|102' 를 여러 세대로 쪼개는 것이었는데 **파서가 부른 적이 없다.**
+// 시험만 붙어 있어서 그 규칙이 도는 줄 알았다 (헛된 안심).
+// 실제 세대 1000개를 확인해 보니 그런 표기가 없었고, 오히려 연결하면
+// '덕석과 구들장, 주인이 반대' 같은 **설명이 적힌 이름 하나**가
+// 쉼표에서 쪼개져 없던 세대가 생긴다. 필요해지면 그때 다시 만든다.
 
 export function normalizeUnitStatus(value: string): UnitStatus {
   const text = value.trim()
@@ -180,34 +176,6 @@ export function normalizeWarning(value: string): string | undefined {
   return v
 }
 
-export function createCsvUnits(
-  unitValue: string,
-  input: {
-    status: UnitStatus
-    isChinese: boolean
-    regularVisitor: string
-    regularVisitorStartDate?: string
-    memo: string
-    isRestaurant?: boolean
-    naverPlaceId?: string
-    visitHistories?: CsvVisitHistory[]
-  },
-): CsvUnitImport[] {
-  const unitNumbers = splitUnitNumbers(unitValue)
-  const numbers = unitNumbers.length > 0 ? unitNumbers : ['1층']
-  return numbers.map((number) => ({
-    number,
-    status: input.status,
-    isChinese: input.isChinese || Boolean(input.regularVisitor) || input.status === '만남' || input.status === '부재',
-    isRestaurant: input.isRestaurant ?? false,
-    naverPlaceId: input.naverPlaceId,
-    isRegularVisit: Boolean(input.regularVisitor),
-    regularVisitor: input.regularVisitor || undefined,
-    regularVisitorStartDate: input.regularVisitorStartDate || undefined,
-    memo: input.memo || undefined,
-    visitHistories: input.visitHistories ?? [],
-  }))
-}
 
 function csvCell(value: string | number): string {
   const text = String(value)

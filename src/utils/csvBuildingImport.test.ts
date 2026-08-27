@@ -2,8 +2,8 @@
 // 한 번에 수백 줄이 올라가고, 잘못 들어간 것을 골라내려면 사람이 다 봐야 한다.
 import { describe, test, expect } from 'vitest'
 import {
-  createCsvUnits, isInvitationLeft, looksTruthy, normalizeCsvKey, normalizeTimeSlot,
-  normalizeUnitStatus, normalizeWarning, parseCsv, parseCsvDate, splitUnitNumbers,
+  isInvitationLeft, looksTruthy, normalizeCsvKey, normalizeTimeSlot,
+  normalizeUnitStatus, normalizeWarning, parseCsv, parseCsvDate,
 } from './csvBuildingImport'
 
 describe('parseCsv — 엑셀이 내보내는 모양', () => {
@@ -80,19 +80,6 @@ describe('normalizeUnitStatus — 사람이 적은 결과를 상태로', () => {
   })
 })
 
-describe('splitUnitNumbers — 한 칸에 여러 호수', () => {
-  test('여러 구분자를 받는다', () => {
-    expect(splitUnitNumbers('101|102;103/104,105')).toEqual(['101', '102', '103', '104', '105'])
-  })
-
-  test('같은 호수는 한 번만', () => {
-    expect(splitUnitNumbers('101, 101 ,101')).toEqual(['101'])
-  })
-
-  test('빈 값은 버린다', () => {
-    expect(splitUnitNumbers('101,,  ,102')).toEqual(['101', '102'])
-  })
-})
 
 describe('looksTruthy — ㅇ 하나만 적어도 알아듣는다', () => {
   test.each(['true', 'Y', '1', '중국어', '중국인', '정기', '있음', 'ㅇ', '예'])('%s → 참', (v) => {
@@ -103,33 +90,6 @@ describe('looksTruthy — ㅇ 하나만 적어도 알아듣는다', () => {
   })
 })
 
-describe('createCsvUnits', () => {
-  const base = { status: '미방문' as const, isChinese: false, regularVisitor: '', memo: '' }
-
-  test('호수가 없으면 1층으로 만든다 — 단독주택이 그렇다', () => {
-    const units = createCsvUnits('', base)
-    expect(units.map((u) => u.number)).toEqual(['1층'])
-  })
-
-  test('정기방문자가 있으면 중국어 세대로 본다', () => {
-    const [u] = createCsvUnits('101', { ...base, regularVisitor: '김민준' })
-    expect(u.isChinese).toBe(true)
-    expect(u.isRegularVisit).toBe(true)
-    expect(u.regularVisitor).toBe('김민준')
-  })
-
-  test('만남·부재는 중국어 세대로 본다 — 만났으니 중국인이다', () => {
-    expect(createCsvUnits('101', { ...base, status: '만남' })[0].isChinese).toBe(true)
-    expect(createCsvUnits('101', { ...base, status: '부재' })[0].isChinese).toBe(true)
-    expect(createCsvUnits('101', { ...base, status: '대상외' })[0].isChinese).toBe(false)
-  })
-
-  test('호수가 여럿이면 같은 값으로 여러 개 만든다', () => {
-    const units = createCsvUnits('101|102', { ...base, memo: '공통 메모' })
-    expect(units).toHaveLength(2)
-    expect(units.every((u) => u.memo === '공통 메모')).toBe(true)
-  })
-})
 
 describe('나머지', () => {
   test('normalizeCsvKey — 머리글의 공백·대소문자 차이를 무시한다', () => {
