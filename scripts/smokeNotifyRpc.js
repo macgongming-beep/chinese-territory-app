@@ -7,6 +7,18 @@ import { loadTestEnv } from './testEnvGuard.js'
 
 // 운영 ref 면 여기서 멈춘다
 const env = loadTestEnv()
+
+// ⚠ 이 smoke 는 **쓴다** (일정을 만들고 고치고 지운다).
+//   loadTestEnv 의 ref 허용목록 검사는 PLAYWRIGHT_ALLOW_WRITES 가 있을 때만 돈다.
+//   그걸 확인하지 않으면, 새 회중 ref 를 운영 목록에 등록하기 전에 실수로
+//   가리켰을 때 그대로 써버린다.
+if (!env.allowWrites) {
+  console.error('')
+  console.error('  ✗ smoke:notify 는 쓰기를 한다. 등록된 테스트 DB 에서만 돌릴 수 있다.')
+  console.error('    npm run smoke:notify 로 실행할 것 (PLAYWRIGHT_ALLOW_WRITES 를 켜준다).')
+  console.error('')
+  process.exit(1)
+}
 const URL_ = env.url
 const KEY = env.anonKey
 
@@ -86,19 +98,32 @@ const main = async () => {
   check('시험용 일정을 만들었다', Boolean(eventId), `HTTP ${made.status}`)
 
   if (eventId) {
-    const upd = await rpc('update_calendar_event_tx', {
-      p_token: token, p_event_id: eventId, p_payload: { place: '바뀐곳' }, p_notify: false,
-    })
-    check('진짜 토큰으로 단일 수정이 된다 (알림 안 보냄)',
-      upd.status === 200 && upd.data?.ok === true && upd.data?.updated === 1,
-      `HTTP ${upd.status} ${JSON.stringify(upd.data)}`)
+    // 중간에 뭐가 터져도 반드시 치운다. 안 그러면 테스트 DB 에 SMOKE-일정이 쌓인다.
+    try {
+      const upd = await rpc('update_calendar_event_tx', {
+        p_token: token, p_event_id: eventId, p_payload: { place: '바뀐곳' }, p_notify: false,
+      })
+      check('진짜 토큰으로 단일 수정이 된다 (알림 안 보냄)',
+        upd.status === 200 && upd.data?.ok === true && upd.data?.updated === 1,
+        `HTTP ${upd.status} ${JSON.stringify(upd.data)}`)
 
-    const after = await rest(`calendar_events?select=place&id=eq.${eventId}`, {})
-    check('DB 에 실제로 반영됐다',
-      Array.isArray(after.data) && after.data[0]?.place === '바뀐곳',
-      JSON.stringify(after.data))
+      const after = await rest(`calendar_events?select=place&id=eq.${eventId}`, {})
+      check('DB 에 실제로 반영됐다',
+        Array.isArray(after.data) && after.data[0]?.place === '바뀐곳',
+        JSON.stringify(after.data))
+    } finally {
+      const del = await rest(`calendar_events?id=eq.${eventId}`, { method: 'DELETE' })
+      const left = await rest(`calendar_events?select=id&id=eq.${eventId}`, {})
+      check('시험용 일정을 치웠다',
+        Array.isArray(left.data) && left.data.length === 0, `DELETE HTTP ${del.status}`)
+    }
+  }
 
-    await rest(`calendar_events?id=eq.${eventId}`, { method: 'DELETE' })
+  // 예전에 남았을 수 있는 것도 치운다
+  const strays = await rest('calendar_events?select=id&title=eq.SMOKE-%EC%9D%BC%EC%A0%95', {})
+  if (Array.isArray(strays.data) && strays.data.length > 0) {
+    await rest('calendar_events?title=eq.SMOKE-%EC%9D%BC%EC%A0%95', { method: 'DELETE' })
+    console.log(`  ℹ 예전에 남아 있던 SMOKE-일정 ${strays.data.length}개를 치웠다`)
   }
 
   console.log(fail === 0 ? '\n  전부 통과\n' : `\n  ${fail}개 실패\n`)

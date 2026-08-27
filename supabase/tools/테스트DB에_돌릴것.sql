@@ -1,3 +1,44 @@
+-- ═══ 20260827_0900_notification_filter.sql ═══
+-- 알림 수신자 필터. **다른 것보다 먼저 있어야 한다** —
+-- 일정 트리거와 공지 트리거, 두 RPC 가 이걸 부른다.
+
+-- 알림을 실제로 받을 사람만 남긴다.
+--
+-- ⚠ 지금까지 insert_notifications 만 걸렀고 dispatch_push_notification 은
+--   **거르지 않은 목록**을 그대로 받았다. 그래서 '이 알림 끄기' 를 해도
+--   휴대폰 푸시는 갔고, 비활성·미승인 사용자의 옛 구독에도 갔다.
+--   앱 전체에 있던 문제다 (댓글·채팅·배정도 같다). 여기서 공용 함수를 만들고
+--   새 RPC 부터 쓴다. 나머지 트리거는 뒤이어 옮긴다.
+create or replace function public.filter_notification_recipients(
+  p_user_ids integer[], p_type text
+)
+returns integer[]
+language sql
+stable
+as $$
+  select coalesce(array_agg(distinct u.id), '{}'::integer[])
+  from unnest(coalesce(p_user_ids, '{}'::integer[])) as t(uid)
+  join public.app_users u on u.id = t.uid
+  left join public.notification_preferences pref on pref.user_id = u.id
+  where coalesce(u.is_active, true) is true
+    and coalesce(u.approval_status, 'approved') = 'approved'
+    and case p_type
+      when 'notice' then coalesce(pref.push_new_notice, true)
+      when 'event_change' then coalesce(pref.push_event_change, true)
+      when 'comment' then coalesce(pref.push_comment, true)
+      when 'mention' then coalesce(pref.push_mention, true)
+      when 'chat' then coalesce(pref.push_chat, true)
+      when 'service_started' then coalesce(pref.push_service_status, true)
+      when 'service_ended' then coalesce(pref.push_service_status, true)
+      else true
+    end
+$$;
+
+-- 내부 전용이다. anon 에 열어두면 임의의 사용자 id 목록과 알림 종류를 넣어
+-- 누가 어떤 알림을 켜뒀는지 캐낼 수 있다.
+revoke all on function public.filter_notification_recipients(integer[], text) from public, anon, authenticated;
+
+-- ═══ 20260826_2400_suppress_bulk_notifications.sql ═══
 -- 일괄 정리가 알림 폭탄을 쏘던 문제.
 --
 -- 무슨 일이 있었나: 옛 이름 정리로 calendar_events.leader_name 을 갈아끼웠더니
@@ -51,7 +92,10 @@ begin
     -- (인도자가 둘 이상이면 아무도 못 찾아 알림이 안 나갔다)
     select unnest(public.user_ids_in_name_list(new.leader_name)) as recipient_id
   ) recipients
-  where recipient_id is not null;
+  where recipient_id is not null
+    -- 고친 사람 본인은 뺀다 (update_calendar_event_tx 가 app.actor_id 로 알려준다).
+    -- 없으면(트리거만 돈 경우) 아무도 안 뺀다.
+    and recipient_id is distinct from nullif(current_setting('app.actor_id', true), '')::integer;
 
   -- ⚠ 푸시도 같은 필터를 거친 목록만 받아야 한다.
   --   예전엔 insert_notifications 만 거르고 푸시는 원본 목록을 받아,
@@ -80,41 +124,7 @@ $function$;
 -- 정리 RPC 두 개는 각자의 마이그레이션(2200 / 2300)에서 표식을 세운다.
 -- 그 두 파일을 (다시) 실행해야 이 억제가 실제로 걸린다.
 
--- 알림을 실제로 받을 사람만 남긴다.
---
--- ⚠ 지금까지 insert_notifications 만 걸렀고 dispatch_push_notification 은
---   **거르지 않은 목록**을 그대로 받았다. 그래서 '이 알림 끄기' 를 해도
---   휴대폰 푸시는 갔고, 비활성·미승인 사용자의 옛 구독에도 갔다.
---   앱 전체에 있던 문제다 (댓글·채팅·배정도 같다). 여기서 공용 함수를 만들고
---   새 RPC 부터 쓴다. 나머지 트리거는 뒤이어 옮긴다.
-create or replace function public.filter_notification_recipients(
-  p_user_ids integer[], p_type text
-)
-returns integer[]
-language sql
-stable
-as $$
-  select coalesce(array_agg(distinct u.id), '{}'::integer[])
-  from unnest(coalesce(p_user_ids, '{}'::integer[])) as t(uid)
-  join public.app_users u on u.id = t.uid
-  left join public.notification_preferences pref on pref.user_id = u.id
-  where coalesce(u.is_active, true) is true
-    and coalesce(u.approval_status, 'approved') = 'approved'
-    and case p_type
-      when 'notice' then coalesce(pref.push_new_notice, true)
-      when 'event_change' then coalesce(pref.push_event_change, true)
-      when 'comment' then coalesce(pref.push_comment, true)
-      when 'mention' then coalesce(pref.push_mention, true)
-      when 'chat' then coalesce(pref.push_chat, true)
-      when 'service_started' then coalesce(pref.push_service_status, true)
-      when 'service_ended' then coalesce(pref.push_service_status, true)
-      else true
-    end
-$$;
-
--- 내부 전용이다. anon 에 열어두면 임의의 사용자 id 목록과 알림 종류를 넣어
--- 누가 어떤 알림을 켜뒀는지 캐낼 수 있다.
-revoke all on function public.filter_notification_recipients(integer[], text) from public, anon, authenticated;
+-- ═══ 20260827_1000_series_update_tx.sql ═══
 
 -- 반복 일정을 고치면 알림이 일정 수만큼 나가던 문제.
 --
@@ -308,6 +318,10 @@ begin
     perform set_config('app.suppress_notifications', 'on', true);
   end if;
 
+  -- 고친 사람은 자기 알림을 받지 않는다. 트리거는 누가 고쳤는지 모르므로 여기서 알려준다.
+  -- (반복 수정은 서버가 직접 보내며 이미 제외한다 — 단일만 안 맞았다)
+  perform set_config('app.actor_id', v_actor_id::text, true);
+
   update public.calendar_events e set
     time               = case when p_payload ? 'time'               then p_payload->>'time'                        else e.time end,
     end_time           = case when p_payload ? 'end_time'           then nullif(p_payload->>'end_time', '')        else e.end_time end,
@@ -329,6 +343,7 @@ $$;
 revoke all on function public.update_calendar_event_tx(uuid, integer, jsonb, boolean) from public;
 grant execute on function public.update_calendar_event_tx(uuid, integer, jsonb, boolean) to anon, authenticated;
 
+-- ═══ 20260827_1100_notice_notify_choice.sql ═══
 -- 공지를 올릴 때 알림을 보낼지 고를 수 있게 한다.
 --
 -- 공지는 **활성 사용자 전원**에게 간다 (지금 60명). 되돌릴 수 없다.
@@ -571,6 +586,7 @@ begin
 
   -- ═══ 칸 1: 관리자 · 반복 · notify=true ═══
   perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
+  perform set_config('app.actor_id', '', true);
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_series_tx(
     v_admin_tok, v_series, current_date + 7,
@@ -587,6 +603,7 @@ begin
 
   -- ═══ 칸 2: 관리자 · 반복 · notify=false ═══
   perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
+  perform set_config('app.actor_id', '', true);
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_series_tx(
     v_admin_tok, v_series, current_date + 7,
@@ -598,6 +615,7 @@ begin
 
   -- ═══ 칸 3: 전담 인도자 · 반복 · notify=true ═══
   perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
+  perform set_config('app.actor_id', '', true);
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_series_tx(
     v_lead_all_tok, v_series, current_date + 7,
@@ -640,6 +658,7 @@ begin
 
   -- ═══ 칸 6: 관리자 · 단일 · notify=false ═══
   perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
+  perform set_config('app.actor_id', '', true);
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_tx(v_admin_tok, v_e1, jsonb_build_object('place', '단일변경'), false);
   select count(*) into v_cnt from public.notifications where id > v_mark;
@@ -649,6 +668,7 @@ begin
 
   -- ═══ 칸 7: 알림 대상 아닌 칸(메모)만 바꾸면 notify=true 여도 안 나간다 ═══
   perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
+  perform set_config('app.actor_id', '', true);
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_series_tx(
     v_admin_tok, v_series, current_date + 7,
@@ -670,6 +690,7 @@ begin
 
   -- ═══ 칸 9: 공지 — 관리자 · notify=false ═══
   perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
+  perform set_config('app.actor_id', '', true);
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.create_notice_tx(v_admin_tok, '매트릭스공지-조용히', '내용', 'normal', false);
   select count(*) into v_cnt from public.notifications where id > v_mark;
@@ -679,6 +700,7 @@ begin
 
   -- ═══ 칸 10: 공지 — 관리자 · notify=true (본인 제외 확인) ═══
   perform set_config('app.suppress_notifications', '', true);   -- 칸마다 표식 초기화
+  perform set_config('app.actor_id', '', true);
   select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.create_notice_tx(v_admin_tok, '매트릭스공지-알림', '내용', 'normal', true);
   select count(*), count(distinct user_id), bool_or(user_id = v_admin)
@@ -689,17 +711,21 @@ begin
     case when v_cnt > 0 and not v_self then 'OK (본인 제외)' else '⚠ 확인' end);
 
 
-  -- ═══ 칸 11: 관리자 · 단일 · notify=true ═══
-  --     이 칸이 없어서 '단일 일정만 푸시 필터를 안 거친다' 를 두 번이나 놓쳤다.
+  -- ═══ 칸 11: **인도자 본인**이 단일 수정 · notify=true ═══
+  --     ⚠ 예전엔 관리자로 했는데, 관리자는 그 일정의 인도자도 신청자도 아니라
+  --       '본인 제외' 가 저절로 참이었다. 통과할 수밖에 없는 시험이었다.
+  --       고치는 사람이 **수신자 후보에 있어야** 제외가 실제로 도는지 보인다.
   perform set_config('app.suppress_notifications', '', true);
+  perform set_config('app.actor_id', '', true);
   select coalesce(max(id), 0) into v_mark from public.notifications;
-  v_res := public.update_calendar_event_tx(v_admin_tok, v_e1, jsonb_build_object('place', '단일알림'), true);
-  select count(*), count(distinct user_id), bool_or(user_id = v_admin)
+  v_res := public.update_calendar_event_tx(v_lead_all_tok, v_e1, jsonb_build_object('place', '단일알림'), true);
+  select count(*), count(distinct user_id), bool_or(user_id = v_lead_all)
     into v_cnt, v_ppl, v_self
     from public.notifications where id > v_mark and type = 'event_change';
   insert into public._notify_matrix_result (칸, 결과, 바뀐일정, 알림건수, 받은사람, 본인포함, 판정)
-  values ('11 관리자·단일·알림보냄', v_res::text, (v_res->>'updated')::int, v_cnt, v_ppl, v_self,
-    case when v_cnt >= 1 and not v_self then 'OK' else '⚠ 확인' end);
+  values ('11 인도자 본인이 단일 수정·알림보냄', v_res::text, (v_res->>'updated')::int, v_cnt, v_ppl, v_self,
+    case when (v_res->>'updated')::int = 1 and not coalesce(v_self, false)
+         then 'OK (고친 본인은 안 받는다)' else '⚠ 고친 본인이 받았다' end);
 
   -- ═══ 칸 12: 알림 필터 정책 — 네 사람이 각각 어떻게 되나 ═══
   --     활성·승인·알림ON 만 받아야 한다. 나머지 셋은 인앱도 푸시도 안 가야 한다.
@@ -730,7 +756,29 @@ begin
       case when v_got = array[v_on] then 'OK (알림 켠 사람만 남는다)'
            else '⚠ 켠 사람 하나만 남아야 한다' end);
 
+    -- ═══ 칸 13: 끝에서 끝까지 — 넷을 신청자로 붙이고 실제로 고쳐본다 ═══
+    --     칸 12 는 필터 **함수**만 봤다. 실제 알림 줄이 한 명한테만 생기는지는
+    --     이렇게 붙여봐야 안다 (푸시 대상도 같은 목록을 쓴다).
+    insert into public.event_participants (event_id, user_name, role) values
+      (v_e2, '필터켬', '신청'), (v_e2, '필터끔', '신청'),
+      (v_e2, '비활성', '신청'), (v_e2, '미승인', '신청');
+
+    perform set_config('app.suppress_notifications', '', true);
+    perform set_config('app.actor_id', '', true);
+    select coalesce(max(id), 0) into v_mark from public.notifications;
+    v_res := public.update_calendar_event_tx(v_admin_tok, v_e2, jsonb_build_object('place', '끝에서끝'), true);
+    select count(*), count(distinct user_id) into v_cnt, v_ppl
+      from public.notifications n
+     where n.id > v_mark and n.type = 'event_change'
+       and n.user_id in (v_on, v_off, v_inactive, v_pending);
+    insert into public._notify_matrix_result (칸, 결과, 알림건수, 받은사람, 판정)
+    values ('13 넷 중 알림 켠 한 명만 받는다', v_res::text, v_cnt, v_ppl,
+      case when v_cnt = 1 and v_ppl = 1 then 'OK (인앱·푸시 같은 목록)'
+           else '⚠ 한 명만 받아야 한다' end);
+
+    delete from public.event_participants where user_name in ('필터켬', '필터끔', '비활성', '미승인');
     delete from public.notification_preferences where user_id in (v_on, v_off, v_inactive, v_pending);
+    delete from public.notifications where user_id in (v_on, v_off, v_inactive, v_pending);
     delete from public.app_users where id in (v_on, v_off, v_inactive, v_pending);
   end;
 

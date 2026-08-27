@@ -1,3 +1,130 @@
+-- ═══ 20260827_0900_notification_filter.sql ═══
+-- 알림 수신자 필터. **다른 것보다 먼저 있어야 한다** —
+-- 일정 트리거와 공지 트리거, 두 RPC 가 이걸 부른다.
+
+-- 알림을 실제로 받을 사람만 남긴다.
+--
+-- ⚠ 지금까지 insert_notifications 만 걸렀고 dispatch_push_notification 은
+--   **거르지 않은 목록**을 그대로 받았다. 그래서 '이 알림 끄기' 를 해도
+--   휴대폰 푸시는 갔고, 비활성·미승인 사용자의 옛 구독에도 갔다.
+--   앱 전체에 있던 문제다 (댓글·채팅·배정도 같다). 여기서 공용 함수를 만들고
+--   새 RPC 부터 쓴다. 나머지 트리거는 뒤이어 옮긴다.
+create or replace function public.filter_notification_recipients(
+  p_user_ids integer[], p_type text
+)
+returns integer[]
+language sql
+stable
+as $$
+  select coalesce(array_agg(distinct u.id), '{}'::integer[])
+  from unnest(coalesce(p_user_ids, '{}'::integer[])) as t(uid)
+  join public.app_users u on u.id = t.uid
+  left join public.notification_preferences pref on pref.user_id = u.id
+  where coalesce(u.is_active, true) is true
+    and coalesce(u.approval_status, 'approved') = 'approved'
+    and case p_type
+      when 'notice' then coalesce(pref.push_new_notice, true)
+      when 'event_change' then coalesce(pref.push_event_change, true)
+      when 'comment' then coalesce(pref.push_comment, true)
+      when 'mention' then coalesce(pref.push_mention, true)
+      when 'chat' then coalesce(pref.push_chat, true)
+      when 'service_started' then coalesce(pref.push_service_status, true)
+      when 'service_ended' then coalesce(pref.push_service_status, true)
+      else true
+    end
+$$;
+
+-- 내부 전용이다. anon 에 열어두면 임의의 사용자 id 목록과 알림 종류를 넣어
+-- 누가 어떤 알림을 켜뒀는지 캐낼 수 있다.
+revoke all on function public.filter_notification_recipients(integer[], text) from public, anon, authenticated;
+
+-- ═══ 20260826_2400_suppress_bulk_notifications.sql ═══
+-- 일괄 정리가 알림 폭탄을 쏘던 문제.
+--
+-- 무슨 일이 있었나: 옛 이름 정리로 calendar_events.leader_name 을 갈아끼웠더니
+-- on_calendar_event_update 트리거가 일정마다 '일정이 변경되었습니다' 를 쏘았다.
+-- 이름 표기만 바뀐 건데 참가자 전원에게 푸시가 갔다. 지난 일정까지 포함해서.
+--
+-- 두 가지를 막는다.
+--   ① 관리 작업은 알림을 끈 채로 돈다 (트랜잭션 안에서만 유효한 표식)
+--   ② 이미 지난 일정이 바뀐 것은 애초에 알리지 않는다
+--      (끝난 모임의 시간이 바뀌었다고 알려봐야 할 일이 없다)
+
+create or replace function public.notify_on_calendar_event_change()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+declare
+  v_recipient_ids integer[];
+  v_link text;
+begin
+  -- ① 일괄 정리 중에는 알리지 않는다
+  if coalesce(current_setting('app.suppress_notifications', true), '') = 'on' then
+    return new;
+  end if;
+
+  -- ② 이미 지난 일정은 알리지 않는다
+  if new.event_date < current_date then
+    return new;
+  end if;
+
+  if old.event_date is not distinct from new.event_date
+    and old.time is not distinct from new.time
+    and old.place is not distinct from new.place
+    and old.meeting_map_url is not distinct from new.meeting_map_url
+    and old.leader_name is not distinct from new.leader_name
+    and old.title is not distinct from new.title
+  then
+    return new;
+  end if;
+
+  select array_agg(distinct recipient_id)
+  into v_recipient_ids
+  from (
+    select u.id as recipient_id
+    from public.event_participants ep
+    join public.app_users u on u.name = ep.user_name
+    where ep.event_id = new.id
+    union
+    -- 인도자 전원. 쉼표 목록을 통짜로 비교하던 것을 고친다
+    -- (인도자가 둘 이상이면 아무도 못 찾아 알림이 안 나갔다)
+    select unnest(public.user_ids_in_name_list(new.leader_name)) as recipient_id
+  ) recipients
+  where recipient_id is not null
+    -- 고친 사람 본인은 뺀다 (update_calendar_event_tx 가 app.actor_id 로 알려준다).
+    -- 없으면(트리거만 돈 경우) 아무도 안 뺀다.
+    and recipient_id is distinct from nullif(current_setting('app.actor_id', true), '')::integer;
+
+  -- ⚠ 푸시도 같은 필터를 거친 목록만 받아야 한다.
+  --   예전엔 insert_notifications 만 거르고 푸시는 원본 목록을 받아,
+  --   '일정 변경 알림 끄기' 를 해도 휴대폰이 울렸다.
+  --   반복·공지는 고쳤는데 **단일 일정만 빠져 있었다** (매트릭스에 그 칸이 없어서 놓쳤다).
+  v_recipient_ids := public.filter_notification_recipients(v_recipient_ids, 'event_change');
+
+  if v_recipient_ids is null or cardinality(v_recipient_ids) = 0 then
+    return new;
+  end if;
+
+  v_link := '/calendar?openChat=' || new.id;
+
+  perform public.insert_notifications(
+    v_recipient_ids, 'event_change', '일정이 변경되었습니다',
+    new.title || ' · ' || new.event_date || ' ' || new.time, v_link, new.id);
+
+  perform public.dispatch_push_notification(
+    v_recipient_ids, 'event_change', '일정이 변경되었습니다',
+    new.title || ' · ' || new.event_date || ' ' || new.time, v_link, new.id);
+
+  return new;
+end;
+$function$;
+
+-- 정리 RPC 두 개는 각자의 마이그레이션(2200 / 2300)에서 표식을 세운다.
+-- 그 두 파일을 (다시) 실행해야 이 억제가 실제로 걸린다.
+
+-- ═══ 20260827_1000_series_update_tx.sql ═══
 
 -- 반복 일정을 고치면 알림이 일정 수만큼 나가던 문제.
 --
@@ -215,3 +342,144 @@ $$;
 
 revoke all on function public.update_calendar_event_tx(uuid, integer, jsonb, boolean) from public;
 grant execute on function public.update_calendar_event_tx(uuid, integer, jsonb, boolean) to anon, authenticated;
+
+-- ═══ 20260827_1100_notice_notify_choice.sql ═══
+-- 공지를 올릴 때 알림을 보낼지 고를 수 있게 한다.
+--
+-- 공지는 **활성 사용자 전원**에게 간다 (지금 60명). 되돌릴 수 없다.
+-- 오타를 고쳐 다시 올리거나 시험 삼아 올려도 60명 폰이 울렸다.
+--
+-- 보낼 때는 기존 트리거가 그대로 돈다. 안 보낼 때만 억제를 켠다
+-- (일정 수정 RPC 와 같은 방식).
+
+create or replace function public.create_notice_tx(
+  p_token    uuid,
+  p_title    text,
+  p_content  text,
+  p_priority text,
+  p_notify   boolean default true
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor_id   integer;
+  v_actor_name text;
+  v_actor_role text;
+  v_new_id     integer;
+begin
+  v_actor_id := public.verify_session(p_token);
+  if v_actor_id is null then
+    raise exception '세션이 유효하지 않습니다';
+  end if;
+  select name, role into v_actor_name, v_actor_role
+  from public.app_users where id = v_actor_id;
+
+  -- ⚠ 이 함수는 security definer 이고 anon 에도 실행권한이 있다.
+  --   권한 검사를 빠뜨리면 **일반 사용자가 회중 전원에게 알림을 쏠 수 있다.**
+  if v_actor_role not in ('admin', 'developer') then
+    raise exception '공지는 관리자만 올릴 수 있습니다';
+  end if;
+
+  if btrim(coalesce(p_title, '')) = '' then
+    return jsonb_build_object('ok', false, 'reason', 'empty_title');
+  end if;
+
+  -- 안 보낼 때만 표식을 켠다. 켜져 있는 걸 끄지는 않는다
+  -- (바깥의 관리 작업이 일부러 켜뒀을 수 있다)
+  if not p_notify then
+    perform set_config('app.suppress_notifications', 'on', true);
+  end if;
+
+  insert into public.notices (title, content, priority, author)
+  values (btrim(p_title), btrim(coalesce(p_content, '')), p_priority, v_actor_name)
+  returning id into v_new_id;
+
+  return jsonb_build_object('ok', true, 'id', v_new_id,
+                            'notified', case when p_notify then 1 else 0 end);
+end;
+$$;
+
+-- 공지 알림 트리거에 **억제 검사만** 얹는다.
+-- ⚠ 나머지는 운영본 그대로다. 다시 쓰다가 '글쓴이 본인 제외' 와
+--   '승인된 사용자만' 을 빠뜨릴 뻔했다 — 얹기만 할 것.
+CREATE OR REPLACE FUNCTION public.notify_on_notice_insert()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_author_id integer;
+  v_recipient_ids integer[];
+  v_title text;
+begin
+  -- 올린 사람이 '알림 없이' 를 골랐으면 보내지 않는다 (create_notice_tx 가 표식을 세운다)
+  if coalesce(current_setting('app.suppress_notifications', true), '') = 'on' then
+    return new;
+  end if;
+
+  begin
+    select id
+    into v_author_id
+    from public.app_users
+    where name = new.author
+    limit 1;
+  exception
+    when undefined_column then
+      v_author_id := null;
+  end;
+
+  select array_agg(id)
+  into v_recipient_ids
+  from public.app_users
+  where coalesce(is_active, true) is true
+    and coalesce(approval_status, 'approved') = 'approved'
+    and id is distinct from v_author_id;
+
+  if v_recipient_ids is null or cardinality(v_recipient_ids) = 0 then
+    return new;
+  end if;
+
+  begin
+    v_title := coalesce(new.title, '새 공지');
+  exception
+    when undefined_column then
+      v_title := '새 공지';
+  end;
+
+  -- ⚠ 푸시도 같은 필터를 거친 목록만 받아야 한다.
+  --   예전엔 insert_notifications 만 거르고 푸시는 원본 목록을 받아,
+  --   '공지 알림 끄기' 를 해도 휴대폰은 울렸다.
+  v_recipient_ids := public.filter_notification_recipients(v_recipient_ids, 'notice');
+  if v_recipient_ids is null or cardinality(v_recipient_ids) = 0 then
+    return new;
+  end if;
+
+  perform public.insert_notifications(
+    v_recipient_ids,
+    'notice',
+    '새 공지',
+    v_title,
+    '/notices?noticeId=' || new.id,
+    new.id::integer
+  );
+
+  perform public.dispatch_push_notification(
+    v_recipient_ids,
+    'notice',
+    '새 공지',
+    v_title,
+    '/notices?noticeId=' || new.id,
+    new.id::integer
+  );
+
+  return new;
+end;
+$function$;
+
+revoke all on function public.create_notice_tx(uuid, text, text, text, boolean) from public;
+grant execute on function public.create_notice_tx(uuid, text, text, text, boolean) to anon, authenticated;
+

@@ -51,7 +51,10 @@ begin
     -- (인도자가 둘 이상이면 아무도 못 찾아 알림이 안 나갔다)
     select unnest(public.user_ids_in_name_list(new.leader_name)) as recipient_id
   ) recipients
-  where recipient_id is not null;
+  where recipient_id is not null
+    -- 고친 사람 본인은 뺀다 (update_calendar_event_tx 가 app.actor_id 로 알려준다).
+    -- 없으면(트리거만 돈 경우) 아무도 안 뺀다.
+    and recipient_id is distinct from nullif(current_setting('app.actor_id', true), '')::integer;
 
   -- ⚠ 푸시도 같은 필터를 거친 목록만 받아야 한다.
   --   예전엔 insert_notifications 만 거르고 푸시는 원본 목록을 받아,
