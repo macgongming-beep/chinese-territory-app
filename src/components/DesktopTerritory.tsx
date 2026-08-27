@@ -1,6 +1,6 @@
 import { t } from '../i18n'
 import type { AppLanguage } from '../i18n'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { getRegionNames } from '../lib/regions'
 import { getAreaFilterOptions } from '../utils/areaOptions'
@@ -14,7 +14,8 @@ import { geocodeFirstMatch } from '../lib/naverGeocode'
 import { findCardForCoordinates, formatDisplayAddress, isValidMapCoordinate } from '../utils/mapUtils'
 import { mergeCardBoundaryPoints } from '../utils/boundaryMerge'
 import { useCardBoundaryBackup } from '../hooks/useCardBoundaryBackup'
-import { compareTerritoryCardsByOperationalPriority, getTerritoryCardOperationalState } from '../utils/cardSearch'
+import { getTerritoryCardOperationalState } from '../utils/cardSearch'
+import { filterTerritoryCards } from '../utils/filterTerritoryCards'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 import { compareUnitNumbers } from '../utils/unitNumber'
 import type { Building, CardBoundary, GeoPoint, InformalAsset, InformalGroup, Role, TerritoryCard, TerritoryRegion, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
@@ -412,48 +413,49 @@ export function DesktopTerritory({
   }
 
 
-  const getCardLeaderList = (card: TerritoryCard) =>
+  // ⚠ useCallback 으로 감싼다. 안 그러면 매 렌더마다 새 함수가 되고,
+  //   이걸 의존성으로 쓰는 filteredCards 의 useMemo 가 **매번 다시 계산된다**
+  //   (memo 를 붙여놓고 안 걸리는 상태가 된다).
+  const getCardLeaderList = useCallback((card: TerritoryCard) =>
     (card.assignedLeaders && card.assignedLeaders.length > 0)
       ? card.assignedLeaders
       : card.assignedLeader
         ? [card.assignedLeader]
-        : []
+        : [], [])
 
-  const cardHasRegularVisit = (card: TerritoryCard) =>
+  const cardHasRegularVisit = useCallback((card: TerritoryCard) =>
     card.regularVisits > 0 ||
     card.regularVisitPoints.length > 0 ||
-    (buildingsByCardId.get(card.id) ?? []).some((building) => building.units.some((unit) => unit.isRegularVisit))
-  const cardChineseHeavyCount = (cardId: number) =>
-    (buildingsByCardId.get(cardId) ?? []).filter((building) => building.isChineseHeavy).length
+    (buildingsByCardId.get(card.id) ?? []).some((building) => building.units.some((unit) => unit.isRegularVisit)),
+    [buildingsByCardId])
+  const cardChineseHeavyCount = useCallback((cardId: number) =>
+    (buildingsByCardId.get(cardId) ?? []).filter((building) => building.isChineseHeavy).length,
+    [buildingsByCardId])
 
   const leaderFilterOptions = Array.from(
     new Set(cards.flatMap((card) => getCardLeaderList(card))),
   ).sort((a, b) => a.localeCompare(b, 'ko'))
 
-  const filteredCards = cards.filter((card) => {
-    const operationalState = getTerritoryCardOperationalState(card)
-    if (regionFilter !== '전체' && card.region !== regionFilter) return false
-    if (areaFilter !== '전체' && card.area !== areaFilter) return false
-    const leaders = getCardLeaderList(card)
-    if (assignmentFilter === '배정' && leaders.length === 0) return false
-    if (assignmentFilter === '미배정' && leaders.length > 0) return false
-    if (leaderFilter !== '전체' && !leaders.includes(leaderFilter)) return false
-    const hasRegularVisit = cardHasRegularVisit(card)
-    if (regularVisitFilter === '있음' && !hasRegularVisit) return false
-    if (regularVisitFilter === '없음' && hasRegularVisit) return false
-    const hasChineseHeavy = cardChineseHeavyCount(card.id) > 0
-    if (cardChineseHeavyFilter === '있음' && !hasChineseHeavy) return false
-    if (cardChineseHeavyFilter === '없음' && hasChineseHeavy) return false
-    if (cardStatusFilter !== '전체') {
-      if (cardStatusFilter === '완료·제외') {
-        if (operationalState !== '완료' && operationalState !== '대상없음') return false
-      } else {
-        if (operationalState === '대상없음') return false
-        if (card.status !== cardStatusFilter) return false
-      }
-    }
-    return true
-  }).sort(compareTerritoryCardsByOperationalPriority)
+  // 조건 여덟 개가 얽혀 있어 utils/filterTerritoryCards 로 뺐다.
+  // "왜 이 카드가 목록에 없지" 를 시험이 대답한다 ('대상없음' 규칙이 특히 헷갈린다).
+  const filteredCards = useMemo(
+    () => filterTerritoryCards(cards, {
+      region: regionFilter,
+      area: areaFilter,
+      assignment: assignmentFilter,
+      leader: leaderFilter,
+      regularVisit: regularVisitFilter,
+      chineseHeavy: cardChineseHeavyFilter,
+      status: cardStatusFilter,
+    }, {
+      leadersOf: getCardLeaderList,
+      hasRegularVisit: cardHasRegularVisit,
+      chineseHeavyCount: cardChineseHeavyCount,
+    }),
+    [cards, regionFilter, areaFilter, assignmentFilter, leaderFilter,
+     regularVisitFilter, cardChineseHeavyFilter, cardStatusFilter,
+     getCardLeaderList, cardHasRegularVisit, cardChineseHeavyCount],
+  )
   const isDoneExcludedCard = (card: TerritoryCard) => {
     const state = getTerritoryCardOperationalState(card)
     return state === '완료' || state === '대상없음'
