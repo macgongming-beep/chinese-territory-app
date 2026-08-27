@@ -28,16 +28,24 @@ calendar_events · notices · regular_visits · event_participants · card_bound
   게다가 이 앱의 쓰기 실패는 조용한 경로가 많다(`console.warn` 만) —
   며칠 뒤에야 안 되는 걸 알게 된다
 
-## 방법 B — RLS 가 세션 토큰을 검사 (지금 제안)
+## ❌ 폐기된 설계 — **절대 이대로 쓰지 말 것**
 
-grant 는 두고, 표마다 정책을 건다:
+처음엔 이렇게 하려 했다. **셋 다 틀렸다** (아래 '검토 결과' 참고):
+`FOR ALL` 을 쓰면 SELECT 까지 막혀 앱이 백지가 되고 Realtime 이 끊긴다.
+`verify_session` 은 부작용이 있어 정책에서 못 쓴다.
+기존 `FOR ALL` 을 안 지우면 OR 로 합쳐져 **아무것도 안 막힌다.**
 
 ```sql
+-- ❌ 쓰지 말 것
 create policy write_needs_session on public.units
 for all to anon
-using  (public.verify_session(nullif(current_setting('request.headers', true)::json->>'x-session-token','')::uuid) is not null)
+using  (public.verify_session(…) is not null)
 with check (같은 조건);
 ```
+
+## 방법 B — RLS 가 세션 토큰을 검사 (고친 형태)
+
+grant 는 두고, **쓰기에만** 세션 관문을 건다 (SELECT 는 따로 재현한다):
 
 클라이언트는 **한 곳만** 고친다 — `lib/supabase.ts` 의 `createClient` 에
 custom fetch 를 물려 매 요청에 현재 세션 토큰을 헤더로 붙인다.
@@ -108,12 +116,27 @@ RPC 는 **여러 표를 한 트랜잭션으로 묶는 것**에만 쓴다.
 오늘 실제로 옛 클라이언트 때문에 다른 일정 배정이 보이는 일이 있었다.
 
 ```
-1. 읽기 전용 helper + signup RPC 를 **추가만** 한다 (아직 아무것도 안 막는다)
-2. 새 클라이언트 배포 — custom fetch 헤더 + signup RPC 사용
-3. 검증: 실제 API·로그아웃·Realtime
-4. 열린 FOR ALL 제거 + 쓰기 전용 정책으로 교체
-5. app_users / app_settings 직접 쓰기 차단
+1. 읽기 전용 helper + signup RPC 를 **추가만** 한다   ← 2026-08-28 완료 (운영)
+2. 새 클라이언트 배포 — custom fetch 헤더 + signup RPC   ← 완료
+3. 검증: 실제 API·로그아웃·Realtime                    ← smoke:headers 통과
+4~5. **최종 전환은 한 트랜잭션이다. 나누면 안 된다:**
+     ① 표마다 **명시적 SELECT 정책** 먼저 (기존 읽기·Realtime 재현)
+     ② INSERT / UPDATE / DELETE 에 세션 관문
+     ③ 그다음에야 FOR ALL 제거
+     ④ app_users 의 role · approval_status · is_active 직접 변경 차단
+     ⑤ app_settings_write 제거 + 관리자 정책
+     ⑥ 검증하고 commit
 ```
+
+⚠ ④를 미루면 안 된다 — 일반 쓰기를 세션 기반으로 바꾸는 동안 `app_users` 가
+열려 있으면 **로그인한 사람이 자기 role 을 admin 으로 올린다.**
+
+⚠ **`open_access` 라는 이름으로 찾지 말 것.** 이름이 다른 FOR ALL 이 다섯 있다:
+`app_settings_write`(to public) · `"allow all"` 셋 · `"Enable all operations for all"`.
+**`FOR ALL` 로 찾는다.**
+
+⚠ 실측: FOR ALL 28개 · FOR SELECT 7개 → **표 21개는 읽기를 FOR ALL 에서만 받는다.**
+그냥 지우면 앱이 백지가 된다.
 
 4번을 앞당겨야 하면 옛 클라이언트의 쓰기가 fail-closed 되는 것을 감수하되,
 **사용자에게 새로고침을 요청할 준비**를 하고 한다.

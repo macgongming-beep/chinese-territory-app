@@ -90,6 +90,16 @@ as $$
   select coalesce(private.request_session_role() in ('admin', 'developer'), false)
 $$;
 
+
+-- ⚠ **함수 단위로도 회수한다.** 스키마 USAGE 를 막았어도 PostgreSQL 이 함수를
+--   만들 때 준 PUBLIC EXECUTE 는 그대로 남는다. 규칙은 "security definer 를 만들면
+--   revoke" 인데 여기가 그걸 안 지키고 있었다 (리뷰에서 잡혔다).
+--   정책이 부르는 것은 정책 소유자 권한으로 돌므로 grant 는 필요 없다.
+revoke all on function private.request_session_token() from public, anon, authenticated;
+revoke all on function private.request_session_user_id() from public, anon, authenticated;
+revoke all on function private.request_session_role() from public, anon, authenticated;
+revoke all on function private.request_is_admin() from public, anon, authenticated;
+
 -- ═══ ② 가입을 RPC 로 ═══
 --
 -- 가입은 **로그인 전**이라 세션 헤더가 없다. 다음 단계에서 app_users 직접 쓰기를
