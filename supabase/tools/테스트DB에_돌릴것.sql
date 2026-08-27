@@ -1,3 +1,85 @@
+-- 일괄 정리가 알림 폭탄을 쏘던 문제.
+--
+-- 무슨 일이 있었나: 옛 이름 정리로 calendar_events.leader_name 을 갈아끼웠더니
+-- on_calendar_event_update 트리거가 일정마다 '일정이 변경되었습니다' 를 쏘았다.
+-- 이름 표기만 바뀐 건데 참가자 전원에게 푸시가 갔다. 지난 일정까지 포함해서.
+--
+-- 두 가지를 막는다.
+--   ① 관리 작업은 알림을 끈 채로 돈다 (트랜잭션 안에서만 유효한 표식)
+--   ② 이미 지난 일정이 바뀐 것은 애초에 알리지 않는다
+--      (끝난 모임의 시간이 바뀌었다고 알려봐야 할 일이 없다)
+
+create or replace function public.notify_on_calendar_event_change()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+declare
+  v_recipient_ids integer[];
+  v_link text;
+begin
+  -- ① 일괄 정리 중에는 알리지 않는다
+  if coalesce(current_setting('app.suppress_notifications', true), '') = 'on' then
+    return new;
+  end if;
+
+  -- ② 이미 지난 일정은 알리지 않는다
+  if new.event_date < current_date then
+    return new;
+  end if;
+
+  if old.event_date is not distinct from new.event_date
+    and old.time is not distinct from new.time
+    and old.place is not distinct from new.place
+    and old.meeting_map_url is not distinct from new.meeting_map_url
+    and old.leader_name is not distinct from new.leader_name
+    and old.title is not distinct from new.title
+  then
+    return new;
+  end if;
+
+  select array_agg(distinct recipient_id)
+  into v_recipient_ids
+  from (
+    select u.id as recipient_id
+    from public.event_participants ep
+    join public.app_users u on u.name = ep.user_name
+    where ep.event_id = new.id
+    union
+    -- 인도자 전원. 쉼표 목록을 통짜로 비교하던 것을 고친다
+    -- (인도자가 둘 이상이면 아무도 못 찾아 알림이 안 나갔다)
+    select unnest(public.user_ids_in_name_list(new.leader_name)) as recipient_id
+  ) recipients
+  where recipient_id is not null;
+
+  -- ⚠ 푸시도 같은 필터를 거친 목록만 받아야 한다.
+  --   예전엔 insert_notifications 만 거르고 푸시는 원본 목록을 받아,
+  --   '일정 변경 알림 끄기' 를 해도 휴대폰이 울렸다.
+  --   반복·공지는 고쳤는데 **단일 일정만 빠져 있었다** (매트릭스에 그 칸이 없어서 놓쳤다).
+  v_recipient_ids := public.filter_notification_recipients(v_recipient_ids, 'event_change');
+
+  if v_recipient_ids is null or cardinality(v_recipient_ids) = 0 then
+    return new;
+  end if;
+
+  v_link := '/calendar?openChat=' || new.id;
+
+  perform public.insert_notifications(
+    v_recipient_ids, 'event_change', '일정이 변경되었습니다',
+    new.title || ' · ' || new.event_date || ' ' || new.time, v_link, new.id);
+
+  perform public.dispatch_push_notification(
+    v_recipient_ids, 'event_change', '일정이 변경되었습니다',
+    new.title || ' · ' || new.event_date || ' ' || new.time, v_link, new.id);
+
+  return new;
+end;
+$function$;
+
+-- 정리 RPC 두 개는 각자의 마이그레이션(2200 / 2300)에서 표식을 세운다.
+-- 그 두 파일을 (다시) 실행해야 이 억제가 실제로 걸린다.
+
 -- 알림을 실제로 받을 사람만 남긴다.
 --
 -- ⚠ 지금까지 insert_notifications 만 걸렀고 dispatch_push_notification 은
@@ -30,7 +112,9 @@ as $$
     end
 $$;
 
-grant execute on function public.filter_notification_recipients(integer[], text) to anon, authenticated;
+-- 내부 전용이다. anon 에 열어두면 임의의 사용자 id 목록과 알림 종류를 넣어
+-- 누가 어떤 알림을 켜뒀는지 캐낼 수 있다.
+revoke all on function public.filter_notification_recipients(integer[], text) from public, anon, authenticated;
 
 -- 반복 일정을 고치면 알림이 일정 수만큼 나가던 문제.
 --
@@ -69,6 +153,13 @@ begin
   select name, role into v_actor_name, v_actor_role
   from public.app_users where id = v_actor_id;
 
+  -- 먼저 대상 행을 정해진 순서로 잠근다. **권한 검사보다 앞이어야 한다** —
+  -- 검사와 수정 사이에 다른 트랜잭션이 인도자를 바꾸면 옛 권한으로 고칠 수 있다.
+  -- (같은 순서로 잠가야 서로 물고 늘어지지 않는다)
+  perform 1 from public.calendar_events
+   where series_id = p_series_id and event_date >= p_from_date
+   order by id for update;
+
   -- 권한: 관리자거나, **바뀌는 모든 일정**의 인도자여야 한다.
   -- 예전엔 '그 시리즈의 어느 하나라도 인도자였으면' 이었다 —
   -- 한 번 인도했던 사람이 남의 일정까지 전부 바꿀 수 있었다.
@@ -86,12 +177,6 @@ begin
   -- 알림 대상 칸이 **실제로** 바뀌는지 서버가 직접 본다.
   -- 화면의 판단(willNotifyOnEventChange)은 물어볼지 정하는 용도일 뿐이고,
   -- 보낼지 말지는 여기서 정한다. 두 곳이 어긋나도 잘못 나가지 않는다.
-  -- ⑤ 먼저 정해진 순서로 잠근다. 두 사람이 동시에 저장하면
-  --    둘 다 옛 값을 보고 알림을 두 번 보낼 수 있었다.
-  perform 1 from public.calendar_events
-   where series_id = p_series_id and event_date >= p_from_date
-   order by id for update;
-
   -- ② 알림 판단은 **오늘 이후 회차만** 본다.
   --    지난 회차에서 '이후 모두' 를 고르면 미래 회차가 조용히 바뀌었고,
   --    반대로 p_notify=true 면 지난 회차 참가자까지 수신자에 들어갔다.
@@ -421,6 +506,7 @@ delete from public.event_participants where user_name like '매트릭스%';
 delete from public.notifications where related_id in (select id from public.calendar_events where title = '매트릭스봉사');
 delete from public.calendar_events where title = '매트릭스봉사';
 delete from public.notices where title like '매트릭스공지%';
+delete from public.notification_preferences where user_id in (select id from public.app_users where login_id like 'mtx-%');
 delete from public.app_users where login_id like 'mtx-%';
 
 drop table if exists public._notify_matrix_result;
@@ -601,6 +687,52 @@ begin
   insert into public._notify_matrix_result (칸, 결과, 알림건수, 받은사람, 본인포함, 판정)
   values ('10 관리자·공지·알림보냄', v_res::text, v_cnt, v_ppl, v_self,
     case when v_cnt > 0 and not v_self then 'OK (본인 제외)' else '⚠ 확인' end);
+
+
+  -- ═══ 칸 11: 관리자 · 단일 · notify=true ═══
+  --     이 칸이 없어서 '단일 일정만 푸시 필터를 안 거친다' 를 두 번이나 놓쳤다.
+  perform set_config('app.suppress_notifications', '', true);
+  select coalesce(max(id), 0) into v_mark from public.notifications;
+  v_res := public.update_calendar_event_tx(v_admin_tok, v_e1, jsonb_build_object('place', '단일알림'), true);
+  select count(*), count(distinct user_id), bool_or(user_id = v_admin)
+    into v_cnt, v_ppl, v_self
+    from public.notifications where id > v_mark and type = 'event_change';
+  insert into public._notify_matrix_result (칸, 결과, 바뀐일정, 알림건수, 받은사람, 본인포함, 판정)
+  values ('11 관리자·단일·알림보냄', v_res::text, (v_res->>'updated')::int, v_cnt, v_ppl, v_self,
+    case when v_cnt >= 1 and not v_self then 'OK' else '⚠ 확인' end);
+
+  -- ═══ 칸 12: 알림 필터 정책 — 네 사람이 각각 어떻게 되나 ═══
+  --     활성·승인·알림ON 만 받아야 한다. 나머지 셋은 인앱도 푸시도 안 가야 한다.
+  declare
+    v_on integer; v_off integer; v_inactive integer; v_pending integer;
+    v_got integer[];
+  begin
+    insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+    values ('mtx-f-on', '필터켬', '1234', 'user', 'approved', true) returning id into v_on;
+    insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+    values ('mtx-f-off', '필터끔', '1234', 'user', 'approved', true) returning id into v_off;
+    insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+    values ('mtx-f-inact', '비활성', '1234', 'user', 'approved', false) returning id into v_inactive;
+    insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+    values ('mtx-f-pend', '미승인', '1234', 'user', 'pending', true) returning id into v_pending;
+
+    insert into public.notification_preferences (user_id, push_event_change)
+    values (v_off, false)
+    on conflict (user_id) do update set push_event_change = false;
+
+    v_got := public.filter_notification_recipients(
+      array[v_on, v_off, v_inactive, v_pending], 'event_change');
+
+    insert into public._notify_matrix_result (칸, 결과, 받은사람, 판정)
+    values ('12 알림 필터 정책 (켬/끔/비활성/미승인)',
+      '남은 사람: ' || coalesce(array_to_string(v_got, ','), '(없음)'),
+      coalesce(cardinality(v_got), 0),
+      case when v_got = array[v_on] then 'OK (알림 켠 사람만 남는다)'
+           else '⚠ 켠 사람 하나만 남아야 한다' end);
+
+    delete from public.notification_preferences where user_id in (v_on, v_off, v_inactive, v_pending);
+    delete from public.app_users where id in (v_on, v_off, v_inactive, v_pending);
+  end;
 
   -- ── 뒷정리 ────────────────────────────────────────────
   delete from public.notifications

@@ -53,6 +53,12 @@ begin
   ) recipients
   where recipient_id is not null;
 
+  -- ⚠ 푸시도 같은 필터를 거친 목록만 받아야 한다.
+  --   예전엔 insert_notifications 만 거르고 푸시는 원본 목록을 받아,
+  --   '일정 변경 알림 끄기' 를 해도 휴대폰이 울렸다.
+  --   반복·공지는 고쳤는데 **단일 일정만 빠져 있었다** (매트릭스에 그 칸이 없어서 놓쳤다).
+  v_recipient_ids := public.filter_notification_recipients(v_recipient_ids, 'event_change');
+
   if v_recipient_ids is null or cardinality(v_recipient_ids) = 0 then
     return new;
   end if;

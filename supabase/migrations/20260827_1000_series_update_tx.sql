@@ -30,7 +30,9 @@ as $$
     end
 $$;
 
-grant execute on function public.filter_notification_recipients(integer[], text) to anon, authenticated;
+-- 내부 전용이다. anon 에 열어두면 임의의 사용자 id 목록과 알림 종류를 넣어
+-- 누가 어떤 알림을 켜뒀는지 캐낼 수 있다.
+revoke all on function public.filter_notification_recipients(integer[], text) from public, anon, authenticated;
 
 -- 반복 일정을 고치면 알림이 일정 수만큼 나가던 문제.
 --
@@ -69,6 +71,13 @@ begin
   select name, role into v_actor_name, v_actor_role
   from public.app_users where id = v_actor_id;
 
+  -- 먼저 대상 행을 정해진 순서로 잠근다. **권한 검사보다 앞이어야 한다** —
+  -- 검사와 수정 사이에 다른 트랜잭션이 인도자를 바꾸면 옛 권한으로 고칠 수 있다.
+  -- (같은 순서로 잠가야 서로 물고 늘어지지 않는다)
+  perform 1 from public.calendar_events
+   where series_id = p_series_id and event_date >= p_from_date
+   order by id for update;
+
   -- 권한: 관리자거나, **바뀌는 모든 일정**의 인도자여야 한다.
   -- 예전엔 '그 시리즈의 어느 하나라도 인도자였으면' 이었다 —
   -- 한 번 인도했던 사람이 남의 일정까지 전부 바꿀 수 있었다.
@@ -86,12 +95,6 @@ begin
   -- 알림 대상 칸이 **실제로** 바뀌는지 서버가 직접 본다.
   -- 화면의 판단(willNotifyOnEventChange)은 물어볼지 정하는 용도일 뿐이고,
   -- 보낼지 말지는 여기서 정한다. 두 곳이 어긋나도 잘못 나가지 않는다.
-  -- ⑤ 먼저 정해진 순서로 잠근다. 두 사람이 동시에 저장하면
-  --    둘 다 옛 값을 보고 알림을 두 번 보낼 수 있었다.
-  perform 1 from public.calendar_events
-   where series_id = p_series_id and event_date >= p_from_date
-   order by id for update;
-
   -- ② 알림 판단은 **오늘 이후 회차만** 본다.
   --    지난 회차에서 '이후 모두' 를 고르면 미래 회차가 조용히 바뀌었고,
   --    반대로 p_notify=true 면 지난 회차 참가자까지 수신자에 들어갔다.

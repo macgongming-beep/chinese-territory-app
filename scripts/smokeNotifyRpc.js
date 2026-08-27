@@ -34,7 +34,6 @@ const main = async () => {
     ['update_calendar_event_series_tx', { p_token: bogus, p_series_id: bogus, p_from_date: '2026-01-01', p_payload: {}, p_notify: false }],
     ['update_calendar_event_tx', { p_token: bogus, p_event_id: -1, p_payload: {}, p_notify: false }],
     ['create_notice_tx', { p_token: bogus, p_title: 'x', p_content: 'y', p_priority: 'normal', p_notify: false }],
-    ['filter_notification_recipients', { p_user_ids: [], p_type: 'notice' }],
   ]) {
     const r = await rpc(fn, args)
     // 404 면 함수가 없거나 캐시가 안 돌았다는 뜻
@@ -54,10 +53,52 @@ const main = async () => {
   check('가짜 토큰으로 공지를 못 올린다', r2.status >= 400,
     `HTTP ${r2.status} ${JSON.stringify(r2.data).slice(0, 60)}`)
 
-  // 3) 필터 함수가 실제로 걸러내나 (없는 사용자 id)
-  const r3 = await rpc('filter_notification_recipients', { p_user_ids: [999999], p_type: 'notice' })
-  check('없는 사용자는 걸러진다', Array.isArray(r3.data) && r3.data.length === 0,
-    JSON.stringify(r3.data))
+  // 3) 내부 필터 함수는 밖에서 못 불러야 한다
+  const r3 = await rpc('filter_notification_recipients', { p_user_ids: [1], p_type: 'notice' })
+  check('내부 필터 함수는 anon 에 안 열려 있다', r3.status === 404,
+    `HTTP ${r3.status}`)
+
+  // 4) ── 여기부터가 진짜다: 실제 로그인해서 성공 경로를 본다 ──
+  const login = await rpc('auth_login', { p_login_id: 'test-admin', p_pin: '1234' })
+  const token = Array.isArray(login.data) ? login.data[0]?.token : login.data?.token
+  check('테스트 관리자로 로그인된다', Boolean(token),
+    token ? '' : `HTTP ${login.status} ${JSON.stringify(login.data).slice(0, 80)}`)
+  if (!token) {
+    console.log('\n  로그인이 안 되면 아래 성공 경로는 못 본다. seed.test.sql 을 확인할 것.\n')
+    process.exit(1)
+  }
+
+  // 실제 일정 하나를 만들어 고쳐본다 (끝나면 지운다)
+  const rest = async (path, init) => {
+    const r = await fetch(`${URL_}/rest/v1/${path}`, {
+      ...init,
+      headers: { apikey: KEY, 'Content-Type': 'application/json', Prefer: 'return=representation', ...(init?.headers ?? {}) },
+    })
+    return { status: r.status, data: await r.json().catch(() => null) }
+  }
+  const future = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10)
+  const made = await rest('calendar_events', {
+    method: 'POST',
+    body: JSON.stringify({ event_date: future, time: '10:00', title: 'SMOKE-일정', type: '봉사', place: '처음', leader_name: '' }),
+  })
+  const eventId = Array.isArray(made.data) ? made.data[0]?.id : null
+  check('시험용 일정을 만들었다', Boolean(eventId), `HTTP ${made.status}`)
+
+  if (eventId) {
+    const upd = await rpc('update_calendar_event_tx', {
+      p_token: token, p_event_id: eventId, p_payload: { place: '바뀐곳' }, p_notify: false,
+    })
+    check('진짜 토큰으로 단일 수정이 된다 (알림 안 보냄)',
+      upd.status === 200 && upd.data?.ok === true && upd.data?.updated === 1,
+      `HTTP ${upd.status} ${JSON.stringify(upd.data)}`)
+
+    const after = await rest(`calendar_events?select=place&id=eq.${eventId}`, {})
+    check('DB 에 실제로 반영됐다',
+      Array.isArray(after.data) && after.data[0]?.place === '바뀐곳',
+      JSON.stringify(after.data))
+
+    await rest(`calendar_events?id=eq.${eventId}`, { method: 'DELETE' })
+  }
 
   console.log(fail === 0 ? '\n  전부 통과\n' : `\n  ${fail}개 실패\n`)
   process.exit(fail === 0 ? 0 : 1)

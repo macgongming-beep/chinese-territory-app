@@ -36,6 +36,7 @@ delete from public.event_participants where user_name like '매트릭스%';
 delete from public.notifications where related_id in (select id from public.calendar_events where title = '매트릭스봉사');
 delete from public.calendar_events where title = '매트릭스봉사';
 delete from public.notices where title like '매트릭스공지%';
+delete from public.notification_preferences where user_id in (select id from public.app_users where login_id like 'mtx-%');
 delete from public.app_users where login_id like 'mtx-%';
 
 drop table if exists public._notify_matrix_result;
@@ -216,6 +217,52 @@ begin
   insert into public._notify_matrix_result (칸, 결과, 알림건수, 받은사람, 본인포함, 판정)
   values ('10 관리자·공지·알림보냄', v_res::text, v_cnt, v_ppl, v_self,
     case when v_cnt > 0 and not v_self then 'OK (본인 제외)' else '⚠ 확인' end);
+
+
+  -- ═══ 칸 11: 관리자 · 단일 · notify=true ═══
+  --     이 칸이 없어서 '단일 일정만 푸시 필터를 안 거친다' 를 두 번이나 놓쳤다.
+  perform set_config('app.suppress_notifications', '', true);
+  select coalesce(max(id), 0) into v_mark from public.notifications;
+  v_res := public.update_calendar_event_tx(v_admin_tok, v_e1, jsonb_build_object('place', '단일알림'), true);
+  select count(*), count(distinct user_id), bool_or(user_id = v_admin)
+    into v_cnt, v_ppl, v_self
+    from public.notifications where id > v_mark and type = 'event_change';
+  insert into public._notify_matrix_result (칸, 결과, 바뀐일정, 알림건수, 받은사람, 본인포함, 판정)
+  values ('11 관리자·단일·알림보냄', v_res::text, (v_res->>'updated')::int, v_cnt, v_ppl, v_self,
+    case when v_cnt >= 1 and not v_self then 'OK' else '⚠ 확인' end);
+
+  -- ═══ 칸 12: 알림 필터 정책 — 네 사람이 각각 어떻게 되나 ═══
+  --     활성·승인·알림ON 만 받아야 한다. 나머지 셋은 인앱도 푸시도 안 가야 한다.
+  declare
+    v_on integer; v_off integer; v_inactive integer; v_pending integer;
+    v_got integer[];
+  begin
+    insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+    values ('mtx-f-on', '필터켬', '1234', 'user', 'approved', true) returning id into v_on;
+    insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+    values ('mtx-f-off', '필터끔', '1234', 'user', 'approved', true) returning id into v_off;
+    insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+    values ('mtx-f-inact', '비활성', '1234', 'user', 'approved', false) returning id into v_inactive;
+    insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+    values ('mtx-f-pend', '미승인', '1234', 'user', 'pending', true) returning id into v_pending;
+
+    insert into public.notification_preferences (user_id, push_event_change)
+    values (v_off, false)
+    on conflict (user_id) do update set push_event_change = false;
+
+    v_got := public.filter_notification_recipients(
+      array[v_on, v_off, v_inactive, v_pending], 'event_change');
+
+    insert into public._notify_matrix_result (칸, 결과, 받은사람, 판정)
+    values ('12 알림 필터 정책 (켬/끔/비활성/미승인)',
+      '남은 사람: ' || coalesce(array_to_string(v_got, ','), '(없음)'),
+      coalesce(cardinality(v_got), 0),
+      case when v_got = array[v_on] then 'OK (알림 켠 사람만 남는다)'
+           else '⚠ 켠 사람 하나만 남아야 한다' end);
+
+    delete from public.notification_preferences where user_id in (v_on, v_off, v_inactive, v_pending);
+    delete from public.app_users where id in (v_on, v_off, v_inactive, v_pending);
+  end;
 
   -- ── 뒷정리 ────────────────────────────────────────────
   delete from public.notifications
