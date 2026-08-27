@@ -41,9 +41,11 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'empty_title');
   end if;
 
-  if not p_notify then
-    perform set_config('app.suppress_notifications', 'on', true);
-  end if;
+  -- 표식을 **양쪽 다 명시**한다. 'true 면 안 건드린다' 로 두면
+  -- 같은 트랜잭션에서 앞선 호출이 켜둔 표식에 끌려간다 (매트릭스에서 실제로 그랬다).
+  -- 운영은 호출마다 트랜잭션이 달라 안 나지만, 기대지 않는 편이 낫다.
+  perform set_config('app.suppress_notifications',
+                     case when p_notify then '' else 'on' end, true);
 
   insert into public.notices (title, content, priority, author)
   values (btrim(p_title), btrim(coalesce(p_content, '')), p_priority, v_actor_name)

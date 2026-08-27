@@ -168,9 +168,9 @@ begin
     raise exception '이 일정을 고칠 권한이 없습니다';
   end if;
 
-  if not p_notify then
-    perform set_config('app.suppress_notifications', 'on', true);
-  end if;
+  -- 표식을 양쪽 다 명시한다 (공지 RPC 와 같은 이유)
+  perform set_config('app.suppress_notifications',
+                     case when p_notify then '' else 'on' end, true);
 
   update public.calendar_events e set
     time               = case when p_payload ? 'time'               then p_payload->>'time'                        else e.time end,
