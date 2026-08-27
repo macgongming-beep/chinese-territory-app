@@ -71,6 +71,16 @@ const main = async () => {
   check('내부 필터 함수는 anon 에 안 열려 있다', [401, 403, 404].includes(r3.status),
     `HTTP ${r3.status}`)
 
+  // 3-2) 알림을 만드는 중앙 두 함수도 밖에서 못 불러야 한다.
+  //      열려 있으면 anon 키만으로 **아무한테나 임의 푸시**를 쏠 수 있다.
+  for (const [fn, args] of [
+    ['dispatch_push_notification', { p_user_ids: [], p_type: 'notice', p_title: 'x' }],
+    ['insert_notifications', { p_user_ids: [], p_type: 'notice', p_title: 'x' }],
+  ]) {
+    const r = await rpc(fn, args)
+    check(`${fn} 은 anon 에 안 열려 있다`, [401, 403, 404].includes(r.status), `HTTP ${r.status}`)
+  }
+
   // 4) ── 여기부터가 진짜다: 실제 로그인해서 성공 경로를 본다 ──
   const login = await rpc('auth_login', { p_login_id: 'test-admin', p_pin: '1234' })
   const token = Array.isArray(login.data) ? login.data[0]?.token : login.data?.token

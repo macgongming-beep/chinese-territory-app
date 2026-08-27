@@ -1,3 +1,8 @@
+-- 푸시 수신자 필터를 한 곳에서 막는다. **한 트랜잭션으로 돈다.**
+-- 앞서 적용한 '운영에_넣을것.sql' 과는 별개다 — 그걸 다시 돌리지 말 것.
+
+begin;
+
 -- 알림이 새는 마지막 구멍: 푸시가 수신자 필터를 안 거쳤다.
 --
 -- insert_notifications 만 '알림 껐는지·활성인지·승인됐는지' 를 보고,
@@ -148,3 +153,17 @@ revoke all on function public.dispatch_push_notification(integer[], text, text, 
   from public, anon, authenticated;
 revoke all on function public.insert_notifications(integer[], text, text, text, text, integer)
   from public, anon, authenticated;
+
+notify pgrst, 'reload schema';
+
+commit;
+
+-- ═══ commit 뒤에 따로 돌릴 확인 쿼리 (전부 true) ═══
+-- select
+--   (select position('daily_service' in prosrc) > 0 from pg_proc where proname='filter_notification_recipients') as 매일요약_포함,
+--   (select position('else false' in prosrc) > 0 from pg_proc where proname='filter_notification_recipients') as 모르는종류_막힘,
+--   (select position('filter_notification_recipients' in prosrc) > 0 from pg_proc where proname='dispatch_push_notification') as 푸시가_거른다,
+--   (select position('filter_notification_recipients' in prosrc) > 0 from pg_proc where proname='insert_notifications') as 인앱이_같은함수를쓴다,
+--   (select not has_function_privilege('anon','public.dispatch_push_notification(integer[],text,text,text,text,integer)','execute')) as 푸시함수_anon차단,
+--   (select not has_function_privilege('anon','public.insert_notifications(integer[],text,text,text,text,integer)','execute')) as 알림함수_anon차단,
+--   (select not has_function_privilege('anon','public.filter_notification_recipients(integer[],text)','execute')) as 필터함수_anon차단;

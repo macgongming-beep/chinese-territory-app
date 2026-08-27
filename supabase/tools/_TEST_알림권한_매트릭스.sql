@@ -332,7 +332,10 @@ begin
     -- 종류마다 '켠 사람만 남는가'
     for v_left in
       select public.filter_notification_recipients(array[v_pon, v_poff], t)
-      from unnest(array['comment', 'chat', 'mention', 'notice', 'event_change', 'daily_service']) as t
+            -- notifications_type_check 가 허용하는 **열한 가지 전부**.
+      -- 배정 셋은 끄는 설정이 없어 둘 다 남아야 하므로 아래에서 따로 본다.
+      from unnest(array['comment', 'chat', 'mention', 'notice', 'event_change',
+                        'daily_service', 'service_started', 'service_ended']) as t
     loop
       if v_left is distinct from array[v_pon] then
         insert into public._notify_matrix_result (칸, 결과, 판정)
@@ -343,8 +346,34 @@ begin
 
     if not exists (select 1 from public._notify_matrix_result where 칸 like '14 %') then
       insert into public._notify_matrix_result (칸, 결과, 판정)
-      values ('14 종류별 필터 (댓글·채팅·멘션·공지·일정변경·매일요약)',
-              '여섯 종류 모두 켠 사람만 남았다', 'OK');
+      values ('14 종류별 필터 (여덟 종류)',
+              '여덟 종류 모두 켠 사람만 남았다', 'OK');
+
+      -- 배정 셋은 끄는 설정이 없다 — 둘 다 남아야 한다
+      for v_left in
+        select public.filter_notification_recipients(array[v_pon, v_poff], t)
+        from unnest(array['assignment', 'assignment_informal', 'assignment_restaurant']) as t
+      loop
+        if coalesce(cardinality(v_left), 0) <> 2 then
+          insert into public._notify_matrix_result (칸, 결과, 판정)
+          values ('16 배정 알림은 못 끈다', '남은 사람 수: ' || coalesce(cardinality(v_left), 0),
+                  '⚠ 둘 다 남아야 한다');
+        end if;
+      end loop;
+
+      -- 모르는 종류는 아무한테도 안 간다 (fail-closed)
+      v_left := public.filter_notification_recipients(array[v_pon, v_poff], '없는종류');
+      insert into public._notify_matrix_result (칸, 결과, 받은사람, 판정)
+      values ('17 모르는 알림 종류는 아무한테도 안 간다',
+              '남은 사람 수: ' || coalesce(cardinality(v_left), 0),
+              coalesce(cardinality(v_left), 0),
+              case when coalesce(cardinality(v_left), 0) = 0 then 'OK (fail-closed)'
+                   else '⚠ 모르는 종류가 새 나간다' end);
+
+      if not exists (select 1 from public._notify_matrix_result where 칸 like '16 %') then
+        insert into public._notify_matrix_result (칸, 결과, 판정)
+        values ('16 배정 알림은 못 끈다 (셋 다)', '셋 다 둘 모두 남았다', 'OK');
+      end if;
     end if;
 
     -- 실제 댓글 한 건으로 끝에서 끝까지.

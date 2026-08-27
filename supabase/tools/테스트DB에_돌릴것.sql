@@ -1,3 +1,8 @@
+-- 푸시 수신자 필터를 한 곳에서 막는다. **한 트랜잭션으로 돈다.**
+-- 앞서 적용한 '운영에_넣을것.sql' 과는 별개다 — 그걸 다시 돌리지 말 것.
+
+begin;
+
 -- 알림이 새는 마지막 구멍: 푸시가 수신자 필터를 안 거쳤다.
 --
 -- insert_notifications 만 '알림 껐는지·활성인지·승인됐는지' 를 보고,
@@ -38,7 +43,18 @@ as $$
       when 'service_started' then coalesce(pref.push_service_status, true)
       when 'service_ended' then coalesce(pref.push_service_status, true)
       when 'daily_service' then coalesce(pref.push_daily_service, true)
-      else true
+      -- 배정 셋은 '나한테 배정됐다' 는 알림이라 따로 끄는 설정이 없다.
+      -- 그래도 **명시한다** — 아래 else 가 막기 때문이다.
+      when 'assignment' then true
+      when 'assignment_informal' then true
+      when 'assignment_restaurant' then true
+      -- ⚠ 모르는 종류는 **안 보낸다.**
+      --   예전엔 else true 라, 오타나 새 종류가 수신 설정을 통째로 우회했다.
+      --   ('새 종류가 생겨도 샐 수 없다' 고 적어놓고 정반대였다)
+      --   위 열한 가지는 notifications_type_check 가 허용하는 전부다.
+      --   종류를 새로 만들면 **제약과 여기 둘 다** 고쳐야 한다 — 안 고치면 조용히 안 가고,
+      --   그건 모르게 새 나가는 것보다 낫다.
+      else false
     end
 $$;
 
@@ -129,6 +145,28 @@ begin
   return coalesce(v_inserted, 0);
 end;
 $function$;
+
+-- ⚠ 이 둘은 security definer 다. PostgreSQL 은 함수를 만들면 PUBLIC 에 실행권한을 준다.
+--   그대로 두면 anon 키만 있으면 **아무한테나 임의 푸시를 쏘고 임의 알림을 만들 수 있다.**
+--   트리거와 RPC 는 소유자 권한으로 부르므로 영향이 없다.
+revoke all on function public.dispatch_push_notification(integer[], text, text, text, text, integer)
+  from public, anon, authenticated;
+revoke all on function public.insert_notifications(integer[], text, text, text, text, integer)
+  from public, anon, authenticated;
+
+notify pgrst, 'reload schema';
+
+commit;
+
+-- ═══ commit 뒤에 따로 돌릴 확인 쿼리 (전부 true) ═══
+-- select
+--   (select position('daily_service' in prosrc) > 0 from pg_proc where proname='filter_notification_recipients') as 매일요약_포함,
+--   (select position('else false' in prosrc) > 0 from pg_proc where proname='filter_notification_recipients') as 모르는종류_막힘,
+--   (select position('filter_notification_recipients' in prosrc) > 0 from pg_proc where proname='dispatch_push_notification') as 푸시가_거른다,
+--   (select position('filter_notification_recipients' in prosrc) > 0 from pg_proc where proname='insert_notifications') as 인앱이_같은함수를쓴다,
+--   (select not has_function_privilege('anon','public.dispatch_push_notification(integer[],text,text,text,text,integer)','execute')) as 푸시함수_anon차단,
+--   (select not has_function_privilege('anon','public.insert_notifications(integer[],text,text,text,text,integer)','execute')) as 알림함수_anon차단,
+--   (select not has_function_privilege('anon','public.filter_notification_recipients(integer[],text)','execute')) as 필터함수_anon차단;
 
 -- 알림·권한 매트릭스 검증. **테스트 DB 에서만** 돌린다.
 --
@@ -464,7 +502,10 @@ begin
     -- 종류마다 '켠 사람만 남는가'
     for v_left in
       select public.filter_notification_recipients(array[v_pon, v_poff], t)
-      from unnest(array['comment', 'chat', 'mention', 'notice', 'event_change', 'daily_service']) as t
+            -- notifications_type_check 가 허용하는 **열한 가지 전부**.
+      -- 배정 셋은 끄는 설정이 없어 둘 다 남아야 하므로 아래에서 따로 본다.
+      from unnest(array['comment', 'chat', 'mention', 'notice', 'event_change',
+                        'daily_service', 'service_started', 'service_ended']) as t
     loop
       if v_left is distinct from array[v_pon] then
         insert into public._notify_matrix_result (칸, 결과, 판정)
@@ -475,8 +516,34 @@ begin
 
     if not exists (select 1 from public._notify_matrix_result where 칸 like '14 %') then
       insert into public._notify_matrix_result (칸, 결과, 판정)
-      values ('14 종류별 필터 (댓글·채팅·멘션·공지·일정변경·매일요약)',
-              '여섯 종류 모두 켠 사람만 남았다', 'OK');
+      values ('14 종류별 필터 (여덟 종류)',
+              '여덟 종류 모두 켠 사람만 남았다', 'OK');
+
+      -- 배정 셋은 끄는 설정이 없다 — 둘 다 남아야 한다
+      for v_left in
+        select public.filter_notification_recipients(array[v_pon, v_poff], t)
+        from unnest(array['assignment', 'assignment_informal', 'assignment_restaurant']) as t
+      loop
+        if coalesce(cardinality(v_left), 0) <> 2 then
+          insert into public._notify_matrix_result (칸, 결과, 판정)
+          values ('16 배정 알림은 못 끈다', '남은 사람 수: ' || coalesce(cardinality(v_left), 0),
+                  '⚠ 둘 다 남아야 한다');
+        end if;
+      end loop;
+
+      -- 모르는 종류는 아무한테도 안 간다 (fail-closed)
+      v_left := public.filter_notification_recipients(array[v_pon, v_poff], '없는종류');
+      insert into public._notify_matrix_result (칸, 결과, 받은사람, 판정)
+      values ('17 모르는 알림 종류는 아무한테도 안 간다',
+              '남은 사람 수: ' || coalesce(cardinality(v_left), 0),
+              coalesce(cardinality(v_left), 0),
+              case when coalesce(cardinality(v_left), 0) = 0 then 'OK (fail-closed)'
+                   else '⚠ 모르는 종류가 새 나간다' end);
+
+      if not exists (select 1 from public._notify_matrix_result where 칸 like '16 %') then
+        insert into public._notify_matrix_result (칸, 결과, 판정)
+        values ('16 배정 알림은 못 끈다 (셋 다)', '셋 다 둘 모두 남았다', 'OK');
+      end if;
     end if;
 
     -- 실제 댓글 한 건으로 끝에서 끝까지.
