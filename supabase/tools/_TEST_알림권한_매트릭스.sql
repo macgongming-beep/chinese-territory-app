@@ -323,11 +323,13 @@ begin
     values ('mtx-p-off', '푸시끔', '1234', 'user', 'approved', true) returning id into v_poff;
 
     insert into public.notification_preferences
-      (user_id, push_comment, push_chat, push_mention, push_new_notice, push_event_change, push_daily_service)
-    values (v_poff, false, false, false, false, false, false)
+      (user_id, push_comment, push_chat, push_mention, push_new_notice, push_event_change,
+       push_daily_service, push_service_status)
+    values (v_poff, false, false, false, false, false, false, false)
     on conflict (user_id) do update set
       push_comment = false, push_chat = false, push_mention = false,
-      push_new_notice = false, push_event_change = false, push_daily_service = false;
+      push_new_notice = false, push_event_change = false, push_daily_service = false,
+      push_service_status = false;
 
     -- 종류마다 '켠 사람만 남는가'
     for v_left in
@@ -349,6 +351,10 @@ begin
       values ('14 종류별 필터 (여덟 종류)',
               '여덟 종류 모두 켠 사람만 남았다', 'OK');
 
+    end if;
+
+    -- ⚠ 아래 둘은 14 의 결과와 **무관하게** 돌아야 한다.
+    --   처음엔 14 의 'OK' 블록 안에 넣어서 14 가 실패하면 아예 안 돌았다.
       -- 배정 셋은 끄는 설정이 없다 — 둘 다 남아야 한다
       for v_left in
         select public.filter_notification_recipients(array[v_pon, v_poff], t)
@@ -374,7 +380,6 @@ begin
         insert into public._notify_matrix_result (칸, 결과, 판정)
         values ('16 배정 알림은 못 끈다 (셋 다)', '셋 다 둘 모두 남았다', 'OK');
       end if;
-    end if;
 
     -- 실제 댓글 한 건으로 끝에서 끝까지.
     -- ⚠ 둘을 **그 일정 신청자로 붙여야** 댓글 알림 대상이 된다.
