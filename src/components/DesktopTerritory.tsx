@@ -35,6 +35,7 @@ import { PointVisitEditor, type VisitDraft } from './PointVisitEditor'
 import type { MergeResult } from '../utils/duplicateBuildingMerge'
 import { msg } from '../lib/msg'
 import { getRestaurantUnits } from '../utils/restaurants'
+import { compareBuildingsForTable, comparePointRowsForTable } from '../utils/territoryTableSort'
 
 // 상대 날짜 표시: "오늘", "어제", "N일 전", "N주 전", "N개월 전", "YYYY-MM-DD"
 function formatRelativeDate(iso: string): string {
@@ -642,36 +643,13 @@ export function DesktopTerritory({
   }
 
 
-  // 정렬 적용
-  const naturalCompare = (x: string, y: string) =>
-    x.localeCompare(y, 'ko', { numeric: true, sensitivity: 'base' })
-
-  const sortedBuildings = [...filteredBuildings].sort((a, b) => {
-    // 미배정 건물은 별도 필터 없을 때 항상 맨 위
-    if (buildingCardFilter === '전체' && unassignedCardId) {
-      const aIsUnassigned = a.cardId === unassignedCardId
-      const bIsUnassigned = b.cardId === unassignedCardId
-      if (aIsUnassigned && !bIsUnassigned) return -1
-      if (!aIsUnassigned && bIsUnassigned) return 1
-    }
-    const dir = buildingSort.dir === 'asc' ? 1 : -1
-    if (buildingSort.key === '카드') {
-      const cardA = cardMap.get(a.cardId)?.name ?? ''
-      const cardB = cardMap.get(b.cardId)?.name ?? ''
-      return naturalCompare(cardA, cardB) * dir
-    }
-    if (buildingSort.key === '건물') return naturalCompare(a.name, b.name) * dir
-    if (buildingSort.key === '주소') return naturalCompare(a.address, b.address) * dir
-    if (buildingSort.key === '유형') return naturalCompare(a.type, b.type) * dir
-    if (buildingSort.key === '식당') {
-      // 식당이 많은 건물부터 (오름차순이면 식당 아닌 것부터)
-      const ra = getRestaurantUnits(a).length
-      const rb = getRestaurantUnits(b).length
-      if (ra !== rb) return (ra - rb) * dir
-      return naturalCompare(a.name, b.name)
-    }
-    return 0
-  })
+  const sortedBuildings = [...filteredBuildings].sort((a, b) =>
+    compareBuildingsForTable(a, b, {
+      sort: buildingSort,
+      cardName: (id) => cardMap.get(id)?.name ?? '',
+      unassignedFirst: buildingCardFilter === '전체',
+      unassignedCardId: unassignedCardId ?? null,
+    }))
 
   // 미배정 필터의 추천 카드 배지 — 구역선 폴리곤 판정이라 렌더마다 돌면 무거움.
   // (건물/구역선이 바뀔 때만 계산 → 편집 중 타이핑 시 재계산 없음)
@@ -729,34 +707,11 @@ export function DesktopTerritory({
     if (pointMemoFilter === '없음' && hasMemo) return false
     return true
   })
-  const STATUS_ORDER: Record<string, number> = { 미방문: 0, 부재: 1, 만남: 2, 대상외: 3, 거절: 4 }
-  const sortedPointRows = [...pointRows].sort((a, b) => {
-    const dir = pointSort.dir === 'asc' ? 1 : -1
-    if (pointSort.key === '카드') {
-      const ca = cardMap.get(a.building.cardId)?.name ?? ''
-      const cb = cardMap.get(b.building.cardId)?.name ?? ''
-      const byCard = naturalCompare(ca, cb)
-      if (byCard !== 0) return byCard * dir
-      return naturalCompare(a.building.name || a.building.address, b.building.name || b.building.address) * dir
-    }
-    if (pointSort.key === '건물') {
-      return naturalCompare(a.building.name || a.building.address, b.building.name || b.building.address) * dir
-    }
-    if (pointSort.key === '세대') return naturalCompare(a.unit.number, b.unit.number) * dir
-    if (pointSort.key === '상태') {
-      const sa = STATUS_ORDER[a.unit.status] ?? 9
-      const sb = STATUS_ORDER[b.unit.status] ?? 9
-      if (sa !== sb) return (sa - sb) * dir
-      return naturalCompare(a.unit.number, b.unit.number)
-    }
-    // 최근 방문 — 기록 없는 세대는 언제나 뒤로 (오래된 순/최근 순 어느 쪽이든)
-    const da = a.latestHistory?.visitedAt ?? ''
-    const db = b.latestHistory?.visitedAt ?? ''
-    if (!da && !db) return naturalCompare(a.unit.number, b.unit.number)
-    if (!da) return 1
-    if (!db) return -1
-    return da < db ? -dir : da > db ? dir : 0
-  })
+  const sortedPointRows = [...pointRows].sort((a, b) =>
+    comparePointRowsForTable(a, b, {
+      sort: pointSort,
+      cardName: (id) => cardMap.get(id)?.name ?? '',
+    }))
 
   const selectedPointDetailData = useMemo(() => {
     if (!selectedPointDetail) return null
