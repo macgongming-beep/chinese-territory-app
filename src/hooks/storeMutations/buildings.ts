@@ -2,6 +2,7 @@ import type { Building, TerritoryCard, Unit, UnitStatus } from '../../types'
 import type { CsvBuildingImport } from '../../utils/csvBuildingImport'
 import { isValidMapCoordinate } from '../../utils/mapUtils'
 import { buildImportPayload } from '../../utils/importBuildingPayload'
+import { explainDbError } from '../../utils/dbError'
 import { getAuthToken } from '../../lib/authToken'
 import type { MergeResult } from '../../utils/duplicateBuildingMerge'
 import { supabase, showToast, reportMutationError } from './shared'
@@ -90,7 +91,7 @@ export function makeBuildingMutations(deps: {
 
     if (cleanedInputs.length === 0) {
       showToast(msg('업로드할 건물 데이터가 없습니다.'), 'error')
-      return { inserted: 0, skipped: inputs.length }
+      return { inserted: 0, skipped: inputs.length, failures: [] }
     }
 
     let inserted = 0
@@ -98,10 +99,12 @@ export function makeBuildingMutations(deps: {
     let visitHistoriesInserted = 0
     const existingKeys = new Set(buildings.map((building) => `${building.cardId}|${building.address}|${building.name}`))
 
+    const failures: Array<{ rowNumber: number; address: string; error: string }> = []
+
     const token = getAuthToken()
     if (!token) {
       showToast(msg('로그인 정보가 없습니다. 다시 로그인해 주세요.'), 'error')
-      return { inserted: 0, skipped: cleanedInputs.length }
+      return { inserted: 0, skipped: cleanedInputs.length, failures }
     }
 
     for (const input of cleanedInputs) {
@@ -122,7 +125,14 @@ export function makeBuildingMutations(deps: {
         p_units: payload.units,
       })
       if (rpc.error || !(rpc.data as { ok?: boolean } | null)?.ok) {
-        if (rpc.error) console.warn('[importBuildings] 건물 하나 실패 — 통째로 되돌아감', input.address, rpc.error)
+        // ⚠ 개수만 세지 않는다. **어떤 줄이 왜** 실패했는지 돌려줘야
+        //   사용자가 고쳐서 다시 올릴 수 있다.
+        console.warn('[importBuildings] 건물 하나 실패 — 통째로 되돌아감', input.address, rpc.error)
+        failures.push({
+          rowNumber: (input as { rowNumber?: number }).rowNumber ?? 0,
+          address: input.address,
+          error: explainDbError(rpc.error) ?? rpc.error?.message ?? '알 수 없는 이유',
+        })
         skipped += 1
         continue
       }
@@ -135,7 +145,7 @@ export function makeBuildingMutations(deps: {
     await fetchAll()
     const visitMsg = visitHistoriesInserted > 0 ? `, 방문기록 ${visitHistoriesInserted}건` : ''
     showToast(msg('CSV 업로드 완료: 건물 {inserted}개 추가{visitMsg}, {skipped}개 제외', { inserted: inserted, visitMsg: visitMsg, skipped: skipped }), inserted > 0 ? 'success' : 'info')
-    return { inserted, skipped }
+    return { inserted, skipped, failures }
   }
 
   /** 성공하면 새로 만든 호수 id 들, 실패하면 false. 화면이 입력을 지킬 수 있어야 한다 */

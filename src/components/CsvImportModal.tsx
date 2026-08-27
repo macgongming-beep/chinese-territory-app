@@ -3,7 +3,7 @@
 // 상태 여섯 개(preview·skipped·headers·parsing·importing)가 **여기서만** 쓰인다.
 // 예전에는 DesktopTerritory 가 그걸 다 들고 있어서, 화면 상태 59개 중 여섯이
 // 이 모달 것이었다. 닫힌 흐름은 상태째 내려보내는 게 맞다.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { CardBoundary, TerritoryCard } from '../types'
 import {
   type CsvPreviewRow,
@@ -14,6 +14,9 @@ import {
 import { showToast } from '../lib/toast'
 import { msg } from '../lib/msg'
 import { describeDbError } from '../utils/dbError'
+
+/** 올리다 실패한 줄. 개수만 세면 무엇이 왜 안 됐는지 알 수 없다 */
+export type ImportFailure = { rowNumber: number; address: string; error: string }
 
 type Props = {
   onClose: () => void
@@ -34,11 +37,24 @@ export function CsvImportModal({
   const [csvHeaders, setCsvHeaders] = useState<string[]>([])
   const [csvParsing, setCsvParsing] = useState(false)
   const [csvImporting, setCsvImporting] = useState(false)
+  const [failures, setFailures] = useState<ImportFailure[]>([])
+
+  // 파싱 중이거나 올리는 중이면 **닫지 못한다.**
+  // 닫아도 요청은 계속 돌아서 결과를 아무도 못 본다.
+  const busy = csvParsing || csvImporting
+  const requestClose = () => { if (!busy) onClose() }
+
+  // ⚠ 파일을 고르고 지오코딩이 느리면, 두 번째 파일을 골라도
+  //   **먼저 고른 파일의 결과가 나중에 도착해 덮을 수 있다.**
+  //   요청마다 번호를 매겨 마지막 것만 반영한다.
+  const parseSeq = useRef(0)
 
   // 파싱 자체는 parseBuildingCsvFile 이 한다. 그건 **절대 던지지 않는다** —
   // 그래서 여기에 try/finally 가 없어도 '확인 중' 에 갇히지 않는다.
   const parseCsvFile = async (file: File) => {
+    const seq = ++parseSeq.current
     setCsvParsing(true)
+    setFailures([])
     setCsvPreviewRows([])
     setCsvSkippedRows(0)
     setCsvSkippedDetails([])
@@ -47,6 +63,7 @@ export function CsvImportModal({
     const result = await parseBuildingCsvFile(file, {
       cards, cardBoundaries, unassignedCardId, geocodeAddress, regionNames,
     })
+    if (seq !== parseSeq.current) return   // 더 최근 파일이 있다 — 이 결과는 버린다
     setCsvParsing(false)
     if (!result.ok) {
       showToast(msg(result.error ?? 'CSV를 읽지 못했습니다.'), 'error')
@@ -67,7 +84,7 @@ export function CsvImportModal({
   const handleImportCsv = async () => {
     if (csvPreviewRows.length === 0 || csvImporting) return
     setCsvImporting(true)
-    let result: { inserted: number; skipped: number } | null = null
+    let result: { inserted: number; skipped: number; failures?: ImportFailure[] } | null = null
     try {
       result = await onImportBuildings(csvPreviewRows)
     } catch (e) {
@@ -78,21 +95,30 @@ export function CsvImportModal({
       setCsvImporting(false)
     }
 
+    const failed = result?.failures ?? []
+    setFailures(failed)
+
     if (!result || result.inserted === 0) {
       showToast(msg('올라간 건물이 없습니다. 내용을 확인하고 다시 시도해 주세요.'), 'error')
+      return
+    }
+    // ⚠ 일부만 올라갔으면 **닫지 않는다.** 어떤 줄이 왜 실패했는지 보여야
+    //   고쳐서 다시 올릴 수 있다. 닫아 버리면 개수만 남고 내용이 사라진다.
+    if (failed.length > 0) {
+      showToast(msg('{n}개 건물이 올라가지 않았습니다. 목록을 확인해 주세요.', { n: failed.length }), 'error')
       return
     }
     onClose()
   }
 
   return (
-      <div className="cal-modal-backdrop" onClick={() => onClose()}>
+      <div className="cal-modal-backdrop" onClick={requestClose}>
         <div className="cal-modal csv-import-modal" style={{ maxWidth: '720px' }} onClick={(e) => e.stopPropagation()}>
           <div className="cal-modal-head">
             <div className="cal-modal-title">
               <h2>CSV 건물 업로드</h2>
             </div>
-            <button className="cal-modal-close" onClick={() => onClose()} type="button">
+            <button className="cal-modal-close" disabled={busy} onClick={requestClose} type="button">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -162,6 +188,21 @@ export function CsvImportModal({
               </div>
             )}
 
+            {failures.length > 0 && (
+              <div className="csv-skip-list">
+                {/* 올리다 실패한 줄. 개수만 보여주면 무엇을 고쳐야 할지 알 수 없다 */}
+                <h3 style={{ color: 'var(--danger-600, #dc2626)' }}>올리지 못한 {failures.length}개</h3>
+                {failures.slice(0, 8).map((f) => (
+                  <div className="csv-skip-item" key={`${f.rowNumber}-${f.address}`}>
+                    <strong>{f.rowNumber}번째 줄</strong>
+                    <span>{f.address}</span>
+                    <em>{f.error}</em>
+                  </div>
+                ))}
+                {failures.length > 8 && <p>외 {failures.length - 8}개가 더 있습니다.</p>}
+              </div>
+            )}
+
             {csvSkippedDetails.length > 0 && (
               <div className="csv-skip-list">
                 <strong>제외된 행</strong>
@@ -207,7 +248,7 @@ export function CsvImportModal({
             )}
           </div>
           <div className="cal-modal-foot">
-            <button className="cal-cancel-btn" onClick={() => onClose()} type="button">취소</button>
+            <button className="cal-cancel-btn" disabled={busy} onClick={requestClose} type="button">취소</button>
             <button
               className="cal-save-btn"
               disabled={csvPreviewRows.length === 0 || csvParsing || csvImporting}
