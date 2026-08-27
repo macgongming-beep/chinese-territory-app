@@ -19633,6 +19633,9 @@ button:focus-visible {
 
 .toast-message {
   flex: 1;
+  /* 오류 문구는 '무엇이 안 됐다' + '왜' 두 줄로 온다 (utils/dbError).
+     이게 없으면 줄바꿈이 공백으로 뭉개져 한 줄로 붙어 나온다. */
+  white-space: pre-line;
 }
 
 .toast-action-btn {

@@ -1,6 +1,7 @@
 /**
  * storeMutations 도메인 파일들이 공유하는 유틸리티
  */
+import { describeDbError } from '../../utils/dbError'
 import { supabase } from '../../lib/supabase'
 import { showToast } from '../../lib/toast'
 import { msg } from '../../lib/msg'
@@ -33,5 +34,8 @@ export function requireVisitor(): string | null {
 
 export function reportMutationError(message: string, error: unknown) {
   console.error(message, error)
-  showToast(message, 'error')
+  // DB 가 말해준 이유를 버리지 않는다. 예전엔 "…하지 못했습니다" 만 띄우고
+  // 진짜 이유는 콘솔에만 남겨서, 개발자가 아니면 무엇이 문제인지 알 수 없었다.
+  // 짐작할 수 없는 오류는 원래 문구만 띄운다 (지어내지 않는다).
+  showToast(describeDbError(message, error), 'error')
 }
