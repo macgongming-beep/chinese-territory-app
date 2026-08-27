@@ -6,6 +6,7 @@ import { getRegionNames } from '../lib/regions'
 import { getAreaFilterOptions } from '../utils/areaOptions'
 import { planDuplicateBuildingMerge } from '../utils/duplicateBuildingMerge'
 import { getGeocodeCandidates } from '../utils/geocodeCandidates'
+import { chooseCardForBuilding } from '../utils/chooseCardForBuilding'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { geocodeFirstMatch } from '../lib/naverGeocode'
@@ -589,18 +590,6 @@ export function DesktopTerritory({
     if (buildingRestaurantFilter === '식당 아님' && restaurantUnitCount > 0) return false
     return true
   })
-  // 건물 추가 — 카드 자동 매칭 (동 이름 기준)
-  const findCardForAddress = (address: string): number | null => {
-    if (filteredCards.length === 0) return null
-    // 주소에서 동 이름 추출
-    const dongMatch = address.match(/([가-힣]+동)/)
-    if (dongMatch) {
-      const dong = dongMatch[1]
-      const found = cards.find((c) => c.area.includes(dong) || dong.includes(c.area))
-      if (found) return found.id
-    }
-    return filteredCards[0]?.id ?? null
-  }
 
   /**
    * 어느 카드에 넣을지 정하고 저장한다. 화면이 아니라 여기가 할 일이다 —
@@ -615,21 +604,27 @@ export function DesktopTerritory({
   ): Promise<boolean> => {
     if (!onCreateBuilding) return false
 
-    let cardId: number
-    if (form.cardId !== 'auto') {
-      cardId = form.cardId
-    } else if (latLng) {
-      const byBoundary = findCardForCoordinates(latLng.lat, latLng.lng, cardBoundaries)
-      if (byBoundary) {
-        cardId = byBoundary
-        const matchedCard = cards.find((c) => c.id === byBoundary)
-        if (matchedCard) showToast(msg('"{name}" 카드에 자동 배정됐습니다', { name: matchedCard.name }), 'success')
-      } else {
-        cardId = findCardForAddress(form.address) ?? cards[0]?.id ?? 0
-      }
-    } else {
-      cardId = findCardForAddress(form.address) ?? cards[0]?.id ?? 0
+    // ⚠ 화면 필터를 보지 않는다. 예전에는 filteredCards 를 봐서
+    //   기흥구로 걸러놓고 건물을 추가하면 저장되는 카드가 달라졌고,
+    //   필터 결과가 비면 주소가 멀쩡해도 자동 배정이 통째로 실패했다.
+    const picked = chooseCardForBuilding({
+      chosen: form.cardId,
+      latLng,
+      address: form.address,
+      cards,
+      cardBoundaries,
+      unassignedCardId,
+    })
+    if (picked.cardId === null) {
+      showToast(msg('어느 카드에 넣을지 정하지 못했습니다. 카드를 직접 고르거나, 구역선을 먼저 그려 주세요.'), 'error')
+      return false
     }
+    // 어디로 갔는지 알려 준다 — 조용히 엉뚱한 카드에 들어가는 게 문제였다
+    if (picked.how === 'boundary' || picked.how === 'unassigned' || picked.how === 'firstCard') {
+      const matched = cards.find((c) => c.id === picked.cardId)
+      if (matched) showToast(msg('"{name}" 카드에 자동 배정됐습니다', { name: matched.name }), 'success')
+    }
+    const cardId = picked.cardId
 
     return onCreateBuilding({
       cardId,
