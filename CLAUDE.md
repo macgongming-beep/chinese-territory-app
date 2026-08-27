@@ -1,119 +1,125 @@
 # Chinese Territory App — 프로젝트 컨텍스트
 
 > **AI 에이전트 인수인계용. 작업 전 반드시 이 파일을 읽을 것.**
-> 마지막 업데이트: 2026-06-03 — 안정화 라운드 완료 (P0~P3, 전역 Confirm, lint 0)
+> 마지막 업데이트: 2026-08-28 — 알림 개편·푸시 필터 운영 적용, anon 쓰기 차단 1단계, 구조 정리 진행 중
 
 ---
 
-## 🆕 최근 변경 사항 (2026-06-03) — 안정화 라운드
+## 🆕 최근 변경 사항 (2026-08-27~28)
 
-코덱스+제미나이 리뷰 기반 전체 점검 + 수정. 다음 작업 전 우선 확인.
+### 보안 — 지금 어디까지 왔나 (**제일 중요**)
 
-### 새 SQL 패치 (Supabase SQL Editor 에 이미 적용됨)
-1. `supabase/v3_assign_cards_bulk_tx.sql` — 인도자 배정 **트랜잭션 RPC**
-   `assign_cards_bulk_tx(p_token, p_event_id, p_assignments, p_status, p_expected_shared_at)`
-   - 기존 카드배정 delete→insert→status를 한 트랜잭션으로 (원자성)
-   - `assignment_shared_at` 비교로 **동시 공유 충돌 감지** (jsonb {ok, conflict, ...} 반환)
-   - 클라: `eventAssignments.ts` 가 RPC 우선, 함수 없으면 레거시 폴백
-2. `supabase/v3_data_retention.sql` — **DB 용량 자동 정리** (무료 500MB 대비)
-   - `app_settings` 보존기간 (채팅90/읽은알림30/운영로그60/로그인180일, 조정 가능)
-   - `cleanup_old_data()` 삭제+건수 반환 / `preview_data_cleanup()` 미리보기
-   - pg_cron `cleanup-old-data` 매일 KST 04:00 (UTC 19:00) 자동
-   - ⚠️ 기존 `cleanup_service_logs_daily` cron 은 unschedule 함 (이 함수가 흡수)
+**⚠ anon 키로 표 30개에 쓰기가 열려 있다.** 실측했다 (2026-08-27):
 
-### 주요 클라이언트 변경
-- **전역 Confirm/Alert 다이얼로그** (`src/lib/confirm.ts` + `components/ConfirmDialog.tsx`)
-  - `confirmDialog({message, danger, confirmLabel})` → Promise<boolean>, `alertDialog()`
-  - App.tsx 에 `<ConfirmDialog />` 마운트 (Toast 옆). 다크 글래스모피즘 (App.css `.cdlg-*`)
-  - `window.confirm` 40곳 + `window.alert` 9곳 전부 교체. **새 확인창은 이거 재사용할 것**
-- **P0 데이터 무결성**: `getCurrentVisitor()` 의 `'김민준'` fallback 제거 → `requireVisitor()`
-  가드 (로그인 정보 없으면 토스트+중단). `storeMutations/{visits,regularVisits}.ts`
-- **P1 조용한 실패 노출**: 방문요약/다중카드/draft 저장실패/sanitize 제거를 토스트로 알림
-- **P2 정책/UX**:
-  - PC 일정 편집 권한을 모바일과 통일 (관리자·개발자 또는 **본인 인도 일정만**, 삭제는 관리자·개발자만)
-    → `DesktopCalendar` canEdit, `AdminEventDetailSheet` canEditEvent/canDeleteEvent
-  - 팀짓기 미배정 인원 **검색/초성** (`utils/koreanSearch.ts` matchesName)
-  - 팀 삭제 시 "구역 N개도 풀림" 경고, 채팅방 **음소거 토글** (chat_room_mutes upsert/delete)
-- **P3-2 Realtime 복원력**: `src/lib/realtimeRecovery.ts` `subscribeWithRecovery()`
-  - 웹소켓 재연결 시 끊긴 동안 놓친 변경 **catch-up refetch** (재구독 순간 1회)
-  - useCalendarRealtime / useNotifications / useUserChats 3개 영구채널에 적용
-- **lint 162 → 0** (eslint.config.js 에 `_`접두사 무시 추가, 네이버 SDK any 파일레벨 disable,
-  의도적 react-hooks 패턴은 사유 명시 disable). `npm run lint` 깨끗하게 유지할 것.
-  (scratch/, supabase/functions 는 eslint globalIgnores 처리 — 앱 소스 아님)
-- **자동화 테스트 (vitest 4) 도입** — `npm test` (vitest run) / `npm run test:watch`
-  - `vitest.config.ts` (jsdom 환경, 별도 설정 — 빌드용 vite.config 와 분리)
-  - `tsconfig.app.json` 에서 `*.test.ts` exclude (프로덕션 빌드와 테스트 분리)
-  - 현재 49개: koreanSearch(초성검색) / assignmentDraft reducer·persistence /
-    cardSearch / visitStrategy. **순수 로직 위주. 리팩토링 전 안전망으로 활용/확장할 것.**
+```
+cards · buildings · units · visit_histories · app_users ·
+calendar_events · notices · regular_visits · event_participants · card_boundaries …
+  → INSERT / UPDATE / DELETE 전부 열림
+```
 
-### 남은 과제 (큰 작업 — 별도 세션 권장)
-- 거대 파일 분할 (진행 중): ✅ `useStore.ts` 784줄로 축소(이전 분할),
-  ✅ `i18n.ts` 1909→134줄 (`src/locales/{ko,zh,en}.ts` 분리),
-  ✅ `getLocalDateString` 4중복 → `utils/dateUtils.ts` 통합.
-  남은 모놀리스(고결합·고위험): `DesktopTerritory.tsx` 3196줄,
-  `DesktopMap.tsx` 2488줄, `MobileMap.tsx` 2258줄 — 컴포넌트 분해는 별도 신중 작업
-- P3-3 교차기기 draft 연동 (서버사이드 draft 필요, V2+)
-- visit_histories/buildings/cards 의 RLS (현재 anon 전체 접근)
+anon 키는 앱 번들에 들어 있어 누구나 꺼낼 수 있다. **주소만 알면 회중 데이터를
+통째로 지울 수 있다.** 다른 회중에 앱을 주기 전에 반드시 닫아야 한다.
 
----
+**막는 방법을 정하고 1단계까지 했다** (`docs/계획-anon쓰기-차단.md` — 코덱스 3회 검토).
 
-## 이전 변경 사항 (2026-05-14)
+- 방법: 모든 요청에 세션 토큰을 헤더로 붙이고, RLS 정책이 그걸 본다.
+  쓰기 287곳을 RPC 로 옮기는 대신 **`lib/supabase.ts` 한 곳**만 고쳤다.
+- **1단계 완료(운영 적용)**: `private` 스키마의 읽기 전용 helper + `signup_tx`.
+  아직 **아무것도 막지 않는다.** 옛 앱도 그대로 돌아간다.
+- **남은 4·5단계**: `open_access FOR ALL` 제거 → 쓰기 전용 정책 → `app_users` 직접 쓰기 차단.
+  **되돌리기 어렵다. 반드시 리뷰받고, 사람들이 새 앱을 받은 뒤에 한다.**
 
-이번 라운드에서 작업한 내용. 코덱스 인수인계 시 우선 확인.
+⚠ **이 세 가지를 모르면 "막았다" 고 믿는 걸 만들게 된다** (실제로 그럴 뻔했다):
+1. `open_access ... FOR ALL using(true)` 가 살아 있고 **RLS permissive 정책은 OR 로 합쳐진다.**
+   정책을 얹어봐야 `true OR 검사` = 항상 참이다. 기존 FOR ALL 을 **없애야** 한다.
+2. `FOR ALL` 을 쓰면 **Realtime 이 깨진다.** Postgres Changes 는 SELECT RLS 를 보는데
+   WebSocket 에는 custom 헤더가 안 붙는다 → `FOR INSERT/UPDATE/DELETE` 로 나누고
+   **SELECT 정책은 건드리지 않는다.**
+3. `verify_session` 을 정책에서 부르면 안 된다. 세션을 **지우고 쓰고 던지는** 함수다.
+   → `private.request_session_user_id()` (부작용 없음) 를 `(select …)` 로 감싸 쓴다.
 
-### 새 SQL 패치 (Supabase SQL Editor 에 이미 적용됨)
-1. `supabase/v1plus_realtime_assignment_patch.sql`
-   - `supabase_realtime` publication 에 채팅/일정/배정 관련 7개 테이블 추가
-     (`chat_messages`, `chat_read_status`, `notifications`,
-      `event_participants`, `calendar_events`,
-      `event_card_assignments`, `event_card_assignment_cards`)
-   - `event_card_assignments` INSERT 트리거 → `notify_on_card_assignment()`
-     → `insert_notifications` + `dispatch_push_notification`
-     ('assignment' 타입). 본인이 본인에게 배정 시 skip.
-2. `supabase/v1plus_realtime_fixes.sql`
-   - `notifications_type_check` 에 `'assignment'` 추가
-   - 7개 테이블에 `replica identity full` (postgres_changes 필터링용)
-   - `chat_messages` / `chat_read_status` / `notifications` 에 SELECT 권한
-     anon, authenticated 부여 + open SELECT policy
-     (Realtime이 RLS+grant 검사하므로 필요. INSERT/UPDATE/DELETE 는
-      여전히 REVOKE 되어 RPC 로만 가능)
+### 알림 개편 (운영 적용 완료)
 
-### 클라이언트 변경
-- **PWA 자동 갱신 + 풀-투-리프레시** (commit `35db918`)
-  - `useStore.ts`: visibilitychange/focus 시 fetchAll (10초 디바운스)
-  - `src/components/PullToRefresh.tsx` (모바일 풀투리프레시)
-  - `App.tsx`: `<PullToRefresh onRefresh={refetchAll} />`
-- **Realtime 구독 보강** (commit `b6503b1`)
-  - `useUserChats.ts`: chat_messages + chat_read_status + event_participants
-    에 더해 calendar_events / event_card_assignments / event_card_assignment_cards
-    도 구독 → 일정 만들거나 배정 받으면 헤더 채팅 목록 즉시 반영
-- **채팅 자동 스크롤 + 카톡 스타일 알림 그룹화** (commit `b871f34`)
-  - `ChatRoom.tsx`: `messagesContainerRef` + `atBottomRef` + `requestAnimationFrame` 스크롤.
-    사용자가 맨 아래 근처거나 본인 메시지일 때만 자동으로 맨 아래
-  - `NotificationCenter.tsx`: 채팅/멘션 알림을 `event_id` 별 그룹으로 묶어
-    [방 이름] [N명] [최신 메시지] [안 읽음 카운트 뱃지] 형태 표시
-    (event 제목/인원수는 `useUserChats` 로 enrich)
-  - `useNotifications.ts`: NotificationType 에 `'assignment'` 추가
-  - `AppHeader.tsx`: NotificationCenter 에 `userName` prop 전달
-- **PWA 업데이트 버튼** (commit `cb2d741`)
-  - `src/lib/pwa.ts`: 자동 적용 제거. `checkForUpdate()`, `applyUpdate()` 노출.
-    30분 주기 + visibilitychange/focus(10분 쿨다운) 자동 확인.
-  - `src/hooks/useAppUpdate.ts`
-  - `src/components/AppUpdateCard.tsx` (desktop/mobile variant)
-  - `DesktopSettings.tsx`, `MobileHome.tsx` 설정 탭에 카드 추가
-  - 사용자가 홈화면 PWA 삭제 없이 버튼 한 번으로 새 버전 적용 가능
+반복 일정을 한 번 고쳤더니 **알림 92건이 6명에게** 나갔다. 고친 것:
 
-### 알려진 운영 메모
-- 배정 푸시 알림 정상 동작 확인됨 (사용자가 알림 권한 켜면 옴).
-- 채팅 실시간/배정 알림/일정 즉시 반영 — 위 SQL 두 개가 적용돼 있어야 동작.
-- Vercel 프로젝트: `chinese-territory-app` ⚠️ **이름·주소를 바꾸지 말 것**
-  현재 배포: https://chinese-territory-app.vercel.app/
-  (이전 `-rwb7` 도메인은 사용 안 함)
-  주소가 바뀌면 80명의 홈화면 PWA 가 옛 주소를 가리킨 채 남고, 로그인 세션과
-  **푸시 구독이 전부 무효가 된다** (둘 다 origin 에 묶여 있다). 회복하려면
-  전원에게 다시 설치·알림 허용을 부탁해야 한다. 저장소·패키지 이름만 바꿨다.
+- 반복 수정은 묶어서 **한 번만** 보낸다 (`update_calendar_event_series_tx`)
+- 단일·반복·공지 모두 **"알림 보낼까요?"** 를 묻는다 — 단 *실제로 나갈 변경일 때만*
+  (트리거가 보는 여섯 칸: 날짜·시간·장소·지도링크·인도자·제목. 메모만 고치면 안 묻는다)
+- **보낼지는 서버가 정한다.** 화면 판단(`utils/eventNotify`)은 '물어볼지' 만 정한다
+- **알림 끈 사람에게 푸시가 가던 것**을 막았다 — `insert_notifications` 만 걸렀고
+  `dispatch_push_notification` 은 원본 목록을 받았다. 여덟 경로가 전부 그랬다
+- ⚠ **실제 보안 구멍이었다**: 그 두 함수는 `security definer` 인데 revoke 가 없어
+  **anon 키만으로 회중 전원에게 임의 푸시를 쏠 수 있었다.**
+
+### 오늘 생긴 규칙 (어기면 조용히 샌다)
+
+| | |
+|---|---|
+| **`security definer` 함수를 만들면 반드시 `revoke`** | PostgreSQL 은 만들 때 PUBLIC 에 실행권한을 준다 |
+| **알림 종류를 새로 만들면 `filter_notification_recipients` 도 고친다** | 모르는 종류는 `else false` 로 **아무한테도 안 간다** (fail-closed). 안 고치면 조용히 안 감 |
+| **이름 칸이 있는 표를 만들면 `rename_user_name_references` 에 추가** | 이 앱은 사람을 이름 문자열로 들고 있다 (22칸). 안 넣으면 이름 바꿀 때 옛 이름이 남는다 |
+| **일괄 작업은 알림을 끄고 돈다** | `set_config('app.suppress_notifications','on',true)` — 트랜잭션 안에서만 유효 |
+
+### 검증 도구 (새로 생김 — 다음에도 쓸 것)
+
+```
+supabase/tools/_TEST_알림권한_매트릭스.sql   17칸. 권한·알림건수·본인제외·DB 롤백
+npm run smoke:notify                        API 경유 (스키마 캐시·실행권한·진짜 토큰)
+npm run smoke:headers                       request.headers 가 정책에 오는지
+```
+
+⚠ 알림 건수는 **id 물길**로 센다. `now()` 는 트랜잭션 **시작** 시각이라
+`clock_timestamp()` 기준 비교는 아무것도 못 잡는다.
+
+⚠ 매트릭스는 열일곱 칸이 **한 트랜잭션**에서 돈다. 운영은 호출마다 트랜잭션이 다르다.
+칸마다 `app.suppress_notifications` 를 초기화한다.
+
+### 구조 정리 (진행 중)
+
+`DesktopTerritory.tsx` 2815 → 2346줄. 뺀 것:
+
+```
+utils/csvBuildingImport   parseBuildingCsv(파서 300줄) · parseBuildingCsvFile(안 던진다)
+utils/filterTerritoryCards · filterBuildings · buildPointRows   필터 삼형제
+utils/territoryTableSort · chooseCardForBuilding · visibleSelection
+components/CsvImportModal(props 7) · DuplicateBuildingMergeModal(5) · TerritoryDetailPane(8)
+```
+
+**떼기 전에 의존성을 센다.** 카드 표는 335줄에 바깥 값 61개라 아직 안 뗐다
+(기준: 자식이 쓰는 값 10개 이하). "689줄 74개" 를 통째로 보면 답이 없는데
+경계를 나누니 상세 패널(13→8개)이 떨어졌다.
+
+### 시험 습관 (오늘 다섯 번 데었다)
+
+**통과하는 시험과 무는 시험은 다르다.** 오늘 헛돌던 시험:
+
+- '대상외' 를 시험하며 상태를 안 줘서 **어느 쪽이든 false** 라 통과
+- '본인 제외' 를 관리자로 시험 — 관리자는 수신자 후보가 아니라 **저절로 참**
+- '한 명이 받았다' 만 봐서 **엉뚱한 한 명**이어도 통과
+- 대상자를 안 붙여 **아무한테도 안 갔는데** 통과
+- '취소 버튼 클릭' — `disabled` 라 **클릭이 안 들어가** 잠금을 빼도 통과
+
+→ **시험을 쓴 뒤 반드시 코드를 일부러 망가뜨려 그 시험만 실패하는지 본다.**
+→ **검사를 다른 검사의 성공 안에 넣지 말 것** (칸 14 가 깨지자 16·17 이 통째로 안 돌았다).
 
 ---
+
+## 이전 변경 사항 (요약)
+
+- **2026-08-25~26**: 중복 건물 병합 트랜잭션 RPC, 비공식 봉사만 맡은 팀 처리
+  (`event_card_assignments.assigned_card_id` null 허용), 게스트 참가,
+  이름 바꾸기·사용자 삭제 시 이름 잔재 정리 RPC
+- **2026-08-24**: 운영 스키마 baseline 확보 (`supabase/baseline.sql` + `baseline-extras.sql`),
+  테스트 Supabase 프로젝트(`field-map-test`) 신설, `scripts/testEnvGuard.js` 로
+  테스트가 운영을 못 건드리게 막음
+- **2026-06-03**: 전역 Confirm/Alert, `getCurrentVisitor()` 의 이름 fallback 제거,
+  PC 일정 편집 권한을 모바일과 통일, Realtime 재연결 시 catch-up refetch, lint 0, vitest 도입
+- **2026-05-14**: PWA 자동 갱신 + 풀-투-리프레시, 채팅/배정 Realtime 구독,
+  카톡식 알림 그룹화, PWA 업데이트 버튼
+
+⚠ **Vercel 프로젝트 이름·주소를 바꾸지 말 것.** 현재: https://chinese-territory-app.vercel.app/
+주소가 바뀌면 80명의 홈화면 PWA 가 옛 주소를 가리킨 채 남고, **로그인 세션과
+푸시 구독이 전부 무효가 된다** (둘 다 origin 에 묶여 있다).
 
 ---
 
@@ -177,13 +183,14 @@ SUPABASE_SERVICE_ROLE_KEY=...   # 백업 스크립트용 (RLS 우회)
 - 직접 SELECT 차단, **`get_login_logs` RPC** 로만 조회 가능
 - 본인 기록은 누구나, 다른 사람 기록은 developer 만 (클라이언트 측 체크)
 
-### RLS 현 상태 (⚠️ 미완료 영역)
-- `app_users`: 컬럼별 권한 (PIN 차단)  ✅
+### RLS 현 상태 (⚠️ **열려 있다** — 2026-08-27 실측)
+- `app_users`: PIN 컬럼 SELECT 차단 ✅ / **그러나 INSERT·UPDATE·DELETE 는 열림 ⚠**
 - `login_logs`: 직접 SELECT 차단 ✅
-- 그 외 테이블 (`visit_histories`, `buildings`, `cards` 등): `using (true)` 상태 ⚠️
-  - **위험**: anon 키로 직접 REST 호출 시 모든 데이터 읽기/수정 가능
-  - **완화 요인**: URL 비공개 + 80명 내부 사용 + 의도적 공격 가능성 낮음
-  - **다음 단계**: 세션 토큰 또는 Supabase Auth 마이그레이션 검토
+- 표 30개: `open_access ... FOR ALL using(true)` — **anon 이 읽고 쓰고 지울 수 있다**
+- 알림 관련 `security definer` 함수 셋은 **닫았다** (2026-08-27)
+
+**막는 방법과 진행 상황은 맨 위 '보안' 절과 `docs/계획-anon쓰기-차단.md` 를 볼 것.**
+1단계(헤더 + helper + signup RPC)는 운영 적용했고, 실제로 막는 4·5단계가 남았다.
 
 ### 백업 ✅ 완료
 - `npm run backup` → `backups/YYYY-MM-DD/*.json` 18개 테이블 저장
@@ -269,39 +276,57 @@ src/
 ├── data/
 │   ├── territoryStructure.ts  # 지역/동 데이터
 │   ├── territoryBoundary.ts   # 행정구역 폴리곤
-│   └── sampleData.ts          # 샘플 데이터 (개발용)
 └── components/
     ├── DesktopApp.tsx          # PC 레이아웃 + Routes
     ├── DesktopHome.tsx         # PC 홈
     ├── DesktopCalendar.tsx     # PC 캘린더
-    ├── DesktopTerritory.tsx    # ⚠️ 2200+ 줄 — PC 구역 관리
-    ├── DesktopMap.tsx          # PC 지도
-    ├── DesktopNotices.tsx      # PC 공지
-    ├── DesktopUsers.tsx        # PC 사용자 관리 (개발자 전용 기능 포함)
-    ├── DesktopSettings.tsx     # PC 설정 (나의 로그인 기록 포함)
+    ├── DesktopTerritory.tsx    # PC 구역 관리 (2346줄 — 정리 진행 중)
+    ├── DesktopMap.tsx          # PC 지도 (2752줄)
+    ├── DesktopMyService.tsx    # PC 나의 봉사
+    ├── DesktopSettings.tsx     # PC 설정
     ├── DesktopStats.tsx        # PC 통계
-    ├── DesktopLeaderAssignment.tsx
-    ├── DesktopAdminAssignment.tsx
+    ├── DesktopTerritoryRegions.tsx  # 지역 관리
+    ├── DesktopAdminAssignment.tsx / DesktopLeaderAssignment.tsx
     ├── MobileHome.tsx          # 모바일 메인 (탭 라우팅)
-    ├── MobileCalendar.tsx
-    ├── MobileTerritory.tsx
-    ├── MobileMap.tsx
-    ├── MobileNotices.tsx
-    ├── MobileUsers.tsx
-    ├── MobileProfileSettings.tsx
-    ├── MobileLeaderAssignment.tsx
-    ├── MobileAdminAssignment.tsx
-    ├── MapCanvas.tsx           # ⚠️ 1400+ 줄 — 네이버/Mock 지도
-    ├── SpecialPeriodBanner.tsx # 특별봉사 배너 (card/compact/inline 3 변형)
-    ├── SpecialPeriodSettings.tsx
+    ├── UserMobileHome.tsx      # 일반 사용자용 모바일 홈
+    ├── MobileTerritory.tsx / MobileMap.tsx / MobileNotices.tsx / MobileUsers.tsx
+    ├── MobileAdminAssignment.tsx / MobileProfileSettings.tsx
+    ├── admin/                  # 관리자 전용 화면
+    │   ├── AdminMobileCalendar.tsx  (1862줄)
+    │   ├── AdminEventDetailSheet.tsx / AdminMobileHome.tsx
+    │   ├── AdminMobileZone.tsx / AdminSuggestions.tsx
+    │   └── sharedAssignmentTeams.ts  # 팀 묶기 (teamKey 기준)
+    ├── assignment/             # 팀 구성 & 구역 배분
+    │   ├── AssignmentEditor.tsx / TeamBuildScreen.tsx / ZoneAssignScreen.tsx
+    ├── MapCanvas.tsx           # 네이버/Mock 지도 (2133줄)
+    ├── CsvImportModal.tsx           # CSV 업로드 (상태 6개를 여기서 들고 있다)
+    ├── DuplicateBuildingMergeModal.tsx  # 중복 주소 합치기 (카드 병합과 **다른 기능**)
+    ├── TerritoryDetailPane.tsx      # 구역 카드 상세 (오른쪽 패널)
+    ├── ServiceSuggestionsSection.tsx # 대화 방법 제안 (링크 자동 인식)
+    ├── SpecialPeriodBanner.tsx / SpecialPeriodSettings.tsx
     ├── Login.tsx + Login.css
     └── Toast.tsx               # 전역 토스트 렌더러
+
+⚠ 이 목록은 자주 낡는다. **의심되면 `ls src/components/` 를 먼저 볼 것.**
+(옛 문서에 없어진 파일 다섯 개가 남아 있었다: MobileCalendar · DesktopNotices ·
+DesktopUsers · MobileLeaderAssignment · sampleData)
 ```
 
-**거대 파일 주의** (점진적 분할 권장):
-- `useStore.ts` 2300줄 — 다음 리팩토링 1순위
-- `DesktopTerritory.tsx` 2200줄
-- `MapCanvas.tsx` 1400줄
+**거대 파일** (2026-08-28 실측):
+```
+DesktopMap.tsx            2752   ← 다음 후보
+MobileMap.tsx             2406
+DesktopTerritory.tsx      2346   진행 중 (2815 에서 줄임)
+MapCanvas.tsx             2133
+AdminMobileCalendar.tsx   1862
+MobileTerritory.tsx       1686
+MobileHome.tsx            1521
+```
+`useStore.ts` 는 934줄로 이미 쪼개졌다 (옛 문서에 2300줄이라 적혀 있었다).
+
+⚠ **떼기 전에 의존성을 센다.** 자식이 쓰는 값이 10개 이하일 때만 뗀다.
+20개 이상이면 떼지 말고 **경계를 다시 잡는다** — 구획 하나를 통째로 보면
+답이 없어도 나누면 떨어지는 것이 나온다.
 
 ---
 
@@ -347,9 +372,29 @@ review_tasks        id, title, content, status, completed_at, created_at
 - `notices.priority`: DB 영어 (`normal`) → `PRIORITY_MAP` 으로 한국어 변환
 
 ### RPC 함수 (Supabase)
-- `auth_login(p_login_id, p_pin)` — bcrypt 검증 + last_login_at 갱신 + login_logs 기록
-- `get_login_logs(p_user_id, p_since, p_limit)` — 로그인 기록 조회
-- `hash_pin_if_plain` — 트리거 함수 (자동 호출, 직접 호출 X)
+
+**인증**
+- `auth_login(p_login_id, p_pin)` — bcrypt 검증 + last_login_at + login_logs. **세션 토큰을 돌려준다**
+- `signup_tx(p_login_id, p_name, p_pin)` — 가입. **역할·승인상태를 서버가 강제** (user/pending)
+- `verify_session(p_token)` — 검증 + last_used_at 갱신 + 비활성/미승인이면 세션 삭제.
+  ⚠ **부작용이 있어 RLS 정책에서 쓰면 안 된다**
+- `private.request_session_user_id()` — 요청 헤더의 토큰으로 사람을 찾는다. **읽기 전용**.
+  정책에서는 `(select …)` 로 감싼다. `request_session_role()` · `request_is_admin()` 도 있다
+
+**알림** (전부 관리자/권한 검사 있음)
+- `update_calendar_event_tx` / `update_calendar_event_series_tx` — 일정 수정 + 알림 보낼지
+- `create_notice_tx` — 공지. 관리자만
+- `filter_notification_recipients(ids, type)` — 수신자 필터. **anon 에 안 열려 있다**
+
+**자료**
+- `import_building_tx` — CSV 건물 하나를 통째로 (건물+세대+정기방문+방문기록)
+- `assign_cards_bulk_tx` — 인도자 배정 (충돌 감지)
+- `merge_duplicate_buildings_tx` — 중복 주소 건물 병합
+- `rename_user_name_references` / `purge_user_name_references` — 이름 바꾸기·사용자 삭제 뒷정리
+
+**트리거 함수** (직접 호출 X)
+- `hash_pin_if_plain`, `notify_on_*` 여덟 개, `dispatch_push_notification`, `insert_notifications`
+  ⚠ 뒤의 둘은 **anon 에 안 열려 있다** (열려 있으면 아무나 임의 푸시를 쏜다)
 
 ### SQL 파일 위치 (2026-08-25 개편)
 - `supabase/baseline.sql` + `baseline-extras.sql` — 빈 DB 를 세우는 사진.
@@ -398,15 +443,16 @@ App.css          [모바일 공통] 0px~
 - 홈, 캘린더, 구역, 공지, 지도 — 모두 동작
 - 역할별 탭/기능 분기
 
-### 미완료 / 향후 과제
-- [ ] visit_histories / buildings / cards 의 RLS (현재 anon 전체 접근)
-- [ ] 세션 토큰 또는 Supabase Auth 마이그레이션 검토
-- [ ] CSV import (카드/건물/세대)
-- [ ] `useStore.ts`, `DesktopTerritory.tsx` 분할 리팩토링
-- [x] 자동화 테스트 (vitest) — 순수 로직 49개 도입 완료. 리팩토링 시 확장할 것
-- [ ] chat_messages SELECT 를 anon/authenticated 에 다시 부여한 것을 더 좁은
-      RLS policy 로 좁히기 (현재 `using (deleted_at is null)` open).
-      예: 본인이 참가자인 일정만, 또는 token 기반 view.
+### 미완료 / 향후 과제 (급한 순)
+1. **anon 쓰기 차단 4·5단계** ← 제일 크다. 다른 회중 배포 전 필수.
+   되돌리기 어려우니 반드시 리뷰받고, 사람들이 새 앱을 받은 뒤에.
+2. `20260825_1200_merge_conflict_fix.sql` **운영 미적용** (중복 주소 0개라 급하지 않다)
+3. 구조 정리 이어가기 — DesktopMap 2752 · MobileMap 2406 · 카드 표(335줄·61개)
+4. chat_messages SELECT 를 더 좁은 RLS 로 (지금은 `using (deleted_at is null)` open)
+5. 정기방문 시작일이 날짜가 아니라 **ISO 시각**으로 저장된다 (`2026-01-01T03:00:00Z`).
+   날짜 경계에서 하루가 밀릴 수 있다
+- [x] CSV import — 건물 하나가 한 트랜잭션 (`import_building_tx`)
+- [x] 자동화 테스트 — **537개** (vitest). 순수 로직 + 모달 조립 시험
 
 ---
 
@@ -453,6 +499,18 @@ App.css          [모바일 공통] 0px~
 개수를 지키고 `npm run lint` 에 물려 있어서, 늘리면 CI 가 실패한다.
 파일을 옮길 때마다 그 스크립트의 `MAX` 를 **줄인다.**
 
+### 시험 규칙 (2026-08-27 ~ 하루에 다섯 번 데었다)
+
+**시험을 쓴 뒤 반드시 코드를 일부러 망가뜨려 그 시험만 실패하는지 본다.**
+통과하는 시험과 무는 시험은 다르다. 헛돌던 예:
+조건을 안 줘서 어느 쪽이든 참 · 검사 대상이 수신자 후보에 없어서 저절로 참 ·
+'한 명이 받았다' 만 봐서 엉뚱한 한 명이어도 통과 · `disabled` 라 클릭이 안 들어감.
+
+**검사를 다른 검사의 성공 안에 넣지 말 것.** 하나가 깨지면 여럿이 조용히 안 돈다.
+
+**부모가 걸러 주기를 믿지 말 것.** 잎이 스스로 걸러야 부모가 잊어도 안 샌다
+(다른 일정 배정이 팀에 붙어 보인 것, 푸시가 필터를 안 거친 것 모두 같은 모양이다).
+
 ### 절대 하지 말 것
 - ❌ `.env.local` 커밋
 - ❌ `backups/` 커밋
@@ -464,6 +522,13 @@ App.css          [모바일 공통] 0px~
 ## 10. 디버깅 / 운영 메모
 
 ### 자주 만나는 문제
+- **"왜 이 카드가 목록에 없지"**: `대상없음`(건물도 세대도 0개)은 '진행중' 으로 걸러도
+  빠진다. `utils/filterTerritoryCards.test.ts` 가 규칙을 말해 준다
+- **저장이 안 된다**: 오류 문구가 이유를 말해 준다 (`utils/dbError`).
+  "서버 기능이 아직 준비되지 않았습니다" 면 마이그레이션을 안 넣은 것이다
+- **알림이 안 온다**: 종류가 `filter_notification_recipients` 에 있는지 본다.
+  없으면 `else false` 로 **아무한테도 안 간다**
+- **`pbcopy` 는 이 환경에서 안 먹는다** (클립보드가 빈다). 파일로 주고받을 것
 - **로그인 안 됨**: 브라우저 Console 에서 `[login] auth_login RPC failed` 확인. RPC 미등록 또는 `extensions.crypt` 권한 문제일 수 있음
 - **사용자 목록 빈 화면**: anon 키로 PIN 컬럼 SELECT 시도 → REVOKE 됐는지 확인
 - **백업 실패**: `.env.local` 의 `SUPABASE_SERVICE_ROLE_KEY` 누락
