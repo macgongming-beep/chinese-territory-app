@@ -9,6 +9,41 @@
 -- **거르는 자리를 두 함수 안으로 옮겨** 부르는 쪽이 잊을 수 없게 한다.
 -- 규칙 자체는 filter_notification_recipients 한 곳에만 있다.
 
+-- 필터에 daily_service 를 더한다.
+--
+-- 매일 요약은 send_daily_service_digest 가 **자기가 먼저** push_daily_service 로
+-- 걸렀고, 필터 함수에는 그 종류가 없어 else true 로 통과했다.
+-- 지금까지는 맞게 돌았지만 '주석으로 지키는 규칙' 이었다 —
+-- 다른 데서 daily_service 로 부르면 끈 사람에게도 간다.
+-- 규칙을 필터 안에 넣어 부르는 쪽이 잊을 수 없게 한다.
+create or replace function public.filter_notification_recipients(
+  p_user_ids integer[], p_type text
+)
+returns integer[]
+language sql
+stable
+as $$
+  select coalesce(array_agg(distinct u.id), '{}'::integer[])
+  from unnest(coalesce(p_user_ids, '{}'::integer[])) as t(uid)
+  join public.app_users u on u.id = t.uid
+  left join public.notification_preferences pref on pref.user_id = u.id
+  where coalesce(u.is_active, true) is true
+    and coalesce(u.approval_status, 'approved') = 'approved'
+    and case p_type
+      when 'notice' then coalesce(pref.push_new_notice, true)
+      when 'event_change' then coalesce(pref.push_event_change, true)
+      when 'comment' then coalesce(pref.push_comment, true)
+      when 'mention' then coalesce(pref.push_mention, true)
+      when 'chat' then coalesce(pref.push_chat, true)
+      when 'service_started' then coalesce(pref.push_service_status, true)
+      when 'service_ended' then coalesce(pref.push_service_status, true)
+      when 'daily_service' then coalesce(pref.push_daily_service, true)
+      else true
+    end
+$$;
+
+revoke all on function public.filter_notification_recipients(integer[], text) from public, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.dispatch_push_notification(p_user_ids integer[], p_type text, p_title text, p_body text DEFAULT NULL::text, p_link text DEFAULT NULL::text, p_related_id integer DEFAULT NULL::integer)
  RETURNS void
  LANGUAGE plpgsql
@@ -420,16 +455,16 @@ begin
     values ('mtx-p-off', '푸시끔', '1234', 'user', 'approved', true) returning id into v_poff;
 
     insert into public.notification_preferences
-      (user_id, push_comment, push_chat, push_mention, push_new_notice, push_event_change)
-    values (v_poff, false, false, false, false, false)
+      (user_id, push_comment, push_chat, push_mention, push_new_notice, push_event_change, push_daily_service)
+    values (v_poff, false, false, false, false, false, false)
     on conflict (user_id) do update set
       push_comment = false, push_chat = false, push_mention = false,
-      push_new_notice = false, push_event_change = false;
+      push_new_notice = false, push_event_change = false, push_daily_service = false;
 
     -- 종류마다 '켠 사람만 남는가'
     for v_left in
       select public.filter_notification_recipients(array[v_pon, v_poff], t)
-      from unnest(array['comment', 'chat', 'mention', 'notice', 'event_change']) as t
+      from unnest(array['comment', 'chat', 'mention', 'notice', 'event_change', 'daily_service']) as t
     loop
       if v_left is distinct from array[v_pon] then
         insert into public._notify_matrix_result (칸, 결과, 판정)
@@ -440,8 +475,8 @@ begin
 
     if not exists (select 1 from public._notify_matrix_result where 칸 like '14 %') then
       insert into public._notify_matrix_result (칸, 결과, 판정)
-      values ('14 종류별 필터 (댓글·채팅·멘션·공지·일정변경)',
-              '다섯 종류 모두 켠 사람만 남았다', 'OK');
+      values ('14 종류별 필터 (댓글·채팅·멘션·공지·일정변경·매일요약)',
+              '여섯 종류 모두 켠 사람만 남았다', 'OK');
     end if;
 
     -- 실제 댓글 한 건으로 끝에서 끝까지.

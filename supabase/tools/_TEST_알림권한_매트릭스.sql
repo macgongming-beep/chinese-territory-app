@@ -323,16 +323,16 @@ begin
     values ('mtx-p-off', '푸시끔', '1234', 'user', 'approved', true) returning id into v_poff;
 
     insert into public.notification_preferences
-      (user_id, push_comment, push_chat, push_mention, push_new_notice, push_event_change)
-    values (v_poff, false, false, false, false, false)
+      (user_id, push_comment, push_chat, push_mention, push_new_notice, push_event_change, push_daily_service)
+    values (v_poff, false, false, false, false, false, false)
     on conflict (user_id) do update set
       push_comment = false, push_chat = false, push_mention = false,
-      push_new_notice = false, push_event_change = false;
+      push_new_notice = false, push_event_change = false, push_daily_service = false;
 
     -- 종류마다 '켠 사람만 남는가'
     for v_left in
       select public.filter_notification_recipients(array[v_pon, v_poff], t)
-      from unnest(array['comment', 'chat', 'mention', 'notice', 'event_change']) as t
+      from unnest(array['comment', 'chat', 'mention', 'notice', 'event_change', 'daily_service']) as t
     loop
       if v_left is distinct from array[v_pon] then
         insert into public._notify_matrix_result (칸, 결과, 판정)
@@ -343,8 +343,8 @@ begin
 
     if not exists (select 1 from public._notify_matrix_result where 칸 like '14 %') then
       insert into public._notify_matrix_result (칸, 결과, 판정)
-      values ('14 종류별 필터 (댓글·채팅·멘션·공지·일정변경)',
-              '다섯 종류 모두 켠 사람만 남았다', 'OK');
+      values ('14 종류별 필터 (댓글·채팅·멘션·공지·일정변경·매일요약)',
+              '여섯 종류 모두 켠 사람만 남았다', 'OK');
     end if;
 
     -- 실제 댓글 한 건으로 끝에서 끝까지.
