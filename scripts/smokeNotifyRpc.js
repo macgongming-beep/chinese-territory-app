@@ -55,7 +55,8 @@ const main = async () => {
 
   // 3) 내부 필터 함수는 밖에서 못 불러야 한다
   const r3 = await rpc('filter_notification_recipients', { p_user_ids: [1], p_type: 'notice' })
-  check('내부 필터 함수는 anon 에 안 열려 있다', r3.status === 404,
+  // 401/403 = 권한 없음, 404 = 노출 안 됨. 셋 다 '밖에서 못 부른다' 는 뜻이다.
+  check('내부 필터 함수는 anon 에 안 열려 있다', [401, 403, 404].includes(r3.status),
     `HTTP ${r3.status}`)
 
   // 4) ── 여기부터가 진짜다: 실제 로그인해서 성공 경로를 본다 ──
