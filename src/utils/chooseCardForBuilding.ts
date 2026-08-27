@@ -23,7 +23,7 @@ export type ChooseCardInput = {
 }
 
 export type ChooseCardResult =
-  | { cardId: number; how: 'chosen' | 'boundary' | 'address' | 'unassigned' | 'firstCard' }
+  | { cardId: number; how: 'chosen' | 'boundary' | 'address' | 'unassigned' }
   | { cardId: null; how: 'none' }
 
 /** 주소의 동 이름으로 카드를 찾는다 */
@@ -50,12 +50,9 @@ export function chooseCardForBuilding(input: ChooseCardInput): ChooseCardResult 
   // ③ 미배정 건물 카드
   if (input.unassignedCardId != null) return { cardId: input.unassignedCardId, how: 'unassigned' }
 
-  // ④ 그것도 없으면 첫 카드. **사용자의 입력을 잃는 것보다 낫다** —
-  //    좌표를 못 찾아도 건물은 만들어져야 하고, 나중에 옮길 수 있다.
-  //    문제였던 건 배열이 아니라 **필터**였다: filteredCards[0] 은 화면 상태에 따라
-  //    달라졌지만, 거르지 않은 cards[0] 은 같은 입력이면 항상 같다.
-  //    다만 조용히 넣지 않는다 — 호출부가 어느 카드인지 알려 준다.
-  if (input.cards.length > 0) return { cardId: input.cards[0].id, how: 'firstCard' }
-
+  // ④ 첫 카드로 떨어뜨리지 **않는다.**
+  //    한때 '입력을 잃지 않으려고' 남겼는데 전제가 틀렸다 —
+  //    AddBuildingModal 은 저장이 실패하면 창을 열어 두고 입력을 지킨다.
+  //    반면 cards[0] 은 목록 순서가 바뀌면 엉뚱한 카드에 저장한다.
   return { cardId: null, how: 'none' }
 }

@@ -467,20 +467,23 @@ export function DesktopTerritory({
   // ⚠ 일괄 작업과 표시는 **보이는 것만** 쓴다.
   //   예전에는 전체선택이 보이는 것만 더하고 뺐는데 삭제는 고른 것 전부를 지워,
   //   확인창의 개수 안에 화면에 없는 카드가 섞였다 (카드를 지우면 건물이 딸려 죽는다).
+  //   ⚠ 기준은 `filteredCards` 가 아니라 **실제로 그리는 `renderedCards`** 다.
+  //     완료·제외 카드를 접으면 화면에서 사라지는데 filteredCards 에는 남는다.
+  //     (유틸 시험은 전부 통과했는데 배선이 틀렸던 자리다)
   const visibleCheckedCardIds = useMemo(
-    () => visibleSelection(checkedCardIds, filteredCards),
-    [checkedCardIds, filteredCards],
+    () => visibleSelection(checkedCardIds, renderedCards),
+    [checkedCardIds, renderedCards],
   )
 
   // 두 번째 방어: 안 보이게 된 선택은 아예 버린다.
   // 파생값만으로도 안전하지만, 버튼의 숫자와 실제 대상이 어긋나 보이지 않게 한다.
   useEffect(() => {
-    if (hasHiddenSelection(checkedCardIds, filteredCards)) {
+    if (hasHiddenSelection(checkedCardIds, renderedCards)) {
       setCheckedCardIds(new Set(visibleCheckedCardIds))
     }
-  }, [checkedCardIds, filteredCards, visibleCheckedCardIds])
+  }, [checkedCardIds, renderedCards, visibleCheckedCardIds])
 
-  const selectedMergeCards = filteredCards.filter((card) => checkedCardIds.has(card.id))
+  const selectedMergeCards = renderedCards.filter((card) => checkedCardIds.has(card.id))
 
   const activeAdvancedCardFilterCount =
     (leaderFilter !== '전체' ? 1 : 0) +
@@ -649,7 +652,7 @@ export function DesktopTerritory({
       return false
     }
     // 어디로 갔는지 알려 준다 — 조용히 엉뚱한 카드에 들어가는 게 문제였다
-    if (picked.how === 'boundary' || picked.how === 'unassigned' || picked.how === 'firstCard') {
+    if (picked.how === 'boundary' || picked.how === 'unassigned') {
       const matched = cards.find((c) => c.id === picked.cardId)
       if (matched) showToast(msg('"{name}" 카드에 자동 배정됐습니다', { name: matched.name }), 'success')
     }
@@ -1741,7 +1744,7 @@ export function DesktopTerritory({
                     선택 삭제{visibleCheckedBuildingIds.length > 0 ? ` ${visibleCheckedBuildingIds.length}` : ''}
                   </button>
                 )}
-                {buildingCardFilter === unassignedCardId && checkedBuildingIds.size > 0 && (
+                {buildingCardFilter === unassignedCardId && visibleCheckedBuildingIds.length > 0 && (
                   <button
                     className="tbl-ghost-btn"
                     style={{ color: 'var(--primary-600)', fontWeight: 600 }}
@@ -1749,7 +1752,7 @@ export function DesktopTerritory({
                     onClick={handleReassignCheckedByBoundary}
                     type="button"
                   >
-                    {reassigningChecked ? '재배정 중...' : `선택 ${checkedBuildingIds.size}개 카드 재배정`}
+                    {reassigningChecked ? '재배정 중...' : `선택 ${visibleCheckedBuildingIds.length}개 카드 재배정`}
                   </button>
                 )}
                 <button className="tbl-ghost-btn" disabled={reassigningByBoundary} onClick={handleReassignByBoundary} type="button">

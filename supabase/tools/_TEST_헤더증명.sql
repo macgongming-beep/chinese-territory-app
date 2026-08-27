@@ -25,6 +25,7 @@ grant execute on function public._probe_headers() to anon;
 
 -- ② 정책 안에서도 읽히는지 — 부작용 없는 읽기 전용 helper (실제로 쓸 모양 그대로)
 create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;   -- ⚠ 운영과 같은 권한으로 시험해야 한다
 
 create or replace function private.request_session_token()
 returns uuid

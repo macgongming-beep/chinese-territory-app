@@ -34,16 +34,18 @@ describe('chooseCardForBuilding', () => {
     expect(r).toEqual({ cardId: 9, how: 'unassigned' })
   })
 
-  test('미배정 카드도 없으면 첫 카드 — 사용자의 입력을 잃지 않는다', () => {
-    // 좌표를 못 찾아도 건물은 만들어져야 한다. 나중에 옮길 수 있다.
-    // 문제였던 건 배열이 아니라 **필터**였다 (filteredCards[0] 은 화면 따라 달라졌다).
+  test('⚠ 미배정 카드도 없으면 null — 첫 카드로 떨어뜨리지 않는다', () => {
+    // 저장이 실패해도 모달이 남아 입력은 지켜진다.
+    // 반면 cards[0] 은 목록 순서가 바뀌면 엉뚱한 카드에 저장한다.
     const r = chooseCardForBuilding({ ...base, address: '어딘가 1' })
-    expect(r).toEqual({ cardId: 1, how: 'firstCard' })
+    expect(r).toEqual({ cardId: null, how: 'none' })
   })
 
-  test('카드가 하나도 없으면 null', () => {
-    const r = chooseCardForBuilding({ ...base, address: '어딘가 1', cards: [] })
-    expect(r).toEqual({ cardId: null, how: 'none' })
+  test('⚠ 주소가 안 맞을 때 목록 순서가 바뀌어도 결과가 같다', () => {
+    // 첫 카드 fallback 이 있으면 이 시험이 깨진다
+    const a = chooseCardForBuilding({ ...base, address: '없는동 1' })
+    const b = chooseCardForBuilding({ ...base, address: '없는동 1', cards: [...CARDS].reverse() })
+    expect(a).toEqual(b)
   })
 
   test('⚠ 화면 필터와 무관하다 — 카드 목록이 같으면 결과가 같다', () => {

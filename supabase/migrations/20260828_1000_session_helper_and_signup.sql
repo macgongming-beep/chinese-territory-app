@@ -47,8 +47,10 @@ declare
 begin
   begin
     v_token := private.request_session_token();
-  exception when others then
-    return null;   -- 형식이 이상한 헤더는 '없는 것' 으로 본다 (예외로 터지지 않게)
+  exception when invalid_text_representation then
+    -- 형식이 이상한 헤더만 '없는 것' 으로 본다.
+    -- when others 로 하면 권한·스키마 오류까지 '로그인 안 됨' 으로 숨긴다.
+    return null;
   end;
   if v_token is null then return null; end if;
 
@@ -126,9 +128,16 @@ begin
   end if;
 
   -- role·approval_status 는 인자로 받지 않는다. 서버가 정한다.
-  insert into public.app_users (login_id, name, pin, role, approval_status)
-  values (v_login_id, v_name, p_pin, 'user', 'pending')
-  returning id into v_id;
+  -- 위 검사와 insert 사이에 다른 요청이 끼어들 수 있다.
+  -- 진짜 방어선은 DB 의 unique 다 (app_users_login_id_key / app_users_name_key).
+  begin
+    insert into public.app_users (login_id, name, pin, role, approval_status)
+    values (v_login_id, v_name, p_pin, 'user', 'pending')
+    returning id into v_id;
+  exception when unique_violation then
+    return jsonb_build_object('ok', false, 'reason', 'taken',
+                              'message', '이미 사용 중인 아이디 또는 닉네임입니다.');
+  end;
 
   return jsonb_build_object('ok', true, 'id', v_id);
 end;

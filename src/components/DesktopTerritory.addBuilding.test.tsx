@@ -80,16 +80,29 @@ describe('건물 추가 — 자동 카드 배정', () => {
     expect(props.onCreateBuilding).toHaveBeenCalledWith(expect.objectContaining({ cardId: 2 }))
   })
 
-  test('좌표를 못 찾아도 건물은 만들어진다 (좌표 0)', async () => {
+  test('좌표를 못 찾아도 건물은 만들어진다 — **미배정 건물** 카드로 (좌표 0)', async () => {
+    // ⚠ 운영에는 '미배정 건물' 카드가 늘 있다. fixture 에도 그걸 넣는다.
+    //   예전에는 그게 없어도 cards[0] 에 넣었는데, 목록 순서가 바뀌면
+    //   엉뚱한 카드에 저장되는 규칙이었다.
+    const user = userEvent.setup()
+    geocode.mockResolvedValue(null)
+    const props = open({ cards: [testCard(7, '수지구 죽전동 1'), testCard(99, '미배정 건물')] })
+
+    await fillAndSubmit(user, '없는 주소')
+
+    expect(props.onCreateBuilding).toHaveBeenCalledWith(
+      expect.objectContaining({ cardId: 99, lat: 0, lng: 0 }),
+    )
+  })
+
+  test('⚠ 미배정 건물 카드도 없으면 저장하지 않는다 (아무 카드에나 넣지 않는다)', async () => {
     const user = userEvent.setup()
     geocode.mockResolvedValue(null)
     const props = open({ cards: [testCard(7, '수지구 죽전동 1')] })
 
     await fillAndSubmit(user, '없는 주소')
 
-    expect(props.onCreateBuilding).toHaveBeenCalledWith(
-      expect.objectContaining({ cardId: 7, lat: 0, lng: 0 }),
-    )
+    expect(props.onCreateBuilding).not.toHaveBeenCalled()
   })
 
   test('주소가 비면 만들지 않는다', async () => {
