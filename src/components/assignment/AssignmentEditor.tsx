@@ -239,6 +239,7 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
       </header>
 
       <TeamBuildScreen
+        eventId={event.id}
         participants={participants}
         guests={event.guests}
         onAddGuest={onAddGuest ? (name) => onAddGuest(event.id, name) : undefined}

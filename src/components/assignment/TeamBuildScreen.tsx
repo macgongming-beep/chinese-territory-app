@@ -15,6 +15,8 @@ import { msg } from '../../lib/msg'
 import { showToast } from '../../lib/toast'
 
 type Props = {
+  /** 이 화면이 다루는 일정. 다른 일정 배정이 섞이지 않게 여기서도 거른다 */
+  eventId: number
   participants: string[]              // 일정 신청자 ∪ 배정자
   /** 앱 계정이 없는 손님 이름. participants 안에 들어 있고 여기에도 있으면 게스트다 */
   guests?: string[]
@@ -32,7 +34,19 @@ type Props = {
   buildings?: Building[]
 }
 
-export function TeamBuildScreen({ participants, guests = [], onAddGuest, teams, cards, canEdit, dispatch, onOpenTeamZones, informalAssets = [], eventInformalAssignments = [], eventRestaurantAssignments = [], buildings = []}: Props) {
+export function TeamBuildScreen({ eventId, participants, guests = [], onAddGuest, teams, cards, canEdit, dispatch, onOpenTeamZones, informalAssets = [], eventInformalAssignments = [], eventRestaurantAssignments = [], buildings = []}: Props) {
+
+  // ⚠ **여기서도 일정으로 거른다.** 부모가 걸러서 주지만, 그걸 믿고 이름만 보다가
+  //   다른 일정의 비공식·식당 배정이 오늘 팀에 붙어 보인 적이 있다.
+  //   (오늘 알림에서도 '부르는 쪽이 걸러 주겠지' 가 똑같이 샜다)
+  const informalHere = useMemo(
+    () => eventInformalAssignments.filter((a) => a.eventId === eventId),
+    [eventInformalAssignments, eventId],
+  )
+  const restaurantHere = useMemo(
+    () => eventRestaurantAssignments.filter((a) => a.eventId === eventId),
+    [eventRestaurantAssignments, eventId],
+  )
 
   // 구역 카드가 없어도 비공식·식당을 맡았으면 '미배정' 이 아니다.
   // 예전에는 cardIds 만 보고 '구역 미배정' 이라고 적어서, 비공식만 맡은 팀이
@@ -45,13 +59,13 @@ export function TeamBuildScreen({ participants, guests = [], onAddGuest, teams, 
     }
     const mine = new Set(team.members)
     const assetNames = Array.from(new Set(
-      eventInformalAssignments
+      informalHere
         .filter((a) => mine.has(a.userName))
         .map((a) => informalAssets.find((x) => x.id === a.assetId)?.name)
         .filter((n): n is string => Boolean(n)),
     ))
     const restaurantNames = Array.from(new Set(
-      eventRestaurantAssignments
+      restaurantHere
         .filter((a) => mine.has(a.userName))
         .map((a) => buildings.find((b) => b.id === a.buildingId)?.name)
         .filter((n): n is string => Boolean(n)),
