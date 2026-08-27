@@ -4,6 +4,7 @@
  * useStore.ts 에서 사용하는 모든 transformer 와 DB row 타입.
  * mutate 로직은 useStore.ts 에 그대로 두고, 순수 변환만 분리.
  */
+import { compareUnitNumbers } from '../utils/unitNumber'
 import type {
   Building,
   CalendarEvent,
@@ -26,13 +27,9 @@ import type {
   VisitHistory,
 } from '../types'
 
-// ─── 호수 정렬: 지하(B/b) → 지상 숫자 → 한글/기타 ───────────────────
-const _collator = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' })
-const _unitPriority = (s: string) => /^[Bb]/.test(s) ? 0 : /^[0-9]/.test(s) ? 1 : 2
-export function compareUnitNumbers(a: string, b: string): number {
-  const diff = _unitPriority(a) - _unitPriority(b)
-  return diff !== 0 ? diff : _collator.compare(a, b)
-}
+// 호수 정렬은 utils/unitNumber 로 옮겼다 (utils 가 hooks 를 부르지 않도록).
+// 기존 호출부를 위해 여기서 다시 내보낸다.
+export { compareUnitNumbers } from '../utils/unitNumber'
 const unitNumberCollator = { compare: compareUnitNumbers }
 
 // ===============================================================

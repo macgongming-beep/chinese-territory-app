@@ -3,9 +3,8 @@
  * DesktopTerritory 의 CSV 파싱 로직을 분리한 파일
  */
 import type { Building, CardBoundary, TerritoryCard, UnitStatus } from '../types'
-import { getRegionNames } from '../lib/regions'
 import { findCardForCoordinates, normalizeMapCoordinates, parseCoordinate } from './mapUtils'
-import { compareUnitNumbers } from '../hooks/storeTransforms'
+import { compareUnitNumbers } from './unitNumber'
 
 // ── 타입 ────────────────────────────────────────────────────────
 
@@ -257,6 +256,9 @@ export type ParseBuildingCsvDeps = {
   unassignedCardId?: number | null
   /** 주소 → 좌표. 시험에서는 가짜를 넣는다 */
   geocodeAddress: (address: string) => Promise<{ lat: number; lng: number } | null>
+  /** 지역 이름들 (처인구·기흥구…). 카드명을 짐작할 때 쓴다.
+   *  전역(getRegionNames)을 직접 읽으면 시험이 순서를 타서 인자로 받는다 */
+  regionNames: string[]
 }
 
 export type ParseBuildingCsvResult = {
@@ -283,7 +285,7 @@ export async function parseBuildingCsv(
   text: string,
   deps: ParseBuildingCsvDeps,
 ): Promise<ParseBuildingCsvResult> {
-  const { cards, cardBoundaries, unassignedCardId, geocodeAddress } = deps
+  const { cards, cardBoundaries, unassignedCardId, geocodeAddress, regionNames } = deps
     const rows = parseCsv(text)
     if (rows.length < 2) {
       return { ok: false, error: 'CSV에 헤더와 데이터 행이 필요합니다.', headers: [], rows: [], skipped: 0, skippedDetails: [] }
@@ -375,7 +377,7 @@ export async function parseBuildingCsv(
       const visitTimeSlotValue = findValue(row, ['시간대', 'timeSlot', 'time_slot'])
       const visitMemoValue = findValue(row, ['방문메모', 'visitMemo', 'visitNote'])
 
-      const inferredRegion = getRegionNames().find((region) => regionValue === region || fullRegionValue.includes(region))
+      const inferredRegion = regionNames.find((region) => regionValue === region || fullRegionValue.includes(region))
       const inferredArea = areaValue || cards.find((item) => item.area && detailAddressValue.includes(item.area))?.area
       const inferredCardName = inferredRegion && inferredArea && cardIndexValue
         ? `${inferredRegion} ${inferredArea} ${cardIndexValue}`

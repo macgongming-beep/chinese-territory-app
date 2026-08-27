@@ -2,7 +2,6 @@
 // 300줄이 화면 안에 들어 있어 지금까지 아무도 확인해본 적이 없다.
 import { describe, test, expect, beforeEach, vi } from 'vitest'
 import { parseBuildingCsv } from './csvBuildingImport'
-import { setRegions } from '../lib/regions'
 import type { TerritoryCard } from '../types'
 
 const card = (id: number, name: string, region = '처인구', area = '유방동') =>
@@ -18,12 +17,12 @@ const deps = (over: Partial<Parameters<typeof parseBuildingCsv>[1]> = {}) => ({
   cardBoundaries: [],
   unassignedCardId: null,
   geocodeAddress: geo,
+  regionNames: ['처인구', '기흥구'],
   ...over,
 })
 
 beforeEach(() => {
   geo.mockClear()
-  setRegions([{ id: 1, name: '처인구', city: '용인시', sortOrder: 1, nameZh: '', nameEn: '' }])
 })
 
 describe('parseBuildingCsv — 못 읽는 파일', () => {
@@ -185,5 +184,62 @@ describe('parseBuildingCsv — 카드 정하기', () => {
     const r = await parseBuildingCsv('주소,카드ID\n유방동 1,999\n', deps({ unassignedCardId: 2 }))
     expect(r.rows).toHaveLength(0)
     expect(r.skippedDetails[0].reason).toContain('카드 ID')
+  })
+})
+
+// ── 코덱스 리뷰에서 나온, 시험이 없던 구석들 ──────────────────
+
+describe('parseBuildingCsv — 한 칸에 여러 호수 (지금 동작을 못 박는다)', () => {
+  test('⚠ 지금은 쪼개지 않는다 — "101|102" 가 이름이 그것인 세대 하나가 된다', () => {
+    // splitUnitNumbers 라는 헬퍼가 있고 시험까지 있지만 **파서가 안 쓴다.**
+    // 그래서 헬퍼 시험은 헛된 안심이었다.
+    // 쪼개도록 바꿀지는 정책 결정이다 (빈 호수 기본값도 101 / 1층 로 갈린다).
+    // 그때까지 지금 동작을 여기에 못 박아 둔다.
+    return parseBuildingCsv('주소,카드,호수\n유방동 1,처인구 유방동 1,101|102\n', deps())
+      .then((r) => {
+        expect(r.rows[0].units.map((u) => u.number)).toEqual(['101|102'])
+      })
+  })
+})
+
+describe('parseBuildingCsv — 같은 호수가 여러 줄일 때', () => {
+  test('부가정보는 첫 줄이 이긴다 (방문기록만 쌓인다)', async () => {
+    const csv = '주소,카드,호수,메모,상태,방문일자,방문결과\n' +
+      '유방동 1,처인구 유방동 1,101,첫 메모,부재,2026-01-01,부재\n' +
+      '유방동 1,처인구 유방동 1,101,둘째 메모,만남,2026-02-01,부재\n'
+    const r = await parseBuildingCsv(csv, deps())
+    const u = r.rows[0].units[0]
+    expect(u.memo).toBe('첫 메모')            // 둘째 줄 메모는 버려진다
+    expect(u.visitHistories).toHaveLength(2)  // 방문기록은 둘 다 쌓인다
+  })
+})
+
+describe('parseBuildingCsv — 터지는 경우', () => {
+  test('지오코딩이 예외를 던지면 그대로 밖으로 나간다 (화면이 finally 로 받는다)', async () => {
+    await expect(parseBuildingCsv('주소,카드\n유방동 1,처인구 유방동 1\n',
+      deps({ geocodeAddress: async () => { throw new Error('네트워크') } })))
+      .rejects.toThrow('네트워크')
+  })
+
+  test('일부 줄만 좌표를 못 찾으면 나머지는 올린다', async () => {
+    let n = 0
+    const csv = '주소,카드\n가나동 1,처인구 유방동 1\n다라동 2,처인구 유방동 1\n'
+    const r = await parseBuildingCsv(csv, deps({
+      geocodeAddress: async () => (++n === 1 ? null : { lat: 37.25, lng: 127.19 }),
+    }))
+    expect(r.rows).toHaveLength(1)
+    expect(r.skipped).toBe(1)
+  })
+})
+
+describe('parseBuildingCsv — 구역선으로 자동 배정', () => {
+  test('카드명이 없어도 좌표가 구역선 안이면 그 카드로 간다', async () => {
+    const square = [
+      { lat: 37.2, lng: 127.1 }, { lat: 37.3, lng: 127.1 },
+      { lat: 37.3, lng: 127.3 }, { lat: 37.2, lng: 127.3 },
+    ]
+    const r = await parseBuildingCsv('주소,위도,경도\n어딘가 1,37.25,127.19\n',
+      deps({ cardBoundaries: [{ cardId: 2, points: square }] as never, unassignedCardId: 1 }))
+    expect(r.rows[0].cardId).toBe(2)   // 미배정(1)이 아니라 구역선의 2
   })
 })

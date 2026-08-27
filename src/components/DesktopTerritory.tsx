@@ -876,13 +876,25 @@ export function DesktopTerritory({
     setCsvSkippedDetails([])
     setCsvHeaders([])
 
-    const result = await parseBuildingCsv(await file.text(), {
-      cards,
-      cardBoundaries,
-      unassignedCardId,
-      geocodeAddress,
-    })
-    setCsvParsing(false)
+    // 파일 읽기나 지오코딩이 터지면 예전에는 '분석 중' 에 영원히 갇혔다.
+    // (setCsvParsing(false) 까지 못 갔다) finally 로 반드시 푼다.
+    let result: Awaited<ReturnType<typeof parseBuildingCsv>>
+    try {
+      result = await parseBuildingCsv(await file.text(), {
+        cards,
+        cardBoundaries,
+        unassignedCardId,
+        geocodeAddress,
+        regionNames: getRegionNames(),
+      })
+    } catch (e) {
+      console.error('[parseCsvFile] 실패', e)
+      showToast(msg('CSV를 읽는 중 문제가 생겼습니다. 파일을 확인해 주세요.'), 'error')
+      return
+    } finally {
+      setCsvParsing(false)
+    }
+
     if (!result.ok) {
       showToast(msg(result.error ?? 'CSV를 읽지 못했습니다.'), 'error')
       return
