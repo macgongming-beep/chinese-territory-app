@@ -45,7 +45,9 @@ export function buildSharedAssignmentTeams(
       const mine = new Set(team.members)
       cardNames.push(...Array.from(new Set(
         informalAssignments
-          .filter((a) => mine.has(a.userName))
+          // ⚠ **이 일정 것만.** 저장소엔 모든 일정의 배정이 들어 있어서,
+          //   이름만 보고 걸렀더니 다른 일정에서 받은 비공식이 여기 붙어 보였다.
+          .filter((a) => a.eventId === event.id && mine.has(a.userName))
           .map((a) => assetNameById.get(a.assetId))
           .filter((n): n is string => Boolean(n)),
       )))

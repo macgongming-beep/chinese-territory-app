@@ -45,3 +45,23 @@ describe('공유 화면 팀 묶기', () => {
     expect(teams[0].cardNames).toEqual([])
   })
 })
+
+describe('다른 일정의 배정이 새어 들어오지 않는다', () => {
+  // 실제로 이렇게 됐다: 오늘 일정(342)은 배정이 하나도 없는데,
+  // 어제 일정(394)에서 받은 '경희대(홈플러스)' 가 오늘 팀 밑에 붙어 보였다.
+  // 저장소에는 모든 일정의 배정이 들어 있는데 **이름만 보고 걸렀기 때문**이다.
+  const otherEventInformal: EventInformalAssignment[] = members.map((userName, i) => ({
+    id: 100 + i, eventId: 999, userName, assetId: 33,   // ← 다른 일정
+    assignedBy: '관리자', assignedAt: '2026-08-26T04:00:00Z', memo: '',
+  } as EventInformalAssignment))
+
+  test('다른 일정의 비공식은 안 보인다', () => {
+    const teams = buildSharedAssignmentTeams(event, [], assets, otherEventInformal)
+    expect(teams[0].cardNames).toEqual([])
+  })
+
+  test('이 일정 것만 골라 보여준다', () => {
+    const teams = buildSharedAssignmentTeams(event, [], assets, [...otherEventInformal, ...informal])
+    expect(teams[0].cardNames).toEqual(['경희대(우정원)'])   // 33(다른 일정)은 없다
+  })
+})

@@ -125,16 +125,29 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
 
   // 아무것도 안 맡은 팀 (멤버는 있는데 구역·비공식·식당이 전부 없음)
   //
+  // ⚠ **이 일정 것만** 골라 쓴다.
+  //   저장소에는 모든 일정의 배정이 들어 있는데, 예전에는 이름만 보고 걸러서
+  //   **어제 다른 일정에서 받은 비공식·식당이 오늘 팀에 붙어 보였다.**
+  //   구역 카드는 일정별로 제대로 걸렀는데 이 둘만 빠져 있었다.
+  const informalHere = useMemo(
+    () => eventInformalAssignments.filter((a) => a.eventId === event.id),
+    [eventInformalAssignments, event.id],
+  )
+  const restaurantHere = useMemo(
+    () => eventRestaurantAssignments.filter((a) => a.eventId === event.id),
+    [eventRestaurantAssignments, event.id],
+  )
+
   // 비공식만 맡은 팀은 여기 들어가면 안 된다. 예전에는 cardIds 만 봐서,
   // 비공식을 배정해 둔 팀까지 '구역이 없다' 고 경고했다.
   const emptyTeams = useMemo(() => {
     const hasWork = (members: string[]) => {
       const mine = new Set(members)
-      return eventInformalAssignments.some((a) => mine.has(a.userName))
-        || eventRestaurantAssignments.some((a) => mine.has(a.userName))
+      return informalHere.some((a) => mine.has(a.userName))
+        || restaurantHere.some((a) => mine.has(a.userName))
     }
     return teams.filter((t) => t.members.length > 0 && t.cardIds.length === 0 && !hasWork(t.members))
-  }, [teams, eventInformalAssignments, eventRestaurantAssignments])
+  }, [teams, informalHere, restaurantHere])
 
   const doShare = async () => {
     if (sharing) return
@@ -199,8 +212,8 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
           allCards={allCards}
           informalAssets={informalAssets}
           informalGroups={informalGroups}
-          eventInformalAssignments={eventInformalAssignments}
-          eventRestaurantAssignments={eventRestaurantAssignments}
+          eventInformalAssignments={informalHere}
+          eventRestaurantAssignments={restaurantHere}
           onAssignInformalToUser={onAssignInformalToUser}
           onRemoveInformalAssignment={onRemoveInformalAssignment}
           onAssignRestaurantToUser={onAssignRestaurantToUser}
@@ -236,8 +249,8 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
         onOpenTeamZones={openTeamZones}
         buildings={buildings}
         informalAssets={informalAssets}
-        eventInformalAssignments={eventInformalAssignments}
-        eventRestaurantAssignments={eventRestaurantAssignments}
+        eventInformalAssignments={informalHere}
+        eventRestaurantAssignments={restaurantHere}
       />
 
       {canEdit && (
