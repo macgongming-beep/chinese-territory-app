@@ -13,6 +13,7 @@ import { setSentryUser, clearSentryUser } from '../lib/sentry'
 import type { Role } from '../types'
 import { t, currentLang } from '../i18n'
 import { msg } from '../lib/msg'
+import { describeDbError } from '../utils/dbError'
 import { renameInNameList } from '../utils/nameList'
 
 export type AuthUser = {
@@ -306,54 +307,25 @@ export function useAuth() {
   }
 
   const signup = async (loginId: string, name: string, pin: string) => {
+    // ⚠ app_users 에 직접 insert 하지 않는다. 가입은 로그인 전이라 세션 헤더가 없고,
+    //   무엇보다 **역할과 승인 상태를 클라이언트가 정하면 안 된다** —
+    //   가입하면서 자기를 admin 으로 만들 수 있다. 서버가 user/pending 을 강제한다.
     try {
-      const normalizedLoginId = loginId.trim()
-      const normalizedName = name.trim()
-
-
-      const { data: existingLoginId, error: loginIdCheckError } = await supabase
-        .from('app_users')
-        .select('id')
-        .eq('login_id', normalizedLoginId)
-        .maybeSingle()
-
-      if (loginIdCheckError) throw loginIdCheckError
-      if (existingLoginId) {
-        showToast(msg('이미 사용 중인 아이디입니다.'), 'error')
+      const rpc = await supabase.rpc('signup_tx', {
+        p_login_id: loginId,
+        p_name: name,
+        p_pin: pin,
+      })
+      if (rpc.error) {
+        console.error('[signup]', rpc.error)
+        showToast(describeDbError(msg('가입 신청에 실패했습니다.'), rpc.error), 'error')
         return false
       }
-
-      const { data: existingName, error: nameCheckError } = await supabase
-        .from('app_users')
-        .select('id')
-        .eq('name', normalizedName)
-        .maybeSingle()
-
-      if (nameCheckError) throw nameCheckError
-      if (existingName) {
-        showToast(msg('이미 사용 중인 닉네임입니다. 다른 이름을 사용해 주세요.'), 'error')
+      const result = rpc.data as { ok?: boolean; message?: string } | null
+      if (!result?.ok) {
+        showToast(msg(result?.message ?? '가입 신청에 실패했습니다.'), 'error')
         return false
       }
-
-      const { data, error } = await supabase
-        .from('app_users')
-        .insert({ login_id: normalizedLoginId, name: normalizedName, role: 'user', pin, approval_status: 'pending' })
-        .select('id, name, login_id, role')
-        .single()
-
-      if (error || !data) {
-        if ((error as { message?: string })?.message?.includes('login_id')) {
-          showToast(msg('DB에 login_id 컬럼이 없습니다. SQL 마이그레이션을 먼저 실행해 주세요.'), 'error')
-          return false
-        }
-        if ((error as { message?: string })?.message?.includes('approval_status')) {
-          showToast(msg('가입 승인 SQL 마이그레이션을 먼저 실행해 주세요.'), 'error')
-          return false
-        }
-        showToast(msg('가입 신청에 실패했습니다.'), 'error')
-        return false
-      }
-
       showToast(t(currentLang(), 'auth.signupRequested'), 'success')
       return true
     } catch (err) {

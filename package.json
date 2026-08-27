@@ -19,7 +19,8 @@
     "db:schema": "node scripts/dump-schema.js",
     "db:baseline": "node scripts/csv-to-baseline.js",
     "smoke:db": "node scripts/smoke-test-db.js",
-    "smoke:notify": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeNotifyRpc.js"
+    "smoke:notify": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeNotifyRpc.js",
+    "smoke:headers": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeHeaders.js"
   },
   "dependencies": {
     "@sentry/react": "^10.53.1",
