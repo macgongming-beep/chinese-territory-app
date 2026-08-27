@@ -29934,3 +29934,15 @@ button > svg {
   opacity: 0.35;
   cursor: default;
 }
+
+/* 대화 방법 제안 본문의 링크 (jw.org 영상 등).
+   관리자가 주소를 그냥 붙여넣으면 lib/richText 가 링크로 바꿔 준다.
+   손가락으로 누르기 좋게 밑줄과 색을 준다. */
+.sugg-rich a {
+  color: var(--primary-600, #2563eb);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 600;
+  word-break: break-all;
+}
+.sugg-rich a:active { opacity: 0.6; }

@@ -108,6 +108,7 @@ function SuggestionCard({ block, language = 'ko' }: { block: SuggestionBlock; la
         </div>
       ) : (
         <div
+          className="sugg-rich"
           style={{ flex: 1, whiteSpace: 'pre-wrap', color: 'var(--ink)', lineHeight: 1.6, fontSize: 15, fontWeight: 500, wordBreak: 'break-word' }}
           dangerouslySetInnerHTML={{ __html: sanitizeRichText(block.body) }}
         />
