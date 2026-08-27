@@ -16,6 +16,7 @@ import { mergeCardBoundaryPoints } from '../utils/boundaryMerge'
 import { useCardBoundaryBackup } from '../hooks/useCardBoundaryBackup'
 import { getTerritoryCardOperationalState } from '../utils/cardSearch'
 import { filterTerritoryCards } from '../utils/filterTerritoryCards'
+import { filterBuildingsByScope, filterBuildingsByTraits, hasText } from '../utils/filterBuildings'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 import { compareUnitNumbers } from '../utils/unitNumber'
 import type { Building, CardBoundary, GeoPoint, InformalAsset, InformalGroup, Role, TerritoryCard, TerritoryRegion, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
@@ -586,41 +587,26 @@ export function DesktopTerritory({
     }
   }
 
-  const hasText = (value?: string | null) => Boolean(value?.trim())
-  const buildingHasRegularVisit = (building: Building) => building.units.some((unit) => unit.isRegularVisit)
-  const buildingHasMemo = (building: Building) =>
-    hasText(building.memo) || building.units.some((unit) => hasText(unit.memo))
-  const baseFilteredBuildings = buildings.filter((building) => {
-    const card = cardMap.get(building.cardId)
-    if (!card) return false
-    if (regionFilter !== '전체' && card.region !== regionFilter) return false
-    if (areaFilter !== '전체' && card.area !== areaFilter) return false
-    if (buildingCardFilter !== '전체' && building.cardId !== buildingCardFilter) return false
-    if (buildingTypeFilter !== '전체' && building.type !== buildingTypeFilter) return false
-    return true
-  })
-  const filteredBuildings = baseFilteredBuildings.filter((building) => {
-    const hasRegular = buildingHasRegularVisit(building)
-    if (buildingRegularFilter === '있음' && !hasRegular) return false
-    if (buildingRegularFilter === '없음' && hasRegular) return false
-    const hasMemo = buildingHasMemo(building)
-    if (buildingMemoFilter === '있음' && !hasMemo) return false
-    if (buildingMemoFilter === '없음' && hasMemo) return false
-    if (buildingChineseHeavyFilter === '있음' && !building.isChineseHeavy) return false
-    if (buildingChineseHeavyFilter === '없음' && building.isChineseHeavy) return false
-    const restaurantUnitCount = getRestaurantUnits(building).length
-    if (buildingRestaurantFilter === '식당' && restaurantUnitCount === 0) return false
-    if (buildingRestaurantFilter === '식당 아님' && restaurantUnitCount > 0) return false
-    return true
-  })
+  // 건물 필터는 두 단계다 (utils/filterBuildings):
+  //   ① 범위 — 지역·동·카드·유형. **세대 목록의 뿌리이기도 하다**
+  //   ② 속성 — 정기방문·메모·중국어세대·식당
+  // 합치면 세대 화면이 건물 조건에 끌려간다.
+  const baseFilteredBuildings = useMemo(
+    () => filterBuildingsByScope(buildings, {
+      region: regionFilter, area: areaFilter,
+      card: buildingCardFilter, type: buildingTypeFilter,
+    }, (id) => cardMap.get(id)),
+    [buildings, regionFilter, areaFilter, buildingCardFilter, buildingTypeFilter, cardMap],
+  )
+  const filteredBuildings = useMemo(
+    () => filterBuildingsByTraits(baseFilteredBuildings, {
+      regularVisit: buildingRegularFilter, memo: buildingMemoFilter,
+      chineseHeavy: buildingChineseHeavyFilter, restaurant: buildingRestaurantFilter,
+    }),
+    [baseFilteredBuildings, buildingRegularFilter, buildingMemoFilter,
+     buildingChineseHeavyFilter, buildingRestaurantFilter],
+  )
 
-  /**
-   * 어느 카드에 넣을지 정하고 저장한다. 화면이 아니라 여기가 할 일이다 —
-   * 구역선과 카드 목록을 봐야 알 수 있기 때문이다.
-   *   ① 좌표가 구역선 안이면 그 카드
-   *   ② 아니면 주소의 동 이름으로 찾은 카드
-   *   ③ 그것도 없으면 첫 번째 카드
-   */
 
   const visibleCheckedBuildingIds = useMemo(
     () => visibleSelection(checkedBuildingIds, filteredBuildings),
