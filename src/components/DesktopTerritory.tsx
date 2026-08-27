@@ -7,6 +7,7 @@ import { getAreaFilterOptions } from '../utils/areaOptions'
 import { planDuplicateBuildingMerge } from '../utils/duplicateBuildingMerge'
 import { getGeocodeCandidates } from '../utils/geocodeCandidates'
 import { chooseCardForBuilding } from '../utils/chooseCardForBuilding'
+import { visibleSelection, hasHiddenSelection } from '../utils/visibleSelection'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { geocodeFirstMatch } from '../lib/naverGeocode'
@@ -35,6 +36,7 @@ import { AddBuildingModal, type AddBuildingForm } from './AddBuildingModal'
 import { PointVisitEditor, type VisitDraft } from './PointVisitEditor'
 import type { MergeResult } from '../utils/duplicateBuildingMerge'
 import { msg } from '../lib/msg'
+import { describeDbError } from '../utils/dbError'
 import { getRestaurantUnits } from '../utils/restaurants'
 import { compareBuildingsForTable, comparePointRowsForTable, type BuildingSortKey, type PointSortKey } from '../utils/territoryTableSort'
 
@@ -462,7 +464,23 @@ export function DesktopTerritory({
   const renderedCards = cardStatusFilter === '완료·제외' || doneExcludedOpen
     ? filteredCards
     : filteredCards.filter((card) => !isDoneExcludedCard(card))
-  const selectedMergeCards = cards.filter((card) => checkedCardIds.has(card.id))
+  // ⚠ 일괄 작업과 표시는 **보이는 것만** 쓴다.
+  //   예전에는 전체선택이 보이는 것만 더하고 뺐는데 삭제는 고른 것 전부를 지워,
+  //   확인창의 개수 안에 화면에 없는 카드가 섞였다 (카드를 지우면 건물이 딸려 죽는다).
+  const visibleCheckedCardIds = useMemo(
+    () => visibleSelection(checkedCardIds, filteredCards),
+    [checkedCardIds, filteredCards],
+  )
+
+  // 두 번째 방어: 안 보이게 된 선택은 아예 버린다.
+  // 파생값만으로도 안전하지만, 버튼의 숫자와 실제 대상이 어긋나 보이지 않게 한다.
+  useEffect(() => {
+    if (hasHiddenSelection(checkedCardIds, filteredCards)) {
+      setCheckedCardIds(new Set(visibleCheckedCardIds))
+    }
+  }, [checkedCardIds, filteredCards, visibleCheckedCardIds])
+
+  const selectedMergeCards = filteredCards.filter((card) => checkedCardIds.has(card.id))
 
   const activeAdvancedCardFilterCount =
     (leaderFilter !== '전체' ? 1 : 0) +
@@ -537,7 +555,7 @@ export function DesktopTerritory({
   }
 
   const handleAssignLeaderBulk = async () => {
-    const targetIds = Array.from(checkedCardIds)
+    const targetIds = visibleCheckedCardIds
     if (targetIds.length === 0) {
       showToast(msg('먼저 카드를 선택해 주세요.'), 'error')
       return
@@ -598,6 +616,17 @@ export function DesktopTerritory({
    *   ② 아니면 주소의 동 이름으로 찾은 카드
    *   ③ 그것도 없으면 첫 번째 카드
    */
+
+  const visibleCheckedBuildingIds = useMemo(
+    () => visibleSelection(checkedBuildingIds, filteredBuildings),
+    [checkedBuildingIds, filteredBuildings],
+  )
+  useEffect(() => {
+    if (hasHiddenSelection(checkedBuildingIds, filteredBuildings)) {
+      setCheckedBuildingIds(new Set(visibleCheckedBuildingIds))
+    }
+  }, [checkedBuildingIds, filteredBuildings, visibleCheckedBuildingIds])
+
   const handleAddBuildingSubmit = async (
     form: AddBuildingForm,
     latLng: { lat: number; lng: number } | null,
@@ -850,11 +879,30 @@ export function DesktopTerritory({
     showToast(msg('CSV 확인 완료: 건물 {length}개 준비{visitMsg}, {skipped}개 제외', { length: result.rows.length, visitMsg: visitMsg, skipped: result.skipped }), result.rows.length > 0 ? 'success' : 'info')
   }
 
+  // ⚠ 실패해도 **입력을 잃지 않는다.**
+  //   예전에는 onImportBuildings 가 던지면 setCsvImporting(false) 까지 못 가
+  //   '올리는 중' 에 영영 갇혔고, 성공했든 아니든 모달과 preview 를 지웠다.
+  //   → 갇히지 않게 finally 로 풀고, **성공했을 때만** 닫고 비운다.
   const handleImportCsv = async () => {
     if (csvPreviewRows.length === 0 || csvImporting) return
     setCsvImporting(true)
-    await onImportBuildings(csvPreviewRows)
-    setCsvImporting(false)
+    let result: { inserted: number; skipped: number } | null = null
+    try {
+      result = await onImportBuildings(csvPreviewRows)
+    } catch (e) {
+      console.error('[handleImportCsv]', e)
+      showToast(describeDbError(msg('건물을 올리지 못했습니다.'), e), 'error')
+      return
+    } finally {
+      setCsvImporting(false)
+    }
+
+    if (!result || result.inserted === 0) {
+      // 모달과 preview 를 남긴다 — 고쳐서 다시 시도할 수 있게
+      showToast(msg('올라간 건물이 없습니다. 내용을 확인하고 다시 시도해 주세요.'), 'error')
+      return
+    }
+
     setShowCsvModal(false)
     setCsvPreviewRows([])
     setCsvSkippedRows(0)
@@ -957,8 +1005,9 @@ export function DesktopTerritory({
 
   // 선택된 건물만 좌표 기준 재배정 (미배정 필터 사용 시)
   const handleReassignCheckedByBoundary = async () => {
-    if (reassigningChecked || checkedBuildingIds.size === 0) return
-    const checkedBuildings = buildings.filter((b) => checkedBuildingIds.has(b.id))
+    if (reassigningChecked || visibleCheckedBuildingIds.length === 0) return
+    const visible = new Set(visibleCheckedBuildingIds)
+    const checkedBuildings = buildings.filter((b) => visible.has(b.id))
     const updates: Array<{ buildingId: number; cardId: number }> = []
     let noCoords = 0
     let outsideBounds = 0
@@ -1040,7 +1089,7 @@ export function DesktopTerritory({
     useCardBoundaryBackup(cards, cardBoundaries, onRestoreCardBoundaries)
 
   const handleDeleteCheckedCards = async () => {
-    const ids = Array.from(checkedCardIds)
+    const ids = visibleCheckedCardIds
     if (ids.length === 0) return
     const idSet = new Set(ids)
     const relatedBuildingCount = buildings.filter((building) => idSet.has(building.cardId)).length
@@ -1054,7 +1103,7 @@ export function DesktopTerritory({
 
   const handleOpenCardMergeModal = () => {
     if (!onMergeCardBoundaries) return
-    const ids = Array.from(checkedCardIds)
+    const ids = visibleCheckedCardIds
     if (ids.length < 2) {
       showToast(msg('병합할 카드를 2개 이상 선택해 주세요.'), 'error')
       return
@@ -1066,7 +1115,7 @@ export function DesktopTerritory({
 
   const handleApplyCardMerge = async () => {
     if (!onMergeCardBoundaries || !cardMergeTargetId) return
-    const selectedIds = Array.from(checkedCardIds)
+    const selectedIds = visibleCheckedCardIds
     const targetCard = cards.find((card) => card.id === cardMergeTargetId)
     if (!targetCard || selectedIds.length < 2) return
 
@@ -1120,7 +1169,7 @@ export function DesktopTerritory({
   }
 
   const handleDeleteCheckedBuildings = async () => {
-    const ids = Array.from(checkedBuildingIds)
+    const ids = visibleCheckedBuildingIds
     if (ids.length === 0) return
     const confirmed = await confirmDialog({ message: msg('선택한 건물 {length}개를 삭제할까요?\n건물에 속한 호수와 방문 정보도 함께 정리될 수 있습니다.', { length: ids.length }), danger: true, confirmLabel: '삭제' })
     if (!confirmed) return
@@ -1674,12 +1723,12 @@ export function DesktopTerritory({
                       </>
                     )}
                     {onMergeCardBoundaries && (
-                      <button className="tbl-ghost-btn" disabled={checkedCardIds.size < 2} onClick={handleOpenCardMergeModal} type="button">
-                        카드 병합{checkedCardIds.size > 1 ? ` ${checkedCardIds.size}` : ''}
+                      <button className="tbl-ghost-btn" disabled={visibleCheckedCardIds.length < 2} onClick={handleOpenCardMergeModal} type="button">
+                        카드 병합{visibleCheckedCardIds.length > 1 ? ` ${visibleCheckedCardIds.length}` : ''}
                       </button>
                     )}
-                    <button className="tbl-ghost-btn" disabled={checkedCardIds.size === 0} onClick={handleDeleteCheckedCards} type="button">
-                      선택 삭제{checkedCardIds.size > 0 ? ` ${checkedCardIds.size}` : ''}
+                    <button className="tbl-ghost-btn" disabled={visibleCheckedCardIds.length === 0} onClick={handleDeleteCheckedCards} type="button">
+                      선택 삭제{visibleCheckedCardIds.length > 0 ? ` ${visibleCheckedCardIds.length}` : ''}
                     </button>
                     <button className="tbl-primary-btn" onClick={() => setShowCardModal(true)} type="button">+ 카드 추가</button>
                   </>
@@ -1688,8 +1737,8 @@ export function DesktopTerritory({
             ) : (
               <>
                 {isAdmin && (
-                  <button className="tbl-ghost-btn" disabled={checkedBuildingIds.size === 0} onClick={handleDeleteCheckedBuildings} type="button">
-                    선택 삭제{checkedBuildingIds.size > 0 ? ` ${checkedBuildingIds.size}` : ''}
+                  <button className="tbl-ghost-btn" disabled={visibleCheckedBuildingIds.length === 0} onClick={handleDeleteCheckedBuildings} type="button">
+                    선택 삭제{visibleCheckedBuildingIds.length > 0 ? ` ${visibleCheckedBuildingIds.length}` : ''}
                   </button>
                 )}
                 {buildingCardFilter === unassignedCardId && checkedBuildingIds.size > 0 && (
