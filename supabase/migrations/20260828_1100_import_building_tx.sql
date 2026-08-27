@@ -87,13 +87,16 @@ begin
 
     for v_visit in select * from jsonb_array_elements(coalesce(v_unit->'visits', '[]'::jsonb))
     loop
+      -- ⚠ time_slot 은 not null (기본값 '저녁') 이고 visited_at 은 date 다.
+      --   예전 코드는 **칸을 아예 안 보내서** 기본값이 먹었다. RPC 에서는
+      --   명시적으로 넣어야 하므로 기본값을 여기 적는다.
       insert into public.visit_histories (unit_id, result, visitor_name, visited_at, time_slot, memo)
       values (
         v_unit_id,
         v_visit->>'result',
         coalesce(v_visit->>'visitor_name', ''),
-        (v_visit->>'visited_at')::timestamptz,
-        nullif(v_visit->>'time_slot', ''),
+        coalesce(nullif(v_visit->>'visited_at', '')::date, current_date),
+        coalesce(nullif(v_visit->>'time_slot', ''), '저녁'),
         nullif(v_visit->>'memo', '')
       );
       v_visits := v_visits + 1;
