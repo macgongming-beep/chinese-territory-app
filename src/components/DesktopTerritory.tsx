@@ -17,6 +17,7 @@ import { useCardBoundaryBackup } from '../hooks/useCardBoundaryBackup'
 import { getTerritoryCardOperationalState } from '../utils/cardSearch'
 import { filterTerritoryCards } from '../utils/filterTerritoryCards'
 import { filterBuildingsByScope, filterBuildingsByTraits, hasText } from '../utils/filterBuildings'
+import { buildPointRows } from '../utils/buildPointRows'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 import { compareUnitNumbers } from '../utils/unitNumber'
 import type { Building, CardBoundary, GeoPoint, InformalAsset, InformalGroup, Role, TerritoryCard, TerritoryRegion, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
@@ -699,28 +700,16 @@ export function DesktopTerritory({
     ...mergePlan.conflicts.map((c) => [c.primary]),
   ]
   const duplicateBuildingIds = new Set(duplicateAddressGroups.flatMap((g) => g.map((b) => b.id)))
-  const matchesPointKind = (unit: Building['units'][number]) => {
-    if (pointKindFilter === '중국어') return !!unit.isChinese
-    if (pointKindFilter === '정기방문') return !!unit.isRegularVisit
-    if (pointKindFilter === '식당') return !!unit.isRestaurant
-    return true
-  }
-  const pointRows = baseFilteredBuildings.flatMap((building) =>
-    building.units
-      .filter(matchesPointKind)
-      .map((unit) => {
-        const histories = visitHistoriesByUnitId.get(unit.id) ?? []
-        return { building, unit, latestHistory: histories[0] }
-      }),
-  ).filter(({ unit }) => {
-    if (pointStatusFilter !== '전체' && unit.status !== pointStatusFilter) return false
-    if (pointRegularFilter === '있음' && !unit.isRegularVisit) return false
-    if (pointRegularFilter === '없음' && unit.isRegularVisit) return false
-    const hasMemo = hasText(unit.memo)
-    if (pointMemoFilter === '있음' && !hasMemo) return false
-    if (pointMemoFilter === '없음' && hasMemo) return false
-    return true
-  })
+  // 세대 목록. 뿌리는 건물의 **범위** 필터까지만이다 —
+  // 건물에 메모가 없어도 그 안 세대는 여기 나와야 한다 (utils/buildPointRows).
+  const pointRows = useMemo(
+    () => buildPointRows(baseFilteredBuildings, {
+      kind: pointKindFilter, status: pointStatusFilter,
+      regularVisit: pointRegularFilter, memo: pointMemoFilter,
+    }, (unitId) => visitHistoriesByUnitId.get(unitId) ?? []),
+    [baseFilteredBuildings, pointKindFilter, pointStatusFilter,
+     pointRegularFilter, pointMemoFilter, visitHistoriesByUnitId],
+  )
   const sortedPointRows = [...pointRows].sort((a, b) =>
     comparePointRowsForTable(a, b, {
       sort: pointSort,
