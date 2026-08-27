@@ -10,6 +10,7 @@ import { useAuth } from './hooks/useAuth'
 import type { Role } from './types'
 import type { AppLanguage } from './i18n'
 import { isAppLanguage, setCurrentLang } from './i18n'
+import { chooseAppScreen } from './utils/appScreen'
 import { syncLanguageToServiceWorker } from './lib/swLanguage'
 import './App.css'
 
@@ -246,8 +247,10 @@ function App() {
     }
   }
 
-  // 로그인 검사가 먼저다. 로그아웃 직후 스피너를 거치지 않고 바로 로그인 화면으로.
-  if (!user) {
+  // 무엇을 그릴지는 utils/appScreen 이 정한다 (순서가 미묘해 시험을 붙였다).
+  const screen = chooseAppScreen({ user, authLoading, loading, error })
+
+  if (screen === 'login') {
     return (
       <>
         <Toast />
@@ -271,7 +274,7 @@ function App() {
     )
   }
 
-  if (authLoading || loading) {
+  if (screen === 'loading') {
     return (
       <div className="app-loading">
         <div className="app-loading-spinner" />
@@ -288,6 +291,9 @@ function App() {
       </div>
     )
   }
+
+  // 여기 오면 screen === 'app' 이라 user 가 있다. 타입이 그걸 모르므로 한 줄 둔다.
+  if (!user) return null
 
   return (
     <>
