@@ -36,3 +36,17 @@ export async function askNotifyOnEventEdit(opts: {
     cancelLabel: '보내지 않기',
   })
 }
+
+/**
+ * 공지를 올리기 직전에 "전원에게 알림 보낼까요?" 를 묻는다.
+ *
+ * 공지는 **승인된 활성 사용자 전원**에게 간다 (지금 60명). 되돌릴 수 없다.
+ * 오타를 고쳐 다시 올리거나 시험 삼아 올려도 60명 폰이 울렸다.
+ */
+export function askNotifyOnNotice(): Promise<boolean> {
+  return confirmDialog({
+    message: '공지는 회중 전원에게 알림이 갑니다.\n알림을 보낼까요?\n\n(\'보내지 않기\' 를 눌러도 공지는 올라갑니다.)',
+    confirmLabel: '알림 보내기',
+    cancelLabel: '보내지 않기',
+  })
+}
