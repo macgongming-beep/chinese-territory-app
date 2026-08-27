@@ -536,3 +536,31 @@ export async function parseBuildingCsv(
 
     return { ok: true, headers, rows: previewRows, skipped, skippedDetails }
 }
+
+/**
+ * 파일을 읽어 파싱한다. **절대 던지지 않는다.**
+ *
+ * 왜 이렇게 하는가: 예전에는 화면이 try/finally 로 '분석 중' 을 풀어야 했다.
+ * 그 한 줄을 빠뜨리면 사용자는 영영 '분석 중' 에 갇힌다. 실제로 그랬다.
+ * 던지지 않는 문을 하나만 두면 화면이 잊을 수가 없다.
+ */
+export async function parseBuildingCsvFile(
+  file: { text: () => Promise<string> },
+  deps: ParseBuildingCsvDeps,
+): Promise<ParseBuildingCsvResult> {
+  const fail = (error: string): ParseBuildingCsvResult =>
+    ({ ok: false, error, headers: [], rows: [], skipped: 0, skippedDetails: [] })
+  let text: string
+  try {
+    text = await file.text()
+  } catch (e) {
+    console.error('[parseBuildingCsvFile] 파일 읽기 실패', e)
+    return fail('파일을 읽지 못했습니다. 다시 선택해 주세요.')
+  }
+  try {
+    return await parseBuildingCsv(text, deps)
+  } catch (e) {
+    console.error('[parseBuildingCsvFile] 파싱 실패', e)
+    return fail('CSV를 읽는 중 문제가 생겼습니다. 파일을 확인해 주세요.')
+  }
+}

@@ -8,7 +8,7 @@ import { getRestaurantUnits } from './restaurants'
 
 export type SortDir = 'asc' | 'desc'
 export type BuildingSortKey = '카드' | '건물' | '주소' | '유형' | '식당'
-export type PointSortKey = '카드' | '건물' | '세대' | '상태' | '최근방문'
+export type PointSortKey = '카드' | '건물' | '세대' | '상태' | '최근 방문'
 
 /** 한글·숫자를 사람이 읽는 순서로 (2 < 10) */
 export const naturalCompare = (x: string, y: string) =>
@@ -17,7 +17,7 @@ export const naturalCompare = (x: string, y: string) =>
 const STATUS_ORDER: Record<string, number> = { 미방문: 0, 부재: 1, 만남: 2, 대상외: 3, 거절: 4 }
 
 export type BuildingSortOptions = {
-  sort: { key: string; dir: SortDir }
+  sort: { key: BuildingSortKey; dir: SortDir }
   /** 카드 id → 카드 이름 */
   cardName: (cardId: number) => string
   /** 미배정 건물을 맨 위로 올릴지 (카드 필터가 '전체' 일 때만) */
@@ -60,7 +60,7 @@ export type PointRow = {
 }
 
 export type PointSortOptions = {
-  sort: { key: string; dir: SortDir }
+  sort: { key: PointSortKey; dir: SortDir }
   cardName: (cardId: number) => string
 }
 
@@ -83,12 +83,18 @@ export function comparePointRowsForTable(
     // 같은 상태끼리는 호수순. **여기는 방향을 안 탄다**
     return naturalCompare(a.unit.number, b.unit.number)
   }
-  // 최근 방문 — 기록 없는 세대는 **방향과 상관없이** 언제나 뒤로.
-  // '오래된 순' 으로 봐도 맨 앞에 안 온다 (방문한 적 없는 건 '가장 오래된' 게 아니다)
-  const da = a.latestHistory?.visitedAt ?? ''
-  const db = b.latestHistory?.visitedAt ?? ''
-  if (!da && !db) return naturalCompare(a.unit.number, b.unit.number)
-  if (!da) return 1
-  if (!db) return -1
-  return da < db ? -dir : da > db ? dir : 0
+  if (opts.sort.key === '최근 방문') {
+    // 기록 없는 세대는 **방향과 상관없이** 언제나 뒤로.
+    // '오래된 순' 으로 봐도 맨 앞에 안 온다 (방문한 적 없는 건 '가장 오래된' 게 아니다)
+    const da = a.latestHistory?.visitedAt ?? ''
+    const db = b.latestHistory?.visitedAt ?? ''
+    if (!da && !db) return naturalCompare(a.unit.number, b.unit.number)
+    if (!da) return 1
+    if (!db) return -1
+    return da < db ? -dir : da > db ? dir : 0
+  }
+  // 모르는 키는 아무것도 안 한다.
+  // 예전에는 여기로 다 떨어져서 '최근방문'(띄어쓰기 없음) 같은 오타가
+  // 조용히 동작하는 척했다 — 화면은 '최근 방문' 인데 유틸 타입은 붙여 썼다.
+  return 0
 }

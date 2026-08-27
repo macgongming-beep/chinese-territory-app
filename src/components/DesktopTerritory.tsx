@@ -14,7 +14,7 @@ import { mergeCardBoundaryPoints } from '../utils/boundaryMerge'
 import { useCardBoundaryBackup } from '../hooks/useCardBoundaryBackup'
 import { compareTerritoryCardsByOperationalPriority, getTerritoryCardOperationalState } from '../utils/cardSearch'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
-import { compareUnitNumbers } from '../hooks/storeTransforms'
+import { compareUnitNumbers } from '../utils/unitNumber'
 import type { Building, CardBoundary, GeoPoint, InformalAsset, InformalGroup, Role, TerritoryCard, TerritoryRegion, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import { InformalCardsTab } from './InformalCardsTab'
 import { RestaurantsTab } from './RestaurantsTab'
@@ -23,7 +23,7 @@ import {
   type CsvPreviewRow,
   type CsvSkippedRow,
   downloadCsvExample,
-  parseBuildingCsv,
+  parseBuildingCsvFile,
 } from '../utils/csvBuildingImport'
 import { AddUnitRow } from './AddUnitRow'
 import { useSessionState } from '../hooks/useSessionState'
@@ -35,7 +35,7 @@ import { PointVisitEditor, type VisitDraft } from './PointVisitEditor'
 import type { MergeResult } from '../utils/duplicateBuildingMerge'
 import { msg } from '../lib/msg'
 import { getRestaurantUnits } from '../utils/restaurants'
-import { compareBuildingsForTable, comparePointRowsForTable } from '../utils/territoryTableSort'
+import { compareBuildingsForTable, comparePointRowsForTable, type BuildingSortKey, type PointSortKey } from '../utils/territoryTableSort'
 
 // 상대 날짜 표시: "오늘", "어제", "N일 전", "N주 전", "N개월 전", "YYYY-MM-DD"
 function formatRelativeDate(iso: string): string {
@@ -237,7 +237,7 @@ export function DesktopTerritory({
   const [pointStatusFilter, setPointStatusFilter] = useSessionState<UnitStatus | '전체'>('dt.pointStatusFilter', '전체')
   // 세대 목록의 구분 — 예전에는 "중국어 또는 정기방문" 으로 고정이라 일반 세대를 볼 수 없었다.
   // 기본값은 '중국어' 로 두어 이 화면을 쓰던 방식이 그대로 유지되게 한다.
-  type PointSortKey = '카드' | '건물' | '세대' | '상태' | '최근 방문'
+  // PointSortKey / BuildingSortKey 는 utils/territoryTableSort 한 곳에서만 정한다
   const [pointSort, setPointSort] = useSessionState<{ key: PointSortKey; dir: 'asc' | 'desc' }>('dt.pointSort', { key: '카드', dir: 'asc' })
   type PointKindFilter = '전체' | '중국어' | '정기방문' | '식당'
   const [pointKindFilter, setPointKindFilter] = useSessionState<PointKindFilter>('dt.pointKindFilter', '중국어')
@@ -248,7 +248,6 @@ export function DesktopTerritory({
   const [buildingRestaurantFilter, setBuildingRestaurantFilter] = useSessionState<'전체' | '식당' | '식당 아님'>('dt.buildingRestaurantFilter', '전체')
   const [pointRegularFilter, setPointRegularFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.pointRegularFilter', '전체')
   const [pointMemoFilter, setPointMemoFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.pointMemoFilter', '전체')
-  type BuildingSortKey = '카드' | '건물' | '주소' | '유형' | '식당'
   const [buildingSort, setBuildingSort] = useSessionState<{ key: BuildingSortKey; dir: 'asc' | 'desc' }>('dt.buildingSort', { key: '카드', dir: 'asc' })
   const [editingBuildingId, setEditingBuildingId] = useState<number | null>(null)
   const [editingUnitId, setEditingUnitId] = useState<number | null>(null)
@@ -831,24 +830,16 @@ export function DesktopTerritory({
     setCsvSkippedDetails([])
     setCsvHeaders([])
 
-    // 파일 읽기나 지오코딩이 터지면 예전에는 '분석 중' 에 영원히 갇혔다.
-    // (setCsvParsing(false) 까지 못 갔다) finally 로 반드시 푼다.
-    let result: Awaited<ReturnType<typeof parseBuildingCsv>>
-    try {
-      result = await parseBuildingCsv(await file.text(), {
-        cards,
-        cardBoundaries,
-        unassignedCardId,
-        geocodeAddress,
-        regionNames: getRegionNames(),
-      })
-    } catch (e) {
-      console.error('[parseCsvFile] 실패', e)
-      showToast(msg('CSV를 읽는 중 문제가 생겼습니다. 파일을 확인해 주세요.'), 'error')
-      return
-    } finally {
-      setCsvParsing(false)
-    }
+    // parseBuildingCsvFile 은 절대 던지지 않는다 — 그래서 여기에 try/finally 가 없다.
+    // (예전에는 터지면 '분석 중' 에 영원히 갇혔다. 안 잊도록 문 쪽에서 막았다)
+    const result = await parseBuildingCsvFile(file, {
+      cards,
+      cardBoundaries,
+      unassignedCardId,
+      geocodeAddress,
+      regionNames: getRegionNames(),
+    })
+    setCsvParsing(false)
 
     if (!result.ok) {
       showToast(msg(result.error ?? 'CSV를 읽지 못했습니다.'), 'error')

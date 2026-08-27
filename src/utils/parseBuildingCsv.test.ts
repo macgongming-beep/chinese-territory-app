@@ -1,7 +1,7 @@
 // CSV 를 '올릴 건물 목록' 으로 바꾸는 규칙.
 // 300줄이 화면 안에 들어 있어 지금까지 아무도 확인해본 적이 없다.
 import { describe, test, expect, beforeEach, vi } from 'vitest'
-import { parseBuildingCsv } from './csvBuildingImport'
+import { parseBuildingCsv, parseBuildingCsvFile } from './csvBuildingImport'
 import type { TerritoryCard } from '../types'
 
 const card = (id: number, name: string, region = '처인구', area = '유방동') =>
@@ -202,14 +202,68 @@ describe('parseBuildingCsv — 한 칸에 여러 호수 (지금 동작을 못 �
 })
 
 describe('parseBuildingCsv — 같은 호수가 여러 줄일 때', () => {
-  test('부가정보는 첫 줄이 이긴다 (방문기록만 쌓인다)', async () => {
-    const csv = '주소,카드,호수,메모,상태,방문일자,방문결과\n' +
-      '유방동 1,처인구 유방동 1,101,첫 메모,부재,2026-01-01,부재\n' +
-      '유방동 1,처인구 유방동 1,101,둘째 메모,만남,2026-02-01,부재\n'
+  test('부가정보는 전부 첫 줄이 이긴다. 방문기록만 쌓인다', async () => {
+    // 두 줄의 값을 전부 반대로 준다 — 어느 필드가 첫 줄을 따르는지 한눈에 본다
+    // ⚠ 업체ID 칸이 있으면 전화 조사 시트로 보므로 중국어 칸도 있어야 줄이 살아남는다
+    //    (이걸 빠뜨려서 시험이 먼저 틀렸다 — 코드가 아니라 내 CSV 가 틀렸다)
+    const head = '주소,카드,호수,메모,상태,구분,식당,업체ID,중국어,정기방문자,정기방문시작일,방문일자,방문결과\n'
+    const csv = head +
+      '유방동 1,처인구 유방동 1,101,첫 메모,부재,중국어,예,AAA,있음,김민준,2026-01-01,2026-01-01,부재\n' +
+      '유방동 1,처인구 유방동 1,101,둘째 메모,만남,대상외,아니오,BBB,있음,박진호,2026-05-05,2026-02-01,부재\n'
     const r = await parseBuildingCsv(csv, deps())
     const u = r.rows[0].units[0]
-    expect(u.memo).toBe('첫 메모')            // 둘째 줄 메모는 버려진다
-    expect(u.visitHistories).toHaveLength(2)  // 방문기록은 둘 다 쌓인다
+    expect(u.memo).toBe('첫 메모')
+    expect(u.isChinese).toBe(true)             // 첫 줄의 '중국어'
+    expect(u.isRestaurant).toBe(true)          // 첫 줄의 '예'
+    expect(u.naverPlaceId).toBe('AAA')
+    expect(u.regularVisitor).toBe('김민준')
+    // ⚠ 날짜만 적었는데 시각이 붙어 나온다 (parseCsvDate 가 ISO 로 만든다).
+    //    화면에서 발견한 게 아니라 여기서 시험을 쓰다 알았다. 지금 동작을 적어 둔다.
+    expect(u.regularVisitorStartDate).toBe('2026-01-01T03:00:00.000Z')
+    expect(u.visitHistories).toHaveLength(2)   // 방문기록만 쌓인다
+  })
+
+  test('⚠ 상태만은 예외다 — 방문기록 최신 결과가 첫 줄을 덮는다', async () => {
+    const csv = '주소,카드,호수,상태,방문일자,방문결과\n' +
+      '유방동 1,처인구 유방동 1,101,부재,2026-01-01,부재\n' +
+      '유방동 1,처인구 유방동 1,101,부재,2026-06-01,만남\n'
+    const r = await parseBuildingCsv(csv, deps())
+    expect(r.rows[0].units[0].status).toBe('만남')   // 첫 줄의 '부재' 가 아니다
+  })
+})
+
+describe('parseBuildingCsv — 설명이 적힌 호수 이름', () => {
+  test('쉼표가 든 이름을 따옴표로 감싸면 한 세대로 들어온다', async () => {
+    // 실제 데이터에 있는 이름이다. 쪼개는 헬퍼를 연결했다면 여기서 두 세대가 됐다.
+    const csv = '주소,카드,호수\n유방동 1,처인구 유방동 1,"덕석과 구들장, 주인이 반대"\n'
+    const r = await parseBuildingCsv(csv, deps())
+    expect(r.rows[0].units.map((u) => u.number)).toEqual(['덕석과 구들장, 주인이 반대'])
+  })
+})
+
+describe('parseBuildingCsvFile — 절대 던지지 않는다', () => {
+  // 화면이 '분석 중' 에 갇히지 않는 근거가 여기다.
+  // 예전에는 화면의 finally 한 줄에 의지했고, 그 줄을 지워도 아무 시험도 안 깨졌다.
+  test('파일 읽기가 터져도 결과를 돌려준다', async () => {
+    const r = await parseBuildingCsvFile(
+      { text: async () => { throw new Error('읽기 실패') } }, deps())
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('파일을 읽지 못했')
+  })
+
+  test('지오코딩이 터져도 결과를 돌려준다', async () => {
+    const r = await parseBuildingCsvFile(
+      { text: async () => '주소,카드\n유방동 1,처인구 유방동 1\n' },
+      deps({ geocodeAddress: async () => { throw new Error('네트워크') } }))
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('문제가 생겼습니다')
+  })
+
+  test('멀쩡한 파일은 그대로 통과시킨다', async () => {
+    const r = await parseBuildingCsvFile(
+      { text: async () => '주소,카드\n유방동 1,처인구 유방동 1\n' }, deps())
+    expect(r.ok).toBe(true)
+    expect(r.rows).toHaveLength(1)
   })
 })
 
