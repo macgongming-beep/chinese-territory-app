@@ -26,6 +26,7 @@ declare
   v_title      text;
   v_first_id   integer;
   v_recipients integer[];
+  v_notifiable boolean;
 begin
   v_actor_id := public.verify_session(p_token);
   if v_actor_id is null then
@@ -34,14 +35,35 @@ begin
   select name, role into v_actor_name, v_actor_role
   from public.app_users where id = v_actor_id;
 
-  -- 권한: 관리자거나, 그 반복 일정의 인도자
-  if v_actor_role not in ('admin', 'developer') and not exists (
-    select 1 from public.calendar_events e
-    where e.series_id = p_series_id
-      and v_actor_name = any (select btrim(v) from unnest(string_to_array(e.leader_name, ',')) v)
-  ) then
-    raise exception '이 반복 일정을 고칠 권한이 없습니다';
+  -- 권한: 관리자거나, **바뀌는 모든 일정**의 인도자여야 한다.
+  -- 예전엔 '그 시리즈의 어느 하나라도 인도자였으면' 이었다 —
+  -- 한 번 인도했던 사람이 남의 일정까지 전부 바꿀 수 있었다.
+  if v_actor_role not in ('admin', 'developer') then
+    if exists (
+      select 1 from public.calendar_events e
+      where e.series_id = p_series_id
+        and e.event_date >= p_from_date
+        and not (v_actor_name = any (select btrim(v) from unnest(string_to_array(e.leader_name, ',')) v))
+    ) then
+      raise exception '내가 인도하지 않는 일정이 섞여 있어 고칠 수 없습니다';
+    end if;
   end if;
+
+  -- 알림 대상 칸이 **실제로** 바뀌는지 서버가 직접 본다.
+  -- 화면의 판단(willNotifyOnEventChange)은 물어볼지 정하는 용도일 뿐이고,
+  -- 보낼지 말지는 여기서 정한다. 두 곳이 어긋나도 잘못 나가지 않는다.
+  select exists (
+    select 1 from public.calendar_events e
+    where e.series_id = p_series_id and e.event_date >= p_from_date
+      and (
+        (p_payload ? 'time'            and e.time            is distinct from p_payload->>'time') or
+        (p_payload ? 'title'           and e.title           is distinct from p_payload->>'title') or
+        (p_payload ? 'place'           and e.place           is distinct from p_payload->>'place') or
+        (p_payload ? 'leader_name'     and e.leader_name     is distinct from p_payload->>'leader_name') or
+        (p_payload ? 'meeting_map_url' and e.meeting_map_url is distinct from p_payload->>'meeting_map_url') or
+        (p_payload ? 'event_date'      and e.event_date      is distinct from (p_payload->>'event_date')::date)
+      )
+  ) into v_notifiable;
 
   -- 고치는 동안 줄마다 나가는 알림을 끈다 (이 트랜잭션 안에서만)
   perform set_config('app.suppress_notifications', 'on', true);
@@ -70,7 +92,8 @@ begin
     return jsonb_build_object('ok', true, 'updated', 0, 'notified', 0);
   end if;
 
-  if not p_notify then
+  -- 사용자가 안 보내겠다고 했거나, 알림 대상 칸이 안 바뀌었으면 보내지 않는다
+  if not p_notify or not v_notifiable then
     return jsonb_build_object('ok', true, 'updated', cardinality(v_ids), 'notified', 0);
   end if;
 

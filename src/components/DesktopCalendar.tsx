@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { askNotifyOnEventEdit } from '../lib/askNotify'
-import { countEventNotifyTargets } from '../utils/eventNotify'
+import { countEventNotifyTargets, countEventNotifyTargetsMany } from '../utils/eventNotify'
 import { useSearchParams } from 'react-router-dom'
 import { confirmDialog } from '../lib/confirm'
 import { showToast } from '../lib/toast'
@@ -179,13 +179,14 @@ export function DesktopCalendar({
     ev: CalendarEvent,
     draft: EditDraft,
     save: (notify: boolean) => void,
-    seriesCount?: number,
+    /** 반복 수정이면 바뀌는 일정 전부. 회차마다 신청자가 달라 합집합으로 센다 */
+    affected?: CalendarEvent[],
   ) => {
     const notify = await askNotifyOnEventEdit({
       before: ev,
       after: { ...draft, date: ev.date },
-      recipientCount: countEventNotifyTargets(ev),
-      seriesCount,
+      recipientCount: affected ? countEventNotifyTargetsMany(affected) : countEventNotifyTargets(ev),
+      seriesCount: affected?.length,
     })
     save(notify)
   }
@@ -329,7 +330,7 @@ export function DesktopCalendar({
                   <strong style={{ display: 'block' }}>이 일정만 수정 ({scopeModal.date})</strong>
                   <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 400 }}>나머지 반복 일정은 그대로</span>
                 </button>
-                <button onClick={() => { const ev = events.find((e) => e.id === scopeModal.id); const n = events.filter((e) => e.seriesId && e.seriesId === scopeModal.seriesId && e.date >= scopeModal.date).length; const done = (notify: boolean) => { onUpdateEventSeries(scopeModal.seriesId, scopeModal.date, scopeModal.draft, notify); clearEdit(); setScopeModal(null) }; if (ev) void saveWithNotifyAsk(ev, scopeModal.draft, done, n); else done(true) }} style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border-default)', background: 'var(--gray-50)', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }} type="button">
+                <button onClick={() => { const ev = events.find((e) => e.id === scopeModal.id); const affected = events.filter((e) => e.seriesId && e.seriesId === scopeModal.seriesId && e.date >= scopeModal.date); const done = (notify: boolean) => { onUpdateEventSeries(scopeModal.seriesId, scopeModal.date, scopeModal.draft, notify); clearEdit(); setScopeModal(null) }; if (ev) void saveWithNotifyAsk(ev, scopeModal.draft, done, affected); else done(true) }} style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border-default)', background: 'var(--gray-50)', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }} type="button">
                   <strong style={{ display: 'block', color: 'var(--gray-900)' }}>이 날 포함 이후 모두 수정</strong>
                   <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 400 }}>{scopeModal.date} 부터 이후 일정만 변경 (지난 일정은 그대로)</span>
                 </button>

@@ -21,13 +21,21 @@ as $$
 declare
   v_actor_id   integer;
   v_actor_name text;
+  v_actor_role text;
   v_new_id     integer;
 begin
   v_actor_id := public.verify_session(p_token);
   if v_actor_id is null then
     raise exception '세션이 유효하지 않습니다';
   end if;
-  select name into v_actor_name from public.app_users where id = v_actor_id;
+  select name, role into v_actor_name, v_actor_role
+  from public.app_users where id = v_actor_id;
+
+  -- ⚠ 이 함수는 security definer 이고 anon 에도 실행권한이 있다.
+  --   권한 검사를 빠뜨리면 **일반 사용자가 회중 전원에게 알림을 쏠 수 있다.**
+  if v_actor_role not in ('admin', 'developer') then
+    raise exception '공지는 관리자만 올릴 수 있습니다';
+  end if;
 
   if btrim(coalesce(p_title, '')) = '' then
     return jsonb_build_object('ok', false, 'reason', 'empty_title');

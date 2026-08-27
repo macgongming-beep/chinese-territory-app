@@ -76,23 +76,27 @@ export function makeCalendarMutations(deps: {
 
   // notify: 참가자에게 알림을 보낼지. 화면이 물어본 답을 넘긴다.
   // (안 보냄으로 고치면 RPC 안에서 트리거를 끈 채 고친다)
+  // ⚠ **직접 쓰기로 물러서지 않는다.** 예전에는 RPC 가 실패하면 레거시 update 로
+  //   떨어졌는데, 그 경로에는 권한 검사도 알림 억제도 없다. 그래서
+  //   '권한 없음' 을 우회하고, '보내지 않기' 를 골라도 알림이 나갔다.
+  //   실패하면 실패로 끝낸다.
   const updateCalendarEvent = async (eventId: number, input: CalendarEventInput, notify = true) => {
     const token = getAuthToken()
-    if (token) {
-      const rpc = await supabase.rpc('update_calendar_event_tx', {
-        p_token: token, p_event_id: eventId,
-        p_payload: buildEventPayload(input), p_notify: notify,
-      })
-      if (!rpc.error) {
-        await fetchAll()
-        showToast(msg('일정이 수정됐습니다'))
-        return
-      }
-      console.warn('[updateCalendarEvent] RPC 실패 — 레거시 경로', rpc.error)
+    if (!token) {
+      showToast(msg('로그인 정보가 없습니다. 다시 로그인해 주세요.'), 'error')
+      return
     }
-    const result = await supabase.from('calendar_events').update(buildEventPayload(input)).eq('id', eventId)
-    if (result.error) {
-      reportMutationError(msg('일정을 수정하지 못했습니다.'), result.error)
+    const rpc = await supabase.rpc('update_calendar_event_tx', {
+      p_token: token, p_event_id: eventId,
+      p_payload: buildEventPayload(input), p_notify: notify,
+    })
+    if (rpc.error) {
+      reportMutationError(msg('일정을 수정하지 못했습니다.'), rpc.error)
+      return
+    }
+    const r = rpc.data as { ok?: boolean } | null
+    if (!r?.ok) {
+      showToast(msg('일정을 수정하지 못했습니다.'), 'error')
       return
     }
     await fetchAll()
@@ -107,30 +111,28 @@ export function makeCalendarMutations(deps: {
     input: CalendarEventInput,
     notify = true,
   ) => {
+    // ⚠ 여기도 직접 쓰기로 물러서지 않는다. 레거시 경로로 떨어지면
+    //   줄마다 트리거가 돌아 **알림이 다시 폭주한다.** 실패하면 실패로 끝낸다.
     const token = getAuthToken()
-    if (token) {
-      const rpc = await supabase.rpc('update_calendar_event_series_tx', {
-        p_token: token, p_series_id: seriesId, p_from_date: fromDate,
-        p_payload: buildEventPayload(input), p_notify: notify,
-      })
-      if (!rpc.error) {
-        const r = rpc.data as { updated?: number } | null
-        await fetchAll()
-        showToast(msg('이후 반복 일정 {n}개가 수정됐습니다', { n: r?.updated ?? 0 }))
-        return
-      }
-      console.warn('[updateCalendarEventSeries] RPC 실패 — 레거시 경로', rpc.error)
+    if (!token) {
+      showToast(msg('로그인 정보가 없습니다. 다시 로그인해 주세요.'), 'error')
+      return
     }
-    const result = await supabase.from('calendar_events')
-      .update(buildEventPayload(input))
-      .eq('series_id', seriesId)
-      .gte('event_date', fromDate)
-    if (result.error) {
-      reportMutationError(msg('반복 일정을 수정하지 못했습니다.'), result.error)
+    const rpc = await supabase.rpc('update_calendar_event_series_tx', {
+      p_token: token, p_series_id: seriesId, p_from_date: fromDate,
+      p_payload: buildEventPayload(input), p_notify: notify,
+    })
+    if (rpc.error) {
+      reportMutationError(msg('반복 일정을 수정하지 못했습니다.'), rpc.error)
+      return
+    }
+    const r = rpc.data as { ok?: boolean; updated?: number } | null
+    if (!r?.ok) {
+      showToast(msg('반복 일정을 수정하지 못했습니다.'), 'error')
       return
     }
     await fetchAll()
-    showToast(msg('이후 모든 반복 일정이 수정됐습니다'))
+    showToast(msg('이후 반복 일정 {n}개가 수정됐습니다', { n: r.updated ?? 0 }))
   }
 
   const deleteCalendarEvent = async (eventId: number) => {

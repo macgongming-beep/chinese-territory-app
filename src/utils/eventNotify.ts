@@ -65,3 +65,21 @@ export function countEventNotifyTargets(event: {
   names.delete('')
   return names.size
 }
+
+/**
+ * 여러 일정에 걸친 알림 대상 수 (합집합).
+ *
+ * 반복 일정은 회차마다 신청자가 다르다. 첫 일정 하나만 세면
+ * **첫 일정에 아무도 없을 때 묻지도 않고 조용히 고쳐진다** —
+ * 실제로는 뒤 회차 사람들에게 알림이 갈 수 있는데도.
+ */
+export function countEventNotifyTargetsMany(events: Parameters<typeof countEventNotifyTargets>[0][]): number {
+  const names = new Set<string>()
+  for (const e of events) {
+    for (const p of e.participants ?? []) names.add(typeof p === 'string' ? p : p.userName)
+    for (const l of e.leaders ?? []) names.add(l)
+    if (e.leader) for (const l of e.leader.split(',')) { const n = l.trim(); if (n) names.add(n) }
+  }
+  names.delete('')
+  return names.size
+}

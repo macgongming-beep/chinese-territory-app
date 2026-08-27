@@ -18,7 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDeepLinkBack } from '../../hooks/useDeepLinkBack'
 import { askNotifyOnEventEdit } from '../../lib/askNotify'
-import { countEventNotifyTargets } from '../../utils/eventNotify'
+import { countEventNotifyTargets, countEventNotifyTargetsMany } from '../../utils/eventNotify'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, SpecialPeriod, TerritoryCard, VisitHistory } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { AssignmentEditor } from '../assignment/AssignmentEditor'
@@ -636,7 +636,7 @@ export function AdminMobileCalendar({
 
       {scopeAction && (
         <SeriesScopeSheet language={language}
-          seriesCount={events.filter((e) => e.seriesId && e.seriesId === scopeAction.event.seriesId && e.date >= scopeAction.event.date).length}
+          seriesEvents={events.filter((e) => e.seriesId && e.seriesId === scopeAction.event.seriesId && e.date >= scopeAction.event.date)}
           action={scopeAction}
           onClose={() => setScopeAction(null)}
           onDeleteEvent={onDeleteEvent}
@@ -669,7 +669,7 @@ function SectionHead({ title, right }: { title: React.ReactNode; right?: React.R
 }
 
 function SeriesScopeSheet({ language,
-  seriesCount,
+  seriesEvents,
   action,
   onClose,
   onDeleteEvent,
@@ -678,7 +678,7 @@ function SeriesScopeSheet({ language,
   onUpdateEventSeries,
 }: {
   language: AppLanguage
-  seriesCount: number
+  seriesEvents: CalendarEvent[]
   action: { kind: 'edit'; event: CalendarEvent; input: EventInput } | { kind: 'delete'; event: CalendarEvent }
   onClose: () => void
   onDeleteEvent?: (id: number) => void
@@ -689,8 +689,18 @@ function SeriesScopeSheet({ language,
   const isEdit = action.kind === 'edit'
   const seriesId = action.event.seriesId
   const handleOnly = () => {
-    if (isEdit) onUpdateEvent?.(action.event.id, action.input)
-    else onDeleteEvent?.(action.event.id)
+    if (isEdit) {
+      // 반복 일정의 '이 일정만' 도 알림이 나간다 — 여기서도 묻는다.
+      // (예전엔 여기만 안 물어서 조용히 나갔다)
+      void (async () => {
+        const notify = await askNotifyOnEventEdit({
+          before: action.event,
+          after: { ...action.input, date: action.event.date },
+          recipientCount: countEventNotifyTargets(action.event),
+        })
+        onUpdateEvent?.(action.event.id, action.input, notify)
+      })()
+    } else onDeleteEvent?.(action.event.id)
     onClose()
   }
   const handleSeries = () => {
@@ -700,8 +710,9 @@ function SeriesScopeSheet({ language,
         const notify = await askNotifyOnEventEdit({
           before: action.event,
           after: { ...action.input, date: action.event.date },
-          recipientCount: countEventNotifyTargets(action.event),
-          seriesCount,
+          // 회차마다 신청자가 다르다 — 바뀌는 일정 전부의 합집합을 센다
+          recipientCount: countEventNotifyTargetsMany(seriesEvents),
+          seriesCount: seriesEvents.length,
         })
         onUpdateEventSeries?.(seriesId, action.event.date, action.input, notify)
       })()

@@ -17,28 +17,24 @@ export function makeNoticeMutations(deps: { fetchAll: () => Promise<void> }) {
     // (이 앱에서 여러 번 그랬다) 공지는 회중 전원에게 가고 되돌릴 수 없다.
     const notify = await askNotifyOnNotice()
 
+    // ⚠ 직접 insert 로 물러서지 않는다. 그 경로에는 관리자 검사도 알림 억제도 없어
+    //   '보내지 않기' 를 골라도 회중 전원에게 알림이 나간다.
     const token = getAuthToken()
-    if (token) {
-      const rpc = await supabase.rpc('create_notice_tx', {
-        p_token: token, p_title: input.title, p_content: input.content,
-        p_priority: input.priority, p_notify: notify,
-      })
-      if (!rpc.error) {
-        await fetchAll()
-        showToast(msg('공지가 등록됐습니다'))
-        return
-      }
-      console.warn('[createNotice] RPC 실패 — 레거시 경로', rpc.error)
+    if (!token) {
+      showToast(msg('로그인 정보가 없습니다. 다시 로그인해 주세요.'), 'error')
+      return
     }
-
-    const result = await supabase.from('notices').insert({
-      title: input.title.trim(),
-      content: input.content.trim(),
-      priority: input.priority,
-      author: input.author.trim(),
+    const rpc = await supabase.rpc('create_notice_tx', {
+      p_token: token, p_title: input.title, p_content: input.content,
+      p_priority: input.priority, p_notify: notify,
     })
-    if (result.error) {
-      reportMutationError(msg('공지를 등록하지 못했습니다. notices 테이블이 있는지 확인해 주세요.'), result.error)
+    if (rpc.error) {
+      reportMutationError(msg('공지를 등록하지 못했습니다.'), rpc.error)
+      return
+    }
+    const r = rpc.data as { ok?: boolean } | null
+    if (!r?.ok) {
+      showToast(msg('공지를 등록하지 못했습니다.'), 'error')
       return
     }
     await fetchAll()

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { willNotifyOnEventChange, isNotifiableDate } from './eventNotify'
+import { willNotifyOnEventChange, isNotifiableDate, countEventNotifyTargetsMany } from './eventNotify'
 
 const base = { date: '2026-09-01', time: '10:00', place: '신갈', mapLink: '', leader: '가, 나', title: '传道' }
 
@@ -40,5 +40,33 @@ describe('isNotifiableDate', () => {
   })
   test('지난 일정은 안 알린다', () => {
     expect(isNotifiableDate('2026-08-26', '2026-08-27')).toBe(false)
+  })
+})
+
+describe('countEventNotifyTargetsMany — 회차마다 사람이 다르다', () => {
+  test('여러 일정의 합집합을 센다', () => {
+    const evs = [
+      { participants: ['가', '나'], leader: '인도자1' },
+      { participants: ['나', '다'], leader: '인도자1, 인도자2' },
+    ]
+    // 가, 나, 다, 인도자1, 인도자2 = 5
+    expect(countEventNotifyTargetsMany(evs)).toBe(5)
+  })
+
+  test('첫 일정에 아무도 없어도 뒤 회차 사람을 센다', () => {
+    // 이걸 놓치면 "받을 사람 0명" 으로 보고 묻지도 않은 채 조용히 고쳐진다
+    const evs = [
+      { participants: [], leader: '' },
+      { participants: ['가', '나'], leader: '인도자1' },
+    ]
+    expect(countEventNotifyTargetsMany(evs)).toBe(3)
+  })
+
+  test('빈 목록은 0', () => {
+    expect(countEventNotifyTargetsMany([])).toBe(0)
+  })
+
+  test('인도자 목록의 공백을 다듬는다', () => {
+    expect(countEventNotifyTargetsMany([{ leader: ' 가 ,, 나 ' }])).toBe(2)
   })
 })
