@@ -19,6 +19,14 @@ begin
   end if;
 end $$;
 
+-- 앞선 시도가 중간에 멈췄을 수 있으니 먼저 치운다
+delete from public.auth_sessions where user_id in (select id from public.app_users where login_id like 'mtx-%');
+delete from public.event_participants where user_name like '매트릭스%';
+delete from public.notifications where related_id in (select id from public.calendar_events where title = '매트릭스봉사');
+delete from public.calendar_events where title = '매트릭스봉사';
+delete from public.notices where title like '매트릭스공지%';
+delete from public.app_users where login_id like 'mtx-%';
+
 drop table if exists public._notify_matrix_result;
 create table public._notify_matrix_result (
   seq          serial primary key,
@@ -74,8 +82,8 @@ begin
 
   -- 신청자는 **회차마다 다르게** (합집합 계산이 중요한 이유)
   insert into public.event_participants (event_id, user_name, role) values
-    (v_e2, '매트릭스일반', '참여'),
-    (v_e3, '매트릭스관리자', '참여');
+    (v_e2, '매트릭스일반', '신청'),
+    (v_e3, '매트릭스관리자', '신청');
 
   -- ═══ 칸 1: 관리자 · 반복 · notify=true ═══
   v_t0 := clock_timestamp();
