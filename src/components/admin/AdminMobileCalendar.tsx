@@ -17,6 +17,8 @@ import { findActivePeriod } from '../../utils/specialPeriod'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDeepLinkBack } from '../../hooks/useDeepLinkBack'
+import { askNotifyOnEventEdit } from '../../lib/askNotify'
+import { countEventNotifyTargets } from '../../utils/eventNotify'
 import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, SpecialPeriod, TerritoryCard, VisitHistory } from '../../types'
 import type { AppLanguage } from '../../i18n'
 import { AssignmentEditor } from '../assignment/AssignmentEditor'
@@ -88,8 +90,8 @@ type Props = {
   onCreateRepeatEvents?: (dates: string[], input: EventInput) => void
   onDeleteEvent?: (id: number) => void
   onDeleteEventSeries?: (seriesId: string, fromDate: string) => void
-  onUpdateEvent?: (id: number, input: EventInput) => void
-  onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput) => void
+  onUpdateEvent?: (id: number, input: EventInput, notify?: boolean) => void
+  onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput, notify?: boolean) => void
   onApplyToEvent?: (eventId: number) => void
   onAddParticipantToEvent?: (eventId: number, userName: string, role?: '신청' | '게스트') => void
   onRemoveParticipantFromEvent?: (eventId: number, userName: string) => void
@@ -512,7 +514,15 @@ export function AdminMobileCalendar({
               if (editingEvent.seriesId && onUpdateEventSeries) {
                 setScopeAction({ kind: 'edit', event: editingEvent, input: editInput })
               } else {
-                onUpdateEvent(editingEvent.id, editInput)
+                // 알림이 실제로 나갈 변경일 때만 묻는다 (메모만 고치면 안 묻는다)
+                void (async () => {
+                  const notify = await askNotifyOnEventEdit({
+                    before: editingEvent,
+                    after: { ...editInput, date: editingEvent.date },
+                    recipientCount: countEventNotifyTargets(editingEvent),
+                  })
+                  onUpdateEvent(editingEvent.id, editInput, notify)
+                })()
               }
             } else if (onCreateEvent) {
               const { date: eventDate, repeat, repeatEnd, ...eventInput } = input
@@ -626,6 +636,7 @@ export function AdminMobileCalendar({
 
       {scopeAction && (
         <SeriesScopeSheet language={language}
+          seriesCount={events.filter((e) => e.seriesId && e.seriesId === scopeAction.event.seriesId && e.date >= scopeAction.event.date).length}
           action={scopeAction}
           onClose={() => setScopeAction(null)}
           onDeleteEvent={onDeleteEvent}
@@ -657,7 +668,8 @@ function SectionHead({ title, right }: { title: React.ReactNode; right?: React.R
   )
 }
 
-function SeriesScopeSheet({ language, 
+function SeriesScopeSheet({ language,
+  seriesCount,
   action,
   onClose,
   onDeleteEvent,
@@ -666,12 +678,13 @@ function SeriesScopeSheet({ language,
   onUpdateEventSeries,
 }: {
   language: AppLanguage
+  seriesCount: number
   action: { kind: 'edit'; event: CalendarEvent; input: EventInput } | { kind: 'delete'; event: CalendarEvent }
   onClose: () => void
   onDeleteEvent?: (id: number) => void
   onDeleteEventSeries?: (seriesId: string, fromDate: string) => void
-  onUpdateEvent?: (id: number, input: EventInput) => void
-  onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput) => void
+  onUpdateEvent?: (id: number, input: EventInput, notify?: boolean) => void
+  onUpdateEventSeries?: (seriesId: string, fromDate: string, input: EventInput, notify?: boolean) => void
 }) {
   const isEdit = action.kind === 'edit'
   const seriesId = action.event.seriesId
@@ -682,8 +695,17 @@ function SeriesScopeSheet({ language,
   }
   const handleSeries = () => {
     if (!seriesId) return
-    if (isEdit) onUpdateEventSeries?.(seriesId, action.event.date, action.input)
-    else onDeleteEventSeries?.(seriesId, action.event.date)
+    if (isEdit) {
+      void (async () => {
+        const notify = await askNotifyOnEventEdit({
+          before: action.event,
+          after: { ...action.input, date: action.event.date },
+          recipientCount: countEventNotifyTargets(action.event),
+          seriesCount,
+        })
+        onUpdateEventSeries?.(seriesId, action.event.date, action.input, notify)
+      })()
+    } else onDeleteEventSeries?.(seriesId, action.event.date)
     onClose()
   }
 

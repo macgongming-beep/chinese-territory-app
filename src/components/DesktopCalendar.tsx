@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { askNotifyOnEventEdit } from '../lib/askNotify'
+import { countEventNotifyTargets } from '../utils/eventNotify'
 import { useSearchParams } from 'react-router-dom'
 import { confirmDialog } from '../lib/confirm'
 import { showToast } from '../lib/toast'
@@ -108,8 +110,8 @@ export function DesktopCalendar({
   onDeleteEventSeries: (seriesId: string, fromDate: string) => void
   onLinkEventsToSeries: (eventIds: number[]) => void
   onRemoveParticipant: (eventId: number, userName: string) => void
-  onUpdateEvent: (eventId: number, input: EditDraft) => void
-  onUpdateEventSeries: (seriesId: string, fromDate: string, input: EditDraft) => void
+  onUpdateEvent: (eventId: number, input: EditDraft, notify?: boolean) => void
+  onUpdateEventSeries: (seriesId: string, fromDate: string, input: EditDraft, notify?: boolean) => void
   onCreateSpecialPeriod: (input: { label: string; startDate: string; endDate: string; color: string }) => void
   onDeleteSpecialPeriod: (id: number) => void
   specialPeriods: SpecialPeriod[]
@@ -170,6 +172,24 @@ export function DesktopCalendar({
   const [editingEventId, setEditingEventId] = useState<number | null>(null)
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null)
   const [scopeModal, setScopeModal] = useState<ScopeModal | null>(null)
+
+  // 알림 보낼지 묻고 저장한다. 모바일과 **같은 lib/askNotify** 를 쓴다
+  // (각자 만들면 한쪽만 고쳐져 갈라진다 — 이 앱에서 여러 번 그랬다)
+  const saveWithNotifyAsk = async (
+    ev: CalendarEvent,
+    draft: EditDraft,
+    save: (notify: boolean) => void,
+    seriesCount?: number,
+  ) => {
+    const notify = await askNotifyOnEventEdit({
+      before: ev,
+      after: { ...draft, date: ev.date },
+      recipientCount: countEventNotifyTargets(ev),
+      seriesCount,
+    })
+    save(notify)
+  }
+
   const [deleteConfirmEvent, setDeleteConfirmEvent] = useState<CalendarEvent | null>(null)
   const [showPeriodForm, setShowPeriodForm] = useState(false)
   const [periodLabel, setPeriodLabel] = useState('')
@@ -305,11 +325,11 @@ export function DesktopCalendar({
               <>
                 <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>수정 범위 선택</h2>
                 <p style={{ fontSize: '13px', color: 'var(--ink-500)', margin: 0 }}>반복 시리즈 일정입니다. 어떤 범위로 수정할까요?</p>
-                <button onClick={() => { onUpdateEvent(scopeModal.id, scopeModal.draft); clearEdit(); setScopeModal(null) }} style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #d1d5db', background: '#f9fafb', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }} type="button">
+                <button onClick={() => { const ev = events.find((e) => e.id === scopeModal.id); const done = (notify: boolean) => { onUpdateEvent(scopeModal.id, scopeModal.draft, notify); clearEdit(); setScopeModal(null) }; if (ev) void saveWithNotifyAsk(ev, scopeModal.draft, done); else done(true) }} style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #d1d5db', background: '#f9fafb', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }} type="button">
                   <strong style={{ display: 'block' }}>이 일정만 수정 ({scopeModal.date})</strong>
                   <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 400 }}>나머지 반복 일정은 그대로</span>
                 </button>
-                <button onClick={() => { onUpdateEventSeries(scopeModal.seriesId, scopeModal.date, scopeModal.draft); clearEdit(); setScopeModal(null) }} style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border-default)', background: 'var(--gray-50)', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }} type="button">
+                <button onClick={() => { const ev = events.find((e) => e.id === scopeModal.id); const n = events.filter((e) => e.seriesId && e.seriesId === scopeModal.seriesId && e.date >= scopeModal.date).length; const done = (notify: boolean) => { onUpdateEventSeries(scopeModal.seriesId, scopeModal.date, scopeModal.draft, notify); clearEdit(); setScopeModal(null) }; if (ev) void saveWithNotifyAsk(ev, scopeModal.draft, done, n); else done(true) }} style={{ padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid var(--border-default)', background: 'var(--gray-50)', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }} type="button">
                   <strong style={{ display: 'block', color: 'var(--gray-900)' }}>이 날 포함 이후 모두 수정</strong>
                   <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 400 }}>{scopeModal.date} 부터 이후 일정만 변경 (지난 일정은 그대로)</span>
                 </button>
@@ -700,7 +720,7 @@ export function DesktopCalendar({
                         if (event.seriesId) {
                           setScopeModal({ kind: 'edit', id, date: event.date, seriesId: event.seriesId, draft })
                         } else {
-                          onUpdateEvent(id, draft); clearEdit()
+                          void saveWithNotifyAsk(event, draft, (notify) => { onUpdateEvent(id, draft, notify); clearEdit() })
                         }
                       }}
                       setDraft={setEditDraft}

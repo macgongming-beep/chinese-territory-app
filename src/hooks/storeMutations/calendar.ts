@@ -3,6 +3,7 @@ import { supabase, showToast, reportMutationError, getCurrentVisitor } from './s
 import { createSystemChatMessage } from './chatSystem'
 import { logServiceAction } from './serviceLog'
 import { msg } from '../../lib/msg'
+import { getAuthToken } from '../../lib/authToken'
 
 /** 일정 입력 공통 타입 */
 export type CalendarEventInput = {
@@ -73,7 +74,22 @@ export function makeCalendarMutations(deps: {
     showToast(msg('{length}개 일정이 등록됐습니다', { length: dates.length }))
   }
 
-  const updateCalendarEvent = async (eventId: number, input: CalendarEventInput) => {
+  // notify: 참가자에게 알림을 보낼지. 화면이 물어본 답을 넘긴다.
+  // (안 보냄으로 고치면 RPC 안에서 트리거를 끈 채 고친다)
+  const updateCalendarEvent = async (eventId: number, input: CalendarEventInput, notify = true) => {
+    const token = getAuthToken()
+    if (token) {
+      const rpc = await supabase.rpc('update_calendar_event_tx', {
+        p_token: token, p_event_id: eventId,
+        p_payload: buildEventPayload(input), p_notify: notify,
+      })
+      if (!rpc.error) {
+        await fetchAll()
+        showToast(msg('일정이 수정됐습니다'))
+        return
+      }
+      console.warn('[updateCalendarEvent] RPC 실패 — 레거시 경로', rpc.error)
+    }
     const result = await supabase.from('calendar_events').update(buildEventPayload(input)).eq('id', eventId)
     if (result.error) {
       reportMutationError(msg('일정을 수정하지 못했습니다.'), result.error)
@@ -83,11 +99,28 @@ export function makeCalendarMutations(deps: {
     showToast(msg('일정이 수정됐습니다'))
   }
 
+  // 반복 일정은 줄마다 트리거가 돌아 알림이 일정 수만큼 나갔다 (한 번에 92건 나간 적 있다).
+  // RPC 안에서 트리거를 끈 채 전부 고치고 **끝나고 한 번만** 보낸다.
   const updateCalendarEventSeries = async (
     seriesId: string,
     fromDate: string,
     input: CalendarEventInput,
+    notify = true,
   ) => {
+    const token = getAuthToken()
+    if (token) {
+      const rpc = await supabase.rpc('update_calendar_event_series_tx', {
+        p_token: token, p_series_id: seriesId, p_from_date: fromDate,
+        p_payload: buildEventPayload(input), p_notify: notify,
+      })
+      if (!rpc.error) {
+        const r = rpc.data as { updated?: number } | null
+        await fetchAll()
+        showToast(msg('이후 반복 일정 {n}개가 수정됐습니다', { n: r?.updated ?? 0 }))
+        return
+      }
+      console.warn('[updateCalendarEventSeries] RPC 실패 — 레거시 경로', rpc.error)
+    }
     const result = await supabase.from('calendar_events')
       .update(buildEventPayload(input))
       .eq('series_id', seriesId)
