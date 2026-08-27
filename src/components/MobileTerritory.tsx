@@ -642,13 +642,12 @@ export function MobileTerritory({
                           ) : (
                             <>
                               {assignedCards.map((card) => {
-                                const isActive = activeSessionCardIds.has(card.id)
                                 return (
-                                  <div className={`mobile-today-card-row${isActive ? ' is-active' : ''}`} key={`card-${card.id}`}>
-                                    <span className={`mobile-today-card-dot${isActive ? ' is-active' : ''}`} aria-hidden="true" />
+                                  <div className="mobile-today-card-row" key={`card-${card.id}`}>
+                                    <span className="mobile-today-card-dot" aria-hidden="true" />
                                     <strong>
                                       {translateKoreanAddress(card.name, language, translatePlaceNames)}
-                                      {isActive && <span className="mobile-today-card-active-badge">{msg('봉사 중')}</span>}
+
                                     </strong>
                                     <em>{card.progress}%</em>
                                     <button onClick={() => onOpenMap(card.id)} type="button">{t(language, 'zone.map')}</button>
@@ -1618,12 +1617,10 @@ export function MobileTerritory({
           )}
 
           {renderedVisibleCards.map((card) => {
-            const isActiveSession = activeSessionCardIds.has(card.id)
-            const operationalState = getTerritoryCardOperationalState(card)
-            const statusLabel = isActiveSession
-              ? t(language, 'map.servicing')
-              : cardStatusLabel(operationalState)
-            const statusClass = isActiveSession ? '진행중' : operationalState
+              // '봉사 중' 표시는 뺐다 — 진행 상태만 말한다 (사용자 요청)
+              const operationalState = getTerritoryCardOperationalState(card)
+              const statusLabel = cardStatusLabel(operationalState)
+              const statusClass = operationalState
             const counts = cardBuildingTypeCounts.get(card.id) ?? { total: card.buildings, house: 0, shop: 0 }
             return (
               <div className="mobile-territory-card" key={card.id}>

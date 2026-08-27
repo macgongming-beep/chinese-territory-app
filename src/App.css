@@ -4354,22 +4354,6 @@ button:focus-visible {
   border-radius: var(--radius-md);
   background: var(--bg-card);
 }
-.dms-assigned-card.is-active {
-  border-color: rgba(220, 38, 38, 0.3);
-  background: rgba(220, 38, 38, 0.03);
-}
-.dms-active-badge {
-  display: inline-block;
-  margin-left: 7px;
-  padding: 1px 7px;
-  background: #dc2626;
-  color: #fff;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  vertical-align: middle;
-}
 
 .dms-assigned-card strong,
 .dms-my-card-list strong,
@@ -4645,7 +4629,6 @@ button:focus-visible {
   font-weight: 800;
 }
 
-.dms-my-card-list button em.status-servicing,
 .dms-my-card-list button em.status-progress {
   background: var(--tint);
   color: var(--ink);
@@ -8590,18 +8573,6 @@ button:focus-visible {
   0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.35); }
   70% { box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); }
   100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-}
-.mobile-today-card-active-badge {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 1px 7px;
-  background: var(--danger-500, #dc2626);
-  color: #ffffff;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  vertical-align: middle;
 }
 
 /* ── 현재 봉사 중 카드 (Black Accent 스타일) — 제거 예정 (활성 세션 카드 더 이상 사용 안 함) ── */

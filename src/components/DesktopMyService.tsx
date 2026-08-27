@@ -44,15 +44,14 @@ function formatDateLabel(value?: string | null) {
   return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}`
 }
 
-function statusLabel(card: TerritoryCard, isActiveSession: boolean) {
-  if (isActiveSession) return '봉사 중'
+// '봉사 중' 은 뺐다 — 진행 상태만 말한다 (사용자 요청)
+function statusLabel(card: TerritoryCard) {
   if (card.progress >= 100) return '완료'
   if (card.progress > 0) return '진행중'
   return '방문필요'
 }
 
 function statusClass(label: string) {
-  if (label === '봉사 중') return 'servicing'
   if (label === '진행중') return 'progress'
   if (label === '완료') return 'done'
   return 'need'
@@ -249,13 +248,11 @@ export function DesktopMyService({
                           {assignedCards.length === 0 ? (
                             <div className="dms-empty compact">배정된 카드가 없습니다.</div>
                           ) : assignedCards.map((card) => {
-                            const isActive = activeSessionCardIds.has(card.id)
                             return (
-                              <div className={`dms-assigned-card${isActive ? ' is-active' : ''}`} key={card.id}>
+                              <div className="dms-assigned-card" key={card.id}>
                                 <div>
                                   <strong>
                                     {card.name}
-                                    {isActive && <span className="dms-active-badge">봉사 중</span>}
                                   </strong>
                                   <span>{card.area} · {card.units}세대</span>
                                 </div>
@@ -288,8 +285,7 @@ export function DesktopMyService({
             ) : (
               <div className="dms-my-card-list">
                 {myCards.map((card) => {
-                  const isActive = activeSessionCardIds.has(card.id)
-                  const label = statusLabel(card, isActive)
+                    const label = statusLabel(card)
                   return (
                     <button key={card.id} onClick={() => onOpenMap(card.id)} type="button">
                       <div>
