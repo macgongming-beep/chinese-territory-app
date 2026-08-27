@@ -309,6 +309,64 @@ begin
     delete from public.app_users where id in (v_on, v_off, v_inactive, v_pending);
   end;
 
+
+  -- ═══ 칸 14: 댓글·채팅·배정도 알림 끈 사람을 거르나 ═══
+  --     ⚠ 지금까지 '일정·공지만' 고쳤다가 두 번 놓쳤다.
+  --       insert_notifications 가 거르는지를 **경로마다** 본다.
+  --       (푸시는 dispatch 안에서 같은 함수를 부르므로 같은 목록이 된다)
+  declare
+    v_pon integer; v_poff integer; v_left integer[];
+  begin
+    insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+    values ('mtx-p-on', '푸시켬', '1234', 'user', 'approved', true) returning id into v_pon;
+    insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+    values ('mtx-p-off', '푸시끔', '1234', 'user', 'approved', true) returning id into v_poff;
+
+    insert into public.notification_preferences
+      (user_id, push_comment, push_chat, push_mention, push_new_notice, push_event_change)
+    values (v_poff, false, false, false, false, false)
+    on conflict (user_id) do update set
+      push_comment = false, push_chat = false, push_mention = false,
+      push_new_notice = false, push_event_change = false;
+
+    -- 종류마다 '켠 사람만 남는가'
+    for v_left in
+      select public.filter_notification_recipients(array[v_pon, v_poff], t)
+      from unnest(array['comment', 'chat', 'mention', 'notice', 'event_change']) as t
+    loop
+      if v_left is distinct from array[v_pon] then
+        insert into public._notify_matrix_result (칸, 결과, 판정)
+        values ('14 종류별 필터', '남은 사람: ' || coalesce(array_to_string(v_left, ','), '(없음)'),
+                '⚠ 켠 사람만 남아야 한다');
+      end if;
+    end loop;
+
+    if not exists (select 1 from public._notify_matrix_result where 칸 like '14 %') then
+      insert into public._notify_matrix_result (칸, 결과, 판정)
+      values ('14 종류별 필터 (댓글·채팅·멘션·공지·일정변경)',
+              '다섯 종류 모두 켠 사람만 남았다', 'OK');
+    end if;
+
+    -- 실제 댓글 한 건으로 끝에서 끝까지
+    perform set_config('app.suppress_notifications', '', true);
+    select coalesce(max(id), 0) into v_mark from public.notifications;
+    insert into public.comments (target_type, target_id, author_id, author_name, content)
+    values ('calendar_event', v_e3, v_admin, '매트릭스관리자', '매트릭스 댓글');
+    select count(*) filter (where user_id = v_pon),
+           count(*) filter (where user_id = v_poff)
+      into v_cnt, v_ppl
+      from public.notifications where id > v_mark;
+    insert into public._notify_matrix_result (칸, 결과, 알림건수, 받은사람, 판정)
+    values ('15 실제 댓글 — 푸시 끈 사람은 안 받는다',
+            '켠사람 ' || v_cnt || '건 / 끈사람 ' || v_ppl || '건', v_cnt, v_ppl,
+      case when v_ppl = 0 then 'OK (끈 사람 0건)' else '⚠ 끈 사람이 받았다' end);
+
+    delete from public.comments where content = '매트릭스 댓글';
+    delete from public.notifications where user_id in (v_pon, v_poff);
+    delete from public.notification_preferences where user_id in (v_pon, v_poff);
+    delete from public.app_users where id in (v_pon, v_poff);
+  end;
+
   -- ── 뒷정리 ────────────────────────────────────────────
   delete from public.notifications
    where related_id in (select id from public.calendar_events where series_id = v_series)
