@@ -347,7 +347,13 @@ begin
               '다섯 종류 모두 켠 사람만 남았다', 'OK');
     end if;
 
-    -- 실제 댓글 한 건으로 끝에서 끝까지
+    -- 실제 댓글 한 건으로 끝에서 끝까지.
+    -- ⚠ 둘을 **그 일정 신청자로 붙여야** 댓글 알림 대상이 된다.
+    --    이걸 빠뜨려 '켠사람 0건 / 끈사람 0건' 이 나왔고, '끈 사람 0건' 만 보던
+    --    판정이 그걸 OK 로 통과시켰다 — 아무것도 증명하지 못하는 시험이었다.
+    insert into public.event_participants (event_id, user_name, role) values
+      (v_e3, '푸시켬', '신청'), (v_e3, '푸시끔', '신청');
+
     perform set_config('app.suppress_notifications', '', true);
     select coalesce(max(id), 0) into v_mark from public.notifications;
     insert into public.comments (target_type, target_id, author_id, author_name, content)
@@ -359,8 +365,12 @@ begin
     insert into public._notify_matrix_result (칸, 결과, 알림건수, 받은사람, 판정)
     values ('15 실제 댓글 — 푸시 끈 사람은 안 받는다',
             '켠사람 ' || v_cnt || '건 / 끈사람 ' || v_ppl || '건', v_cnt, v_ppl,
-      case when v_ppl = 0 then 'OK (끈 사람 0건)' else '⚠ 끈 사람이 받았다' end);
+      -- 켠 사람이 **받았고** 끈 사람이 **못 받았어야** 한다. 둘 다 봐야 뜻이 있다
+      case when v_cnt = 1 and v_ppl = 0 then 'OK (켠 사람 1건 · 끈 사람 0건)'
+           when v_cnt = 0 then '⚠ 켠 사람도 못 받았다 — 시험이 헛돌고 있다'
+           else '⚠ 끈 사람이 받았다' end);
 
+    delete from public.event_participants where user_name in ('푸시켬', '푸시끔');
     delete from public.comments where content = '매트릭스 댓글';
     delete from public.notifications where user_id in (v_pon, v_poff);
     delete from public.notification_preferences where user_id in (v_pon, v_poff);
