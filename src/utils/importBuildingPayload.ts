@@ -30,7 +30,9 @@ export function buildImportPayload(input: CsvBuildingImport): ImportBuildingPayl
       type: input.type,
       lat: input.lat,
       lng: input.lng,
-      ...(input.warning ? { warning: input.warning } : {}),
+      // buildings.warning 은 boolean 이다. CSV 는 '방문금지' 같은 글자를 준다 —
+      // 글자가 있으면 '경고 있음' 으로 본다 (예전엔 글자를 그대로 보내 실패했다)
+      warning: Boolean(input.warning && String(input.warning).trim()),
     },
     units: units.map((unit) => ({
       number: unit.number,

@@ -19,9 +19,12 @@ describe('buildImportPayload', () => {
     expect(p.building).toMatchObject({ card_id: 1, name: '가나빌라', address: '유방동 1', lat: 37.25 })
   })
 
-  test('경고가 없으면 그 칸을 안 보낸다', () => {
-    expect('warning' in buildImportPayload(row()).building).toBe(false)
-    expect(buildImportPayload(row({ warning: '방문금지' })).building.warning).toBe('방문금지')
+  test('경고는 boolean 으로 바꾼다 — DB 칸이 boolean 이다', () => {
+    // 예전엔 '방문금지' 라는 글자를 그대로 보내서, 그 건물이 통째로
+    // 조용히 건너뛰어졌다 (boolean 칸에 글자를 넣으려다 실패)
+    expect(buildImportPayload(row()).building.warning).toBe(false)
+    expect(buildImportPayload(row({ warning: '방문금지' })).building.warning).toBe(true)
+    expect(buildImportPayload(row({ warning: '   ' })).building.warning).toBe(false)
   })
 
   test('세대가 없으면 101호 하나를 만든다', () => {

@@ -9,7 +9,7 @@
 
 create or replace function public.import_building_tx(
   p_token    uuid,
-  p_building jsonb,   -- { card_id, name, address, type, lat, lng, warning? }
+  p_building jsonb,   -- { card_id, name, address, type, lat, lng, warning? }  warning 은 boolean 또는 글자
   p_units    jsonb    -- [{ number, status, is_chinese, is_restaurant, naver_place_id?,
                       --    memo?, regular_visitor?, regular_visitor_start_date?,
                       --    visits: [{ result, visitor_name, visited_at, time_slot?, memo? }] }]
@@ -47,7 +47,16 @@ begin
     coalesce(p_building->>'type', '주택'),
     coalesce((p_building->>'lat')::double precision, 0),
     coalesce((p_building->>'lng')::double precision, 0),
-    nullif(p_building->>'warning', '')
+    -- ⚠ buildings.warning 은 **boolean** 이다.
+    --   CSV 쪽은 '방문금지' 같은 글자를 보내고 있었고, 그게 boolean 칸에 들어가려다
+    --   실패해서 그 건물이 통째로 조용히 건너뛰어졌다 (skipped += 1).
+    --   글자가 오면 '경고 있음' 으로 본다.
+    coalesce(
+      case
+        when p_building->'warning' is null then false
+        when jsonb_typeof(p_building->'warning') = 'boolean' then (p_building->>'warning')::boolean
+        else nullif(btrim(p_building->>'warning'), '') is not null
+      end, false)
   )
   returning id into v_building_id;
 
