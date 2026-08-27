@@ -8,6 +8,11 @@
 --   · 권한 실패 뒤 DB 가 **전혀** 안 바뀌었는지
 --
 -- 끝나면 만든 자료를 지우고 결과표만 남긴다.
+--
+-- ⚠ 알림 건수는 **id 물길**로 센다. 시각으로 세면 안 된다 —
+--   notifications.created_at 의 기본값은 now() 이고, now() 는 **트랜잭션 시작 시각**이라
+--   블록 안에서 clock_timestamp() 로 찍은 기준보다 항상 이르다.
+--   처음에 그렇게 짰다가 알림이 전부 0건으로 나와 코드가 잘못된 줄 알았다.
 
 do $$
 declare
@@ -50,18 +55,20 @@ declare
   v_before_e bigint;
   v_upd integer; v_cnt integer; v_ppl integer; v_self boolean;
   v_res jsonb;
-  v_t0 timestamptz;
+  v_mark bigint;   -- 알림 세는 물길. 시각으로 세면 안 된다(아래 설명)
 
 begin
   -- ── 사람 넷 ────────────────────────────────────────────
-  insert into public.app_users (login_id, name, pin, role)
-  values ('mtx-admin', '매트릭스관리자', '1234', 'admin') returning id into v_admin;
-  insert into public.app_users (login_id, name, pin, role)
-  values ('mtx-lead-all', '매트릭스전담인도자', '1234', 'leader') returning id into v_lead_all;
-  insert into public.app_users (login_id, name, pin, role)
-  values ('mtx-lead-one', '매트릭스일부인도자', '1234', 'leader') returning id into v_lead_one;
-  insert into public.app_users (login_id, name, pin, role)
-  values ('mtx-plain', '매트릭스일반', '1234', 'user') returning id into v_plain;
+  -- 승인·활성을 명시한다 (insert_notifications 가 미승인·비활성을 거른다).
+  -- 기본값도 approved 지만 시험은 조건을 눈에 보이게 적는다.
+  insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+  values ('mtx-admin', '매트릭스관리자', '1234', 'admin', 'approved', true) returning id into v_admin;
+  insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+  values ('mtx-lead-all', '매트릭스전담인도자', '1234', 'leader', 'approved', true) returning id into v_lead_all;
+  insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+  values ('mtx-lead-one', '매트릭스일부인도자', '1234', 'leader', 'approved', true) returning id into v_lead_one;
+  insert into public.app_users (login_id, name, pin, role, approval_status, is_active)
+  values ('mtx-plain', '매트릭스일반', '1234', 'user', 'approved', true) returning id into v_plain;
 
   insert into public.auth_sessions (token, user_id, expires_at) values
     (v_admin_tok, v_admin, now() + interval '1 hour'),
@@ -86,14 +93,14 @@ begin
     (v_e3, '매트릭스관리자', '신청');
 
   -- ═══ 칸 1: 관리자 · 반복 · notify=true ═══
-  v_t0 := clock_timestamp();
+  select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_series_tx(
     v_admin_tok, v_series, current_date + 7,
     jsonb_build_object('place', '바뀐장소1'), true);
   select count(*), count(distinct user_id),
          bool_or(user_id = v_admin)
     into v_cnt, v_ppl, v_self
-    from public.notifications where created_at >= v_t0 and type = 'event_change';
+    from public.notifications where id > v_mark and type = 'event_change';
   insert into public._notify_matrix_result (칸, 결과, 바뀐일정, 알림건수, 받은사람, 본인포함, 판정)
   values ('1 관리자·반복·알림보냄', v_res::text, (v_res->>'updated')::int, v_cnt, v_ppl, v_self,
     case when (v_res->>'updated')::int = 3 and v_cnt = v_ppl and v_ppl >= 1 and not v_self
@@ -101,23 +108,23 @@ begin
          else '⚠ 확인' end);
 
   -- ═══ 칸 2: 관리자 · 반복 · notify=false ═══
-  v_t0 := clock_timestamp();
+  select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_series_tx(
     v_admin_tok, v_series, current_date + 7,
     jsonb_build_object('place', '바뀐장소2'), false);
-  select count(*) into v_cnt from public.notifications where created_at >= v_t0;
+  select count(*) into v_cnt from public.notifications where id > v_mark;
   insert into public._notify_matrix_result (칸, 결과, 바뀐일정, 알림건수, 판정)
   values ('2 관리자·반복·알림안보냄', v_res::text, (v_res->>'updated')::int, v_cnt,
     case when v_cnt = 0 then 'OK (0건)' else '⚠ 알림이 나갔다' end);
 
   -- ═══ 칸 3: 전담 인도자 · 반복 · notify=true ═══
-  v_t0 := clock_timestamp();
+  select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_series_tx(
     v_lead_all_tok, v_series, current_date + 7,
     jsonb_build_object('place', '바뀐장소3'), true);
   select count(*), count(distinct user_id), bool_or(user_id = v_lead_all)
     into v_cnt, v_ppl, v_self
-    from public.notifications where created_at >= v_t0 and type = 'event_change';
+    from public.notifications where id > v_mark and type = 'event_change';
   insert into public._notify_matrix_result (칸, 결과, 바뀐일정, 알림건수, 받은사람, 본인포함, 판정)
   values ('3 전담인도자·반복·알림보냄', v_res::text, (v_res->>'updated')::int, v_cnt, v_ppl, v_self,
     case when (v_res->>'updated')::int = 3 and not v_self then 'OK' else '⚠ 확인' end);
@@ -152,19 +159,19 @@ begin
   end;
 
   -- ═══ 칸 6: 관리자 · 단일 · notify=false ═══
-  v_t0 := clock_timestamp();
+  select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_tx(v_admin_tok, v_e1, jsonb_build_object('place', '단일변경'), false);
-  select count(*) into v_cnt from public.notifications where created_at >= v_t0;
+  select count(*) into v_cnt from public.notifications where id > v_mark;
   insert into public._notify_matrix_result (칸, 결과, 바뀐일정, 알림건수, 판정)
   values ('6 관리자·단일·알림안보냄', v_res::text, (v_res->>'updated')::int, v_cnt,
     case when v_cnt = 0 and (v_res->>'updated')::int = 1 then 'OK' else '⚠ 확인' end);
 
   -- ═══ 칸 7: 알림 대상 아닌 칸(메모)만 바꾸면 notify=true 여도 안 나간다 ═══
-  v_t0 := clock_timestamp();
+  select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.update_calendar_event_series_tx(
     v_admin_tok, v_series, current_date + 7,
     jsonb_build_object('memo', '메모만 바꿈'), true);
-  select count(*) into v_cnt from public.notifications where created_at >= v_t0;
+  select count(*) into v_cnt from public.notifications where id > v_mark;
   insert into public._notify_matrix_result (칸, 결과, 바뀐일정, 알림건수, 판정)
   values ('7 메모만 바꿈·알림보냄', v_res::text, (v_res->>'updated')::int, v_cnt,
     case when v_cnt = 0 then 'OK (서버가 알림 대상 아님을 판단)' else '⚠ 메모만 바꿨는데 알림이 나갔다' end);
@@ -180,19 +187,19 @@ begin
   end;
 
   -- ═══ 칸 9: 공지 — 관리자 · notify=false ═══
-  v_t0 := clock_timestamp();
+  select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.create_notice_tx(v_admin_tok, '매트릭스공지-조용히', '내용', 'normal', false);
-  select count(*) into v_cnt from public.notifications where created_at >= v_t0;
+  select count(*) into v_cnt from public.notifications where id > v_mark;
   insert into public._notify_matrix_result (칸, 결과, 알림건수, 판정)
   values ('9 관리자·공지·알림안보냄', v_res::text, v_cnt,
     case when v_cnt = 0 then 'OK (0건)' else '⚠ 알림이 나갔다' end);
 
   -- ═══ 칸 10: 공지 — 관리자 · notify=true (본인 제외 확인) ═══
-  v_t0 := clock_timestamp();
+  select coalesce(max(id), 0) into v_mark from public.notifications;
   v_res := public.create_notice_tx(v_admin_tok, '매트릭스공지-알림', '내용', 'normal', true);
   select count(*), count(distinct user_id), bool_or(user_id = v_admin)
     into v_cnt, v_ppl, v_self
-    from public.notifications where created_at >= v_t0 and type = 'notice';
+    from public.notifications where id > v_mark and type = 'notice';
   insert into public._notify_matrix_result (칸, 결과, 알림건수, 받은사람, 본인포함, 판정)
   values ('10 관리자·공지·알림보냄', v_res::text, v_cnt, v_ppl, v_self,
     case when v_cnt > 0 and not v_self then 'OK (본인 제외)' else '⚠ 확인' end);
