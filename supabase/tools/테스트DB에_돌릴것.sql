@@ -1,5 +1,18 @@
--- ═══ 20260827_0900_notification_filter.sql ═══
+-- 운영 적용용 묶음. **한 트랜잭션으로 돈다** — 중간에 실패하면 전부 되돌아간다.
+-- (문장이 따로 처리되면 함수 일부만 바뀐 채 남을 수 있다)
+--
+-- 순서가 중요하다: 필터 함수 → 일정 트리거 → 일정 RPC → 공지 RPC·트리거.
+-- 트리거가 필터 함수를 부르기 때문이다.
+--
+-- ⚠ 확인 쿼리는 여기 없다. commit 이 끝난 뒤 따로 돌릴 것 (파일 맨 아래 주석 참고).
+
+begin;
+
+-- ═══ 20260826_2350_notification_filter.sql ═══
 -- 알림 수신자 필터. **다른 것보다 먼저 있어야 한다** —
+-- 그래서 파일 이름을 20260826_2350 으로 둔다 (2400 트리거보다 앞서 돌게).
+-- 처음엔 20260827_0900 로 뒀는데, 이름 순서로 재생하면 트리거가 먼저 돌아
+-- 새 회중 설치가 깨진다. 운영 묶음만 손으로 정렬해선 안 된다.
 -- 일정 트리거와 공지 트리거, 두 RPC 가 이걸 부른다.
 
 -- 알림을 실제로 받을 사람만 남긴다.
@@ -303,6 +316,10 @@ begin
   select name, role into v_actor_name, v_actor_role
   from public.app_users where id = v_actor_id;
 
+  -- 반복과 마찬가지로 **권한 검사보다 먼저** 잠근다.
+  -- 검사와 수정 사이에 다른 요청이 인도자를 바꾸면 옛 권한으로 고칠 수 있다.
+  perform 1 from public.calendar_events where id = p_event_id for update;
+
   if v_actor_role not in ('admin', 'developer') and not exists (
     select 1 from public.calendar_events e
     where e.id = p_event_id
@@ -482,6 +499,27 @@ $function$;
 
 revoke all on function public.create_notice_tx(uuid, text, text, text, boolean) from public;
 grant execute on function public.create_notice_tx(uuid, text, text, text, boolean) to anon, authenticated;
+
+
+-- PostgREST 가 새 함수를 바로 보게 한다 (안 그러면 잠깐 404 가 난다)
+notify pgrst, 'reload schema';
+
+commit;
+
+-- ═══════════════════════════════════════════════
+-- commit 뒤에 **따로** 돌릴 확인 쿼리 (전부 true 여야 한다)
+-- ═══════════════════════════════════════════════
+-- select
+--   (select count(*) from pg_proc where proname = 'filter_notification_recipients') = 1 as 필터함수,
+--   (select count(*) from pg_proc where proname = 'update_calendar_event_series_tx') = 1 as 반복수정_RPC,
+--   (select count(*) from pg_proc where proname = 'update_calendar_event_tx')        = 1 as 단일수정_RPC,
+--   (select count(*) from pg_proc where proname = 'create_notice_tx')                = 1 as 공지_RPC,
+--   (select position('공지는 관리자만' in prosrc) > 0 from pg_proc where proname = 'create_notice_tx') as 공지_관리자검사,
+--   (select position('내가 인도하지 않는' in prosrc) > 0 from pg_proc where proname = 'update_calendar_event_series_tx') as 반복_권한좁힘,
+--   (select position('filter_notification_recipients' in prosrc) > 0 from pg_proc where proname = 'notify_on_calendar_event_change') as 일정트리거_필터,
+--   (select position('app.actor_id' in prosrc) > 0 from pg_proc where proname = 'notify_on_calendar_event_change') as 일정트리거_본인제외,
+--   (select position('approval_status' in prosrc) > 0 from pg_proc where proname = 'notify_on_notice_insert') as 공지트리거_승인조건_보존,
+--   (select position('v_author_id' in prosrc) > 0 from pg_proc where proname = 'notify_on_notice_insert') as 공지트리거_본인제외_보존;
 
 -- 알림·권한 매트릭스 검증. **테스트 DB 에서만** 돌린다.
 --
@@ -724,8 +762,13 @@ begin
     from public.notifications where id > v_mark and type = 'event_change';
   insert into public._notify_matrix_result (칸, 결과, 바뀐일정, 알림건수, 받은사람, 본인포함, 판정)
   values ('11 인도자 본인이 단일 수정·알림보냄', v_res::text, (v_res->>'updated')::int, v_cnt, v_ppl, v_self,
-    case when (v_res->>'updated')::int = 1 and not coalesce(v_self, false)
-         then 'OK (고친 본인은 안 받는다)' else '⚠ 고친 본인이 받았다' end);
+    -- ⚠ 알림이 0건이면 v_self 가 null 이라 '본인 미포함' 이 저절로 참이 된다.
+    --    건수와 사람 수를 함께 봐야 시험이 헐거워지지 않는다.
+    case when (v_res->>'updated')::int = 1 and v_cnt = 1 and v_ppl = 1
+              and not coalesce(v_self, true)
+         then 'OK (한 명에게 갔고, 고친 본인은 안 받는다)'
+         when v_cnt = 0 then '⚠ 아무한테도 안 갔다'
+         else '⚠ 고친 본인이 받았거나 사람 수가 다르다' end);
 
   -- ═══ 칸 12: 알림 필터 정책 — 네 사람이 각각 어떻게 되나 ═══
   --     활성·승인·알림ON 만 받아야 한다. 나머지 셋은 인앱도 푸시도 안 가야 한다.
@@ -767,14 +810,21 @@ begin
     perform set_config('app.actor_id', '', true);
     select coalesce(max(id), 0) into v_mark from public.notifications;
     v_res := public.update_calendar_event_tx(v_admin_tok, v_e2, jsonb_build_object('place', '끝에서끝'), true);
-    select count(*), count(distinct user_id) into v_cnt, v_ppl
+    -- ⚠ '한 명이 받았다' 만 보면 엉뚱한 한 명이어도 통과한다.
+    --    **알림 켠 사람이 정확히 1건, 나머지 셋은 0건**을 따로 센다.
+    select count(*) filter (where n.user_id = v_on),
+           count(*) filter (where n.user_id in (v_off, v_inactive, v_pending))
+      into v_cnt, v_ppl
       from public.notifications n
      where n.id > v_mark and n.type = 'event_change'
        and n.user_id in (v_on, v_off, v_inactive, v_pending);
     insert into public._notify_matrix_result (칸, 결과, 알림건수, 받은사람, 판정)
-    values ('13 넷 중 알림 켠 한 명만 받는다', v_res::text, v_cnt, v_ppl,
-      case when v_cnt = 1 and v_ppl = 1 then 'OK (인앱·푸시 같은 목록)'
-           else '⚠ 한 명만 받아야 한다' end);
+    values ('13 알림 켠 사람만 받는다 (인앱 기준)', v_res::text, v_cnt, v_ppl,
+      -- 판정 문구를 좁혔다. 여기서 보는 건 notifications 뿐이고,
+      -- 푸시가 같은 배열을 받는다는 건 코드로만 보장된다 (같은 v_recipient_ids).
+      case when v_cnt = 1 and v_ppl = 0 then 'OK (켠 사람 1건 · 나머지 0건)'
+           when v_cnt = 0 then '⚠ 켠 사람이 못 받았다'
+           else '⚠ 꺼둔·비활성·미승인이 받았다' end);
 
     delete from public.event_participants where user_name in ('필터켬', '필터끔', '비활성', '미승인');
     delete from public.notification_preferences where user_id in (v_on, v_off, v_inactive, v_pending);

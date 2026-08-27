@@ -239,8 +239,13 @@ begin
     from public.notifications where id > v_mark and type = 'event_change';
   insert into public._notify_matrix_result (칸, 결과, 바뀐일정, 알림건수, 받은사람, 본인포함, 판정)
   values ('11 인도자 본인이 단일 수정·알림보냄', v_res::text, (v_res->>'updated')::int, v_cnt, v_ppl, v_self,
-    case when (v_res->>'updated')::int = 1 and not coalesce(v_self, false)
-         then 'OK (고친 본인은 안 받는다)' else '⚠ 고친 본인이 받았다' end);
+    -- ⚠ 알림이 0건이면 v_self 가 null 이라 '본인 미포함' 이 저절로 참이 된다.
+    --    건수와 사람 수를 함께 봐야 시험이 헐거워지지 않는다.
+    case when (v_res->>'updated')::int = 1 and v_cnt = 1 and v_ppl = 1
+              and not coalesce(v_self, true)
+         then 'OK (한 명에게 갔고, 고친 본인은 안 받는다)'
+         when v_cnt = 0 then '⚠ 아무한테도 안 갔다'
+         else '⚠ 고친 본인이 받았거나 사람 수가 다르다' end);
 
   -- ═══ 칸 12: 알림 필터 정책 — 네 사람이 각각 어떻게 되나 ═══
   --     활성·승인·알림ON 만 받아야 한다. 나머지 셋은 인앱도 푸시도 안 가야 한다.
@@ -282,14 +287,21 @@ begin
     perform set_config('app.actor_id', '', true);
     select coalesce(max(id), 0) into v_mark from public.notifications;
     v_res := public.update_calendar_event_tx(v_admin_tok, v_e2, jsonb_build_object('place', '끝에서끝'), true);
-    select count(*), count(distinct user_id) into v_cnt, v_ppl
+    -- ⚠ '한 명이 받았다' 만 보면 엉뚱한 한 명이어도 통과한다.
+    --    **알림 켠 사람이 정확히 1건, 나머지 셋은 0건**을 따로 센다.
+    select count(*) filter (where n.user_id = v_on),
+           count(*) filter (where n.user_id in (v_off, v_inactive, v_pending))
+      into v_cnt, v_ppl
       from public.notifications n
      where n.id > v_mark and n.type = 'event_change'
        and n.user_id in (v_on, v_off, v_inactive, v_pending);
     insert into public._notify_matrix_result (칸, 결과, 알림건수, 받은사람, 판정)
-    values ('13 넷 중 알림 켠 한 명만 받는다', v_res::text, v_cnt, v_ppl,
-      case when v_cnt = 1 and v_ppl = 1 then 'OK (인앱·푸시 같은 목록)'
-           else '⚠ 한 명만 받아야 한다' end);
+    values ('13 알림 켠 사람만 받는다 (인앱 기준)', v_res::text, v_cnt, v_ppl,
+      -- 판정 문구를 좁혔다. 여기서 보는 건 notifications 뿐이고,
+      -- 푸시가 같은 배열을 받는다는 건 코드로만 보장된다 (같은 v_recipient_ids).
+      case when v_cnt = 1 and v_ppl = 0 then 'OK (켠 사람 1건 · 나머지 0건)'
+           when v_cnt = 0 then '⚠ 켠 사람이 못 받았다'
+           else '⚠ 꺼둔·비활성·미승인이 받았다' end);
 
     delete from public.event_participants where user_name in ('필터켬', '필터끔', '비활성', '미승인');
     delete from public.notification_preferences where user_id in (v_on, v_off, v_inactive, v_pending);

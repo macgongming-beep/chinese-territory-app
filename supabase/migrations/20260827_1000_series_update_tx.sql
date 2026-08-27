@@ -176,6 +176,10 @@ begin
   select name, role into v_actor_name, v_actor_role
   from public.app_users where id = v_actor_id;
 
+  -- 반복과 마찬가지로 **권한 검사보다 먼저** 잠근다.
+  -- 검사와 수정 사이에 다른 요청이 인도자를 바꾸면 옛 권한으로 고칠 수 있다.
+  perform 1 from public.calendar_events where id = p_event_id for update;
+
   if v_actor_role not in ('admin', 'developer') and not exists (
     select 1 from public.calendar_events e
     where e.id = p_event_id

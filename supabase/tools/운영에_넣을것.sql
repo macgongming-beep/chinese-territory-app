@@ -1,5 +1,18 @@
--- ═══ 20260827_0900_notification_filter.sql ═══
+-- 운영 적용용 묶음. **한 트랜잭션으로 돈다** — 중간에 실패하면 전부 되돌아간다.
+-- (문장이 따로 처리되면 함수 일부만 바뀐 채 남을 수 있다)
+--
+-- 순서가 중요하다: 필터 함수 → 일정 트리거 → 일정 RPC → 공지 RPC·트리거.
+-- 트리거가 필터 함수를 부르기 때문이다.
+--
+-- ⚠ 확인 쿼리는 여기 없다. commit 이 끝난 뒤 따로 돌릴 것 (파일 맨 아래 주석 참고).
+
+begin;
+
+-- ═══ 20260826_2350_notification_filter.sql ═══
 -- 알림 수신자 필터. **다른 것보다 먼저 있어야 한다** —
+-- 그래서 파일 이름을 20260826_2350 으로 둔다 (2400 트리거보다 앞서 돌게).
+-- 처음엔 20260827_0900 로 뒀는데, 이름 순서로 재생하면 트리거가 먼저 돌아
+-- 새 회중 설치가 깨진다. 운영 묶음만 손으로 정렬해선 안 된다.
 -- 일정 트리거와 공지 트리거, 두 RPC 가 이걸 부른다.
 
 -- 알림을 실제로 받을 사람만 남긴다.
@@ -303,6 +316,10 @@ begin
   select name, role into v_actor_name, v_actor_role
   from public.app_users where id = v_actor_id;
 
+  -- 반복과 마찬가지로 **권한 검사보다 먼저** 잠근다.
+  -- 검사와 수정 사이에 다른 요청이 인도자를 바꾸면 옛 권한으로 고칠 수 있다.
+  perform 1 from public.calendar_events where id = p_event_id for update;
+
   if v_actor_role not in ('admin', 'developer') and not exists (
     select 1 from public.calendar_events e
     where e.id = p_event_id
@@ -483,3 +500,23 @@ $function$;
 revoke all on function public.create_notice_tx(uuid, text, text, text, boolean) from public;
 grant execute on function public.create_notice_tx(uuid, text, text, text, boolean) to anon, authenticated;
 
+
+-- PostgREST 가 새 함수를 바로 보게 한다 (안 그러면 잠깐 404 가 난다)
+notify pgrst, 'reload schema';
+
+commit;
+
+-- ═══════════════════════════════════════════════
+-- commit 뒤에 **따로** 돌릴 확인 쿼리 (전부 true 여야 한다)
+-- ═══════════════════════════════════════════════
+-- select
+--   (select count(*) from pg_proc where proname = 'filter_notification_recipients') = 1 as 필터함수,
+--   (select count(*) from pg_proc where proname = 'update_calendar_event_series_tx') = 1 as 반복수정_RPC,
+--   (select count(*) from pg_proc where proname = 'update_calendar_event_tx')        = 1 as 단일수정_RPC,
+--   (select count(*) from pg_proc where proname = 'create_notice_tx')                = 1 as 공지_RPC,
+--   (select position('공지는 관리자만' in prosrc) > 0 from pg_proc where proname = 'create_notice_tx') as 공지_관리자검사,
+--   (select position('내가 인도하지 않는' in prosrc) > 0 from pg_proc where proname = 'update_calendar_event_series_tx') as 반복_권한좁힘,
+--   (select position('filter_notification_recipients' in prosrc) > 0 from pg_proc where proname = 'notify_on_calendar_event_change') as 일정트리거_필터,
+--   (select position('app.actor_id' in prosrc) > 0 from pg_proc where proname = 'notify_on_calendar_event_change') as 일정트리거_본인제외,
+--   (select position('approval_status' in prosrc) > 0 from pg_proc where proname = 'notify_on_notice_insert') as 공지트리거_승인조건_보존,
+--   (select position('v_author_id' in prosrc) > 0 from pg_proc where proname = 'notify_on_notice_insert') as 공지트리거_본인제외_보존;
