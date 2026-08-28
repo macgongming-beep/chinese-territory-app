@@ -51,6 +51,12 @@ const stillThere = async (path, token) => (await rowsOf(await req(path, {}, toke
 
 const SENTINEL = '_smoke_lockdown_' + Date.now()
 
+// ⚠ **유효한 카드여야 한다.** cards 는 name·area·region·type 이 전부 NOT NULL 이고
+//   type 은 '전체' 만 허용된다(cards_type_check). 값을 빼먹으면 INSERT 가 400 으로
+//   실패하는데, 그러면 "막혔다" 로 **거짓 통과**한다 — 정책과 무관하게.
+//   (fixture 가 유효한지는 아래에서 관리자 토큰으로 **한 번 만들어 보고** 확인한다)
+const card = (name) => ({ name, area: '_smoke', region: '_smoke', type: '전체' })
+
 // ⚠ 뒷정리는 **finally** 에서 한다. 중간에 던지면 테스트 DB 에 쓰레기가 남고,
 //   다음 실행이 그 잔재 때문에 엉뚱하게 통과/실패한다.
 const trash = []                       // [경로] — 관리자 토큰으로 지운다
@@ -67,12 +73,15 @@ const main = async () => {
   //   ⚠ **실제로 있는 행**을 상대로 시험한다. 없는 행을 지우려 하면
   //     열려 있어도 200+[] 이라 어느 쪽이든 통과한다 (여기서 한 번 데었다).
   console.log('  ① 헤더 없음')
-  const sent = await req('cards', { method: 'POST', body: JSON.stringify({ name: SENTINEL, area: 'x' }) }, admin.token)
+  const sent = await req('cards', { method: 'POST', body: JSON.stringify(card(SENTINEL)) }, admin.token)
   const sentinelId = (await rowsOf(sent))[0]?.id
   if (sentinelId) willClean(`cards?id=eq.${sentinelId}`)
-  if (!sentinelId) throw new Error('sentinel 카드를 못 만들었다')
+  //   ⚠ 여기가 실패하면 **정책이 아니라 fixture 가 잘못된 것**이다.
+  //     그대로 두면 아래 무헤더 검사들이 전부 거짓 통과한다.
+  if (!sentinelId) throw new Error(`sentinel 카드를 못 만들었다 (HTTP ${sent.status}) — fixture 가 스키마와 안 맞는다`)
+  check('fixture 가 유효하다 (관리자로 카드가 만들어진다)', true)
 
-  const noHdrIns = await req('cards', { method: 'POST', body: JSON.stringify({ name: SENTINEL + '_침입', area: 'x' }) })
+  const noHdrIns = await req('cards', { method: 'POST', body: JSON.stringify(card(SENTINEL + '_침입')) })
   check('헤더 없이 카드 INSERT 가 막힌다', await blocked(noHdrIns), `HTTP ${noHdrIns.status}`)
   check('   정말 안 만들어졌다 (다시 읽어 확인)',
     !(await stillThere(`cards?name=eq.${SENTINEL}_침입&select=id`, admin.token)))
@@ -80,7 +89,7 @@ const main = async () => {
   const noHdrUpd = await req(`cards?id=eq.${sentinelId}`, { method: 'PATCH', body: JSON.stringify({ area: '침입' }) })
   check('헤더 없이 **있는 행**을 UPDATE 못 한다', await blocked(noHdrUpd), `HTTP ${noHdrUpd.status}`)
   check('   정말 안 바뀌었다',
-    (await rowsOf(await req(`cards?id=eq.${sentinelId}&select=area`, {}, admin.token)))[0]?.area === 'x')
+    (await rowsOf(await req(`cards?id=eq.${sentinelId}&select=area`, {}, admin.token)))[0]?.area === '_smoke')
 
   const noHdrDel = await req(`cards?id=eq.${sentinelId}`, { method: 'DELETE' })
   check('헤더 없이 **있는 행**을 DELETE 못 한다', await blocked(noHdrDel), `HTTP ${noHdrDel.status}`)
@@ -97,14 +106,14 @@ const main = async () => {
   console.log('\n  ② 가짜 토큰')
   for (const [label, tok] of [['형식이 이상한', 'not-a-uuid'],
                               ['형식은 맞지만 없는', '00000000-0000-0000-0000-000000000000']]) {
-    const r = await req('cards', { method: 'POST', body: JSON.stringify({ name: '_smoke_가짜', area: 'x' }) }, tok)
+    const r = await req('cards', { method: 'POST', body: JSON.stringify(card(SENTINEL + '_가짜')) }, tok)
     check(`${label} 토큰으로 쓰기가 막힌다 (500 예외 아님)`,
       await blocked(r) && r.status !== 500, `HTTP ${r.status}`)
   }
 
   // ═══ ③ 정상 토큰 — 평범한 쓰기는 되어야 한다 ═══
   console.log('\n  ③ 정상 토큰 (관리자)')
-  const ins = await req('cards', { method: 'POST', body: JSON.stringify({ name: '_smoke_정상', area: 'x' }) }, admin.token)
+  const ins = await req('cards', { method: 'POST', body: JSON.stringify(card(SENTINEL + '_정상')) }, admin.token)
   const created = await ins.json().catch(() => null)
   const cardId = Array.isArray(created) ? created[0]?.id : null
   if (cardId) willClean(`cards?id=eq.${cardId}`)
@@ -176,11 +185,11 @@ const main = async () => {
     const timer = setTimeout(() => resolve(null), 15000)
     const ch = rt.channel('_smoke_lockdown')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cards' }, (p) => {
-        if (p.new?.name === '_smoke_realtime') { clearTimeout(timer); resolve(p.new) }
+        if (p.new?.name === SENTINEL + '_rt') { clearTimeout(timer); resolve(p.new) }
       })
       .subscribe(async (status) => {
         if (status !== 'SUBSCRIBED') return
-        await req('cards', { method: 'POST', body: JSON.stringify({ name: '_smoke_realtime', area: 'x' }) }, admin.token)
+        await req('cards', { method: 'POST', body: JSON.stringify(card(SENTINEL + '_rt')) }, admin.token)
       })
     void ch
   })

@@ -28,7 +28,20 @@
 -- ⚠ 옛 PWA 를 쓰는 사람은 헤더가 없어 **쓰기가 전부 실패한다.**
 --   읽기는 그대로 된다. "앱을 껐다 켜세요" 를 안내할 준비를 하고 넣을 것.
 
-begin;
+-- ⚠⚠ **이 파일에는 begin/commit 이 없다. 일부러 뺐다.**
+--
+--   Supabase SQL Editor 는 `begin; … commit;` 을 한 트랜잭션으로 지키지 않는다.
+--   테스트 DB 에서 실측했다 — 마지막 검증만 실패했는데 **앞의 정책 112개는 남았다.**
+--   그러면 중간에 멈췄을 때 app_users 가 열린 채로 남는 구간이 생긴다.
+--
+--   그래서 **psql 의 --single-transaction 에 맡긴다.** 파일 안에 begin/commit 이
+--   같이 있으면 psql 이 "이미 트랜잭션 중" 이라 경고하고, 파일의 commit 이
+--   **중간에 커밋해 버려서** 원자성이 오히려 깨진다.
+--
+--   넣는 법:  npm run apply:lockdown -- --db-url "<접속문자열>"
+--   (그 스크립트가 대상 DB 를 확인시키고 psql 로 단일 트랜잭션 실행한다)
+--
+--   ⚠ SQL Editor 에 붙여넣지 말 것. 원자성이 없다.
 
 -- ═══ RLS 가 직접 부르는 helper 에만 실행권한을 연다 ═══
 -- 정책 식은 **요청 역할(anon)의 권한**으로 함수를 호출한다.
@@ -55,36 +68,16 @@ grant execute on function private.request_is_admin()        to anon, authenticat
 --   app_users 가 열려 있으면 **로그인한 사람이 자기 role 을 admin 으로 올린다.**
 --   그러면 뒤이어 만들 역할별 정책이 전부 무너진다.
 
-drop policy if exists app_users_select_all on public.app_users;
-create policy app_users_select_all on public.app_users
-  for select to anon using (true);
--- ⚠ INSERT 를 '세션 있으면' 으로 두면 안 된다 —
---   **로그인한 일반 사용자가 자기를 admin 으로 한 줄 더 만든다.**
---   가입은 signup_tx(security definer)가 RLS 를 우회해서 하므로 막아도 안 막힌다.
-drop policy if exists "TEMP_session_gate_app_users_ins" on public.app_users;
-create policy "TEMP_session_gate_app_users_ins" on public.app_users
-  for insert to anon with check ((select private.request_is_admin()));
--- UPDATE 는 **본인 아니면 관리자**. 호출부 8곳을 세어 확인했다:
---   본인(2): changePin · updateProfile
---   관리자(6): resetUserPin · updateUsersGroup · renameUserGroup ·
---              updateUserRole · setApprovalStatus · updateUserAccount
--- (auth_login · auth_record_auto_login 의 last_login_at 갱신은 definer 라 RLS 밖이다)
-drop policy if exists "TEMP_session_gate_app_users_upd" on public.app_users;
-create policy "TEMP_session_gate_app_users_upd" on public.app_users
-  for update to anon
-  using (id = (select private.request_session_user_id()) or (select private.request_is_admin()))
-  with check (id = (select private.request_session_user_id()) or (select private.request_is_admin()));
-drop policy if exists "TEMP_session_gate_app_users_del" on public.app_users;
-create policy "TEMP_session_gate_app_users_del" on public.app_users
-  for delete to anon using ((select private.request_is_admin()));
-drop policy if exists open_access on public.app_users;
+-- ⚠⚠ **이 안의 순서가 곧 안전장치다.** (리뷰에서 잡혔다)
+--   단일 트랜잭션이 아닐 수 있으므로, 중간에 멈췄을 때 무엇이 이미 서 있는지가
+--   중요하다. 트리거를 나중에 달면 **정책은 세워졌는데 role 칸은 안 지켜지는 창구**가
+--   열린다. 순서: ① 보호 트리거 → ② 정책 → ③ open_access 제거.
 
+-- ── ① 보호 트리거부터 ──
 -- 위 정책은 '누구 줄을 고치나' 만 본다. **본인 줄에서 자기 role 을 올리는 것**은 못 막는다.
 -- 정책만으로는 **어느 칸이 바뀌었는지**를 볼 수 없다 (WITH CHECK 는 새 행만 본다).
 -- 그래서 트리거로 막는다: 관리자가 아니면 role·approval_status·is_active 를 못 바꾼다.
 --
--- ⚠ 세션이 아예 없으면(백업 스크립트 등 service_role) 통과시킨다 —
---   그 경로는 위 RLS 가 이미 막고 있고, service_role 키는 앱 번들에 없다.
 -- ⚠ `security definer` 를 **쓰지 않는다.** definer 로 두면 함수 안에서 current_user 가
 --   언제나 소유자(postgres)라 "누가 부르는가" 를 볼 수 없다. 여기는 권한이 필요 없고
 --   (NEW/OLD 만 본다) 요청 역할을 알아야 하므로 invoker 가 맞다.
@@ -137,6 +130,33 @@ drop trigger if exists app_users_guard_privilege on public.app_users;
 create trigger app_users_guard_privilege
   before update on public.app_users
   for each row execute function public.guard_app_user_privilege_change();
+
+-- ── ② 정책 ──
+drop policy if exists app_users_select_all on public.app_users;
+create policy app_users_select_all on public.app_users
+  for select to anon using (true);
+-- ⚠ INSERT 를 '세션 있으면' 으로 두면 안 된다 —
+--   **로그인한 일반 사용자가 자기를 admin 으로 한 줄 더 만든다.**
+--   가입은 signup_tx(security definer)가 RLS 를 우회해서 하므로 막아도 안 막힌다.
+drop policy if exists "TEMP_session_gate_app_users_ins" on public.app_users;
+create policy "TEMP_session_gate_app_users_ins" on public.app_users
+  for insert to anon with check ((select private.request_is_admin()));
+-- UPDATE 는 **본인 아니면 관리자**. 호출부 8곳을 세어 확인했다:
+--   본인(2): changePin · updateProfile
+--   관리자(6): resetUserPin · updateUsersGroup · renameUserGroup ·
+--              updateUserRole · setApprovalStatus · updateUserAccount
+-- (auth_login · auth_record_auto_login 의 last_login_at 갱신은 definer 라 RLS 밖이다)
+drop policy if exists "TEMP_session_gate_app_users_upd" on public.app_users;
+create policy "TEMP_session_gate_app_users_upd" on public.app_users
+  for update to anon
+  using (id = (select private.request_session_user_id()) or (select private.request_is_admin()))
+  with check (id = (select private.request_session_user_id()) or (select private.request_is_admin()));
+drop policy if exists "TEMP_session_gate_app_users_del" on public.app_users;
+create policy "TEMP_session_gate_app_users_del" on public.app_users
+  for delete to anon using ((select private.request_is_admin()));
+
+-- ── ③ 맨 마지막에 지운다. 이 줄 전까지는 open_access 가 살아 있어 앱이 계속 돈다 ──
+drop policy if exists open_access on public.app_users;
 
 -- ═══ app_settings — 쓰기는 관리자만 ═══
 -- 이름이 open_access 가 아니라 app_settings_write 라 이름으로 찾으면 놓친다.
@@ -774,7 +794,7 @@ end $$;
 
 notify pgrst, 'reload schema';
 
-commit;
+-- (commit 없음 — psql --single-transaction 이 커밋한다)
 
 -- ═══════════════════════════════════════════════════════════
 -- commit 뒤에 **따로** 돌릴 검증 (전부 true 여야 한다)

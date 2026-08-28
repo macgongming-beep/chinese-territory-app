@@ -21,7 +21,8 @@
     "smoke:db": "node scripts/smoke-test-db.js",
     "smoke:notify": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeNotifyRpc.js",
     "smoke:headers": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeHeaders.js",
-    "smoke:lockdown": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeLockdown.js"
+    "smoke:lockdown": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeLockdown.js",
+    "apply:lockdown": "node scripts/applyLockdown.js"
   },
   "dependencies": {
     "@sentry/react": "^10.53.1",
