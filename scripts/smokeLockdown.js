@@ -45,6 +45,12 @@ const blocked = async (res) => {
   const body = await res.json().catch(() => null)
   return Array.isArray(body) && body.length === 0
 }
+// ⚠ `app_users` 는 **칸 단위 권한**이다 (pin 은 SELECT 가 막혀 있다).
+//   `Prefer: return=representation` 은 RETURNING * 을 만들어 pin 을 읽으려 하고,
+//   그러면 정책과 무관하게 42501 "permission denied for table app_users" 가 난다.
+//   → app_users 요청에는 반드시 `select=id` 로 **돌려받을 칸을 좁힌다.**
+//   (실제 앱도 app_users 를 통째로 돌려받지 않는다)
+const users = (q) => `app_users?select=id${q ? '&' + q : ''}`
 const rowsOf = async (res) => { const b = await res.json().catch(() => null); return Array.isArray(b) ? b : [] }
 /** 그 행이 아직 있는가 — HTTP 코드를 믿지 않고 **관리자 눈으로 다시 읽는다** */
 const stillThere = async (path, token) => (await rowsOf(await req(path, {}, token))).length > 0
@@ -122,21 +128,21 @@ const main = async () => {
   // ═══ ④ 일반 사용자가 권한을 올릴 수 있나 — 여기가 핵심 ═══
   console.log('\n  ④ 일반 사용자의 권한 상승')
   const LOGIN_ID = '_smoke_user', PIN = '4321'
-  await req(`app_users?login_id=eq.${LOGIN_ID}`, { method: 'DELETE' }, admin.token)   // 앞선 실행 잔재
-  const mk = await req('app_users', {
+  await req(users(`login_id=eq.${LOGIN_ID}`), { method: 'DELETE' }, admin.token)   // 앞선 실행 잔재
+  const mk = await req(users(), {
     method: 'POST',
     body: JSON.stringify({ login_id: LOGIN_ID, name: '_smoke_일반', pin: PIN, role: 'user', approval_status: 'approved' }),
   }, admin.token)
   const mkBody = await mk.json().catch(() => null)
   const userId = Array.isArray(mkBody) ? mkBody[0]?.id : null
-  if (userId) willClean(`app_users?id=eq.${userId}`)
+  if (userId) willClean(users(`id=eq.${userId}`))
   check('관리자는 사용자를 만들 수 있다', mk.ok && Boolean(userId), `HTTP ${mk.status}`)
 
   const u = userId ? await login(LOGIN_ID, PIN) : null
   check('그 일반 사용자로 로그인된다', Boolean(u?.token))
 
   if (u?.token && userId) {
-    const esc = await req(`app_users?id=eq.${userId}`, { method: 'PATCH', body: JSON.stringify({ role: 'admin' }) }, u.token)
+    const esc = await req(users(`id=eq.${userId}`), { method: 'PATCH', body: JSON.stringify({ role: 'admin' }) }, u.token)
     check('⚠ 자기 role 을 admin 으로 못 올린다', await blocked(esc), `HTTP ${esc.status}`)
 
     // **정말 안 바뀌었는지 다시 읽어 확인한다** — HTTP 코드만 믿지 않는다
@@ -147,22 +153,22 @@ const main = async () => {
     //   ⚠ 지금 값과 **다른 값**을 넣어야 한다. approved 인 사람에게 approved 를 넣으면
     //     `is distinct from` 이 거짓이라 트리거가 볼 것도 없다 — no-op 이라 아무것도 안 무는다.
     for (const [col, val] of [['approval_status', 'pending'], ['is_active', false]]) {
-      const r = await req(`app_users?id=eq.${userId}`, { method: 'PATCH', body: JSON.stringify({ [col]: val }) }, u.token)
+      const r = await req(users(`id=eq.${userId}`), { method: 'PATCH', body: JSON.stringify({ [col]: val }) }, u.token)
       check(`${col} 을 직접 못 바꾼다`, await blocked(r), `HTTP ${r.status}`)
       const now = (await rowsOf(await req(`app_users?id=eq.${userId}&select=${col}`, {}, admin.token)))[0]?.[col]
       check(`   다시 읽어도 그대로다`, now !== val, `${col}=${now}`)
     }
 
-    const other = await req(`app_users?login_id=eq.test-admin`, { method: 'PATCH', body: JSON.stringify({ name: '_smoke_남의이름' }) }, u.token)
+    const other = await req(users('login_id=eq.test-admin'), { method: 'PATCH', body: JSON.stringify({ name: '_smoke_남의이름' }) }, u.token)
     check('남의 계정을 못 고친다', await blocked(other), `HTTP ${other.status}`)
 
-    const mkAdmin = await req('app_users', {
+    const mkAdmin = await req(users(), {
       method: 'POST',
       body: JSON.stringify({ login_id: '_smoke_침입admin', name: '침입', pin: '9999', role: 'admin', approval_status: 'approved' }),
     }, u.token)
     check('⚠ 자기를 admin 으로 한 줄 더 못 만든다', await blocked(mkAdmin), `HTTP ${mkAdmin.status}`)
 
-    const own = await req(`app_users?id=eq.${userId}`, { method: 'PATCH', body: JSON.stringify({ phone: '010-0000-0000' }) }, u.token)
+    const own = await req(users(`id=eq.${userId}`), { method: 'PATCH', body: JSON.stringify({ phone: '010-0000-0000' }) }, u.token)
     check('   그래도 자기 전화번호는 고칠 수 있다 (과하게 막지 않았나)', own.ok, `HTTP ${own.status}`)
 
     const settings = await req('app_settings', { method: 'POST', body: JSON.stringify({ key: '_smoke', value: 'x' }) }, u.token)
@@ -172,7 +178,7 @@ const main = async () => {
   // ═══ ⑤ 관리자는 여전히 할 수 있어야 한다 (과잉 차단 확인) ═══
   console.log('\n  ⑤ 관리자 권한은 살아 있나')
   if (userId) {
-    const promote = await req(`app_users?id=eq.${userId}`, { method: 'PATCH', body: JSON.stringify({ role: 'leader' }) }, admin.token)
+    const promote = await req(users(`id=eq.${userId}`), { method: 'PATCH', body: JSON.stringify({ role: 'leader' }) }, admin.token)
     check('관리자는 role 을 바꿀 수 있다', promote.ok, `HTTP ${promote.status}`)
   }
 
@@ -180,23 +186,33 @@ const main = async () => {
   //   그래서 세션 관문을 SELECT 에 걸면 구독이 조용히 끊긴다.
   //   "연결됐다" 만 보면 안 된다 — **실제 변경 이벤트가 도착하는지** 봐야 한다.
   console.log('\n  ⑥ Realtime (헤더 없는 WebSocket)')
+  //   ⚠ **앱이 실제로 구독하는 표**로 시험해야 한다. cards 는 publication 에
+  //     들어 있지 않아 이벤트가 아예 안 온다 — 정책과 무관하게 실패한다
+  //     (여기서 한 번 데었다). 앱이 구독하는 것: calendar_events ·
+  //     event_participants · comments · chat_* · event_card_assignment*.
   const rt = createClient(URL_, KEY)
+  const RT_TITLE = SENTINEL + '_rt'
+  let rtStatus = '(구독 콜백 없음)', rtInsert = '(INSERT 안 함)'
   const got = await new Promise((resolve) => {
     const timer = setTimeout(() => resolve(null), 15000)
-    const ch = rt.channel('_smoke_lockdown')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cards' }, (p) => {
-        if (p.new?.name === SENTINEL + '_rt') { clearTimeout(timer); resolve(p.new) }
+    rt.channel('_smoke_lockdown')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'calendar_events' }, (p) => {
+        if (p.new?.title === RT_TITLE) { clearTimeout(timer); resolve(p.new) }
       })
-      .subscribe(async (status) => {
-        if (status !== 'SUBSCRIBED') return
-        await req('cards', { method: 'POST', body: JSON.stringify(card(SENTINEL + '_rt')) }, admin.token)
+      .subscribe(async (status, err) => {
+        if (status !== 'SUBSCRIBED') { rtStatus = `${status}${err ? ' · ' + (err.message ?? err) : ''}`; return }
+        rtStatus = 'SUBSCRIBED'
+        const ins = await req('calendar_events?select=id', { method: 'POST',
+          body: JSON.stringify({ event_date: '2030-01-01', title: RT_TITLE }) }, admin.token)
+        rtInsert = `HTTP ${ins.status}`
+        //   ⚠ INSERT 가 실패하면 이벤트가 안 오는 게 당연하다. 그걸 'Realtime 이 깨졌다'
+        //     로 읽으면 엉뚱한 곳을 파게 된다 — 그래서 둘을 따로 보고한다.
       })
-    void ch
   })
   check('구독이 살아 있고 INSERT 이벤트가 도착한다 (15초 안)', Boolean(got),
-    got ? `id=${got.id}` : '⚠ 못 받음 — SELECT 정책이 세션을 요구하고 있지 않은지 볼 것')
+    got ? `id=${got.id}` : `못 받음 · 구독=${rtStatus} · INSERT=${rtInsert}`)
   await rt.removeAllChannels()
-  if (got?.id) willClean(`cards?id=eq.${got.id}`)
+  if (got?.id) willClean(`calendar_events?id=eq.${got.id}`)
 
   return admin.token
 }
@@ -205,12 +221,12 @@ const cleanup = async (token) => {
   if (!token) { console.log('\n  ⚠ 관리자 토큰이 없어 뒷정리를 못 한다 — 테스트 DB 에 _smoke_ 자료가 남는다'); return }
   for (const path of trash) await req(path, { method: 'DELETE' }, token)
   // 이름으로 한 번 더 훑는다 (추적에서 빠진 것)
-  for (const p of [`cards?name=like.${SENTINEL}*`, 'app_users?login_id=like._smoke_*',
+  for (const p of [`cards?name=like.${SENTINEL}*`, `calendar_events?title=like.${SENTINEL}*`, users('login_id=like._smoke_*'),
                    'app_settings?key=eq._smoke']) {
     await req(p, { method: 'DELETE' }, token)
   }
   const left = await rowsOf(await req(`cards?name=like.${SENTINEL}*&select=id`, {}, token))
-  const leftU = await rowsOf(await req('app_users?login_id=like._smoke_*&select=id', {}, token))
+  const leftU = await rowsOf(await req(users('login_id=like._smoke_*'), {}, token))
   check('뒷정리 — 남은 _smoke_ 자료 없음', left.length === 0 && leftU.length === 0,
     `카드 ${left.length} · 사용자 ${leftU.length}`)
 }

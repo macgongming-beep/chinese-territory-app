@@ -74,6 +74,25 @@ grant execute on function private.request_is_admin()        to anon, authenticat
 --   열린다. 순서: ① 보호 트리거 → ② 정책 → ③ open_access 제거.
 
 -- ── ① 보호 트리거부터 ──
+-- ⚠ 트리거는 invoker(anon)로 돈다. plpgsql 본문에서 `private.*` 를 부르려면
+--   **스키마 USAGE 가 필요**하다 (RLS 정책 식은 함수 grant 만으로 됐는데 여기는 다르다.
+--   실제로 `permission denied for schema private` 로 막혔다).
+--
+--   그렇다고 `grant usage on schema private to anon` 을 하면 **fail-open** 이 된다:
+--   PostgreSQL 은 함수를 만들 때 PUBLIC 에 실행권한을 주므로, 나중에 누가 private 에
+--   함수를 추가하고 revoke 를 잊으면 그 순간 anon 에 열린다.
+--   → `private` 은 계속 닫아 두고, **public 에 definer 창구 하나**를 낸다.
+--     이 함수는 "부르는 사람이 관리자인가" 만 답한다 — 자기 정보라 새어도 얻을 것이 없다.
+create or replace function public.session_is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$ select coalesce(private.request_is_admin(), false) $$;
+revoke all on function public.session_is_admin() from public;
+grant execute on function public.session_is_admin() to anon, authenticated;
+
 -- 위 정책은 '누구 줄을 고치나' 만 본다. **본인 줄에서 자기 role 을 올리는 것**은 못 막는다.
 -- 정책만으로는 **어느 칸이 바뀌었는지**를 볼 수 없다 (WITH CHECK 는 새 행만 본다).
 -- 그래서 트리거로 막는다: 관리자가 아니면 role·approval_status·is_active 를 못 바꾼다.
@@ -112,7 +131,7 @@ begin
     return new;
   end if;
 
-  if (select private.request_is_admin()) then
+  if (select public.session_is_admin()) then
     return new;
   end if;
 
