@@ -40,8 +40,14 @@ create temp table _probe_result (step text primary key, ok boolean, detail text)
 --   이 임시표에 쓸 수 있어야 한다. 없으면 **검사가 아니라 기록이 실패해서**
 --   진짜 결과를 못 본다 (첫 실행에서 그랬다).
 --   임시표라 rollback 과 함께 사라진다.
-grant usage on schema pg_temp to anon;
-grant insert on _probe_result to anon;
+--   ⚠ `pg_temp` 는 별칭이라 GRANT 에 못 쓴다 ("schema pg_temp does not exist").
+--     세션마다 이름이 다르므로(pg_temp_19 …) 실제 이름을 찾아서 준다.
+do $$
+declare v_schema text := (select nspname from pg_namespace where oid = pg_my_temp_schema());
+begin
+  execute format('grant usage on schema %I to anon', v_schema);
+  execute format('grant insert on %I._probe_result to anon', v_schema);
+end $$;
 
 -- ═══ 1단계 — revoke 상태. **거부되어야 한다** ═══
 revoke all on function private._probe_helper() from public, anon, authenticated;
