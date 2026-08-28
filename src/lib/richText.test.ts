@@ -92,3 +92,26 @@ describe('isRichTextEmpty', () => {
     expect(isRichTextEmpty('<p>가</p>')).toBe(false)
   })
 })
+
+describe('편집기가 만든 링크가 살아남나', () => {
+  test('createLink 가 만드는 모양 그대로 통과한다', () => {
+    // document.execCommand('createLink') 는 이렇게 만든다
+    const out = sanitizeRichText('<a href="https://www.jw.org/ko/">기사 읽기</a>')
+    expect(out).toContain('href="https://www.jw.org/ko/"')
+    expect(out).toContain('>기사 읽기<')
+    expect(out).toContain('target="_blank"')
+    expect(out).toContain('rel="noopener noreferrer"')
+  })
+
+  test('링크 안의 서식도 살아남는다', () => {
+    const out = sanitizeRichText('<a href="https://a.example.com"><b>굵은 링크</b></a>')
+    expect(out).toContain('href="https://a.example.com"')
+    expect(out).toContain('<b>굵은 링크</b>')
+  })
+
+  test('색과 크기를 준 글자에 링크를 걸어도 된다', () => {
+    const out = sanitizeRichText('<span style="color:red"><a href="https://a.example.com">빨간 링크</a></span>')
+    expect(out).toContain('href="https://a.example.com"')
+    expect(out).toContain('빨간 링크')
+  })
+})

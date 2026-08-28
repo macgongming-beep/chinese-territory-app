@@ -3,7 +3,9 @@
 // - uncontrolled: 타이핑 중 React 가 innerHTML 을 덮어쓰지 않게 함 (커서 튐 방지)
 // - 저장/표시 시점에 sanitizeRichText 로 정제 (여기선 원본 HTML 그대로 emit)
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { showToast } from '../lib/toast'
+import { msg } from '../lib/msg'
 
 const COLORS: { label: string; value: string }[] = [
   { label: '기본', value: '#1c1c1a' },
@@ -53,6 +55,48 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
   // 버튼 mousedown 으로 에디터 선택영역이 풀리지 않게 preventDefault
   const keepSelection = (e: React.MouseEvent) => e.preventDefault()
 
+  // ── 링크 걸기 ("기사 읽기" 를 누르면 jw.org 로) ──────────────
+  // window.prompt 는 PWA 에서 막히는 경우가 있어 작은 입력 줄을 쓴다.
+  const [linkOpen, setLinkOpen] = useState(false)
+  const [linkUrl, setLinkUrl] = useState('')
+  const savedRange = useRef<Range | null>(null)
+  const [savedText, setSavedText] = useState('')
+
+  const openLinkBox = () => {
+    const sel = window.getSelection()
+    savedRange.current = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null
+    setSavedText(sel?.toString() ?? '')
+    setLinkUrl('')
+    setLinkOpen(true)
+  }
+
+  const applyLink = () => {
+    const url = linkUrl.trim()
+    if (!url) return
+    // http(s) 만. javascript: 같은 건 링크가 아니라 공격 통로다.
+    // (보여줄 때 lib/richText 가 한 번 더 거르지만 애초에 안 만드는 게 낫다)
+    if (!/^https?:\/\//i.test(url)) {
+      showToast(msg('http:// 또는 https:// 로 시작하는 주소만 넣을 수 있습니다.'), 'error')
+      return
+    }
+    setLinkOpen(false)
+    ref.current?.focus()
+    // 입력 줄로 옮겨 가는 동안 선택이 풀리므로 되살린다
+    const sel = window.getSelection()
+    if (savedRange.current && sel) { sel.removeAllRanges(); sel.addRange(savedRange.current) }
+    if (!savedText) {
+      // 고른 글자가 없으면 주소를 글자로 넣고 그것을 링크로 만든다
+      document.execCommand('insertText', false, url)
+      const s2 = window.getSelection()
+      if (s2 && s2.rangeCount > 0) {
+        const r = s2.getRangeAt(0)
+        r.setStart(r.endContainer, Math.max(0, r.endOffset - url.length))
+        s2.removeAllRanges(); s2.addRange(r)
+      }
+    }
+    exec('createLink', url)
+  }
+
   const btnStyle: React.CSSProperties = {
     minWidth: 32, height: 30, padding: '0 8px', border: '1px solid var(--line-muted)',
     borderRadius: 6, background: 'var(--surface)', color: 'var(--ink)', cursor: 'pointer',
@@ -65,6 +109,7 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', padding: '6px 8px', borderBottom: '1px solid var(--line-muted)', background: 'var(--bg-subtle, #f8f8f7)' }}>
         <button type="button" onMouseDown={keepSelection} onClick={() => exec('bold')} style={{ ...btnStyle, fontWeight: 800 }} title="굵게">B</button>
         <button type="button" onMouseDown={keepSelection} onClick={() => exec('underline')} style={{ ...btnStyle, textDecoration: 'underline' }} title="밑줄">U</button>
+        <button type="button" onMouseDown={keepSelection} onClick={openLinkBox} style={btnStyle} title="링크 걸기">🔗</button>
         <span style={{ width: 1, height: 18, background: 'var(--line-muted)', margin: '0 2px' }} />
         {COLORS.map((c) => (
           <button
@@ -92,6 +137,25 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
           </button>
         ))}
       </div>
+
+      {/* 링크 주소 입력 줄. 툴바 바로 아래에 나온다 */}
+      {linkOpen && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '8px', borderBottom: '1px solid var(--line-muted)', background: 'var(--bg-subtle, #f8f8f7)' }}>
+          <input
+            autoFocus
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); applyLink() }
+              if (e.key === 'Escape') setLinkOpen(false)
+            }}
+            placeholder={savedText ? `"${savedText}" 에 걸 주소` : 'https://www.jw.org/ko/...'}
+            style={{ flex: 1, minWidth: 0, height: 30, padding: '0 8px', border: '1px solid var(--line-muted)', borderRadius: 6, fontSize: 13 }}
+          />
+          <button type="button" onClick={applyLink} style={{ ...btnStyle, minWidth: 46 }}>걸기</button>
+          <button type="button" onClick={() => setLinkOpen(false)} style={{ ...btnStyle, minWidth: 46 }}>취소</button>
+        </div>
+      )}
       {/* 본문 */}
       <div
         ref={ref}
