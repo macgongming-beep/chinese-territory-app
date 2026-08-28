@@ -45,25 +45,53 @@ const blocked = async (res) => {
   const body = await res.json().catch(() => null)
   return Array.isArray(body) && body.length === 0
 }
+const rowsOf = async (res) => { const b = await res.json().catch(() => null); return Array.isArray(b) ? b : [] }
+/** 그 행이 아직 있는가 — HTTP 코드를 믿지 않고 **관리자 눈으로 다시 읽는다** */
+const stillThere = async (path, token) => (await rowsOf(await req(path, {}, token))).length > 0
+
+const SENTINEL = '_smoke_lockdown_' + Date.now()
+
+// ⚠ 뒷정리는 **finally** 에서 한다. 중간에 던지면 테스트 DB 에 쓰레기가 남고,
+//   다음 실행이 그 잔재 때문에 엉뚱하게 통과/실패한다.
+const trash = []                       // [경로] — 관리자 토큰으로 지운다
+const willClean = (path) => { trash.push(path); return path }
 
 const main = async () => {
   console.log('\n── anon 쓰기 차단 smoke ──\n')
 
   const admin = await login('test-admin', '1234')
-  if (!admin?.token) { console.error('  ✗ 테스트 관리자로 로그인 못 함'); process.exit(1) }
+  if (!admin?.token) throw new Error('테스트 관리자로 로그인 못 함')
   console.log('  (관리자 토큰 확보)\n')
 
   // ═══ ① 헤더 없음 — 쓰기는 전부 막히고 읽기는 살아야 한다 ═══
+  //   ⚠ **실제로 있는 행**을 상대로 시험한다. 없는 행을 지우려 하면
+  //     열려 있어도 200+[] 이라 어느 쪽이든 통과한다 (여기서 한 번 데었다).
   console.log('  ① 헤더 없음')
-  const noHdrIns = await req('cards', { method: 'POST', body: JSON.stringify({ name: '_smoke_침입', area: 'x' }) })
+  const sent = await req('cards', { method: 'POST', body: JSON.stringify({ name: SENTINEL, area: 'x' }) }, admin.token)
+  const sentinelId = (await rowsOf(sent))[0]?.id
+  if (sentinelId) willClean(`cards?id=eq.${sentinelId}`)
+  if (!sentinelId) throw new Error('sentinel 카드를 못 만들었다')
+
+  const noHdrIns = await req('cards', { method: 'POST', body: JSON.stringify({ name: SENTINEL + '_침입', area: 'x' }) })
   check('헤더 없이 카드 INSERT 가 막힌다', await blocked(noHdrIns), `HTTP ${noHdrIns.status}`)
+  check('   정말 안 만들어졌다 (다시 읽어 확인)',
+    !(await stillThere(`cards?name=eq.${SENTINEL}_침입&select=id`, admin.token)))
 
-  const noHdrDel = await req('cards?name=eq._smoke_없는거', { method: 'DELETE' })
-  check('헤더 없이 DELETE 가 막힌다', await blocked(noHdrDel), `HTTP ${noHdrDel.status}`)
+  const noHdrUpd = await req(`cards?id=eq.${sentinelId}`, { method: 'PATCH', body: JSON.stringify({ area: '침입' }) })
+  check('헤더 없이 **있는 행**을 UPDATE 못 한다', await blocked(noHdrUpd), `HTTP ${noHdrUpd.status}`)
+  check('   정말 안 바뀌었다',
+    (await rowsOf(await req(`cards?id=eq.${sentinelId}&select=area`, {}, admin.token)))[0]?.area === 'x')
 
-  const noHdrRead = await req('cards?select=id&limit=1')
+  const noHdrDel = await req(`cards?id=eq.${sentinelId}`, { method: 'DELETE' })
+  check('헤더 없이 **있는 행**을 DELETE 못 한다', await blocked(noHdrDel), `HTTP ${noHdrDel.status}`)
+  check('   ⚠ 그 행이 아직 살아 있다 (이게 진짜 검사다)',
+    await stillThere(`cards?id=eq.${sentinelId}&select=id`, admin.token))
+
+  //   ⚠ 읽기는 `res.ok` 로 보면 안 된다 — RLS 로 막히면 **200 + []** 가 온다.
+  //     반드시 **있는 줄 알고 있는 행**이 실제로 돌아오는지 본다.
+  const noHdrRead = await rowsOf(await req(`cards?id=eq.${sentinelId}&select=id`))
   check('⚠ 헤더 없어도 **읽기는 된다** (Realtime 이 이것에 달려 있다)',
-    noHdrRead.ok, `HTTP ${noHdrRead.status}`)
+    noHdrRead.length === 1, `${noHdrRead.length}행`)
 
   // ═══ ② 가짜 토큰 ═══
   console.log('\n  ② 가짜 토큰')
@@ -79,6 +107,7 @@ const main = async () => {
   const ins = await req('cards', { method: 'POST', body: JSON.stringify({ name: '_smoke_정상', area: 'x' }) }, admin.token)
   const created = await ins.json().catch(() => null)
   const cardId = Array.isArray(created) ? created[0]?.id : null
+  if (cardId) willClean(`cards?id=eq.${cardId}`)
   check('로그인 상태로 카드가 만들어진다', ins.ok && Boolean(cardId), `HTTP ${ins.status}`)
 
   // ═══ ④ 일반 사용자가 권한을 올릴 수 있나 — 여기가 핵심 ═══
@@ -91,6 +120,7 @@ const main = async () => {
   }, admin.token)
   const mkBody = await mk.json().catch(() => null)
   const userId = Array.isArray(mkBody) ? mkBody[0]?.id : null
+  if (userId) willClean(`app_users?id=eq.${userId}`)
   check('관리자는 사용자를 만들 수 있다', mk.ok && Boolean(userId), `HTTP ${mk.status}`)
 
   const u = userId ? await login(LOGIN_ID, PIN) : null
@@ -105,8 +135,14 @@ const main = async () => {
     const rows = await after.json().catch(() => null)
     check('   다시 읽어도 role 이 user 그대로다', rows?.[0]?.role === 'user', `role=${rows?.[0]?.role}`)
 
-    const appr = await req(`app_users?id=eq.${userId}`, { method: 'PATCH', body: JSON.stringify({ approval_status: 'approved', is_active: true }) }, u.token)
-    check('approval_status·is_active 도 직접 못 바꾼다', await blocked(appr), `HTTP ${appr.status}`)
+    //   ⚠ 지금 값과 **다른 값**을 넣어야 한다. approved 인 사람에게 approved 를 넣으면
+    //     `is distinct from` 이 거짓이라 트리거가 볼 것도 없다 — no-op 이라 아무것도 안 무는다.
+    for (const [col, val] of [['approval_status', 'pending'], ['is_active', false]]) {
+      const r = await req(`app_users?id=eq.${userId}`, { method: 'PATCH', body: JSON.stringify({ [col]: val }) }, u.token)
+      check(`${col} 을 직접 못 바꾼다`, await blocked(r), `HTTP ${r.status}`)
+      const now = (await rowsOf(await req(`app_users?id=eq.${userId}&select=${col}`, {}, admin.token)))[0]?.[col]
+      check(`   다시 읽어도 그대로다`, now !== val, `${col}=${now}`)
+    }
 
     const other = await req(`app_users?login_id=eq.test-admin`, { method: 'PATCH', body: JSON.stringify({ name: '_smoke_남의이름' }) }, u.token)
     check('남의 계정을 못 고친다', await blocked(other), `HTTP ${other.status}`)
@@ -151,20 +187,33 @@ const main = async () => {
   check('구독이 살아 있고 INSERT 이벤트가 도착한다 (15초 안)', Boolean(got),
     got ? `id=${got.id}` : '⚠ 못 받음 — SELECT 정책이 세션을 요구하고 있지 않은지 볼 것')
   await rt.removeAllChannels()
-  if (got?.id) await req(`cards?id=eq.${got.id}`, { method: 'DELETE' }, admin.token)
+  if (got?.id) willClean(`cards?id=eq.${got.id}`)
 
-  // ═══ 뒷정리 ═══
-  if (cardId) await req(`cards?id=eq.${cardId}`, { method: 'DELETE' }, admin.token)
-  if (userId) await req(`app_users?id=eq.${userId}`, { method: 'DELETE' }, admin.token)
-  await req(`app_users?login_id=eq._smoke_침입admin`, { method: 'DELETE' }, admin.token)
-  await req(`app_settings?key=eq._smoke`, { method: 'DELETE' }, admin.token)
-
-  const left = await req('cards?name=like._smoke_*&select=id', {}, admin.token)
-  const leftRows = await left.json().catch(() => [])
-  check('\n  뒷정리 — 남은 _smoke_ 자료 없음', Array.isArray(leftRows) && leftRows.length === 0,
-    `${leftRows?.length ?? '?'}건`)
-
-  console.log(`\n  ${fail === 0 ? '✅ 전부 통과' : `❌ ${fail}개 실패`}\n`)
-  process.exit(fail === 0 ? 0 : 1)
+  return admin.token
 }
-main().catch((e) => { console.error(e); process.exit(1) })
+
+const cleanup = async (token) => {
+  if (!token) { console.log('\n  ⚠ 관리자 토큰이 없어 뒷정리를 못 한다 — 테스트 DB 에 _smoke_ 자료가 남는다'); return }
+  for (const path of trash) await req(path, { method: 'DELETE' }, token)
+  // 이름으로 한 번 더 훑는다 (추적에서 빠진 것)
+  for (const p of [`cards?name=like.${SENTINEL}*`, 'app_users?login_id=like._smoke_*',
+                   'app_settings?key=eq._smoke']) {
+    await req(p, { method: 'DELETE' }, token)
+  }
+  const left = await rowsOf(await req(`cards?name=like.${SENTINEL}*&select=id`, {}, token))
+  const leftU = await rowsOf(await req('app_users?login_id=like._smoke_*&select=id', {}, token))
+  check('뒷정리 — 남은 _smoke_ 자료 없음', left.length === 0 && leftU.length === 0,
+    `카드 ${left.length} · 사용자 ${leftU.length}`)
+}
+
+let adminToken = null
+main()
+  .then((t) => { adminToken = t })
+  .catch((e) => { console.error('\n  ✗ 도중에 죽었다:', e?.message ?? e); fail += 1 })
+  .finally(async () => {
+    // 죽었어도 관리자 토큰을 다시 얻어 치운다
+    if (!adminToken) adminToken = (await login('test-admin', '1234').catch(() => null))?.token ?? null
+    await cleanup(adminToken).catch((e) => console.error('  뒷정리 실패:', e?.message ?? e))
+    console.log(`\n  ${fail === 0 ? '✅ 전부 통과' : `❌ ${fail}개 실패`}\n`)
+    process.exit(fail === 0 ? 0 : 1)
+  })

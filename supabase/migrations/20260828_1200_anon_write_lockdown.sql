@@ -39,6 +39,21 @@ begin;
 grant execute on function private.request_session_user_id() to anon, authenticated;
 grant execute on function private.request_is_admin()        to anon, authenticated;
 
+-- ═══ 바꾸기 **전** 모습을 찍어 둔다 ═══
+-- 검증을 "개수가 맞나" 로 하면 엉뚱한 개수여도 통과한다. 대신 **바꾸기 전에
+-- 되던 (표 × 명령 × 역할) 조합이 하나라도 사라졌는지**를 뒤에서 대조한다.
+-- FOR ALL 은 네 명령으로 펼친다 — 그게 지금 SELECT 를 주고 있는 정체다.
+create temp table _before_grants on commit drop as
+select distinct p.tablename, c.cmd, r.role::text as role
+from pg_policies p
+cross join lateral unnest(
+  case when p.cmd = 'ALL' then array['SELECT','INSERT','UPDATE','DELETE'] else array[p.cmd] end
+) as c(cmd)
+cross join lateral unnest(p.roles) as r(role)
+where p.schemaname = 'public'
+  and p.permissive = 'PERMISSIVE'
+  and p.tablename <> 'app_private_settings';   -- 일부러 deny_all
+
 -- buildings
 create policy buildings_select_all on public.buildings
   for select to anon using (true);
@@ -380,7 +395,15 @@ begin
     return new;
   end if;
 
-  -- DB 관리자·서버 키 (SQL Editor, 백업/배치). anon 은 여기 못 든다
+  -- DB 관리자·서버 키 (SQL Editor, 백업/배치). anon 은 여기 못 든다.
+  --
+  -- ⚠⚠ 여기가 이 트리거의 **한계**다. `current_user = 'postgres'` 는 SQL Editor 뿐
+  --    아니라 **postgres 가 소유한 `security definer` 함수 안에서도 참**이다.
+  --    즉 "definer 우회를 없앴다" 가 아니라 **"지금 있는 definer 함수 중에
+  --    보호 칸을 건드리는 것이 없어서 안전하다"** 가 맞다 (2026-08-28 감사함).
+  --    → **role · approval_status · is_active 를 쓰는 `security definer` RPC 를
+  --      새로 만들면 그 함수가 이 검사를 그냥 지나간다.** 그 함수 안에서
+  --      직접 권한을 확인할 것. (CLAUDE.md 규칙표에도 넣었다)
   if current_user in ('postgres', 'supabase_admin', 'service_role') then
     return new;
   end if;
@@ -428,29 +451,42 @@ create policy "TEMP_session_gate_notices_del" on public.notices
   for delete to public using ((select private.request_is_admin()));
 
 -- ═══ 검증 — 여기서 던지면 위가 전부 롤백된다 ═══
--- ⚠ 개수를 세지 않는다. **빠진 표를 이름으로 뱉게** 한다.
+-- ⚠ 개수를 세지 않는다. **빠진 것을 이름으로 뱉게** 한다.
 --   "28개 맞네" 는 엉뚱한 28개여도 통과한다 (오늘 시험에서 여러 번 데었다).
 do $$
 declare
-  v_missing text;
-  v_open    text;
+  v_lost   text;
+  v_open   text;
+  v_gated  text;
 begin
-  -- (1) RLS 가 켜진 표 중 **SELECT 정책이 하나도 없는** 것 = 그 표는 안 보인다
-  select string_agg(c.relname, ', ' order by c.relname) into v_missing
-  from pg_class c
-  join pg_namespace n on n.oid = c.relnamespace
-  where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
-    and c.relname <> 'app_private_settings'          -- 일부러 deny_all
-    and not exists (
-      select 1 from pg_policies p
-      where p.schemaname = 'public' and p.tablename = c.relname
-        and p.cmd in ('SELECT', 'ALL'));
-  if v_missing is not null then
-    raise exception 'SELECT 정책이 없는 표: %  → 이대로 commit 하면 이 표들이 화면에서 사라진다', v_missing;
+  -- (1) **표 × 명령 × 역할** anti-join.
+  --     바꾸기 전에 되던 조합이 사라졌으면 그 화면이 조용히 죽는다.
+  --     `public` 은 anon·authenticated 를 포함하므로 덮는 것으로 친다.
+  --     ⚠ 이건 '있나' 만 본다. 일부러 좁힌 것(app_users INSERT 를 관리자만 등)은
+  --       정책이 남아 있으므로 통과한다 — 잡으려는 것은 **통째로 빠뜨린 것**이다.
+  select string_agg(format('%s.%s(%s)', b.tablename, b.cmd, b.role), ', '
+                    order by b.tablename, b.cmd, b.role)
+    into v_lost
+  from _before_grants b
+  where not exists (
+    select 1
+    from pg_policies p
+    cross join lateral unnest(
+      case when p.cmd = 'ALL' then array['SELECT','INSERT','UPDATE','DELETE'] else array[p.cmd] end
+    ) as c(cmd)
+    cross join lateral unnest(p.roles) as r(role)
+    where p.schemaname = 'public'
+      and p.tablename = b.tablename
+      and c.cmd = b.cmd
+      and (r.role::text = b.role or r.role::text = 'public')
+  );
+  if v_lost is not null then
+    raise exception E'전에 되던 것이 사라졌다 (표.명령(역할)): %\n  → 이 화면들이 조용히 죽는다', v_lost;
   end if;
 
   -- (2) 아직 남아 있는 열린 쓰기 정책 = 안 막힌 것
-  select string_agg(format('%s.%s(%s)', tablename, policyname, cmd), ', ' order by tablename) into v_open
+  select string_agg(format('%s.%s(%s)', tablename, policyname, cmd), ', ' order by tablename)
+    into v_open
   from pg_policies
   where schemaname = 'public'
     and cmd in ('ALL', 'INSERT', 'UPDATE', 'DELETE')
@@ -460,13 +496,25 @@ begin
     raise exception '아직 열려 있는 쓰기 정책: %', v_open;
   end if;
 
-  -- (3) 역할 상승 차단 트리거가 실제로 붙었나
+  -- (3) ⚠ **SELECT 정책이 세션을 요구하면 Realtime 이 끊긴다.**
+  --     WebSocket 에는 x-session-token 이 안 붙는다. 실수로 걸면 여기서 잡는다.
+  select string_agg(format('%s.%s', tablename, policyname), ', ' order by tablename)
+    into v_gated
+  from pg_policies
+  where schemaname = 'public'
+    and cmd in ('SELECT', 'ALL')
+    and coalesce(qual, '') like '%request_session%';
+  if v_gated is not null then
+    raise exception E'SELECT 정책이 세션을 요구한다: %\n  → WebSocket 은 헤더를 안 보내므로 Realtime 구독이 끊긴다', v_gated;
+  end if;
+
+  -- (4) 역할 상승 차단 트리거가 실제로 붙었나
   if not exists (select 1 from pg_trigger
                  where tgname = 'app_users_guard_privilege' and not tgisinternal) then
     raise exception 'app_users 역할 상승 차단 트리거가 없다';
   end if;
 
-  raise notice '✅ 검증 통과 — SELECT 재현 완료 · 열린 쓰기 0 · 역할 상승 차단 있음';
+  raise notice '✅ 검증 통과 — 잃은 조합 0 · 열린 쓰기 0 · SELECT 에 세션관문 0 · 트리거 있음';
 end $$;
 
 notify pgrst, 'reload schema';

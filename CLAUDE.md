@@ -82,6 +82,7 @@ anon 키는 앱 번들에 들어 있어 누구나 꺼낼 수 있다. **주소만
 | **`security definer` 함수를 만들면 반드시 `revoke`** | PostgreSQL 은 만들 때 PUBLIC 에 실행권한을 준다 |
 | **알림 종류를 새로 만들면 `filter_notification_recipients` 도 고친다** | 모르는 종류는 `else false` 로 **아무한테도 안 간다** (fail-closed). 안 고치면 조용히 안 감 |
 | **사용자 이름을 FK 대신 문자열로 담는 칸을 만들면 `rename_user_name_references` 에 추가** | 이 앱은 사람을 이름 문자열로 들고 있다 (22칸). 안 넣으면 이름 바꿀 때 옛 이름이 남는다. **건물명·카드명 같은 다른 이름은 해당 없다** |
+| **`app_users.role`·`approval_status`·`is_active` 를 쓰는 `security definer` 함수를 만들면 그 안에서 권한을 직접 확인한다** | 역할 상승 차단 트리거는 `current_user='postgres'` 를 통과시키는데, **definer 함수 안이 바로 그 상태**다. 트리거가 안 막아 준다 |
 | **행별 트리거가 한 작업에 중복 알림을 낼 때만 억제한다** | `set_config('app.suppress_notifications','on',true)` (트랜잭션 안에서만 유효). 끄고 끝내지 말고 **작업 뒤 요약 알림을 한 번 보낸다** — 무조건 억제하면 필요한 알림까지 조용히 사라진다 |
 
 ### 검증 도구 (새로 생김 — 다음에도 쓸 것)
