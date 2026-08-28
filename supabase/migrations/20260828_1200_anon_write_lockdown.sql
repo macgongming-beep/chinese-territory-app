@@ -52,7 +52,8 @@ cross join lateral unnest(
 cross join lateral unnest(p.roles) as r(role)
 where p.schemaname = 'public'
   and p.permissive = 'PERMISSIVE'
-  and p.tablename <> 'app_private_settings';   -- 일부러 deny_all
+  and p.tablename <> 'app_private_settings'    -- 일부러 deny_all
+  and p.tablename not like '\_probe%';        -- 테스트 DB 전용 실험 표
 
 -- buildings
 create policy buildings_select_all on public.buildings
@@ -491,7 +492,9 @@ begin
   where schemaname = 'public'
     and cmd in ('ALL', 'INSERT', 'UPDATE', 'DELETE')
     and policyname not like 'TEMP\_session\_gate\_%'
-    and policyname <> 'app_private_settings_deny_all';
+    and policyname <> 'app_private_settings_deny_all'
+    -- 테스트 DB 에만 있는 실험용 표 (`npm run smoke:headers` 가 쓴다). 운영엔 없다.
+    and tablename not like '\_probe%';
   if v_open is not null then
     raise exception '아직 열려 있는 쓰기 정책: %', v_open;
   end if;
