@@ -36,6 +36,13 @@ revoke usage on schema private from public, anon, authenticated;
 
 create temp table _probe_result (step text primary key, ok boolean, detail text);
 
+-- ⚠ 검사는 `set local role anon` 상태에서 돈다. 그때 결과를 적으려면 anon 이
+--   이 임시표에 쓸 수 있어야 한다. 없으면 **검사가 아니라 기록이 실패해서**
+--   진짜 결과를 못 본다 (첫 실행에서 그랬다).
+--   임시표라 rollback 과 함께 사라진다.
+grant usage on schema pg_temp to anon;
+grant insert on _probe_result to anon;
+
 -- ═══ 1단계 — revoke 상태. **거부되어야 한다** ═══
 revoke all on function private._probe_helper() from public, anon, authenticated;
 set local role anon;
