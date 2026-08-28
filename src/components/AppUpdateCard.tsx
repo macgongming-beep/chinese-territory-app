@@ -48,7 +48,7 @@ export function AppUpdateCard({ variant = 'desktop' }: { variant?: 'desktop' | '
             </p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b' }}>
               {updateAvailable
-                ? '새로고침하면 즉시 적용됩니다'
+                ? '누르면 앱이 다시 시작되면서 새 버전으로 바뀝니다'
                 : checkedJustNow
                   ? '방금 확인했어요'
                   : '주기적으로 자동 확인합니다'}
@@ -73,7 +73,7 @@ export function AppUpdateCard({ variant = 'desktop' }: { variant?: 'desktop' | '
                 cursor: applying ? 'wait' : 'pointer',
               }}
             >
-              {applying ? '적용 중...' : '지금 새로고침'}
+              {applying ? '다시 시작하는 중...' : '지금 업데이트'}
             </button>
           ) : (
             <button
@@ -115,7 +115,7 @@ export function AppUpdateCard({ variant = 'desktop' }: { variant?: 'desktop' | '
           </p>
           <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b' }}>
             {updateAvailable
-              ? '버튼을 누르면 새 버전으로 즉시 전환됩니다'
+              ? '누르면 앱이 다시 시작되면서 새 버전으로 바뀝니다'
               : checkedJustNow
                 ? '방금 확인했어요'
                 : '30분마다 자동으로 확인합니다'}
@@ -139,7 +139,7 @@ export function AppUpdateCard({ variant = 'desktop' }: { variant?: 'desktop' | '
               cursor: applying ? 'wait' : 'pointer',
             }}
           >
-            {applying ? '적용 중...' : '지금 새로고침'}
+            {applying ? '다시 시작하는 중...' : '지금 업데이트'}
           </button>
         ) : (
           <button

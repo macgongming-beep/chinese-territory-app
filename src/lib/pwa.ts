@@ -1,5 +1,17 @@
 // PWA Service Worker 등록 + 업데이트 감지
 import { registerSW } from 'virtual:pwa-register'
+import { shouldAutoApply } from './pwaAutoUpdate'
+
+const APP_START = Date.now()
+const AUTO_APPLIED_KEY = 'pwa_auto_applied'
+
+/** 입력 중인가 — 글자를 치고 있는데 새로고침하면 그게 날아간다 */
+function userIsTyping(): boolean {
+  const el = document.activeElement
+  if (!el) return false
+  const tag = el.tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA' || (el as HTMLElement).isContentEditable === true
+}
 
 let _updateAvailable = false
 let _swRegistration: ServiceWorkerRegistration | null = null
@@ -65,7 +77,22 @@ export const updateApp = registerSW({
   onNeedRefresh() {
     _updateAvailable = true
     _updateListeners.forEach((cb) => cb())
-    // 자동 적용하지 않음 — 사용자가 설정에서 버튼으로 적용
+
+    // **막 켠 직후라면 저절로 적용한다.** 그 순간엔 날아갈 입력이 없다.
+    // 62명 중 어른이 많아 "설정에서 업데이트 버튼을 누르세요" 가 실제 장벽이다.
+    // 창을 놓쳤거나 입력 중이면 예전처럼 버튼으로 한다.
+    //
+    // ⚠ `alreadyApplied` 를 sessionStorage 로 센다 — 이건 **새로고침해도 남아서**
+    //   새 버전이 계속 needRefresh 로 잡힐 때 무한 새로고침을 막는다.
+    let alreadyApplied = true
+    try { alreadyApplied = sessionStorage.getItem(AUTO_APPLIED_KEY) === '1' }
+    catch { alreadyApplied = true }   // 못 읽으면 안 하는 쪽으로 (fail-closed)
+
+    if (shouldAutoApply({ msSinceStart: Date.now() - APP_START, alreadyApplied, userIsTyping: userIsTyping() })) {
+      try { sessionStorage.setItem(AUTO_APPLIED_KEY, '1') } catch { return }
+      console.log('[PWA] 켠 직후라 새 버전을 저절로 적용한다')
+      void applyUpdate()
+    }
   },
   onOfflineReady() {
     console.log('[PWA] Offline ready')
