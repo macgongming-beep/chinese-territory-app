@@ -81,3 +81,20 @@ describe('점검 공지', () => {
     expect(await screen.findByText('두 번째 공지')).toBeTruthy()
   })
 })
+
+describe('언어', () => {
+  test('언어를 그대로 넘겨 받아온다 (본문은 언어별로 담겨 있다)', async () => {
+    fetchMock.mockResolvedValue({ message: '请完全关闭应用', id: 'v1' })
+    render(<MaintenanceNotice userId={7} language="zh" />)
+    expect(await screen.findByText('请完全关闭应用')).toBeTruthy()
+    expect(fetchMock).toHaveBeenCalledWith('zh')
+  })
+
+  test('UI 문구도 그 언어로 나온다 (본문만 번역되면 반쪽이다)', async () => {
+    fetchMock.mockResolvedValue(NOTICE)
+    render(<MaintenanceNotice userId={7} language="zh" />)
+    await screen.findByText(NOTICE.message)
+    expect(screen.getByText('维护通知')).toBeTruthy()          // 제목
+    expect(screen.getByRole('button').textContent).toBe('确定') // 버튼
+  })
+})

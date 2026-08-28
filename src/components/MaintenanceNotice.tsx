@@ -26,7 +26,7 @@ export function MaintenanceNotice({ userId, language = 'ko' }: { userId?: number
 
   useEffect(() => {
     let alive = true
-    void fetchMaintenanceNotice().then((n) => {
+    void fetchMaintenanceNotice(lang).then((n) => {
       if (!alive || !n) return
       // 이미 확인한 공지는 다시 안 띄운다 (사용자별·공지별)
       try {
@@ -35,7 +35,7 @@ export function MaintenanceNotice({ userId, language = 'ko' }: { userId?: number
       setNotice(n)
     })
     return () => { alive = false }
-  }, [userId])
+  }, [userId, lang])
 
   if (!notice) return null
 
