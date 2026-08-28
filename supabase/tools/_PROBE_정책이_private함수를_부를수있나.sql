@@ -34,20 +34,12 @@ revoke usage on schema private from public, anon, authenticated;
 -- ⚠ NOTICE 로만 찍지 않는다. 사람이 안 읽으면 조용히 넘어간다.
 --   결과를 모아 두고 **예상 밖이면 예외를 던진다.** 통과는 한 가지 모양뿐이다.
 
-create temp table _probe_result (step text primary key, ok boolean, detail text);
-
--- ⚠ 검사는 `set local role anon` 상태에서 돈다. 그때 결과를 적으려면 anon 이
---   이 임시표에 쓸 수 있어야 한다. 없으면 **검사가 아니라 기록이 실패해서**
---   진짜 결과를 못 본다 (첫 실행에서 그랬다).
---   임시표라 rollback 과 함께 사라진다.
---   ⚠ `pg_temp` 는 별칭이라 GRANT 에 못 쓴다 ("schema pg_temp does not exist").
---     세션마다 이름이 다르므로(pg_temp_19 …) 실제 이름을 찾아서 준다.
-do $$
-declare v_schema text := (select nspname from pg_namespace where oid = pg_my_temp_schema());
-begin
-  execute format('grant usage on schema %I to anon', v_schema);
-  execute format('grant insert on %I._probe_result to anon', v_schema);
-end $$;
+-- ⚠ 결과를 적을 자리. **임시표를 쓰지 않는다.**
+--   `set local role anon` 상태에서 적어야 하는데, 임시 스키마는 세션마다 이름이
+--   다르고(pg_temp_19 …) 별칭 `pg_temp` 는 GRANT 에 못 쓴다. 두 번 헛돌았다.
+--   보통 표로 만들고 rollback 으로 지운다 — 어차피 전부 롤백한다.
+create table public._probe_result (step text primary key, ok boolean, detail text);
+grant insert on public._probe_result to anon;
 
 -- ═══ 1단계 — revoke 상태. **거부되어야 한다** ═══
 revoke all on function private._probe_helper() from public, anon, authenticated;
@@ -56,9 +48,9 @@ do $$
 declare n int;
 begin
   select count(*) into n from public._probe_rls;
-  insert into _probe_result values ('1_revoke_거부', false, format('거부 안 됨. 행 %s 을 읽었다', n));
+  insert into public._probe_result values ('1_revoke_거부', false, format('거부 안 됨. 행 %s 을 읽었다', n));
 exception when insufficient_privilege then
-  insert into _probe_result values ('1_revoke_거부', true, sqlerrm);
+  insert into public._probe_result values ('1_revoke_거부', true, sqlerrm);
 end $$;
 reset role;
 
@@ -69,9 +61,9 @@ do $$
 declare n int;
 begin
   select count(*) into n from public._probe_rls;
-  insert into _probe_result values ('2_grant_성공', n = 1, format('행 %s', n));
+  insert into public._probe_result values ('2_grant_성공', n = 1, format('행 %s', n));
 exception when others then
-  insert into _probe_result values ('2_grant_성공', false, format('%s / %s', sqlstate, sqlerrm));
+  insert into public._probe_result values ('2_grant_성공', false, format('%s / %s', sqlstate, sqlerrm));
 end $$;
 reset role;
 
@@ -81,9 +73,9 @@ do $$
 declare b boolean;
 begin
   select private._probe_helper() into b;
-  insert into _probe_result values ('3_직접호출_거부', false, 'anon 이 직접 부를 수 있다 — private 이 열려 있다');
+  insert into public._probe_result values ('3_직접호출_거부', false, 'anon 이 직접 부를 수 있다 — private 이 열려 있다');
 exception when others then
-  insert into _probe_result values ('3_직접호출_거부', true, sqlstate);
+  insert into public._probe_result values ('3_직접호출_거부', true, sqlstate);
 end $$;
 reset role;
 
@@ -93,13 +85,13 @@ declare
   v_bad text;
   r record;
 begin
-  for r in select * from _probe_result order by step loop
+  for r in select * from public._probe_result order by step loop
     raise notice '  % %  %', case when r.ok then '✅' else '❌' end, rpad(r.step, 18), r.detail;
   end loop;
 
-  select string_agg(step, ', ' order by step) into v_bad from _probe_result where not ok;
+  select string_agg(step, ', ' order by step) into v_bad from public._probe_result where not ok;
 
-  if (select count(*) from _probe_result) <> 3 then
+  if (select count(*) from public._probe_result) <> 3 then
     raise exception '세 단계가 다 안 돌았다 — 앞 단계가 트랜잭션을 깼을 수 있다';
   end if;
 
