@@ -128,6 +128,8 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
         <button type="button" onMouseDown={keepSelection} onClick={toggleQuote} style={btnStyle} title="인용문 (들여쓰기 + 줄)">❝</button>
         <button type="button" onMouseDown={keepSelection} onClick={() => exec('insertOrderedList')} style={btnStyle} title="번호 목록 (1. 2. 3.)">1.</button>
         <button type="button" onMouseDown={keepSelection} onClick={() => exec('insertUnorderedList')} style={btnStyle} title="글머리 목록">•</button>
+        {/* 구분선 — 내용을 나눌 때. insertHorizontalRule 은 <hr> 를 넣는다 */}
+        <button type="button" onMouseDown={keepSelection} onClick={() => exec('insertHorizontalRule')} style={{ ...btnStyle, letterSpacing: -1 }} title="구분선 (———)">—</button>
         <span style={{ width: 1, height: 18, background: 'var(--line-muted)', margin: '0 2px' }} />
         {COLORS.map((c) => (
           <button

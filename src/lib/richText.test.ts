@@ -184,3 +184,16 @@ describe('문서에서 붙여넣은 서식이 살아남나', () => {
     expect(out).toContain('글자')
   })
 })
+
+describe('구분선', () => {
+  test('hr 이 살아남는다', () => {
+    expect(sanitizeRichText('앞<hr>뒤')).toContain('<hr>')
+  })
+  test('편집기가 만드는 모양도 살아남는다', () => {
+    // execCommand('insertHorizontalRule') 은 <hr> 를 div 안에 넣기도 한다
+    const out = sanitizeRichText('<div>앞</div><hr><div>뒤</div>')
+    expect(out).toContain('<hr>')
+    expect(out).toContain('앞')
+    expect(out).toContain('뒤')
+  })
+})
