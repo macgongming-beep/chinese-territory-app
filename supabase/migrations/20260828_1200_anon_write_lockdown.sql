@@ -39,305 +39,29 @@ begin;
 grant execute on function private.request_session_user_id() to anon, authenticated;
 grant execute on function private.request_is_admin()        to anon, authenticated;
 
--- buildings
-create policy buildings_select_all on public.buildings
-  for select to anon using (true);
-create policy "TEMP_session_gate_buildings_ins" on public.buildings
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_buildings_upd" on public.buildings
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_buildings_del" on public.buildings
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.buildings;
+-- ⚠⚠ **권한이 걸린 셋을 맨 앞에 둔다. 순서가 안전장치다.**
+--   SQL Editor 는 `begin;` 을 지키지 않는다 (테스트 DB 에서 확인했다 —
+--   마지막 검증만 실패했는데 앞의 정책 112개는 그대로 남았다).
+--   그러면 중간에 멈췄을 때 무엇이 이미 닫혔는지가 중요해진다.
+--   `app_users` 를 뒤에 두면, 중간에 멈춘 사이 **로그인한 사람이 자기 role 을
+--   admin 으로 올릴 수 있다.** 그래서 제일 먼저 닫는다.
+--
+--   그리고 이 파일은 **몇 번을 다시 돌려도 된다** (모든 create 앞에 drop if exists).
+--   중간에 멈추면 고치고 처음부터 다시 돌리면 된다.
 
--- calendar_events
-create policy calendar_events_select_all on public.calendar_events
-  for select to public using (true);
-create policy "TEMP_session_gate_calendar_events_ins" on public.calendar_events
-  for insert to public with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_calendar_events_upd" on public.calendar_events
-  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_calendar_events_del" on public.calendar_events
-  for delete to public using ((select private.request_session_user_id()) is not null);
-drop policy open on public.calendar_events;
-
--- card_assignments
-create policy card_assignments_select_all on public.card_assignments
-  for select to anon using (true);
-create policy "TEMP_session_gate_card_assignments_ins" on public.card_assignments
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_card_assignments_upd" on public.card_assignments
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_card_assignments_del" on public.card_assignments
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.card_assignments;
-
--- card_boundaries
-create policy card_boundaries_select_all on public.card_boundaries
-  for select to anon using (true);
-create policy "TEMP_session_gate_card_boundaries_ins" on public.card_boundaries
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_card_boundaries_upd" on public.card_boundaries
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_card_boundaries_del" on public.card_boundaries
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.card_boundaries;
-
--- card_leader_assignments
-create policy card_leader_assignments_select_all on public.card_leader_assignments
-  for select to anon using (true);
-create policy "TEMP_session_gate_card_leader_assignments_ins" on public.card_leader_assignments
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_card_leader_assignments_upd" on public.card_leader_assignments
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_card_leader_assignments_del" on public.card_leader_assignments
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.card_leader_assignments;
-
--- cards
-create policy cards_select_all on public.cards
-  for select to anon using (true);
-create policy "TEMP_session_gate_cards_ins" on public.cards
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_cards_upd" on public.cards
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_cards_del" on public.cards
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.cards;
-
--- chat_room_mutes
-create policy chat_room_mutes_select_all on public.chat_room_mutes
-  for select to anon, authenticated using (true);
-create policy "TEMP_session_gate_chat_room_mutes_ins" on public.chat_room_mutes
-  for insert to anon, authenticated with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_chat_room_mutes_upd" on public.chat_room_mutes
-  for update to anon, authenticated using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_chat_room_mutes_del" on public.chat_room_mutes
-  for delete to anon, authenticated using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.chat_room_mutes;
-
--- comments
-create policy comments_select_all on public.comments
-  for select to anon, authenticated using (true);
-create policy "TEMP_session_gate_comments_ins" on public.comments
-  for insert to anon, authenticated with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_comments_upd" on public.comments
-  for update to anon, authenticated using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_comments_del" on public.comments
-  for delete to anon, authenticated using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.comments;
-
--- event_card_assignment_cards
-create policy event_card_assignment_cards_select_all on public.event_card_assignment_cards
-  for select to anon using (true);
-create policy "TEMP_session_gate_event_card_assignment_cards_ins" on public.event_card_assignment_cards
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_event_card_assignment_cards_upd" on public.event_card_assignment_cards
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_event_card_assignment_cards_del" on public.event_card_assignment_cards
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.event_card_assignment_cards;
-
--- event_card_assignments
-create policy event_card_assignments_select_all on public.event_card_assignments
-  for select to anon using (true);
-create policy "TEMP_session_gate_event_card_assignments_ins" on public.event_card_assignments
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_event_card_assignments_upd" on public.event_card_assignments
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_event_card_assignments_del" on public.event_card_assignments
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.event_card_assignments;
-
--- event_informal_assignments
-create policy event_informal_assignments_select_all on public.event_informal_assignments
-  for select to anon using (true);
-create policy "TEMP_session_gate_event_informal_assignments_ins" on public.event_informal_assignments
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_event_informal_assignments_upd" on public.event_informal_assignments
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_event_informal_assignments_del" on public.event_informal_assignments
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.event_informal_assignments;
-
--- event_participants
-create policy event_participants_select_all on public.event_participants
-  for select to public using (true);
-create policy "TEMP_session_gate_event_participants_ins" on public.event_participants
-  for insert to public with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_event_participants_upd" on public.event_participants
-  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_event_participants_del" on public.event_participants
-  for delete to public using ((select private.request_session_user_id()) is not null);
-drop policy open on public.event_participants;
-
--- event_restaurant_assignments
-create policy event_restaurant_assignments_select_all on public.event_restaurant_assignments
-  for select to anon using (true);
-create policy "TEMP_session_gate_event_restaurant_assignments_ins" on public.event_restaurant_assignments
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_event_restaurant_assignments_upd" on public.event_restaurant_assignments
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_event_restaurant_assignments_del" on public.event_restaurant_assignments
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.event_restaurant_assignments;
-
--- informal_assets
-create policy informal_assets_select_all on public.informal_assets
-  for select to anon using (true);
-create policy "TEMP_session_gate_informal_assets_ins" on public.informal_assets
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_informal_assets_upd" on public.informal_assets
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_informal_assets_del" on public.informal_assets
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.informal_assets;
-
--- informal_groups
-create policy informal_groups_select_all on public.informal_groups
-  for select to anon, authenticated using (true);
-create policy "TEMP_session_gate_informal_groups_ins" on public.informal_groups
-  for insert to anon, authenticated with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_informal_groups_upd" on public.informal_groups
-  for update to anon, authenticated using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_informal_groups_del" on public.informal_groups
-  for delete to anon, authenticated using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.informal_groups;
-
--- phone_surveys
-create policy phone_surveys_select_all on public.phone_surveys
-  for select to anon, authenticated using (true);
-create policy "TEMP_session_gate_phone_surveys_ins" on public.phone_surveys
-  for insert to anon, authenticated with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_phone_surveys_upd" on public.phone_surveys
-  for update to anon, authenticated using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_phone_surveys_del" on public.phone_surveys
-  for delete to anon, authenticated using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.phone_surveys;
-
--- regular_visits
-create policy regular_visits_select_all on public.regular_visits
-  for select to anon using (true);
-create policy "TEMP_session_gate_regular_visits_ins" on public.regular_visits
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_regular_visits_upd" on public.regular_visits
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_regular_visits_del" on public.regular_visits
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.regular_visits;
-
--- return_visit_logs
-create policy return_visit_logs_select_all on public.return_visit_logs
-  for select to public using (true);
-create policy "TEMP_session_gate_return_visit_logs_ins" on public.return_visit_logs
-  for insert to public with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_return_visit_logs_upd" on public.return_visit_logs
-  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_return_visit_logs_del" on public.return_visit_logs
-  for delete to public using ((select private.request_session_user_id()) is not null);
-drop policy "allow all" on public.return_visit_logs;
-
--- return_visits
-create policy return_visits_select_all on public.return_visits
-  for select to public using (true);
-create policy "TEMP_session_gate_return_visits_ins" on public.return_visits
-  for insert to public with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_return_visits_upd" on public.return_visits
-  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_return_visits_del" on public.return_visits
-  for delete to public using ((select private.request_session_user_id()) is not null);
-drop policy "allow all" on public.return_visits;
-
--- review_tasks
-create policy review_tasks_select_all on public.review_tasks
-  for select to public using (true);
-create policy "TEMP_session_gate_review_tasks_ins" on public.review_tasks
-  for insert to public with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_review_tasks_upd" on public.review_tasks
-  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_review_tasks_del" on public.review_tasks
-  for delete to public using ((select private.request_session_user_id()) is not null);
-drop policy "allow all" on public.review_tasks;
-
--- service_sessions
-create policy service_sessions_select_all on public.service_sessions
-  for select to anon using (true);
-create policy "TEMP_session_gate_service_sessions_ins" on public.service_sessions
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_service_sessions_upd" on public.service_sessions
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_service_sessions_del" on public.service_sessions
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.service_sessions;
-
--- service_suggestions
-create policy service_suggestions_select_all on public.service_suggestions
-  for select to public using (true);
-create policy "TEMP_session_gate_service_suggestions_ins" on public.service_suggestions
-  for insert to public with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_service_suggestions_upd" on public.service_suggestions
-  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_service_suggestions_del" on public.service_suggestions
-  for delete to public using ((select private.request_session_user_id()) is not null);
-drop policy "Enable all operations for all" on public.service_suggestions;
-
--- territory_regions
-create policy territory_regions_select_all on public.territory_regions
-  for select to anon, authenticated using (true);
-create policy "TEMP_session_gate_territory_regions_ins" on public.territory_regions
-  for insert to anon, authenticated with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_territory_regions_upd" on public.territory_regions
-  for update to anon, authenticated using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_territory_regions_del" on public.territory_regions
-  for delete to anon, authenticated using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.territory_regions;
-
--- units
-create policy units_select_all on public.units
-  for select to anon using (true);
-create policy "TEMP_session_gate_units_ins" on public.units
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_units_upd" on public.units
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_units_del" on public.units
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.units;
-
--- visit_histories
-create policy visit_histories_select_all on public.visit_histories
-  for select to anon using (true);
-create policy "TEMP_session_gate_visit_histories_ins" on public.visit_histories
-  for insert to anon with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_visit_histories_upd" on public.visit_histories
-  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
-create policy "TEMP_session_gate_visit_histories_del" on public.visit_histories
-  for delete to anon using ((select private.request_session_user_id()) is not null);
-drop policy open_access on public.visit_histories;
-
--- restaurant_requests · DELETE (FOR ALL 이 아니라 개별 정책이라 따로 잡는다)
-drop policy restaurant_requests_delete on public.restaurant_requests;
-create policy "TEMP_session_gate_restaurant_requests_delete" on public.restaurant_requests
-  for delete to public using ((select private.request_session_user_id()) is not null);
-
--- restaurant_requests · INSERT (FOR ALL 이 아니라 개별 정책이라 따로 잡는다)
-drop policy restaurant_requests_insert on public.restaurant_requests;
-create policy "TEMP_session_gate_restaurant_requests_insert" on public.restaurant_requests
-  for insert to public with check ((select private.request_session_user_id()) is not null);
-
--- restaurant_requests · UPDATE (FOR ALL 이 아니라 개별 정책이라 따로 잡는다)
-drop policy restaurant_requests_update on public.restaurant_requests;
-create policy "TEMP_session_gate_restaurant_requests_update" on public.restaurant_requests
-  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);-- ═══ app_users — 역할 상승을 막는다 ═══
+-- ═══ app_users — 역할 상승을 막는다 ═══
 --
 -- ⚠ 이걸 나중 단계로 미루면 안 된다. 일반 쓰기를 세션 기반으로 바꾸는 동안
 --   app_users 가 열려 있으면 **로그인한 사람이 자기 role 을 admin 으로 올린다.**
 --   그러면 뒤이어 만들 역할별 정책이 전부 무너진다.
 
+drop policy if exists app_users_select_all on public.app_users;
 create policy app_users_select_all on public.app_users
   for select to anon using (true);
 -- ⚠ INSERT 를 '세션 있으면' 으로 두면 안 된다 —
 --   **로그인한 일반 사용자가 자기를 admin 으로 한 줄 더 만든다.**
 --   가입은 signup_tx(security definer)가 RLS 를 우회해서 하므로 막아도 안 막힌다.
+drop policy if exists "TEMP_session_gate_app_users_ins" on public.app_users;
 create policy "TEMP_session_gate_app_users_ins" on public.app_users
   for insert to anon with check ((select private.request_is_admin()));
 -- UPDATE 는 **본인 아니면 관리자**. 호출부 8곳을 세어 확인했다:
@@ -345,13 +69,15 @@ create policy "TEMP_session_gate_app_users_ins" on public.app_users
 --   관리자(6): resetUserPin · updateUsersGroup · renameUserGroup ·
 --              updateUserRole · setApprovalStatus · updateUserAccount
 -- (auth_login · auth_record_auto_login 의 last_login_at 갱신은 definer 라 RLS 밖이다)
+drop policy if exists "TEMP_session_gate_app_users_upd" on public.app_users;
 create policy "TEMP_session_gate_app_users_upd" on public.app_users
   for update to anon
   using (id = (select private.request_session_user_id()) or (select private.request_is_admin()))
   with check (id = (select private.request_session_user_id()) or (select private.request_is_admin()));
+drop policy if exists "TEMP_session_gate_app_users_del" on public.app_users;
 create policy "TEMP_session_gate_app_users_del" on public.app_users
   for delete to anon using ((select private.request_is_admin()));
-drop policy open_access on public.app_users;
+drop policy if exists open_access on public.app_users;
 
 -- 위 정책은 '누구 줄을 고치나' 만 본다. **본인 줄에서 자기 role 을 올리는 것**은 못 막는다.
 -- 정책만으로는 **어느 칸이 바뀌었는지**를 볼 수 없다 (WITH CHECK 는 새 행만 본다).
@@ -414,28 +140,425 @@ create trigger app_users_guard_privilege
 
 -- ═══ app_settings — 쓰기는 관리자만 ═══
 -- 이름이 open_access 가 아니라 app_settings_write 라 이름으로 찾으면 놓친다.
-drop policy app_settings_write on public.app_settings;
+drop policy if exists app_settings_write on public.app_settings;
+drop policy if exists "TEMP_session_gate_app_settings_ins" on public.app_settings;
 create policy "TEMP_session_gate_app_settings_ins" on public.app_settings
   for insert to public with check ((select private.request_is_admin()));
+drop policy if exists "TEMP_session_gate_app_settings_upd" on public.app_settings;
 create policy "TEMP_session_gate_app_settings_upd" on public.app_settings
   for update to public
   using ((select private.request_is_admin())) with check ((select private.request_is_admin()));
+drop policy if exists "TEMP_session_gate_app_settings_del" on public.app_settings;
 create policy "TEMP_session_gate_app_settings_del" on public.app_settings
   for delete to public using ((select private.request_is_admin()));
 
 -- ═══ notices — 아무나 쓰고 지울 수 있었다 ═══
 -- 이름이 다른 정책이 **두 벌** 있다 (anyone can … / delete·insert·read).
 -- 올리는 것은 create_notice_tx(security definer)가 하므로 INSERT 정책은 관리자만 남긴다.
-drop policy "anyone can delete notices" on public.notices;
-drop policy "anyone can insert notices" on public.notices;
-drop policy "delete" on public.notices;
-drop policy "insert" on public.notices;
+drop policy if exists "anyone can delete notices" on public.notices;
+drop policy if exists "anyone can insert notices" on public.notices;
+drop policy if exists "delete" on public.notices;
+drop policy if exists "insert" on public.notices;
+drop policy if exists "TEMP_session_gate_notices_ins" on public.notices;
 create policy "TEMP_session_gate_notices_ins" on public.notices
   for insert to public with check ((select private.request_is_admin()));
+drop policy if exists "TEMP_session_gate_notices_del" on public.notices;
 create policy "TEMP_session_gate_notices_del" on public.notices
   for delete to public using ((select private.request_is_admin()));
 
--- ═══ 검증 — 여기서 던지면 위가 전부 롤백된다 ═══
+
+-- buildings
+drop policy if exists buildings_select_all on public.buildings;
+create policy buildings_select_all on public.buildings
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_buildings_ins" on public.buildings;
+create policy "TEMP_session_gate_buildings_ins" on public.buildings
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_buildings_upd" on public.buildings;
+create policy "TEMP_session_gate_buildings_upd" on public.buildings
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_buildings_del" on public.buildings;
+create policy "TEMP_session_gate_buildings_del" on public.buildings
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.buildings;
+
+-- calendar_events
+drop policy if exists calendar_events_select_all on public.calendar_events;
+create policy calendar_events_select_all on public.calendar_events
+  for select to public using (true);
+drop policy if exists "TEMP_session_gate_calendar_events_ins" on public.calendar_events;
+create policy "TEMP_session_gate_calendar_events_ins" on public.calendar_events
+  for insert to public with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_calendar_events_upd" on public.calendar_events;
+create policy "TEMP_session_gate_calendar_events_upd" on public.calendar_events
+  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_calendar_events_del" on public.calendar_events;
+create policy "TEMP_session_gate_calendar_events_del" on public.calendar_events
+  for delete to public using ((select private.request_session_user_id()) is not null);
+drop policy if exists open on public.calendar_events;
+
+-- card_assignments
+drop policy if exists card_assignments_select_all on public.card_assignments;
+create policy card_assignments_select_all on public.card_assignments
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_card_assignments_ins" on public.card_assignments;
+create policy "TEMP_session_gate_card_assignments_ins" on public.card_assignments
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_card_assignments_upd" on public.card_assignments;
+create policy "TEMP_session_gate_card_assignments_upd" on public.card_assignments
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_card_assignments_del" on public.card_assignments;
+create policy "TEMP_session_gate_card_assignments_del" on public.card_assignments
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.card_assignments;
+
+-- card_boundaries
+drop policy if exists card_boundaries_select_all on public.card_boundaries;
+create policy card_boundaries_select_all on public.card_boundaries
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_card_boundaries_ins" on public.card_boundaries;
+create policy "TEMP_session_gate_card_boundaries_ins" on public.card_boundaries
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_card_boundaries_upd" on public.card_boundaries;
+create policy "TEMP_session_gate_card_boundaries_upd" on public.card_boundaries
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_card_boundaries_del" on public.card_boundaries;
+create policy "TEMP_session_gate_card_boundaries_del" on public.card_boundaries
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.card_boundaries;
+
+-- card_leader_assignments
+drop policy if exists card_leader_assignments_select_all on public.card_leader_assignments;
+create policy card_leader_assignments_select_all on public.card_leader_assignments
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_card_leader_assignments_ins" on public.card_leader_assignments;
+create policy "TEMP_session_gate_card_leader_assignments_ins" on public.card_leader_assignments
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_card_leader_assignments_upd" on public.card_leader_assignments;
+create policy "TEMP_session_gate_card_leader_assignments_upd" on public.card_leader_assignments
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_card_leader_assignments_del" on public.card_leader_assignments;
+create policy "TEMP_session_gate_card_leader_assignments_del" on public.card_leader_assignments
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.card_leader_assignments;
+
+-- cards
+drop policy if exists cards_select_all on public.cards;
+create policy cards_select_all on public.cards
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_cards_ins" on public.cards;
+create policy "TEMP_session_gate_cards_ins" on public.cards
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_cards_upd" on public.cards;
+create policy "TEMP_session_gate_cards_upd" on public.cards
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_cards_del" on public.cards;
+create policy "TEMP_session_gate_cards_del" on public.cards
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.cards;
+
+-- chat_room_mutes
+drop policy if exists chat_room_mutes_select_all on public.chat_room_mutes;
+create policy chat_room_mutes_select_all on public.chat_room_mutes
+  for select to anon, authenticated using (true);
+drop policy if exists "TEMP_session_gate_chat_room_mutes_ins" on public.chat_room_mutes;
+create policy "TEMP_session_gate_chat_room_mutes_ins" on public.chat_room_mutes
+  for insert to anon, authenticated with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_chat_room_mutes_upd" on public.chat_room_mutes;
+create policy "TEMP_session_gate_chat_room_mutes_upd" on public.chat_room_mutes
+  for update to anon, authenticated using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_chat_room_mutes_del" on public.chat_room_mutes;
+create policy "TEMP_session_gate_chat_room_mutes_del" on public.chat_room_mutes
+  for delete to anon, authenticated using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.chat_room_mutes;
+
+-- comments
+drop policy if exists comments_select_all on public.comments;
+create policy comments_select_all on public.comments
+  for select to anon, authenticated using (true);
+drop policy if exists "TEMP_session_gate_comments_ins" on public.comments;
+create policy "TEMP_session_gate_comments_ins" on public.comments
+  for insert to anon, authenticated with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_comments_upd" on public.comments;
+create policy "TEMP_session_gate_comments_upd" on public.comments
+  for update to anon, authenticated using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_comments_del" on public.comments;
+create policy "TEMP_session_gate_comments_del" on public.comments
+  for delete to anon, authenticated using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.comments;
+
+-- event_card_assignment_cards
+drop policy if exists event_card_assignment_cards_select_all on public.event_card_assignment_cards;
+create policy event_card_assignment_cards_select_all on public.event_card_assignment_cards
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_event_card_assignment_cards_ins" on public.event_card_assignment_cards;
+create policy "TEMP_session_gate_event_card_assignment_cards_ins" on public.event_card_assignment_cards
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_event_card_assignment_cards_upd" on public.event_card_assignment_cards;
+create policy "TEMP_session_gate_event_card_assignment_cards_upd" on public.event_card_assignment_cards
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_event_card_assignment_cards_del" on public.event_card_assignment_cards;
+create policy "TEMP_session_gate_event_card_assignment_cards_del" on public.event_card_assignment_cards
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.event_card_assignment_cards;
+
+-- event_card_assignments
+drop policy if exists event_card_assignments_select_all on public.event_card_assignments;
+create policy event_card_assignments_select_all on public.event_card_assignments
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_event_card_assignments_ins" on public.event_card_assignments;
+create policy "TEMP_session_gate_event_card_assignments_ins" on public.event_card_assignments
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_event_card_assignments_upd" on public.event_card_assignments;
+create policy "TEMP_session_gate_event_card_assignments_upd" on public.event_card_assignments
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_event_card_assignments_del" on public.event_card_assignments;
+create policy "TEMP_session_gate_event_card_assignments_del" on public.event_card_assignments
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.event_card_assignments;
+
+-- event_informal_assignments
+drop policy if exists event_informal_assignments_select_all on public.event_informal_assignments;
+create policy event_informal_assignments_select_all on public.event_informal_assignments
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_event_informal_assignments_ins" on public.event_informal_assignments;
+create policy "TEMP_session_gate_event_informal_assignments_ins" on public.event_informal_assignments
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_event_informal_assignments_upd" on public.event_informal_assignments;
+create policy "TEMP_session_gate_event_informal_assignments_upd" on public.event_informal_assignments
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_event_informal_assignments_del" on public.event_informal_assignments;
+create policy "TEMP_session_gate_event_informal_assignments_del" on public.event_informal_assignments
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.event_informal_assignments;
+
+-- event_participants
+drop policy if exists event_participants_select_all on public.event_participants;
+create policy event_participants_select_all on public.event_participants
+  for select to public using (true);
+drop policy if exists "TEMP_session_gate_event_participants_ins" on public.event_participants;
+create policy "TEMP_session_gate_event_participants_ins" on public.event_participants
+  for insert to public with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_event_participants_upd" on public.event_participants;
+create policy "TEMP_session_gate_event_participants_upd" on public.event_participants
+  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_event_participants_del" on public.event_participants;
+create policy "TEMP_session_gate_event_participants_del" on public.event_participants
+  for delete to public using ((select private.request_session_user_id()) is not null);
+drop policy if exists open on public.event_participants;
+
+-- event_restaurant_assignments
+drop policy if exists event_restaurant_assignments_select_all on public.event_restaurant_assignments;
+create policy event_restaurant_assignments_select_all on public.event_restaurant_assignments
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_event_restaurant_assignments_ins" on public.event_restaurant_assignments;
+create policy "TEMP_session_gate_event_restaurant_assignments_ins" on public.event_restaurant_assignments
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_event_restaurant_assignments_upd" on public.event_restaurant_assignments;
+create policy "TEMP_session_gate_event_restaurant_assignments_upd" on public.event_restaurant_assignments
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_event_restaurant_assignments_del" on public.event_restaurant_assignments;
+create policy "TEMP_session_gate_event_restaurant_assignments_del" on public.event_restaurant_assignments
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.event_restaurant_assignments;
+
+-- informal_assets
+drop policy if exists informal_assets_select_all on public.informal_assets;
+create policy informal_assets_select_all on public.informal_assets
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_informal_assets_ins" on public.informal_assets;
+create policy "TEMP_session_gate_informal_assets_ins" on public.informal_assets
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_informal_assets_upd" on public.informal_assets;
+create policy "TEMP_session_gate_informal_assets_upd" on public.informal_assets
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_informal_assets_del" on public.informal_assets;
+create policy "TEMP_session_gate_informal_assets_del" on public.informal_assets
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.informal_assets;
+
+-- informal_groups
+drop policy if exists informal_groups_select_all on public.informal_groups;
+create policy informal_groups_select_all on public.informal_groups
+  for select to anon, authenticated using (true);
+drop policy if exists "TEMP_session_gate_informal_groups_ins" on public.informal_groups;
+create policy "TEMP_session_gate_informal_groups_ins" on public.informal_groups
+  for insert to anon, authenticated with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_informal_groups_upd" on public.informal_groups;
+create policy "TEMP_session_gate_informal_groups_upd" on public.informal_groups
+  for update to anon, authenticated using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_informal_groups_del" on public.informal_groups;
+create policy "TEMP_session_gate_informal_groups_del" on public.informal_groups
+  for delete to anon, authenticated using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.informal_groups;
+
+-- phone_surveys
+drop policy if exists phone_surveys_select_all on public.phone_surveys;
+create policy phone_surveys_select_all on public.phone_surveys
+  for select to anon, authenticated using (true);
+drop policy if exists "TEMP_session_gate_phone_surveys_ins" on public.phone_surveys;
+create policy "TEMP_session_gate_phone_surveys_ins" on public.phone_surveys
+  for insert to anon, authenticated with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_phone_surveys_upd" on public.phone_surveys;
+create policy "TEMP_session_gate_phone_surveys_upd" on public.phone_surveys
+  for update to anon, authenticated using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_phone_surveys_del" on public.phone_surveys;
+create policy "TEMP_session_gate_phone_surveys_del" on public.phone_surveys
+  for delete to anon, authenticated using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.phone_surveys;
+
+-- regular_visits
+drop policy if exists regular_visits_select_all on public.regular_visits;
+create policy regular_visits_select_all on public.regular_visits
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_regular_visits_ins" on public.regular_visits;
+create policy "TEMP_session_gate_regular_visits_ins" on public.regular_visits
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_regular_visits_upd" on public.regular_visits;
+create policy "TEMP_session_gate_regular_visits_upd" on public.regular_visits
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_regular_visits_del" on public.regular_visits;
+create policy "TEMP_session_gate_regular_visits_del" on public.regular_visits
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.regular_visits;
+
+-- return_visit_logs
+drop policy if exists return_visit_logs_select_all on public.return_visit_logs;
+create policy return_visit_logs_select_all on public.return_visit_logs
+  for select to public using (true);
+drop policy if exists "TEMP_session_gate_return_visit_logs_ins" on public.return_visit_logs;
+create policy "TEMP_session_gate_return_visit_logs_ins" on public.return_visit_logs
+  for insert to public with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_return_visit_logs_upd" on public.return_visit_logs;
+create policy "TEMP_session_gate_return_visit_logs_upd" on public.return_visit_logs
+  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_return_visit_logs_del" on public.return_visit_logs;
+create policy "TEMP_session_gate_return_visit_logs_del" on public.return_visit_logs
+  for delete to public using ((select private.request_session_user_id()) is not null);
+drop policy if exists "allow all" on public.return_visit_logs;
+
+-- return_visits
+drop policy if exists return_visits_select_all on public.return_visits;
+create policy return_visits_select_all on public.return_visits
+  for select to public using (true);
+drop policy if exists "TEMP_session_gate_return_visits_ins" on public.return_visits;
+create policy "TEMP_session_gate_return_visits_ins" on public.return_visits
+  for insert to public with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_return_visits_upd" on public.return_visits;
+create policy "TEMP_session_gate_return_visits_upd" on public.return_visits
+  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_return_visits_del" on public.return_visits;
+create policy "TEMP_session_gate_return_visits_del" on public.return_visits
+  for delete to public using ((select private.request_session_user_id()) is not null);
+drop policy if exists "allow all" on public.return_visits;
+
+-- review_tasks
+drop policy if exists review_tasks_select_all on public.review_tasks;
+create policy review_tasks_select_all on public.review_tasks
+  for select to public using (true);
+drop policy if exists "TEMP_session_gate_review_tasks_ins" on public.review_tasks;
+create policy "TEMP_session_gate_review_tasks_ins" on public.review_tasks
+  for insert to public with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_review_tasks_upd" on public.review_tasks;
+create policy "TEMP_session_gate_review_tasks_upd" on public.review_tasks
+  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_review_tasks_del" on public.review_tasks;
+create policy "TEMP_session_gate_review_tasks_del" on public.review_tasks
+  for delete to public using ((select private.request_session_user_id()) is not null);
+drop policy if exists "allow all" on public.review_tasks;
+
+-- service_sessions
+drop policy if exists service_sessions_select_all on public.service_sessions;
+create policy service_sessions_select_all on public.service_sessions
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_service_sessions_ins" on public.service_sessions;
+create policy "TEMP_session_gate_service_sessions_ins" on public.service_sessions
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_service_sessions_upd" on public.service_sessions;
+create policy "TEMP_session_gate_service_sessions_upd" on public.service_sessions
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_service_sessions_del" on public.service_sessions;
+create policy "TEMP_session_gate_service_sessions_del" on public.service_sessions
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.service_sessions;
+
+-- service_suggestions
+drop policy if exists service_suggestions_select_all on public.service_suggestions;
+create policy service_suggestions_select_all on public.service_suggestions
+  for select to public using (true);
+drop policy if exists "TEMP_session_gate_service_suggestions_ins" on public.service_suggestions;
+create policy "TEMP_session_gate_service_suggestions_ins" on public.service_suggestions
+  for insert to public with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_service_suggestions_upd" on public.service_suggestions;
+create policy "TEMP_session_gate_service_suggestions_upd" on public.service_suggestions
+  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_service_suggestions_del" on public.service_suggestions;
+create policy "TEMP_session_gate_service_suggestions_del" on public.service_suggestions
+  for delete to public using ((select private.request_session_user_id()) is not null);
+drop policy if exists "Enable all operations for all" on public.service_suggestions;
+
+-- territory_regions
+drop policy if exists territory_regions_select_all on public.territory_regions;
+create policy territory_regions_select_all on public.territory_regions
+  for select to anon, authenticated using (true);
+drop policy if exists "TEMP_session_gate_territory_regions_ins" on public.territory_regions;
+create policy "TEMP_session_gate_territory_regions_ins" on public.territory_regions
+  for insert to anon, authenticated with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_territory_regions_upd" on public.territory_regions;
+create policy "TEMP_session_gate_territory_regions_upd" on public.territory_regions
+  for update to anon, authenticated using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_territory_regions_del" on public.territory_regions;
+create policy "TEMP_session_gate_territory_regions_del" on public.territory_regions
+  for delete to anon, authenticated using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.territory_regions;
+
+-- units
+drop policy if exists units_select_all on public.units;
+create policy units_select_all on public.units
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_units_ins" on public.units;
+create policy "TEMP_session_gate_units_ins" on public.units
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_units_upd" on public.units;
+create policy "TEMP_session_gate_units_upd" on public.units
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_units_del" on public.units;
+create policy "TEMP_session_gate_units_del" on public.units
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.units;
+
+-- visit_histories
+drop policy if exists visit_histories_select_all on public.visit_histories;
+create policy visit_histories_select_all on public.visit_histories
+  for select to anon using (true);
+drop policy if exists "TEMP_session_gate_visit_histories_ins" on public.visit_histories;
+create policy "TEMP_session_gate_visit_histories_ins" on public.visit_histories
+  for insert to anon with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_visit_histories_upd" on public.visit_histories;
+create policy "TEMP_session_gate_visit_histories_upd" on public.visit_histories
+  for update to anon using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);
+drop policy if exists "TEMP_session_gate_visit_histories_del" on public.visit_histories;
+create policy "TEMP_session_gate_visit_histories_del" on public.visit_histories
+  for delete to anon using ((select private.request_session_user_id()) is not null);
+drop policy if exists open_access on public.visit_histories;
+
+-- restaurant_requests · DELETE (FOR ALL 이 아니라 개별 정책이라 따로 잡는다)
+drop policy if exists restaurant_requests_delete on public.restaurant_requests;
+drop policy if exists "TEMP_session_gate_restaurant_requests_delete" on public.restaurant_requests;
+create policy "TEMP_session_gate_restaurant_requests_delete" on public.restaurant_requests
+  for delete to public using ((select private.request_session_user_id()) is not null);
+
+-- restaurant_requests · INSERT (FOR ALL 이 아니라 개별 정책이라 따로 잡는다)
+drop policy if exists restaurant_requests_insert on public.restaurant_requests;
+drop policy if exists "TEMP_session_gate_restaurant_requests_insert" on public.restaurant_requests;
+create policy "TEMP_session_gate_restaurant_requests_insert" on public.restaurant_requests
+  for insert to public with check ((select private.request_session_user_id()) is not null);
+
+-- restaurant_requests · UPDATE (FOR ALL 이 아니라 개별 정책이라 따로 잡는다)
+drop policy if exists restaurant_requests_update on public.restaurant_requests;
+drop policy if exists "TEMP_session_gate_restaurant_requests_update" on public.restaurant_requests;
+create policy "TEMP_session_gate_restaurant_requests_update" on public.restaurant_requests
+  for update to public using ((select private.request_session_user_id()) is not null) with check ((select private.request_session_user_id()) is not null);-- ═══ 검증 — 여기서 던지면 위가 전부 롤백된다 ═══
 -- ⚠ 개수를 세지 않는다. **빠진 것을 이름으로 뱉게** 한다.
 --   "28개 맞네" 는 엉뚱한 28개여도 통과한다 (오늘 시험에서 여러 번 데었다).
 do $$
