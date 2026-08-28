@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Toast } from './components/Toast'
 import { ConfirmDialog } from './components/ConfirmDialog'
+import { MaintenanceNotice } from './components/MaintenanceNotice'
 import { PwaInstallBanner } from './components/PwaInstall'
 import { PullToRefresh } from './components/PullToRefresh'
 import { useStore } from './hooks/useStore'
@@ -299,6 +300,9 @@ function App() {
     <>
       <Toast />
       <ConfirmDialog />
+      {/* 점검 공지 — 관리자가 app_settings 로 켜고 끈다 (배포 없이).
+          ⚠ 이 팝업이 보인다는 것 자체가 '헤더를 보내는 새 버전' 이라는 뜻이다. */}
+      <MaintenanceNotice userId={user.id} language={language} />
       <PwaInstallBanner language={language} />
       {/* 지도 화면에서는 바텀시트 드래그와 충돌하므로 비활성화 */}
       {location.pathname !== '/map' && <PullToRefresh onRefresh={refetchAll} />}
