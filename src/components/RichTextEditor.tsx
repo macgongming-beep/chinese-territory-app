@@ -9,6 +9,7 @@ import { msg } from '../lib/msg'
 
 const COLORS: { label: string; value: string }[] = [
   { label: '기본', value: '#1c1c1a' },
+  { label: '회색', value: '#6b7280' },
   { label: '빨강', value: '#dc2626' },
   { label: '주황', value: '#ea580c' },
   { label: '초록', value: '#16a34a' },
@@ -54,6 +55,19 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
 
   // 버튼 mousedown 으로 에디터 선택영역이 풀리지 않게 preventDefault
   const keepSelection = (e: React.MouseEvent) => e.preventDefault()
+
+  /**
+   * 인용문 켜고 끄기. 대화 예시처럼 들여쓰고 왼쪽에 줄을 긋는다.
+   *
+   * 이미 인용문 안이면 보통 문단으로 되돌린다 — 한 번 넣으면 못 빼는 게
+   * 제일 답답하다. `formatBlock` 은 커서가 있는 문단 전체에 걸린다.
+   */
+  const toggleQuote = () => {
+    const sel = window.getSelection()
+    const node = sel?.anchorNode
+    const inQuote = node && (node.nodeType === 1 ? (node as Element) : node.parentElement)?.closest('blockquote')
+    exec('formatBlock', inQuote ? '<div>' : '<blockquote>')
+  }
 
   // ── 링크 걸기 ("기사 읽기" 를 누르면 jw.org 로) ──────────────
   // window.prompt 는 PWA 에서 막히는 경우가 있어 작은 입력 줄을 쓴다.
@@ -110,6 +124,10 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
         <button type="button" onMouseDown={keepSelection} onClick={() => exec('bold')} style={{ ...btnStyle, fontWeight: 800 }} title="굵게">B</button>
         <button type="button" onMouseDown={keepSelection} onClick={() => exec('underline')} style={{ ...btnStyle, textDecoration: 'underline' }} title="밑줄">U</button>
         <button type="button" onMouseDown={keepSelection} onClick={openLinkBox} style={btnStyle} title="링크 걸기">🔗</button>
+        {/* 인용문 — 들여쓰기 + 왼쪽 세로줄. 대화 예시를 넣을 때 쓴다 */}
+        <button type="button" onMouseDown={keepSelection} onClick={toggleQuote} style={btnStyle} title="인용문 (들여쓰기 + 줄)">❝</button>
+        <button type="button" onMouseDown={keepSelection} onClick={() => exec('insertOrderedList')} style={btnStyle} title="번호 목록 (1. 2. 3.)">1.</button>
+        <button type="button" onMouseDown={keepSelection} onClick={() => exec('insertUnorderedList')} style={btnStyle} title="글머리 목록">•</button>
         <span style={{ width: 1, height: 18, background: 'var(--line-muted)', margin: '0 2px' }} />
         {COLORS.map((c) => (
           <button

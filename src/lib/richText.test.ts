@@ -115,3 +115,72 @@ describe('편집기가 만든 링크가 살아남나', () => {
     expect(out).toContain('빨간 링크')
   })
 })
+
+describe('인용문 (들여쓰기 + 왼쪽 줄)', () => {
+  test('blockquote 가 살아남는다', () => {
+    const out = sanitizeRichText('<blockquote>"왜 종교에 관심이 없으세요?"</blockquote>')
+    expect(out).toContain('<blockquote>')
+    expect(out).toContain('왜 종교에 관심이 없으세요?')
+  })
+
+  test('인용문 안의 서식과 링크도 살아남는다', () => {
+    const out = sanitizeRichText('<blockquote><b>굵게</b> <a href="https://a.example.com">링크</a></blockquote>')
+    expect(out).toContain('<blockquote>')
+    expect(out).toContain('<b>굵게</b>')
+    expect(out).toContain('href="https://a.example.com"')
+  })
+
+  test('인용문 안의 위험한 것은 여전히 막힌다', () => {
+    const out = sanitizeRichText('<blockquote onclick="alert(1)"><script>x</script>글자</blockquote>')
+    expect(out).not.toContain('onclick')
+    expect(out).not.toContain('script')
+    expect(out).toContain('글자')
+  })
+
+  test('회색 글자도 살아남는다', () => {
+    const out = sanitizeRichText('<span style="color: rgb(107, 114, 128)">회색</span>')
+    expect(out).toContain('회색')
+    expect(out).toContain('color')
+  })
+})
+
+describe('문서에서 붙여넣은 서식이 살아남나', () => {
+  test('⚠ 번호 목록이 살아남는다 — 예전엔 통째로 잘려 한 문단으로 뭉쳤다', () => {
+    const pasted = '<h3>三个主要建议</h3><ol><li>看法要积极。</li><li>聆听与理解。</li><li>分享适合对方的资料。</li></ol>'
+    const out = sanitizeRichText(pasted)
+    expect(out).toContain('<ol>')
+    expect((out.match(/<li>/g) ?? []).length).toBe(3)
+    expect(out).toContain('<h3>')
+  })
+
+  test('글머리 목록도 살아남는다', () => {
+    const out = sanitizeRichText('<ul><li>가</li><li>나</li></ul>')
+    expect(out).toContain('<ul>')
+    expect((out.match(/<li>/g) ?? []).length).toBe(2)
+  })
+
+  test('중간부터 시작하는 번호(start)도 지킨다', () => {
+    const out = sanitizeRichText('<ol start="3"><li>셋째</li></ol>')
+    expect(out).toContain('start="3"')
+  })
+
+  test('소제목 h1~h4 가 살아남는다', () => {
+    for (const h of ['h1', 'h2', 'h3', 'h4']) {
+      expect(sanitizeRichText(`<${h}>제목</${h}>`)).toContain(`<${h}>`)
+    }
+  })
+
+  test('목록 안의 링크와 서식도 살아남는다', () => {
+    const out = sanitizeRichText('<ol><li><b>굵게</b> <a href="https://a.example.com">링크</a></li></ol>')
+    expect(out).toContain('<li>')
+    expect(out).toContain('<b>굵게</b>')
+    expect(out).toContain('href="https://a.example.com"')
+  })
+
+  test('목록 안에 위험한 것을 숨겨도 막힌다', () => {
+    const out = sanitizeRichText('<ol><li onclick="alert(1)"><script>x</script>글자</li></ol>')
+    expect(out).not.toContain('onclick')
+    expect(out).not.toContain('script')
+    expect(out).toContain('글자')
+  })
+})

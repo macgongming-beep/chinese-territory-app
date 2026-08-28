@@ -4,9 +4,16 @@
 
 import DOMPurify from 'dompurify'
 
-// 굵게(b/strong), 기울임(i/em), 밑줄(u), 색/span, 줄바꿈(br/div/p), 글자색(font), 링크(a)
-const ALLOWED_TAGS = ['b', 'strong', 'i', 'em', 'u', 'span', 'br', 'div', 'p', 'font', 'a']
-const ALLOWED_ATTR = ['style', 'color', 'href', 'target', 'rel']
+// 굵게(b/strong), 기울임(i/em), 밑줄(u), 색/span, 줄바꿈(br/div/p), 글자색(font),
+// 링크(a), 인용문(blockquote)
+// blockquote = 인용문 (들여쓰기 + 왼쪽 줄). 편집기의 ❝ 버튼이 만든다
+// ⚠ 목록(ol/ul/li)과 소제목(h1~h4)이 빠져 있어, 문서에서 붙여넣은 '1. 2. 3.' 이
+//   통째로 잘려 한 문단으로 뭉쳐 나왔다. 서식을 지우는 건 사용자가 적은 내용을 잃는 것이다.
+const ALLOWED_TAGS = [
+  'b', 'strong', 'i', 'em', 'u', 'span', 'br', 'div', 'p', 'font', 'a',
+  'blockquote', 'ol', 'ul', 'li', 'h1', 'h2', 'h3', 'h4', 'hr',
+]
+const ALLOWED_ATTR = ['style', 'color', 'href', 'target', 'rel', 'start', 'type']
 
 /** http(s) 만 연다. javascript: · data: 같은 건 링크가 아니라 공격 통로다 */
 export function isSafeHref(raw: string | null | undefined): boolean {

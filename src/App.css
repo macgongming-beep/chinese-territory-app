@@ -29917,3 +29917,29 @@ button > svg {
   word-break: break-all;
 }
 .sugg-rich a:active { opacity: 0.6; }
+
+/* 대화 방법 제안의 인용문 (편집기 ❝ 버튼).
+   대화 예시를 본문과 구분해 준다 — 들여쓰고 왼쪽에 줄을 긋는다.
+   .sugg-rich 는 사용자에게 보이는 쪽, .rte-content 는 편집 중인 쪽. 같아 보여야 한다. */
+.sugg-rich blockquote,
+.rte-content blockquote {
+  margin: 10px 0;
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--line, #e2e8f0);
+  color: var(--ink-700, #4b5563);
+}
+
+/* 제안 본문의 목록·소제목. 문서에서 붙여넣어도 모양이 남아야 한다.
+   (예전에는 정제기가 ol/ul/li/h2 를 통째로 지워 한 문단으로 뭉쳤다) */
+.sugg-rich ol, .rte-content ol { margin: 8px 0; padding-left: 24px; list-style: decimal; }
+.sugg-rich ul, .rte-content ul { margin: 8px 0; padding-left: 24px; list-style: disc; }
+.sugg-rich li, .rte-content li { margin: 3px 0; }
+.sugg-rich h1, .sugg-rich h2, .sugg-rich h3, .sugg-rich h4,
+.rte-content h1, .rte-content h2, .rte-content h3, .rte-content h4 {
+  margin: 14px 0 6px; font-weight: 750; line-height: 1.35;
+}
+.sugg-rich h1, .rte-content h1 { font-size: 20px; }
+.sugg-rich h2, .rte-content h2 { font-size: 18px; }
+.sugg-rich h3, .rte-content h3 { font-size: 16px; }
+.sugg-rich h4, .rte-content h4 { font-size: 15px; }
+.sugg-rich hr, .rte-content hr { border: 0; border-top: 1px solid var(--line, #e2e8f0); margin: 14px 0; }
