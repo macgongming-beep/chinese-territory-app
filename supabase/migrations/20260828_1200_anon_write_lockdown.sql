@@ -39,22 +39,6 @@ begin;
 grant execute on function private.request_session_user_id() to anon, authenticated;
 grant execute on function private.request_is_admin()        to anon, authenticated;
 
--- ═══ 바꾸기 **전** 모습을 찍어 둔다 ═══
--- 검증을 "개수가 맞나" 로 하면 엉뚱한 개수여도 통과한다. 대신 **바꾸기 전에
--- 되던 (표 × 명령 × 역할) 조합이 하나라도 사라졌는지**를 뒤에서 대조한다.
--- FOR ALL 은 네 명령으로 펼친다 — 그게 지금 SELECT 를 주고 있는 정체다.
-create temp table _before_grants on commit drop as
-select distinct p.tablename, c.cmd, r.role::text as role
-from pg_policies p
-cross join lateral unnest(
-  case when p.cmd = 'ALL' then array['SELECT','INSERT','UPDATE','DELETE'] else array[p.cmd] end
-) as c(cmd)
-cross join lateral unnest(p.roles) as r(role)
-where p.schemaname = 'public'
-  and p.permissive = 'PERMISSIVE'
-  and p.tablename <> 'app_private_settings'    -- 일부러 deny_all
-  and p.tablename not like '\_probe%';        -- 테스트 DB 전용 실험 표
-
 -- buildings
 create policy buildings_select_all on public.buildings
   for select to anon using (true);
@@ -462,13 +446,158 @@ declare
 begin
   -- (1) **표 × 명령 × 역할** anti-join.
   --     바꾸기 전에 되던 조합이 사라졌으면 그 화면이 조용히 죽는다.
+  --     ⚠ 목록을 임시표에 찍어 두지 않는다. SQL Editor 가 문장 사이에
+  --       임시표를 지키지 않는다 (여기서 데었다). baseline.sql 에서 뽑아 **박아 넣었다**
+  --       — 141개 조합. baseline 이 바뀌면 이 목록도 다시 뽑아야 한다.
   --     `public` 은 anon·authenticated 를 포함하므로 덮는 것으로 친다.
   --     ⚠ 이건 '있나' 만 본다. 일부러 좁힌 것(app_users INSERT 를 관리자만 등)은
   --       정책이 남아 있으므로 통과한다 — 잡으려는 것은 **통째로 빠뜨린 것**이다.
   select string_agg(format('%s.%s(%s)', b.tablename, b.cmd, b.role), ', '
                     order by b.tablename, b.cmd, b.role)
     into v_lost
-  from _before_grants b
+  from (values
+    ('app_settings','DELETE','public'),
+    ('app_settings','INSERT','public'),
+    ('app_settings','SELECT','public'),
+    ('app_settings','UPDATE','public'),
+    ('app_users','DELETE','anon'),
+    ('app_users','INSERT','anon'),
+    ('app_users','SELECT','anon'),
+    ('app_users','UPDATE','anon'),
+    ('buildings','DELETE','anon'),
+    ('buildings','INSERT','anon'),
+    ('buildings','SELECT','anon'),
+    ('buildings','UPDATE','anon'),
+    ('calendar_events','DELETE','public'),
+    ('calendar_events','INSERT','public'),
+    ('calendar_events','SELECT','public'),
+    ('calendar_events','UPDATE','public'),
+    ('card_assignments','DELETE','anon'),
+    ('card_assignments','INSERT','anon'),
+    ('card_assignments','SELECT','anon'),
+    ('card_assignments','UPDATE','anon'),
+    ('card_boundaries','DELETE','anon'),
+    ('card_boundaries','INSERT','anon'),
+    ('card_boundaries','SELECT','anon'),
+    ('card_boundaries','UPDATE','anon'),
+    ('card_leader_assignments','DELETE','anon'),
+    ('card_leader_assignments','INSERT','anon'),
+    ('card_leader_assignments','SELECT','anon'),
+    ('card_leader_assignments','UPDATE','anon'),
+    ('cards','DELETE','anon'),
+    ('cards','INSERT','anon'),
+    ('cards','SELECT','anon'),
+    ('cards','UPDATE','anon'),
+    ('chat_message_signals','SELECT','anon'),
+    ('chat_message_signals','SELECT','authenticated'),
+    ('chat_read_status','SELECT','anon'),
+    ('chat_read_status','SELECT','authenticated'),
+    ('chat_room_mutes','DELETE','anon'),
+    ('chat_room_mutes','DELETE','authenticated'),
+    ('chat_room_mutes','INSERT','anon'),
+    ('chat_room_mutes','INSERT','authenticated'),
+    ('chat_room_mutes','SELECT','anon'),
+    ('chat_room_mutes','SELECT','authenticated'),
+    ('chat_room_mutes','UPDATE','anon'),
+    ('chat_room_mutes','UPDATE','authenticated'),
+    ('comments','DELETE','anon'),
+    ('comments','DELETE','authenticated'),
+    ('comments','INSERT','anon'),
+    ('comments','INSERT','authenticated'),
+    ('comments','SELECT','anon'),
+    ('comments','SELECT','authenticated'),
+    ('comments','UPDATE','anon'),
+    ('comments','UPDATE','authenticated'),
+    ('event_card_assignment_cards','DELETE','anon'),
+    ('event_card_assignment_cards','INSERT','anon'),
+    ('event_card_assignment_cards','SELECT','anon'),
+    ('event_card_assignment_cards','UPDATE','anon'),
+    ('event_card_assignments','DELETE','anon'),
+    ('event_card_assignments','INSERT','anon'),
+    ('event_card_assignments','SELECT','anon'),
+    ('event_card_assignments','UPDATE','anon'),
+    ('event_informal_assignments','DELETE','anon'),
+    ('event_informal_assignments','INSERT','anon'),
+    ('event_informal_assignments','SELECT','anon'),
+    ('event_informal_assignments','UPDATE','anon'),
+    ('event_participants','DELETE','public'),
+    ('event_participants','INSERT','public'),
+    ('event_participants','SELECT','public'),
+    ('event_participants','UPDATE','public'),
+    ('event_restaurant_assignments','DELETE','anon'),
+    ('event_restaurant_assignments','INSERT','anon'),
+    ('event_restaurant_assignments','SELECT','anon'),
+    ('event_restaurant_assignments','UPDATE','anon'),
+    ('informal_assets','DELETE','anon'),
+    ('informal_assets','INSERT','anon'),
+    ('informal_assets','SELECT','anon'),
+    ('informal_assets','UPDATE','anon'),
+    ('informal_groups','DELETE','anon'),
+    ('informal_groups','DELETE','authenticated'),
+    ('informal_groups','INSERT','anon'),
+    ('informal_groups','INSERT','authenticated'),
+    ('informal_groups','SELECT','anon'),
+    ('informal_groups','SELECT','authenticated'),
+    ('informal_groups','UPDATE','anon'),
+    ('informal_groups','UPDATE','authenticated'),
+    ('notices','DELETE','public'),
+    ('notices','INSERT','public'),
+    ('notices','SELECT','public'),
+    ('notifications','SELECT','anon'),
+    ('notifications','SELECT','authenticated'),
+    ('phone_surveys','DELETE','anon'),
+    ('phone_surveys','DELETE','authenticated'),
+    ('phone_surveys','INSERT','anon'),
+    ('phone_surveys','INSERT','authenticated'),
+    ('phone_surveys','SELECT','anon'),
+    ('phone_surveys','SELECT','authenticated'),
+    ('phone_surveys','UPDATE','anon'),
+    ('phone_surveys','UPDATE','authenticated'),
+    ('regular_visits','DELETE','anon'),
+    ('regular_visits','INSERT','anon'),
+    ('regular_visits','SELECT','anon'),
+    ('regular_visits','UPDATE','anon'),
+    ('restaurant_requests','DELETE','public'),
+    ('restaurant_requests','INSERT','public'),
+    ('restaurant_requests','SELECT','public'),
+    ('restaurant_requests','UPDATE','public'),
+    ('return_visit_logs','DELETE','public'),
+    ('return_visit_logs','INSERT','public'),
+    ('return_visit_logs','SELECT','public'),
+    ('return_visit_logs','UPDATE','public'),
+    ('return_visits','DELETE','public'),
+    ('return_visits','INSERT','public'),
+    ('return_visits','SELECT','public'),
+    ('return_visits','UPDATE','public'),
+    ('review_tasks','DELETE','public'),
+    ('review_tasks','INSERT','public'),
+    ('review_tasks','SELECT','public'),
+    ('review_tasks','UPDATE','public'),
+    ('service_sessions','DELETE','anon'),
+    ('service_sessions','INSERT','anon'),
+    ('service_sessions','SELECT','anon'),
+    ('service_sessions','UPDATE','anon'),
+    ('service_suggestions','DELETE','public'),
+    ('service_suggestions','INSERT','public'),
+    ('service_suggestions','SELECT','public'),
+    ('service_suggestions','UPDATE','public'),
+    ('territory_regions','DELETE','anon'),
+    ('territory_regions','DELETE','authenticated'),
+    ('territory_regions','INSERT','anon'),
+    ('territory_regions','INSERT','authenticated'),
+    ('territory_regions','SELECT','anon'),
+    ('territory_regions','SELECT','authenticated'),
+    ('territory_regions','UPDATE','anon'),
+    ('territory_regions','UPDATE','authenticated'),
+    ('units','DELETE','anon'),
+    ('units','INSERT','anon'),
+    ('units','SELECT','anon'),
+    ('units','UPDATE','anon'),
+    ('visit_histories','DELETE','anon'),
+    ('visit_histories','INSERT','anon'),
+    ('visit_histories','SELECT','anon'),
+    ('visit_histories','UPDATE','anon')
+  ) as b(tablename, cmd, role)
   where not exists (
     select 1
     from pg_policies p
