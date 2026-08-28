@@ -97,7 +97,7 @@ export const ko = {
     'nav.assignment': '배정',
     'nav.settings': '설정',
     'maintenance.title': '점검 안내',
-    'maintenance.confirm': '확인했습니다. 앱을 완전히 종료한 뒤 다시 실행하겠습니다.',
+    'maintenance.confirm': '확인했습니다',
     'maintenance.close': '확인',
     'settings.title': '설정',
     'settings.features': '기능',

@@ -97,7 +97,7 @@ export const en = {
     'nav.assignment': 'Assign',
     'nav.settings': 'Settings',
     'maintenance.title': 'Maintenance notice',
-    'maintenance.confirm': 'Understood. I will fully close and reopen the app.',
+    'maintenance.confirm': 'Understood',
     'maintenance.close': 'OK',
     'settings.title': 'Settings',
     'settings.features': 'Features',

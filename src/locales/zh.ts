@@ -97,7 +97,7 @@ export const zh = {
     'nav.assignment': '安排',
     'nav.settings': '设置',
     'maintenance.title': '维护通知',
-    'maintenance.confirm': '我已阅读。我会完全关闭应用后重新打开。',
+    'maintenance.confirm': '我已确认',
     'maintenance.close': '确定',
     'settings.title': '设置',
     'settings.features': '功能',
