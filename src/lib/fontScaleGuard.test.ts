@@ -62,3 +62,30 @@ describe('글씨 크기(zoom) 보정', () => {
     }
   })
 })
+
+describe('확대 범위 밖으로 새지 않는다', () => {
+  test('⚠ document.body 로 포털하지 않는다 — 거기는 zoom 범위 밖이다', () => {
+    // zoom 은 #root 에 걸린다. body 로 붙인 알림·채팅·확인창은 큰 글씨로
+    // 설정한 분에게 **그것만 작게** 보인다. 리뷰에서 실제로 잡힌 구멍이다.
+    const offenders: string[] = []
+    for (const file of walk('src')) {
+      if (!/\.tsx?$/.test(file)) continue
+      const text = readFileSync(file, 'utf8')
+      // ⚠ 주석은 빼고 본다. "document.body 가 아니라…" 라고 적어 둔 주석이
+      //   걸려서 시험이 엉뚱하게 실패했다.
+      const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+      if (!code.includes('createPortal')) continue
+      // ⚠ `createPortal(..., document.body)` 순서만 보면 안 된다.
+      //   `const target = document.body; createPortal(children, target)` 로 쓰면 빠져나간다
+      //   (변형 검사에서 실제로 이 구멍이 잡혔다).
+      //   → 포털을 쓰는 파일에서 `document.body` 를 아예 못 쓰게 한다.
+      if (code.includes('document.body')) offenders.push(file)
+    }
+    expect(offenders).toEqual([])
+  })
+
+  test('포털이 붙을 자리는 #root 안에 만든다', () => {
+    const src = readFileSync('src/lib/overlayRoot.ts', 'utf8')
+    expect(src).toMatch(/getElementById\('root'\)/)
+  })
+})

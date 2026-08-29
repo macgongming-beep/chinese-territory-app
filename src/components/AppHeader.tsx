@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Component } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { getOverlayRoot } from '../lib/overlayRoot'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { t, type AppLanguage } from '../i18n'
 import { useNotifications } from '../hooks/useNotifications'
@@ -149,8 +150,12 @@ function HeaderActionIcon({ name }: { name: 'notification' | 'chat' | 'menu' }) 
 }
 
 function HeaderOverlayPortal({ children }: { children: ReactNode }) {
-  if (typeof document === 'undefined') return null
-  return createPortal(children, document.body)
+  // ⚠ document.body 가 아니라 #root 안의 자리에 붙인다.
+  //   body 는 글씨 크기(zoom) 범위 밖이라, 큰 글씨로 설정한 분에게
+  //   알림·채팅만 작게 보인다.
+  const target = getOverlayRoot()
+  if (!target) return null
+  return createPortal(children, target)
 }
 
 export function AppHeaderActionButtons({

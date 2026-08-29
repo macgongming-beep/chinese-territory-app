@@ -1,9 +1,9 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Toast } from './components/Toast'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { MaintenanceNotice } from './components/MaintenanceNotice'
-import { applyFontScale, loadFontScale, saveFontScale, type FontScale } from './lib/fontScale'
+import { applyFontScale, loadFontScale } from './lib/fontScale'
 import { PwaInstallBanner } from './components/PwaInstall'
 import { PullToRefresh } from './components/PullToRefresh'
 import { useStore } from './hooks/useStore'
@@ -64,8 +64,6 @@ function App() {
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage)
   const [translatePlaceNames, setTranslatePlaceNames] = useState(false)
 
-  // 글씨 크기 — 사용자별. 기본은 'normal' 이고 그때는 아무것도 안 걸린다.
-  const [fontScale, setFontScale] = useState<FontScale>(() => loadFontScale())
   // 컴포넌트 밖(이벤트 핸들러·모듈 상수)에서 t(currentLang(), ...) 로 부르는 코드가
   // 현재 언어를 알 수 있도록 i18n 모듈에 반영한다. 렌더 중에 바로 맞춰야
   // 첫 페인트부터 올바른 언어로 나온다.
@@ -200,13 +198,12 @@ function App() {
     .map((u) => u.name)
     .sort((a, b) => a.localeCompare(b, 'ko'))
 
-  // 로그인한 사람의 글씨 크기를 불러 화면에 건다.
+  // 로그인한 사람의 글씨 크기를 화면에 건다.
   // ⚠ 사람이 바뀌면 다시 불러야 한다 — 한 기기를 나눠 쓰면 앞사람 설정이 남는다.
-  useEffect(() => {
-    const next = loadFontScale(user?.id)
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 저장값에서 동기화(의도적)
-    setFontScale(next)
-    applyFontScale(next)
+  // ⚠ `useLayoutEffect` 다. 보통 effect 면 **앞사람 크기로 한 번 그려졌다가 바뀌어**
+  //   화면이 튄다 (리뷰에서 잡혔다). 그리기 전에 맞춘다.
+  useLayoutEffect(() => {
+    applyFontScale(loadFontScale(user?.id))
   }, [user?.id])
 
   useEffect(() => {
@@ -259,12 +256,6 @@ function App() {
     } else {
       window.localStorage.setItem('chsLanguage:guest', nextLanguage)
     }
-  }
-
-  const handleChangeFontScale = (next: FontScale) => {
-    setFontScale(next)
-    saveFontScale(user?.id, next)
-    applyFontScale(next)
   }
 
   // 무엇을 그릴지는 utils/appScreen 이 정한다 (순서가 미묘해 시험을 붙였다).
@@ -466,8 +457,6 @@ function App() {
               serviceSessions={serviceSessions}
               onChangeViewMode={handleChangeViewMode}
               onChangeLanguage={handleChangeLanguage}
-              fontScale={fontScale}
-              onChangeFontScale={handleChangeFontScale}
               onSetCardLeaders={setCardLeaders}
               allUsers={allUsers}
               onChangePin={changePin}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FontScalePicker } from './FontScalePicker'
 import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import type { Role } from '../types'
 import { roleLabels } from '../types'
@@ -91,6 +92,14 @@ export function DesktopProfileSettings({
             </div>
             <span style={{ fontSize: 13, color: 'var(--gray-500)' }}>{user.loginId}</span>
           </div>
+        </section>
+
+        {/* ⚠ 글씨 크기는 PC 에도 있어야 한다. 확대는 화면 폭과 무관하게 걸리는데
+            설정이 모바일에만 있으면, 태블릿을 돌려 폭이 980px 을 넘는 순간
+            **확대된 PC 화면에서 끄지 못한다.** (리뷰에서 잡혔다) */}
+        <section className="desk-card ds-card" style={{ display: 'grid', gap: 12 }}>
+          <h2 className="desk-card__title">{t(language, 'settings.fontScale')}</h2>
+          <FontScalePicker userId={user.id} language={language} />
         </section>
 
         <section className="desk-card ds-card" style={{ display: 'grid', gap: 16 }}>

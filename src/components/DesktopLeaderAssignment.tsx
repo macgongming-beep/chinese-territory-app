@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { getOverlayRoot } from '../lib/overlayRoot'
 import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, Role, TerritoryCard } from '../types'
 import { showToast } from '../lib/toast'
 import { isEmptyTerritoryCard, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
@@ -817,7 +818,8 @@ function DesktopLeaderAssignmentView({
       )}
 
       {/* ── 미배정 확인 모달 ── */}
-      {pendingAction && typeof document !== 'undefined' && createPortal(
+      {/* ⚠ #root 안에 붙인다 — body 는 글씨 크기(zoom) 범위 밖이다 */}
+      {pendingAction && getOverlayRoot() && createPortal(
         <div className="confirm-modal-backdrop" onClick={() => setPendingAction(null)}>
           <div className="cal-modal" style={{ maxWidth: '320px', borderRadius: '20px', padding: 0 }} onClick={(e) => e.stopPropagation()}>
             <div className="cal-modal-body" style={{ textAlign: 'center', padding: '32px 20px 24px' }}>
@@ -836,7 +838,7 @@ function DesktopLeaderAssignmentView({
             </div>
           </div>
         </div>,
-        document.body
+        getOverlayRoot()!
       )}
 
       <InformalPickerModal
