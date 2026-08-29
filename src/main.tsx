@@ -59,7 +59,7 @@ createRoot(document.getElementById('root')!).render(
         return (
           <div
             style={{
-              minHeight: '100vh',
+              minHeight: 'calc(100vh / var(--app-zoom, 1))',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',

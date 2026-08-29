@@ -3,7 +3,7 @@
 }
 
 .app-shell {
-  min-height: 100svh;
+  min-height: calc(100svh / var(--app-zoom, 1));
   width: 100%;
   max-width: 100%;
   padding: 0 16px 96px;
@@ -1180,7 +1180,7 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   width: min(560px, 100%);
-  max-height: min(720px, 88vh);
+  max-height: min(720px, calc(88vh / var(--app-zoom, 1)));
   overflow: hidden;
   border-radius: var(--radius-xl);
   background: var(--bg-card);
@@ -1228,7 +1228,7 @@ button:focus-visible {
 }
 
 .chat-room-modal .chat-messages {
-  max-height: min(520px, 58vh);
+  max-height: min(520px, calc(58vh / var(--app-zoom, 1)));
 }
 
 @media (max-width: 640px) {
@@ -1239,7 +1239,7 @@ button:focus-visible {
 
   .chat-room-modal--mobile {
     width: 100%;
-    max-height: 100svh;
+    max-height: calc(100svh / var(--app-zoom, 1));
     border-radius: 0;
   }
 
@@ -5270,7 +5270,7 @@ button:focus-visible {
 }
 
 .mobile-map-shell {
-  height: 100svh;
+  height: calc(100svh / var(--app-zoom, 1));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -5845,7 +5845,7 @@ button:focus-visible {
 .mobile-map-canvas {
   position: relative;
   overflow: hidden;
-  height: 48svh;
+  height: calc(48svh / var(--app-zoom, 1));
   min-height: 360px;
   border: 1px solid #d2d8e1;
   border-radius: var(--r-xl);
@@ -6412,7 +6412,7 @@ button:focus-visible {
   bottom: 0;
   left: 0;
   z-index: 201;
-  max-height: 92svh;
+  max-height: calc(92svh / var(--app-zoom, 1));
   overflow-y: auto;
   padding: 20px 20px max(20px, env(safe-area-inset-bottom));
   border-radius: var(--r-xl) var(--r-xl) 0 0;
@@ -9532,7 +9532,7 @@ button:focus-visible {
 
   .desktop-shell {
     display: flex;
-    min-height: 100vh;
+    min-height: calc(100vh / var(--app-zoom, 1));
     background: var(--bg-wash);
     color: var(--ink-900);
   }
@@ -9545,7 +9545,7 @@ button:focus-visible {
     display: flex;
     flex-direction: column;
     padding: 24px 16px;
-    height: 100vh;
+    height: calc(100vh / var(--app-zoom, 1));
     position: sticky;
     top: 0;
     z-index: 400;
@@ -11034,7 +11034,7 @@ button:focus-visible {
     flex-direction: column;
     width: 100%;
     max-width: 520px;
-    max-height: 90vh;
+    max-height: calc(90vh / var(--app-zoom, 1));
     overflow-y: auto;
     border-radius: var(--r-xl);
     background: #ffffff;
@@ -12695,7 +12695,7 @@ button:focus-visible {
     flex-direction: column;
     gap: 12px;
     padding: 12px 24px 8px;
-    max-height: 60vh;
+    max-height: calc(60vh / var(--app-zoom, 1));
     overflow-y: auto;
   }
 
@@ -13443,7 +13443,7 @@ button:focus-visible {
     align-self: start;
     top: 108px;
     margin-top: var(--point-detail-offset, 386px);
-    max-height: calc(100svh - 132px);
+    max-height: calc(calc(100svh / var(--app-zoom, 1)) - 132px);
     border-color: #e4e1dc;
     border-radius: 24px;
     background: #f8f7f4;
@@ -13454,7 +13454,7 @@ button:focus-visible {
     display: flex;
     flex-direction: column;
     gap: 14px;
-    max-height: calc(100svh - 132px);
+    max-height: calc(calc(100svh / var(--app-zoom, 1)) - 132px);
     overflow-y: auto;
     padding: 18px;
   }
@@ -13750,7 +13750,7 @@ button:focus-visible {
   .territory-side {
     position: sticky;
     top: 108px;
-    max-height: calc(100svh - 132px);
+    max-height: calc(calc(100svh / var(--app-zoom, 1)) - 132px);
     overflow: hidden;
     border: 1px solid #d2d8e1;
     border-radius: var(--r-xl);
@@ -13761,7 +13761,7 @@ button:focus-visible {
   .territory-card-detail {
     display: grid;
     gap: 20px;
-    max-height: calc(100svh - 234px);
+    max-height: calc(calc(100svh / var(--app-zoom, 1)) - 234px);
     overflow-y: auto;
     padding: 24px;
   }
@@ -16310,7 +16310,7 @@ button:focus-visible {
 .mobile-assignment-page {
   display: flex;
   flex-direction: column;
-  min-height: 100svh;
+  min-height: calc(100svh / var(--app-zoom, 1));
   padding: 0;
 }
 
@@ -19023,7 +19023,7 @@ button:focus-visible {
   }
 
   .la-col-all {
-    max-height: calc(100vh - 240px);
+    max-height: calc(calc(100vh / var(--app-zoom, 1)) - 240px);
     display: flex;
     flex-direction: column;
   }
@@ -19763,7 +19763,7 @@ button:focus-visible {
 .app-loading {
   display: grid;
   place-items: center;
-  height: 100svh;
+  height: calc(100svh / var(--app-zoom, 1));
   gap: 16px;
   color: var(--ink-500);
   font-weight: 700;
@@ -23326,7 +23326,7 @@ button:focus-visible {
 .ots-theme {
   display: flex !important;
   flex-direction: column !important;
-  height: 100vh;
+  height: calc(100vh / var(--app-zoom, 1));
   padding: 0 !important;
   max-width: none !important;
   background: #f1f3f6 !important;
@@ -23405,7 +23405,7 @@ button:focus-visible {
   display: flex;
   padding: 20px;
   gap: 20px;
-  height: calc(100vh - 68px);
+  height: calc(calc(100vh / var(--app-zoom, 1)) - 68px);
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -23978,7 +23978,7 @@ button:focus-visible {
    Keep this late in the file so the mobile tab cannot inherit the older
    desktop/table card rules that made the assignment screen look oversized. */
 .mobile-assignment-page {
-  min-height: 100svh;
+  min-height: calc(100svh / var(--app-zoom, 1));
   padding: 16px 16px 104px;
   gap: 14px;
   overflow-x: hidden;
@@ -24682,7 +24682,7 @@ button:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
-  max-height: min(188px, 42svh);
+  max-height: min(188px, calc(42svh / var(--app-zoom, 1)));
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -25726,7 +25726,7 @@ button:focus-visible {
    ============================================================ */
 
 .mobile-rv-detail-shell {
-  min-height: 100vh;
+  min-height: calc(100vh / var(--app-zoom, 1));
   background: var(--bg);
   display: flex;
   flex-direction: column;
@@ -27319,7 +27319,7 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-height: 70vh;
+  max-height: calc(70vh / var(--app-zoom, 1));
   overflow-y: auto;
 }
 .rv-sheet-grabber {
@@ -28535,7 +28535,7 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 80vh;
+  max-height: calc(80vh / var(--app-zoom, 1));
 }
 .v2-picker-grabber {
   width: 36px;
@@ -28893,7 +28893,7 @@ button:focus-visible {
 
 /* ── 식당봉사 시트 (RestaurantServiceSheet) ──────────────── */
 .restaurant-service-sheet {
-  max-height: 90dvh;
+  max-height: calc(90dvh / var(--app-zoom, 1));
   display: flex;
   flex-direction: column;
   border-radius: 20px 20px 0 0;
@@ -29560,7 +29560,7 @@ button:focus-visible {
 
 /* 배정 v3 — 화면2 지도 영역 */
 .asg-zone-map { display: block; }
-.asg-zone-map .map-canvas-container { height: 60vh; min-height: 360px; position: relative; }
+.asg-zone-map .map-canvas-container { height: calc(60vh / var(--app-zoom, 1)); min-height: 360px; position: relative; }
 .asg-zone-map .naver-map-canvas,
 .asg-zone-map .mock-map { height: 100%; min-height: 360px; }
 .asg-zone-map-hint { margin: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); font-size: 12px; color: var(--muted); background: var(--surface, #fff); border-top: 1px solid var(--line); line-height: 1.5; }
@@ -29712,7 +29712,7 @@ button:focus-visible {
 }
 
 .asg-zone.is-map-view {
-  height: 100dvh;
+  height: calc(100dvh / var(--app-zoom, 1));
   overflow: hidden;
 }
 .asg-zone.is-map-view .asg-zone-map {
@@ -29823,7 +29823,7 @@ button:focus-visible {
 
 /* ━━━ 호수 일괄 추가 바텀시트 ━━━ */
 .mbu-backdrop { position: fixed; inset: 0; z-index: 6000; background: rgba(26,26,24,0.35); display: flex; align-items: flex-end; }
-.mbu-sheet { width: 100%; max-height: 88vh; background: var(--surface, #fff); border-radius: 18px 18px 0 0; display: flex; flex-direction: column; animation: mbu-up 0.28s cubic-bezier(0.25,0.46,0.45,0.94); }
+.mbu-sheet { width: 100%; max-height: calc(88vh / var(--app-zoom, 1)); background: var(--surface, #fff); border-radius: 18px 18px 0 0; display: flex; flex-direction: column; animation: mbu-up 0.28s cubic-bezier(0.25,0.46,0.45,0.94); }
 @keyframes mbu-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .mbu-handle { width: 36px; height: 4px; border-radius: 99px; background: var(--line-2, #e2e8f0); margin: 8px auto 4px; flex-shrink: 0; }
 .mbu-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 18px 12px; border-bottom: 1px solid var(--line); }

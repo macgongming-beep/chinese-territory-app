@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { type FontScale } from '../lib/fontScale'
 import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { MobileAdminAssignment } from './MobileAdminAssignment'
 import { MobileMap } from './MobileMap'
@@ -229,6 +230,8 @@ export function MobileHome({
   serviceSessions,
   onChangeViewMode,
   onChangeLanguage,
+  fontScale = 'normal',
+  onChangeFontScale,
   onSetCardLeaders,
   onAddUnit,
   allUsers = [],
@@ -323,6 +326,8 @@ export function MobileHome({
   serviceSessions: ServiceSession[]
   onChangeViewMode: (role: Role) => void
   onChangeLanguage: (language: AppLanguage) => void
+  fontScale?: FontScale
+  onChangeFontScale?: (scale: FontScale) => void
   onSetCardLeaders: (cardId: number, leaderNames: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
   onAddUnit: (buildingId: number, unitNumber: string | string[]) => Promise<number[] | false>
   allUsers?: Array<{ id: number; name: string; phone?: string | null; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked'; groupName?: string | null }>
@@ -1308,6 +1313,24 @@ export function MobileHome({
                     </div>
                   </section>
                 )}
+
+                <section className="mobile-settings-switch" aria-label={msg('글씨 크기')}>
+                  <p>{t(language, 'settings.fontScale')}</p>
+                  <div className="mobile-language-grid">
+                    {(['normal', 'large', 'x-large'] as FontScale[]).map((item) => (
+                      <button
+                        key={item}
+                        className={fontScale === item ? 'active' : ''}
+                        onClick={() => onChangeFontScale?.(item)}
+                        type="button"
+                        /* 보기만 해도 차이를 알 수 있게 버튼 글씨도 그 크기로 */
+                        style={{ fontSize: item === 'normal' ? 14 : item === 'large' ? 16 : 18 }}
+                      >
+                        {t(language, `settings.fontScale.${item}`)}
+                      </button>
+                    ))}
+                  </div>
+                </section>
 
                 <section className="mobile-settings-switch" aria-label={msg('언어 설정')}>
                   <p>{t(language, 'settings.language')}</p>

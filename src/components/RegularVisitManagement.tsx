@@ -176,7 +176,7 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
           onClick={() => setReassignTarget(null)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'flex-end' }}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxHeight: '70vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: '16px 16px max(20px, env(safe-area-inset-bottom))' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxHeight: 'calc(70vh / var(--app-zoom, 1))', display: 'flex', flexDirection: 'column', background: 'var(--bg)', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: '16px 16px max(20px, env(safe-area-inset-bottom))' }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>담당자 재배정</div>
             <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12 }}>"{reassignTarget.nickname || reassignTarget.displayName}" 을(를) 맡을 봉사자 선택</div>
             <input

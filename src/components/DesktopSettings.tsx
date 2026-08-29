@@ -36,7 +36,7 @@ export function DesktopSettings({
   onLogout: () => void
 }) {
   return (
-    <div style={{ display: 'flex', width: '100%', maxWidth: 1200, height: '100vh', padding: '24px 32px' }}>
+    <div style={{ display: 'flex', width: '100%', maxWidth: 1200, height: 'calc(100vh / var(--app-zoom, 1))', padding: '24px 32px' }}>
       
       {/* Sidebar */}
       <aside style={{ width: 260, flexShrink: 0, paddingRight: 24, borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column' }}>

@@ -182,7 +182,7 @@ export function PwaInstallModal({ language = 'ko', onClose }: { language?: strin
           background: 'var(--bg)',
           borderRadius: '18px 18px 0 0',
           padding: '8px 16px max(20px, env(safe-area-inset-bottom))',
-          maxHeight: '85vh',
+          maxHeight: 'calc(85vh / var(--app-zoom, 1))',
           overflowY: 'auto',
           animation: 'pwaModalSlideUp 0.3s ease-out',
         }}

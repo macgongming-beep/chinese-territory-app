@@ -1,0 +1,64 @@
+// 글씨 크기(zoom)를 깨뜨리는 변경을 막는 감시 시험.
+//
+// 왜: `#root` 에 zoom 을 걸면 **화면높이 단위가 그만큼 커진다**
+// (브라우저 실측: 100svh 가 812 → 1015). 그래서 vh/svh/dvh 를 전부
+// `calc(… / var(--app-zoom, 1))` 로 나눠 두었다.
+// 새 코드가 보정 없이 vh 를 쓰면 그 화면만 조용히 넘친다 — 증상이 늦게 나타난다.
+import { describe, test, expect } from 'vitest'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+
+/** 보정되지 않은 화면높이 단위 (앞에 calc(…/var 가 없는 것) */
+const RAW_VH = /(?<![\w.#-])\d+(?:\.\d+)?(?:svh|dvh|vh)\b(?!\s*\/\s*var\(--app-zoom)/g
+
+function walk(dir: string, out: string[] = []): string[] {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name)
+    if (e.isDirectory()) walk(p, out)
+    else if (/\.(css|ts|tsx)$/.test(e.name) && !e.name.includes('.test.')) out.push(p)
+  }
+  return out
+}
+
+describe('글씨 크기(zoom) 보정', () => {
+  test('보정 없이 vh/svh/dvh 를 쓰는 곳이 없다', () => {
+    const offenders: string[] = []
+    for (const file of walk('src')) {
+      const text = readFileSync(file, 'utf8')
+      for (const m of text.matchAll(RAW_VH)) {
+        // 이 감시 시험 자신의 정규식은 뺀다
+        if (file.endsWith('fontScaleGuard.test.ts')) continue
+        offenders.push(`${file}: ${m[0]}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  test('zoom 규칙이 살아 있다 — 두 단계 모두', () => {
+    const css = readFileSync('src/index.css', 'utf8')
+    expect(css).toMatch(/html\[data-font-scale='large'\]\s*\{\s*--app-zoom:\s*1\.125/)
+    expect(css).toMatch(/html\[data-font-scale='x-large'\]\s*\{\s*--app-zoom:\s*1\.25/)
+    expect(css).toMatch(/#root\s*\{[\s\S]{0,40}zoom: var\(--app-zoom\)/)
+  })
+
+  test('⚠ 기본(normal)에는 zoom 을 걸지 않는다 — 안 켠 사람 화면이 바뀌면 안 된다', () => {
+    const css = readFileSync('src/index.css', 'utf8')
+    // ⚠ "규칙 안에 data-font-scale 이 있나" 로 보면 안 된다.
+    //   `#root, html[data-font-scale='x-large'] #root` 처럼 **선택자 목록에 하나만**
+    //   있어도 통과하는데, 그게 정확히 기본 사용자에게 zoom 이 걸리는 경우다.
+    //   (변형 검사에서 실제로 이 구멍이 잡혔다)
+    //   → 선택자를 쪼개서 **하나하나** 본다.
+    // ⚠ 주석을 먼저 걷어낸다. 주석에 'zoom: 1' 이라고 적어 두었는데 그게 선택자로
+    //   읽혀서 시험이 엉뚱하게 실패했다.
+    const bare = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    const zoomRules = bare.match(/[^{}]*\{[^{}]*zoom:[^{}]*\}/g) ?? []
+    expect(zoomRules.length).toBeGreaterThan(0)
+    for (const rule of zoomRules) {
+      const selectors = rule.slice(0, rule.indexOf('{')).split(',').map((x) => x.trim()).filter(Boolean)
+      expect(selectors.length).toBeGreaterThan(0)
+      for (const sel of selectors) {
+        expect(sel, `이 선택자는 켜지 않은 사람에게도 zoom 을 건다: ${sel}`).toMatch(/\[data-font-scale/)
+      }
+    }
+  })
+})

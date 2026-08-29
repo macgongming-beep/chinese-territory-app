@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { Toast } from './components/Toast'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { MaintenanceNotice } from './components/MaintenanceNotice'
+import { applyFontScale, loadFontScale, saveFontScale, type FontScale } from './lib/fontScale'
 import { PwaInstallBanner } from './components/PwaInstall'
 import { PullToRefresh } from './components/PullToRefresh'
 import { useStore } from './hooks/useStore'
@@ -62,6 +63,9 @@ function App() {
   const [mobileViewMode, setMobileViewMode] = useState<Role>(actualRole)
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage)
   const [translatePlaceNames, setTranslatePlaceNames] = useState(false)
+
+  // 글씨 크기 — 사용자별. 기본은 'normal' 이고 그때는 아무것도 안 걸린다.
+  const [fontScale, setFontScale] = useState<FontScale>(() => loadFontScale())
   // 컴포넌트 밖(이벤트 핸들러·모듈 상수)에서 t(currentLang(), ...) 로 부르는 코드가
   // 현재 언어를 알 수 있도록 i18n 모듈에 반영한다. 렌더 중에 바로 맞춰야
   // 첫 페인트부터 올바른 언어로 나온다.
@@ -196,6 +200,15 @@ function App() {
     .map((u) => u.name)
     .sort((a, b) => a.localeCompare(b, 'ko'))
 
+  // 로그인한 사람의 글씨 크기를 불러 화면에 건다.
+  // ⚠ 사람이 바뀌면 다시 불러야 한다 — 한 기기를 나눠 쓰면 앞사람 설정이 남는다.
+  useEffect(() => {
+    const next = loadFontScale(user?.id)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 저장값에서 동기화(의도적)
+    setFontScale(next)
+    applyFontScale(next)
+  }, [user?.id])
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY)
@@ -248,6 +261,12 @@ function App() {
     }
   }
 
+  const handleChangeFontScale = (next: FontScale) => {
+    setFontScale(next)
+    saveFontScale(user?.id, next)
+    applyFontScale(next)
+  }
+
   // 무엇을 그릴지는 utils/appScreen 이 정한다 (순서가 미묘해 시험을 붙였다).
   const screen = chooseAppScreen({ user, authLoading, loading, error })
 
@@ -287,7 +306,7 @@ function App() {
 
   if (error) {
     return (
-      <div style={{ display: 'grid', placeItems: 'center', height: '100svh', fontWeight: 700, color: 'var(--danger-600)' }}>
+      <div style={{ display: 'grid', placeItems: 'center', height: 'calc(100svh / var(--app-zoom, 1))', fontWeight: 700, color: 'var(--danger-600)' }}>
         {error}
       </div>
     )
@@ -447,6 +466,8 @@ function App() {
               serviceSessions={serviceSessions}
               onChangeViewMode={handleChangeViewMode}
               onChangeLanguage={handleChangeLanguage}
+              fontScale={fontScale}
+              onChangeFontScale={handleChangeFontScale}
               onSetCardLeaders={setCardLeaders}
               allUsers={allUsers}
               onChangePin={changePin}

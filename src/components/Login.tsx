@@ -222,7 +222,7 @@ export function Login({ language, onChangeLanguage, onLogin, onSignup }: LoginPr
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ background: 'var(--bg, #fff)', width: '100%', maxWidth: 560, maxHeight: '85vh', borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+            style={{ background: 'var(--bg, #fff)', width: '100%', maxWidth: 560, maxHeight: 'calc(85vh / var(--app-zoom, 1))', borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
           >
             <div style={{ overflowY: 'auto', padding: '20px 18px' }}>
               <PrivacyPolicy language={language} />

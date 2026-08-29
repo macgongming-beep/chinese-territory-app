@@ -842,7 +842,7 @@ export function InformalCardsTab({
               src={preview.imageUrl}
               alt={preview.name}
               style={{
-                maxWidth: '100%', maxHeight: '90vh',
+                maxWidth: '100%', maxHeight: 'calc(90vh / var(--app-zoom, 1))',
                 borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
               }}
               onClick={(e) => e.stopPropagation()}
@@ -983,7 +983,7 @@ export function InformalCardsTab({
         }} onClick={() => setMoveTargetAsset(null)}>
           <div style={{
             background: '#fff', borderTopLeftRadius: 18, borderTopRightRadius: 18,
-            width: '100%', maxHeight: '70vh', overflowY: 'auto',
+            width: '100%', maxHeight: 'calc(70vh / var(--app-zoom, 1))', overflowY: 'auto',
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{
               padding: '14px 16px', borderBottom: '1px solid #e2e8f0',
@@ -1096,7 +1096,7 @@ export function InformalCardsTab({
               background: 'var(--bg)',
               borderTopLeftRadius: 18, borderTopRightRadius: 18,
               padding: '8px 16px max(18px, env(safe-area-inset-bottom))',
-              maxHeight: '70vh',
+              maxHeight: 'calc(70vh / var(--app-zoom, 1))',
               display: 'flex', flexDirection: 'column',
             }}
           >

@@ -136,7 +136,7 @@ export function ImportEventsModal({ isOpen, onClose, onCreateEvent }: ImportEven
           boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '90vh',
+          maxHeight: 'calc(90vh / var(--app-zoom, 1))',
         }}
         onClick={(e) => e.stopPropagation()}
       >

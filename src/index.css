@@ -241,7 +241,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100svh;
+  min-height: calc(100svh / var(--app-zoom, 1));
   overflow-x: hidden;
   font-family: var(--font-sans);
   font-size: 15px;
@@ -264,8 +264,27 @@ body.mobile-map-scroll-lock {
 }
 
 #root {
-  min-height: 100svh;
+  min-height: calc(100svh / var(--app-zoom, 1));
 }
 
 /* 숫자 정렬 */
 .tnum { font-variant-numeric: tabular-nums; }
+
+/* ═══ 글씨 크기 (원하는 사람만) ═══
+   글씨 크기를 정하는 곳이 2,515곳이고 전부 px 이다. 그걸 다 바꾸는 대신
+   `#root` 에 zoom 을 준다 — 글씨·간격·높이가 **같이** 커져서 잘리지 않는다.
+
+   ⚠ 안 켠 사람에게는 zoom 속성 자체가 안 걸린다 (html 에 속성이 없으면 이 규칙이
+     안 맞는다). `zoom: 1` 도 stacking context 를 만들 수 있어서, "기본은 아무것도
+     안 바뀐다" 를 보장하려면 아예 안 거는 편이 맞다.
+
+   ⚠ zoom 안에서는 화면높이 단위가 그만큼 커진다 (실측: 화면 가득 채우는 높이가 812 → 1015 로 넘쳤다).
+     그래서 vh/svh/dvh 43곳을 `calc(… / var(--app-zoom, 1))` 로 나눠 두었다.
+     **새로 vh 를 쓸 때도 그렇게 할 것** (감시 시험이 잡는다). */
+html[data-font-scale='large']   { --app-zoom: 1.125; }
+html[data-font-scale='x-large'] { --app-zoom: 1.25; }
+
+html[data-font-scale='large'] #root,
+html[data-font-scale='x-large'] #root {
+  zoom: var(--app-zoom);
+}
