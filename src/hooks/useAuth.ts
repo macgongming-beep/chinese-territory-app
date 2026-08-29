@@ -182,13 +182,17 @@ export function useAuth() {
             setAuthSession(freshUser, storedSession.persistent)
             if (restoredToken) setAuthToken(restoredToken, storedSession.persistent)
             
-            // 자동 로그인 기록 업데이트 (에러 발생해도 로그인 흐름을 끊지 않도록 무시)
+            // 자동 로그인 기록 (실패해도 로그인 흐름을 끊지 않는다)
+            // ⚠ `try/catch` 만으로는 못 잡는다 — supabase 는 DB 오류를 **던지지 않고**
+            //   `{ error }` 로 돌려준다. 그래서 예전에는 기록이 안 쌓여도 아무 흔적이
+            //   없었고, '로그인 기록이 8월 10일에 멈춘 것' 을 늦게야 알았다.
             try {
-              await supabase.rpc('auth_record_auto_login', {
+              const { error: recordError } = await supabase.rpc('auth_record_auto_login', {
                 p_user_id: data.id,
                 p_device_label: getDeviceLabel(),
                 p_user_agent: typeof navigator === 'undefined' ? null : navigator.userAgent
               })
+              if (recordError) console.warn('[auth] 자동 로그인 기록 실패:', recordError.message)
             } catch (err) {
               console.error(err)
             }

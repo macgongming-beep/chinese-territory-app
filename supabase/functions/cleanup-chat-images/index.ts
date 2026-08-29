@@ -52,7 +52,10 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get('Authorization') ?? ''
   const providedKey = authHeader.replace(/^Bearer\s+/i, '')
 
-  if (expectedKey && providedKey !== expectedKey) {
+  // ⚠ **키가 없으면 막는다 (fail-closed).** 예전에는 `expectedKey &&` 라서
+  //   환경변수가 빠지면 **아무나 부를 수 있었다** — 이 함수는 service role 로
+  //   돌면서 자료를 지운다. send-push 는 이미 이 형태다. (리뷰에서 잡혔다)
+  if (!expectedKey || providedKey !== expectedKey) {
     return jsonResponse({ error: 'Unauthorized' }, 401)
   }
 

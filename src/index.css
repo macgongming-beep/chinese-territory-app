@@ -281,10 +281,18 @@ body.mobile-map-scroll-lock {
    ⚠ zoom 안에서는 화면높이 단위가 그만큼 커진다 (실측: 화면 가득 채우는 높이가 812 → 1015 로 넘쳤다).
      그래서 vh/svh/dvh 43곳을 `calc(… / var(--app-zoom, 1))` 로 나눠 두었다.
      **새로 vh 를 쓸 때도 그렇게 할 것** (감시 시험이 잡는다). */
-html[data-font-scale='large']   { --app-zoom: 1.125; }
-html[data-font-scale='x-large'] { --app-zoom: 1.25; }
+/* ⚠⚠ **변수 정의와 zoom 을 반드시 같은 @supports 안에 둔다.**
+   `zoom` 은 오래된 기기에서 무시될 수 있다(MDN Baseline 2024). 그런데 변수만
+   밖에 두면, 무시되는 환경에서 `--app-zoom` 은 1.25 로 적용되고 `zoom` 만 안 먹어
+   → vh 보정이 **1/1.25 로 나누기만 해서 화면이 오히려 작아진다.**
+   같이 묶어 두면 미지원 환경에서는 변수가 없어 `var(--app-zoom, 1)` 의 1 이 쓰이고,
+   "안 커지기만" 한다. (리뷰에서 잡혔다) */
+@supports (zoom: 1.125) {
+  html[data-font-scale='large']   { --app-zoom: 1.125; }
+  html[data-font-scale='x-large'] { --app-zoom: 1.25; }
 
-html[data-font-scale='large'] #root,
-html[data-font-scale='x-large'] #root {
-  zoom: var(--app-zoom);
+  html[data-font-scale='large'] #root,
+  html[data-font-scale='x-large'] #root {
+    zoom: var(--app-zoom);
+  }
 }

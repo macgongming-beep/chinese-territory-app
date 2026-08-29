@@ -34,6 +34,20 @@ describe('글씨 크기(zoom) 보정', () => {
     expect(offenders).toEqual([])
   })
 
+  test('⚠ 변수와 zoom 이 **같은 @supports 안**에 있다', () => {
+    // zoom 이 무시되는 환경에서 변수만 적용되면 vh 보정이 나누기만 해서
+    // **화면이 오히려 작아진다.** 둘을 같이 묶어야 "안 커지기만" 한다.
+    const css = readFileSync('src/index.css', 'utf8')
+    const block = css.match(/@supports \(zoom:[\s\S]*?\n\}/)
+    expect(block, '@supports (zoom: …) 블록이 없다').toBeTruthy()
+    const inside = block![0]
+    expect(inside).toMatch(/--app-zoom:\s*1\.125/)
+    expect(inside).toMatch(/--app-zoom:\s*1\.25/)
+    expect(inside).toMatch(/zoom: var\(--app-zoom\)/)
+    // 블록 **밖**에 --app-zoom 정의가 있으면 안 된다
+    expect(css.replace(inside, '')).not.toMatch(/--app-zoom:\s*1\.[0-9]/)
+  })
+
   test('zoom 규칙이 살아 있다 — 두 단계 모두', () => {
     const css = readFileSync('src/index.css', 'utf8')
     expect(css).toMatch(/html\[data-font-scale='large'\]\s*\{\s*--app-zoom:\s*1\.125/)
