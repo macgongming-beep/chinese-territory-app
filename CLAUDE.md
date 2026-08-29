@@ -45,6 +45,27 @@ npm run apply:lockdown -- --confirm <project-ref>
 **승인된 계정 하나가 탈취되면 대부분의 표를 여전히 고치고 지울 수 있다.**
 → 역할별 권한으로 좁히는 것이 다음 일. **다른 회중 배포 조건 = TEMP 정책 0개.**
 
+### ⚠⚠ definer RPC 는 RLS 를 우회한다 — 표만 막으면 뒷문이 열려 있다
+
+**"표를 못 지운다" 와 "자료를 못 지운다" 는 다른 말이다.** 2026-08-29 에 크게 데었다.
+표 쓰기를 다 막고 "닫혔다" 고 했는데, anon 이 부를 수 있는 `security definer`
+함수가 **65개** 남아 있었다. 그중엔 **회중 전원에게 푸시를 쏘는 것**과
+**방문기록을 날짜로 지우는 것**이 권한 검사 없이 열려 있었다.
+
+지금 9개를 닫아 **56개**다. 나머지 대부분은 트리거 함수(직접 호출 불가)이거나
+권한 검사가 있다.
+
+```bash
+# **새 security definer 함수를 만들 때마다 돌릴 것**
+supabase/tools/_AUDIT_anon이_부를수있는_definer.sql
+```
+
+⚠ 임시로 **회수만 해 둔 다섯**이 있다 (관리자 화면이 부르던 것):
+`delete_old_visit_histories` · `cleanup_old_data` · `manual_reset_met_units` ·
+`update_daily_service_settings` · `update_global_push_quiet_settings`.
+→ **설정 → 데이터 관리의 '실행' 과 알림 설정의 전역 항목이 지금 오류를 낸다.**
+   함수 안에 `public.session_is_admin()` 검사를 넣고 grant 를 되돌리는 것이 숙제다.
+
 ### 글씨 크기 설정 (2026-08-29 배포)
 
 나이 드신 분들이 글씨가 작아 못 보신다. **기본 화면은 그대로 두고** 설정에서
