@@ -14,21 +14,13 @@ initSentry()
 // 지도 SDK 미리 로드 (지도 화면 진입 시 즉시 사용 가능)
 preloadNaverMapSDK()
 
-// 모바일 브라우저 자체 확대/축소 방지.
-// iOS Safari 계열은 viewport user-scalable=no만으로는 핀치 줌이 남는 경우가 있어
-// gesture 이벤트와 두 손가락 touchmove를 함께 막는다.
-const preventBrowserZoom = (event: Event) => {
-  event.preventDefault()
-}
-
-document.addEventListener('gesturestart', preventBrowserZoom, { passive: false })
-document.addEventListener('gesturechange', preventBrowserZoom, { passive: false })
-document.addEventListener('gestureend', preventBrowserZoom, { passive: false })
-document.addEventListener('touchmove', (event) => {
-  if (event.touches.length > 1) {
-    event.preventDefault()
-  }
-}, { passive: false })
+// ⚠ 예전에는 여기서 핀치 확대를 막았다 (gesture 이벤트 + 두 손가락 touchmove).
+//   viewport 의 user-scalable=no 와 합쳐 **글씨를 키울 방법을 완전히 없앴다.**
+//   "너무 작아서 안 보인다" 는 분들이 실제로 계셨다 — 그분들에게는 앱을 못 쓰는 것과 같다.
+//
+//   확대는 접근성 기본값이다. 다시 막지 않는다.
+//   지도에서 핀치가 지도 확대와 겹치면 **지도 컨테이너 안에서** 풀 것 —
+//   전역으로 다시 막으면 같은 문제로 돌아온다.
 
 import { Sentry } from './lib/sentry'
 

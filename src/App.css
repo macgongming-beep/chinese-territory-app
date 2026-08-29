@@ -29943,3 +29943,23 @@ button > svg {
 .sugg-rich h3, .rte-content h3 { font-size: 16px; }
 .sugg-rich h4, .rte-content h4 { font-size: 15px; }
 .sugg-rich hr, .rte-content hr { border: 0; border-top: 1px solid var(--line, #e2e8f0); margin: 14px 0; }
+
+/* ═══ iOS 입력 자동확대 방지 ═══
+   핀치 확대를 허용하면 딸려 오는 문제다: iOS 는 **입력칸의 계산된 글씨가 16px 미만**이면
+   누르는 순간 화면을 확대하고 **스스로 돌아오지 않는다.**
+
+   실측(2026-08-28): 입력칸을 겨냥한 규칙 79개가 12~15px, 95개는 body(15px)를 상속한다.
+   즉 모바일 입력이 사실상 전부 해당된다.
+
+   ⚠ `!important` 를 쓴다. 그 79개 규칙과 인라인 스타일 5곳을 덮어야 하는데,
+     같은 목적의 예외를 한 곳에 모으는 편이 각 규칙을 찾아다니는 것보다 안전하다.
+   ⚠ 체크박스·라디오·range 는 제외한다 — 글씨가 없고 크기만 흔들린다.
+   ⚠ 이 규칙으로 모바일 입력 글씨가 커진다. 높이가 고정된 입력줄
+     (채팅 입력칸 등)에서 넘치지 않는지 실기기에서 볼 것. */
+@media (max-width: 979px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
