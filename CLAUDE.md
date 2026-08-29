@@ -5,62 +5,81 @@
 
 ---
 
-## 🆕 최근 변경 사항 (2026-08-27~28)
+## 🆕 최근 변경 사항 (2026-08-29)
 
-### 보안 — 지금 어디까지 왔나 (**제일 중요**)
+### 보안 — **anon 쓰기 차단을 운영에 적용했다** ✅ (2026-08-29 23:00)
 
-**⚠ anon 키로 표 30개에 쓰기가 열려 있다.** 실측했다 (2026-08-27):
-
-```
-cards · buildings · units · visit_histories · app_users ·
-calendar_events · notices · regular_visits · event_participants · card_boundaries …
-  → INSERT / UPDATE / DELETE 전부 열림
-```
-
-anon 키는 앱 번들에 들어 있어 누구나 꺼낼 수 있다. **주소만 알면 회중 데이터를
-통째로 지울 수 있다.** 다른 회중에 앱을 주기 전에 반드시 닫아야 한다.
-
-**막는 방법을 정하고 1단계까지 했다** (`docs/계획-anon쓰기-차단.md` — 코덱스 3회 검토).
-
-- 방법: 모든 요청에 세션 토큰을 헤더로 붙이고, RLS 정책이 그걸 본다.
-  쓰기 287곳을 RPC 로 옮기는 대신 **`lib/supabase.ts` 한 곳**만 고쳤다.
-- **1단계 완료(운영 적용)**: `private` 스키마의 읽기 전용 helper + `signup_tx`.
-  **기존 anon 테이블 CRUD 는 아직 하나도 막지 않는다.** 옛 앱도 그대로 돌아간다.
-- **남은 최종 전환**: 아래 여섯 가지를 **한 트랜잭션**으로. 나누면 안 된다.
-  **되돌리기 어렵다. 반드시 리뷰받고, 사람들이 새 앱을 받은 뒤에 한다.**
+**주소만 알면 회중 데이터를 통째로 지울 수 있던 문이 닫혔다.**
 
 ```
-① 표마다 **명시적 SELECT 정책**을 먼저 만든다 (기존 읽기·Realtime 을 그대로 재현)
-② INSERT / UPDATE / DELETE 에 세션 관문 정책
-③ 그다음에야 FOR ALL 정책을 제거
-④ app_users 의 role · approval_status · is_active 직접 변경 차단
-⑤ app_settings_write 제거 + 관리자 정책
-⑥ 검증하고 commit
+열린 FOR ALL 정책      28개 → 1개 (app_private_settings_deny_all 뿐)
+세션 관문 정책         86개 (TEMP_session_gate_*)
+SELECT 재현            26개
+역할 상승 차단 트리거   있음
 ```
 
-⚠ **이 다섯 가지를 모르면 앱을 망가뜨리거나, "막았다" 고 믿는 걸 만든다**
-(전부 실제로 그럴 뻔했다):
+확인한 것: 트랜잭션 안 검증 통과 · 밖에서 anon 키로 INSERT 시도 → **42501 거부** ·
+헤더 없이 role 변경 → **0행** · 백업과 대조해 62명 전원 role·승인·활성 **그대로** ·
+읽기와 Realtime **살아 있음**.
 
-1. **RLS permissive 정책은 OR 로 합쳐진다.** `open_access ... FOR ALL using(true)` 가
-   살아 있으면 정책을 얹어봐야 `true OR 검사` = 항상 참이다. 기존 FOR ALL 을 **없애야** 한다.
-2. ⚠ **그런데 그 FOR ALL 이 SELECT 도 주고 있다.** 실측: FOR ALL 28개 · FOR SELECT 7개 —
-   **표 21개는 읽기를 그 하나에서만 받는다.** 그냥 지우면 **앱이 백지가 된다**(62명 전부).
-   → "SELECT 를 안 건드린다" 가 아니라 **"SELECT 를 명시적으로 재현한다"** 가 맞다.
-   표마다 INSERT 는 `WITH CHECK`, UPDATE 는 `USING`+`WITH CHECK`, DELETE 는 `USING`,
-   SELECT 는 기존 계약 보존을 각각 확인한다.
-3. **Realtime.** Postgres Changes 는 구독자의 **SELECT RLS** 를 보는데
-   WebSocket 에는 custom 헤더가 안 붙는다. 그러니 **세션을 요구하는 정책을 SELECT 에
-   걸면 구독이 끊긴다.** 세션 관문은 쓰기에만.
-4. `verify_session` 을 정책에서 부르면 안 된다. 세션을 **지우고 쓰고 던지는** 함수다.
-   → `private.request_session_user_id()` (부작용 없음) 를 `(select …)` 로 감싸 쓴다.
-5. ⚠ **`open_access` 만 찾으면 다섯을 놓친다.** 이름이 다른 FOR ALL 정책이 있다:
-   `app_settings_write`(to public) · `"allow all"` 셋(return_visits · return_visit_logs ·
-   review_tasks) · `"Enable all operations for all"`(service_suggestions).
-   **정책 이름이 아니라 `FOR ALL` 로 찾을 것.**
+**넣는 방법** (다시 할 때도 이렇게):
+```bash
+npm run backup
+# 운영에서 supabase/tools/_PREFLIGHT_전환SQL_정책이름_대조.sql → 0행 확인
+npm run apply:lockdown -- --confirm <project-ref>
+# 운영에서 supabase/tools/_VERIFY_전환결과.sql
+```
 
-⚠ `app_users` 를 나중 단계로 미루면 안 된다. 일반 쓰기를 세션 기반으로 바꾸는 동안
-`app_users` 가 열려 있으면 **로그인한 사람이 자기 role 을 admin 으로 올릴 수 있다.**
-(`auth_sessions` 는 service_role 만 권한이 있어 이미 보호돼 있다)
+⚠⚠ **Supabase SQL Editor 는 `begin; … commit;` 을 지키지 않는다.** 실측했다 —
+마지막 검증만 실패했는데 앞의 정책 112개는 그대로 남았다. 되돌리기 어려운
+마이그레이션은 **반드시 `psql --single-transaction`** 으로. 그래서 파일 안에
+`begin/commit` 을 **넣지 않는다** (같이 있으면 파일의 commit 이 중간에 커밋해
+원자성이 오히려 깨진다).
+
+⚠ **비밀번호를 명령줄에 쓰지 않는다** — `~/.zsh_history` 와 `ps` 에 남는다.
+`.env.local` 의 `SUPABASE_DB_URL` 에서 읽고 psql 에는 `PGPASSWORD` 로만 넘긴다.
+접속은 **Session pooler(5432)**. 직접연결(`db.<ref>.supabase.co`)은 IPv6 전용이라 안 닿는다.
+⚠ `supabase` CLI 의 `--linked` 는 **운영에 링크돼 있다.** 쓰지 말 것.
+
+⚠ **이건 완료가 아니라 1차 봉쇄다.** `TEMP_session_gate_*` 는 '로그인했나' 만 본다.
+**승인된 계정 하나가 탈취되면 대부분의 표를 여전히 고치고 지울 수 있다.**
+→ 역할별 권한으로 좁히는 것이 다음 일. **다른 회중 배포 조건 = TEMP 정책 0개.**
+
+### 글씨 크기 설정 (2026-08-29 배포)
+
+나이 드신 분들이 글씨가 작아 못 보신다. **기본 화면은 그대로 두고** 설정에서
+보통/크게/아주 크게. `#root` 에 `zoom` 을 건다 — 글씨 크기를 정하는 곳이
+**2,515곳이고 전부 px** 이라 다 바꾸는 대신 통째로 확대한다.
+
+⚠ **`zoom` 안에서는 화면높이 단위가 그만큼 커진다** (실측: 100svh 가 812 → 1015).
+`vh/svh/dvh` **43곳**을 `calc(… / var(--app-zoom, 1))` 로 나눠 두었다.
+**새로 vh 를 쓸 때도 그렇게 할 것** — `src/lib/fontScaleGuard.test.ts` 가 잡는다.
+
+⚠ **`document.body` 로 포털하지 말 것.** zoom 은 `#root` 에 걸리므로 body 로 붙인
+알림·채팅·확인창은 **큰 글씨로 설정한 분에게 그것만 작게** 보인다.
+`src/lib/overlayRoot.ts` 를 쓴다 (감시 시험이 잡는다).
+
+### 점검 공지 팝업
+
+`app_settings` 로 **배포 없이** 켜고 끈다 (`supabase/tools/_점검공지_켜고끄기.sql`).
+체크박스를 눌러야 닫히고, 확인 기억은 **사용자별·공지별**이다.
+본문은 언어별 칸이 따로 있고 없으면 한국어로 떨어진다.
+
+### PWA — 막 켠 직후에는 새 버전을 저절로 적용한다
+
+예전에는 설정에서 버튼을 눌러야 했다. 어른들에게 그게 실제 장벽이었다.
+⚠ **막 켠 직후(20초)에만** 한다 — 아무 때나 새로고침하면 쓰던 것이 날아간다.
+`sessionStorage` 로 한 번만 (새로고침해도 남아서 무한 반복을 막는다).
+
+### ⚠ 알아 둘 것 — 로그인 기록은 '직접 로그인' 만 쌓인다
+
+`auth_record_auto_login` 은 `last_login_at` 만 갱신하고 `login_logs` 에는 안 넣는다.
+그래서 **자동 로그인만 하는 사람은 '로그인 기록' 이 옛 날짜에 멈춰 보인다**
+(오늘 45명이 접속했는데 기록은 4건). 고장이 아니라 화면 이름이 오해를 부르는 것.
+
+---
+
+## 이전 변경 사항 (2026-08-27~28)
 
 ### 알림 개편 (운영 적용 완료)
 
@@ -208,14 +227,16 @@ SUPABASE_SERVICE_ROLE_KEY=...   # 백업 스크립트용 (RLS 우회)
 - 직접 SELECT 차단, **`get_login_logs` RPC** 로만 조회 가능
 - 본인 기록은 누구나, 다른 사람 기록은 developer 만 (클라이언트 측 체크)
 
-### RLS 현 상태 (⚠️ **열려 있다** — 2026-08-27 실측)
-- `app_users`: PIN 컬럼 SELECT 차단 ✅ / **그러나 INSERT·UPDATE·DELETE 는 열림 ⚠**
+### RLS 현 상태 (2026-08-29 **닫았다**)
+- 쓰기는 **세션 토큰이 있어야** 한다 (`TEMP_session_gate_*` 86개). 읽기는 그대로 열려 있다
+  (Realtime 이 SELECT RLS 를 보는데 WebSocket 에는 헤더가 안 붙는다)
+- `app_users`: PIN 컬럼 SELECT 차단 ✅ · INSERT 는 관리자만 · UPDATE 는 **본인 또는 관리자** ·
+  role·approval_status·is_active 는 트리거가 한 겹 더 막는다
 - `login_logs`: 직접 SELECT 차단 ✅
-- 표 30개: `open_access ... FOR ALL using(true)` — **anon 이 읽고 쓰고 지울 수 있다**
-- 알림 관련 `security definer` 함수 셋은 **닫았다** (2026-08-27)
+- 열린 `FOR ALL` 은 `app_private_settings_deny_all` **하나뿐**
 
-**막는 방법과 진행 상황은 맨 위 '보안' 절과 `docs/계획-anon쓰기-차단.md` 를 볼 것.**
-1단계(헤더 + helper + signup RPC)는 운영 적용했고, 실제로 막는 4·5단계가 남았다.
+⚠ **1차 봉쇄다.** 승인된 계정 하나가 탈취되면 대부분의 표를 여전히 고치고 지울 수 있다.
+역할별 권한으로 좁히는 것이 남았다. **다른 회중 배포 조건 = TEMP 정책 0개.**
 
 ### 백업 ✅ 완료
 - `npm run backup` → `backups/YYYY-MM-DD/*.json` 18개 테이블 저장
@@ -469,8 +490,8 @@ App.css          [모바일 공통] 0px~
 - 역할별 탭/기능 분기
 
 ### 미완료 / 향후 과제 (급한 순)
-1. **anon 쓰기 차단 4·5단계** ← 제일 크다. 다른 회중 배포 전 필수.
-   되돌리기 어려우니 반드시 리뷰받고, 사람들이 새 앱을 받은 뒤에.
+1. **`TEMP_session_gate_*` 를 역할별 권한으로 좁히기** ← 다른 회중 배포 전 필수.
+   지금은 '로그인했나' 만 본다 (anon 쓰기 차단 자체는 2026-08-29 운영 적용 완료).
 2. `20260825_1200_merge_conflict_fix.sql` **운영 미적용** (중복 주소 0개라 급하지 않다)
 3. 구조 정리 이어가기 — DesktopMap 2752 · MobileMap 2406 · 카드 표(335줄·61개)
 4. chat_messages SELECT 를 더 좁은 RLS 로 (지금은 `using (deleted_at is null)` open)
