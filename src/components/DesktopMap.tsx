@@ -8,7 +8,6 @@ import { UnitSlotGrid } from './UnitSlotGrid'
 import { getRegionNames } from '../lib/regions'
 import type {
   Building,
-  BuildingStatus,
   CardBoundary,
   GeoPoint,
   InformalAsset,
@@ -23,7 +22,8 @@ import type {
   VisitHistory,
   SpecialPeriod,
 } from '../types'
-import { formatDisplayAddress, getBuildingStatus, getCardName, findCardForCoordinates, isValidMapCoordinate, normalizeMapCoordinates } from '../utils/mapUtils'
+import { formatDisplayAddress, getCardName, findCardForCoordinates, isValidMapCoordinate, normalizeMapCoordinates } from '../utils/mapUtils'
+import { getPinGroup, type PinGroup } from '../utils/buildingPin'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { getLocalDateString } from '../utils/dateUtils'
@@ -161,7 +161,7 @@ export function DesktopMap({
   const [targetTypeFilter, setTargetTypeFilter] = useState<VisitTargetType>('전체')
   const [editingHistoryId, setEditingHistoryId] = useState<number | null>(null)
   const [historyEditor, setHistoryEditor] = useState<HistoryEditor | null>(null)
-  const [statusFilter, setStatusFilter] = useState<BuildingStatus | '전체'>('전체')
+  const [statusFilter, setStatusFilter] = useState<PinGroup | '전체'>('전체')
   const [chineseOnlyFilter, setChineseOnlyFilter] = useState(false)
   const [visitResultFilter, setVisitResultFilter] = useState<VisitResultFilter>('전체')
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(buildings[1]?.id ?? buildings[0]?.id ?? null)
@@ -216,8 +216,8 @@ export function DesktopMap({
   const [expandedUnitId, setExpandedUnitId] = useState<number | null>(null)
   const [unitDeleteMenuId, setUnitDeleteMenuId] = useState<number | null>(null)
   const [expandedBuildingIds, setExpandedBuildingIds] = useState<Set<number>>(new Set())
-  const [collapsedStatusGroups, setCollapsedStatusGroups] = useState<Set<BuildingStatus>>(new Set(['방문완료']))
-  const [hiddenMapStatuses, setHiddenMapStatuses] = useState<Set<BuildingStatus>>(new Set())
+  const [collapsedStatusGroups, setCollapsedStatusGroups] = useState<Set<PinGroup>>(new Set(['완료']))
+  const [hiddenMapStatuses, setHiddenMapStatuses] = useState<Set<PinGroup>>(new Set())
   const [unitMemos, setUnitMemos] = useState<Record<number, string>>({})
   const [unitMemoEdits, setUnitMemoEdits] = useState<Record<number, string | undefined>>({})
   const [_absentTimestamps, _setAbsentTimestamps] = useState<Record<number, number>>({})
@@ -704,7 +704,7 @@ export function DesktopMap({
       if (!card || !cardMatchesStructureFilters(card)) return false
       if (cardFilter !== '전체' && building.cardId !== cardFilter) return false
       if (targetTypeFilter !== '전체' && building.type !== targetTypeFilter) return false
-      if (statusFilter !== '전체' && getBuildingStatus(building) !== statusFilter) return false
+      if (statusFilter !== '전체' && getPinGroup(building) !== statusFilter) return false
       if ((chineseOnlyFilter || visitResultFilter !== '전체') && !building.units.some(unitMatchesOperatingFilter)) return false
       return true
     }),
@@ -717,7 +717,7 @@ export function DesktopMap({
       const card = cardMap.get(building.cardId)
       if (!card || !cardMatchesStructureFilters(card)) return false
       if (targetTypeFilter !== '전체' && building.type !== targetTypeFilter) return false
-      if (statusFilter !== '전체' && getBuildingStatus(building) !== statusFilter) return false
+      if (statusFilter !== '전체' && getPinGroup(building) !== statusFilter) return false
       if ((chineseOnlyFilter || visitResultFilter !== '전체') && !building.units.some(unitMatchesOperatingFilter)) return false
       return true
     }),
@@ -726,20 +726,20 @@ export function DesktopMap({
   )
 
   const statusCounts = useMemo(() => 
-    filteredBuildings.reduce<Record<BuildingStatus, number>>(
+    filteredBuildings.reduce<Record<PinGroup, number>>(
       (counts, building) => {
-        const status = getBuildingStatus(building)
+        const status = getPinGroup(building)
         counts[status] += 1
         return counts
       },
-      { 방문필요: 0, 방문완료: 0, 방문금지: 0, 정기방문: 0 },
+      { 방문필요: 0, 확인필요: 0, 완료: 0, 방문금지: 0, 정기방문: 0 },
     ),
     [filteredBuildings]
   )
 
   const panelBuildings = filteredBuildings
   const mapBuildings = useMemo(
-    () => contextBuildings.filter((building) => !hiddenMapStatuses.has(getBuildingStatus(building))),
+    () => contextBuildings.filter((building) => !hiddenMapStatuses.has(getPinGroup(building))),
     [contextBuildings, hiddenMapStatuses],
   )
 
@@ -846,17 +846,19 @@ export function DesktopMap({
     }
   }
   const panelBuildingGroups = useMemo(() => {
-    const order: BuildingStatus[] = ['방문금지', '방문필요', '정기방문', '방문완료']
-    const labels: Record<BuildingStatus, string> = {
+    // 목록 순서: 가야 할 것부터. '확인필요' 는 방문필요 다음이다 (모바일과 같다)
+    const order: PinGroup[] = ['방문금지', '방문필요', '확인필요', '정기방문', '완료']
+    const labels: Record<PinGroup, string> = {
       방문금지: '방문금지',
       방문필요: '방문필요',
+      확인필요: t(language, 'map.needsCheck'),
       정기방문: '정기방문',
-      방문완료: '방문완료',
+      완료: '완료',
     }
-    const grouped = new Map<BuildingStatus, Building[]>()
+    const grouped = new Map<PinGroup, Building[]>()
     order.forEach((status) => grouped.set(status, []))
     panelBuildings.forEach((building) => {
-      grouped.get(getBuildingStatus(building))?.push(building)
+      grouped.get(getPinGroup(building))?.push(building)
     })
     return order.map((status) => ({
       status,
@@ -1076,7 +1078,7 @@ export function DesktopMap({
     moveMapToBuilding(building)
   }
 
-  const toggleStatusGroup = (status: BuildingStatus) => {
+  const toggleStatusGroup = (status: PinGroup) => {
     setCollapsedStatusGroups((prev) => {
       const next = new Set(prev)
       if (next.has(status)) next.delete(status)
@@ -1085,8 +1087,8 @@ export function DesktopMap({
     })
   }
 
-  const toggleStatusFromLegend = (status: BuildingStatus) => {
-    if (status !== '방문완료' && status !== '정기방문') {
+  const toggleStatusFromLegend = (status: PinGroup) => {
+    if (status !== '완료' && status !== '정기방문') {
       toggleStatusGroup(status)
       return
     }
@@ -1673,11 +1675,14 @@ export function DesktopMap({
               <div className="map-legend-card">
                 {[
                   { status: '방문필요', color: '#2D6CDF', label: '방문필요' },
-                  { status: '방문완료', color: '#4F7A4B', label: '방문완료' },
+                  // ⚠ 모바일과 같은 다섯 줄. '확인필요' 는 **속이 비고 테두리만 초록** —
+                  //   지도 핀과 같은 뜻이다: "등록된 건 다 갔지만 세대를 다 파악했는지 모른다"
+                  { status: '확인필요', color: '#ffffff', ring: '#4F7A4B', label: t(language, 'map.needsCheck') },
+                  { status: '완료', color: '#4F7A4B', label: '완료' },
                   { status: '방문금지', color: '#1A1A18', label: t(language, 'map.forbidden') },
                   { status: '정기방문', color: '#B8862A', label: t(language, 'map.regularVisit') },
-                ].map(({ status, color, label }) => {
-                  const typedStatus = status as BuildingStatus
+                ].map(({ status, color, label, ring }: { status: string; color: string; label: string; ring?: string }) => {
+                  const typedStatus = status as PinGroup
                   const isCollapsed = collapsedStatusGroups.has(typedStatus)
                   const isHiddenOnMap = hiddenMapStatuses.has(typedStatus)
                   return (
@@ -1685,10 +1690,10 @@ export function DesktopMap({
                     className={`map-legend-toggle${isCollapsed ? ' collapsed' : ''}${isHiddenOnMap ? ' map-hidden' : ''}`}
                     key={status}
                     onClick={() => toggleStatusFromLegend(typedStatus)}
-                    title={`${label} 목록 ${isCollapsed ? '펼치기' : '접기'}${typedStatus === '방문완료' || typedStatus === '정기방문' ? ' · 지도 핀 토글' : ''}`}
+                    title={`${label} 목록 ${isCollapsed ? '펼치기' : '접기'}${typedStatus === '완료' || typedStatus === '정기방문' ? ' · 지도 핀 토글' : ''}`}
                     type="button"
                   >
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, border: '2px solid white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', flexShrink: 0 }} />
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, border: `2px solid ${ring ?? 'white'}`, boxShadow: '0 1px 3px rgba(0,0,0,0.2)', flexShrink: 0 }} />
                     <span style={{ fontSize: 12, color: 'var(--gray-600)' }}>{label}</span>
                     <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray-900)', marginLeft: 'auto' }}>{(statusCounts as Record<string, number>)[status] ?? 0}</span>
                   </button>
@@ -1816,7 +1821,7 @@ export function DesktopMap({
                     setExpandedUnitId(null)
                     const b = buildings.find(item => item.id === id)
                     if (b) {
-                      const grp = getBuildingStatus(b)
+                      const grp = getPinGroup(b)
                       setCollapsedStatusGroups((prev) => { const n = new Set(prev); n.delete(grp); return n })
                     }
                     setTimeout(() => {
@@ -1838,7 +1843,7 @@ export function DesktopMap({
                   const b = buildings.find(item => item.id === id)
                   if (b) {
                     // 해당 건물 그룹이 접혀 있으면 자동으로 펼치기
-                    const grp = getBuildingStatus(b)
+                    const grp = getPinGroup(b)
                     setCollapsedStatusGroups((prev) => { const n = new Set(prev); n.delete(grp); return n })
                     if (cardFilter !== '전체' && b.cardId !== cardFilter) {
                       setCardFilter(b.cardId)
@@ -1968,7 +1973,7 @@ export function DesktopMap({
                 </button>
                 {!isGroupCollapsed && groupedBuildings.map((building) => {
             const isExpanded = expandedBuildingIds.has(building.id)
-            const buildingStatus = getBuildingStatus(building)
+            const buildingStatus = getPinGroup(building)
             const handledUnits = building.units.filter((unit) => unit.status !== '미방문').length
             const regularUnitCount = building.units.filter((unit) => unit.isRegularVisit).length
             const completion = building.units.length === 0

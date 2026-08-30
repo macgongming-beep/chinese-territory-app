@@ -16,7 +16,7 @@ const CARDS: Record<number, TerritoryCard> = {
 }
 const cardOf = (id: number) => CARDS[id]
 const SCOPE = { region: '전체', area: '전체', card: '전체' as const, type: '전체' }
-const TRAITS = { regularVisit: '전체', memo: '전체', restaurant: '전체' }
+const TRAITS = { regularVisit: '전체', memo: '전체', restaurant: '전체', surveyed: '전체' }
 const ids = (list: Building[]) => list.map((b) => b.id)
 
 describe('① 범위', () => {
@@ -92,5 +92,22 @@ describe('작은 판정들', () => {
   test('buildingHasRegularVisit', () => {
     expect(buildingHasRegularVisit(bld(1))).toBe(false)
     expect(buildingHasRegularVisit(bld(1, { units: [unit({ isRegularVisit: true })] }))).toBe(true)
+  })
+})
+
+describe('세대 확인 여부', () => {
+  test("⚠ '확인필요' 는 표시가 **없는** 건물만 — PC 에서 몰아서 확인할 때 쓴다", () => {
+    const list = [bld(1, { unitsSurveyed: true }), bld(2)]
+    expect(ids(filterBuildingsByTraits(list, { ...TRAITS, surveyed: '확인필요' }))).toEqual([2])
+  })
+
+  test("'확인됨' 은 표시가 있는 건물만", () => {
+    const list = [bld(1, { unitsSurveyed: true }), bld(2)]
+    expect(ids(filterBuildingsByTraits(list, { ...TRAITS, surveyed: '확인됨' }))).toEqual([1])
+  })
+
+  test('전체면 안 거른다', () => {
+    const list = [bld(1, { unitsSurveyed: true }), bld(2)]
+    expect(ids(filterBuildingsByTraits(list, { ...TRAITS, surveyed: '전체' }))).toEqual([1, 2])
   })
 })

@@ -23,6 +23,14 @@ export type BuildingTraitFilters = {
   memo: string
   /** '전체' | '식당' | '식당 아님' */
   restaurant: string
+  /**
+   * '전체' | '확인필요' | '확인됨'
+   *
+   * **세대를 다 파악했다고 표시한 건물인가.** 표시가 없으면 등록된 세대를 다
+   * 방문해도 지도에서 '완료' 가 아니다 — 호수가 더 있는지 아무도 모르기 때문이다.
+   * PC 에서 **몰아서 확인할 때** 쓰는 필터다.
+   */
+  surveyed: string
 }
 
 /** 공백만 있는 값은 '없음' 으로 본다 */
@@ -73,6 +81,8 @@ export function filterBuildingsByTraits(
     const restaurants = getRestaurantUnits(b).length
     if (f.restaurant === '식당' && restaurants === 0) return false
     if (f.restaurant === '식당 아님' && restaurants > 0) return false
+    if (f.surveyed === '확인필요' && b.unitsSurveyed === true) return false
+    if (f.surveyed === '확인됨' && b.unitsSurveyed !== true) return false
     return true
   })
 }

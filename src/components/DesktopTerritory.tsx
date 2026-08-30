@@ -256,6 +256,7 @@ export function DesktopTerritory({
   const [buildingMemoFilter, setBuildingMemoFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingMemoFilter', '전체')
   // 식당 등록 여부 — 상가 중 어디가 식당인지 골라 보기 위함
   const [buildingRestaurantFilter, setBuildingRestaurantFilter] = useSessionState<'전체' | '식당' | '식당 아님'>('dt.buildingRestaurantFilter', '전체')
+  const [buildingSurveyedFilter, setBuildingSurveyedFilter] = useSessionState<'전체' | '확인필요' | '확인됨'>('dt.buildingSurveyedFilter', '전체')
   const [pointRegularFilter, setPointRegularFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.pointRegularFilter', '전체')
   const [pointMemoFilter, setPointMemoFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.pointMemoFilter', '전체')
   const [buildingSort, setBuildingSort] = useSessionState<{ key: BuildingSortKey; dir: 'asc' | 'desc' }>('dt.buildingSort', { key: '카드', dir: 'asc' })
@@ -490,7 +491,8 @@ export function DesktopTerritory({
     (cardStatusFilter !== '전체' ? 1 : 0)
   const activeAdvancedBuildingFilterCount =
     (buildingRegularFilter !== '전체' ? 1 : 0) +
-    (buildingMemoFilter !== '전체' ? 1 : 0)
+    (buildingMemoFilter !== '전체' ? 1 : 0) +
+    (buildingSurveyedFilter !== '전체' ? 1 : 0)
   const activeAdvancedPointFilterCount =
     (pointRegularFilter !== '전체' ? 1 : 0) +
     (pointMemoFilter !== '전체' ? 1 : 0)
@@ -601,9 +603,10 @@ export function DesktopTerritory({
     () => filterBuildingsByTraits(baseFilteredBuildings, {
       regularVisit: buildingRegularFilter, memo: buildingMemoFilter,
       restaurant: buildingRestaurantFilter,
+      surveyed: buildingSurveyedFilter,
     }),
     [baseFilteredBuildings, buildingRegularFilter, buildingMemoFilter,
-     buildingRestaurantFilter],
+     buildingRestaurantFilter, buildingSurveyedFilter],
   )
 
 
@@ -1651,6 +1654,17 @@ export function DesktopTerritory({
                       {(['전체', '있음', '없음'] as const).map((f) => (
                         <button key={f} className={buildingMemoFilter === f ? 'active' : ''} onClick={() => setBuildingMemoFilter(f)} type="button">{f}</button>
                       ))}
+                    </div>
+                    <div className="tbl-filter-group">
+                      {/* ⚠ **세대를 다 파악했다고 표시한 건물인가.** 표시가 없으면 등록된 세대를
+                          다 방문해도 지도에서 '완료' 가 아니다 — 호수가 더 있는지 아무도 모른다.
+                          PC 는 **몰아서 확인하는** 자리라 여기에 필터를 둔다. */}
+                      <span className="tbl-filter-label">세대 확인</span>
+                      <div className="tbl-mini-seg">
+                        {(['전체', '확인필요', '확인됨'] as const).map((f) => (
+                          <button key={f} className={buildingSurveyedFilter === f ? 'active' : ''} onClick={() => setBuildingSurveyedFilter(f)} type="button">{f}</button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   <button
