@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { shouldForceRelogin } from '../lib/sessionRelogin'
 import { showToast } from '../lib/toast'
 import {
   clearAuthStorage,
@@ -176,6 +177,34 @@ export function useAuth() {
           if (error && !error.message?.includes('phone')) throw error
           if (data && !cancelled) {
             const restoredToken = parsed.authToken ?? getAuthToken()
+
+            // ⚠⚠ **토큰이 없거나 서버에서 무효면 자동 로그인하지 않는다.**
+            //
+            //   2026-08-30 봉사 중에 이것 때문에 크게 터졌다. 세션은 30일 뒤
+            //   만료되는데 앱은 localStorage 만 보고 로그인 상태로 뒀다.
+            //   그래서 **토큰이 만료된 줄도 모르고 쓰던 사람이 62명 중 38명**이었고,
+            //   쓰기에 세션 관문을 걸자 그들의 방문 기록·배정이 전부 실패했다.
+            //   화면은 멀쩡한데 저장만 안 되는, 제일 나쁜 모양이었다.
+            //
+            //   토큰이 살아 있는지 서버에 물어보고(그때 만료도 30일 연장된다),
+            //   아니면 **로그인 화면으로 보낸다.** 한 번 다시 로그인하면
+            //   그 뒤로는 쓰는 한 안 끊긴다.
+            let tokenOk = false
+            if (restoredToken) {
+              const { error: verifyError } = await supabase.rpc('verify_session', { p_token: restoredToken })
+              // ⚠ 오류를 뭉뚱그리면 안 된다. 서버가 **거부**한 것만 다시 로그인시키고,
+              //   서버에 **못 닿은 것**(지하·신호 끊김)은 그대로 둔다 — 안 그러면
+              //   봉사 중에 쫓겨난다. (`lib/sessionRelogin.ts`)
+              tokenOk = !shouldForceRelogin(verifyError)
+              if (verifyError) console.warn('[auth] verify_session 오류:', verifyError.code ?? '(네트워크)', verifyError.message)
+            }
+            if (!tokenOk) {
+              clearAuthStorage()
+              localStorage.removeItem('currentVisitor')
+              if (!cancelled) setLoading(false)
+              return
+            }
+
             const freshUser = { ...toAuthUser(data), authToken: restoredToken ?? null }
             setUser(freshUser)
             localStorage.setItem('currentVisitor', freshUser.name)
