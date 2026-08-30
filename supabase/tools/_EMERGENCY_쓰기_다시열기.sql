@@ -12,13 +12,14 @@
 -- 이 파일은 **기존 TEMP 정책을 지우지 않는다.** permissive 정책은 OR 로 합쳐지므로
 -- 여는 정책을 하나 더 얹으면 즉시 열린다. 나중에 다시 잠글 때는
 -- 이 EMERGENCY 정책들만 지우면 원래 상태로 돌아간다.
+--
+-- ⚠ `app_users`는 절대 긴급 개방하지 않는다. 이 표를 열면 토큰 없는 요청으로
+-- role·approval_status·is_active를 바꿔 관리자 권한을 만들 수 있다.
+-- 로그인·가입은 별도 SECURITY DEFINER RPC가 있으므로 이 표를 열 필요가 없다.
 
 
 create policy "EMERGENCY_open_app_settings" on public.app_settings
   for all to public using (true) with check (true);
-
-create policy "EMERGENCY_open_app_users" on public.app_users
-  for all to anon using (true) with check (true);
 
 create policy "EMERGENCY_open_buildings" on public.buildings
   for all to anon using (true) with check (true);
@@ -101,7 +102,17 @@ declare v int;
 begin
   select count(*) into v from pg_policies
   where schemaname='public' and policyname like 'EMERGENCY\_open\_%';
-  raise notice '🚨 긴급 복구 정책 %개. 다시 잠글 때는 이것만 지운다', v;
+  if v <> 26 then
+    raise exception '긴급 복구 정책은 26개여야 합니다 (현재 %개)', v;
+  end if;
+  if exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'app_users'
+      and policyname like 'EMERGENCY\_open\_%'
+  ) then
+    raise exception 'app_users 긴급 개방은 금지입니다';
+  end if;
+  raise notice '🚨 긴급 복구 정책 %개. app_users는 닫힌 채다', v;
 end $$;
 
 notify pgrst, 'reload schema';

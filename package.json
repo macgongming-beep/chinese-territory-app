@@ -24,7 +24,10 @@
     "smoke:lockdown": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeLockdown.js",
     "apply:lockdown": "node scripts/applyLockdown.js",
     "apply:security-followup": "node scripts/applySecurityFollowup.js",
-    "status:security": "node scripts/securityStatus.js"
+    "status:security": "node scripts/securityStatus.js",
+    "test:relock": "node scripts/applyRelock.js --test",
+    "apply:relock": "node scripts/applyRelock.js",
+    "apply:emergency-open": "node scripts/applyEmergencyOpen.js"
   },
   "dependencies": {
     "@sentry/react": "^10.53.1",

@@ -22,12 +22,25 @@ SELECT 재현            26개
 원인은 세션 30일 만료를 앱이 몰랐던 것. 슬라이딩 만료와 무효 토큰 재로그인은 배포했다.
 다시 잠그기는 활성 사용자 대비 유효 토큰 보유자를 확인한 뒤 사람이 진행한다.
 
+재잠금 도구는 준비됐지만 **운영에는 아직 적용하지 않았다**:
+```bash
+npm run status:security       # 토큰 범위·정책·최근 cron 읽기
+npm run test:relock           # 테스트 DB에서 긴급개방→재잠금 단일 트랜잭션 검증
+npm run apply:relock          # 운영 읽기 전용 preflight (confirm 없이는 적용 안 함)
+```
+`apply:relock`은 2026-08-30 후속 수정 뒤 `auto-reset-met-units`와
+`cleanup-old-data`가 모두 실제 성공하기 전에는 적용을 거부한다. 첫 확인 시각은
+각각 2026-08-31 03:00·04:00 KST다.
+
+재잠금 직후 대표 사용자의 저장이 실패할 때만
+`npm run apply:emergency-open -- --confirm <project-ref>`로 복구한다.
+복구는 `app_users`를 **절대 열지 않고** 나머지 26개만 연다.
+
 **넣는 방법** (다시 할 때도 이렇게):
 ```bash
 npm run backup
-# 운영에서 supabase/tools/_PREFLIGHT_전환SQL_정책이름_대조.sql → 0행 확인
-npm run apply:lockdown -- --confirm <project-ref>
-# 운영에서 supabase/tools/_VERIFY_전환결과.sql
+# 초기 전환은 이미 끝났다. `apply:lockdown`을 다시 실행하지 않는다.
+npm run apply:relock -- --confirm <project-ref>
 ```
 
 ⚠⚠ **Supabase SQL Editor 는 `begin; … commit;` 을 지키지 않는다.** 실측했다 —
