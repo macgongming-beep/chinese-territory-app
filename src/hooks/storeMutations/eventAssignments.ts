@@ -119,10 +119,15 @@ export function makeEventAssignmentMutations(deps: { fetchAll: () => Promise<voi
         if (!silentSuccess) showToast(msg('참여자 카드 배정 {v1}건을 저장했습니다', { v1: result?.count ?? 0 }))
         return
       }
-      // RPC 미적용(함수 없음) 등은 아래 폴백으로
-      if (!String(rpcRes.error.message ?? '').includes('Could not find the function')) {
-        console.warn('[assign_cards_bulk_tx] RPC 실패, 폴백 사용:', rpcRes.error)
-      }
+      // ⚠ **폴백은 '함수가 없을 때' 만 탄다.**
+      //   예전에는 메시지를 보고 **로그만** 가려 찍고 폴백은 무조건 탔다.
+      //   그래서 권한 없음·세션 만료로 RPC 가 거부돼도 **표에 직접 쓰기를 시도**했고,
+      //   RPC 안의 권한 검사가 통째로 무의미해졌다 (표가 열려 있으면 그대로 통과한다).
+      //   2026-08-30 봉사 중 본 오류 문구("event_card_assignments SQL 을 먼저…")도
+      //   이 폴백이 직접 쓰기를 하다 막힌 것이었다.
+      const functionMissing = String(rpcRes.error.message ?? '').includes('Could not find the function')
+      if (!functionMissing) throw rpcRes.error
+      console.warn('[assign_cards_bulk_tx] 함수가 없어 폴백을 쓴다:', rpcRes.error.message)
     }
 
     // ── 폴백: 기존 방식 (RPC 미적용 환경 호환) ──

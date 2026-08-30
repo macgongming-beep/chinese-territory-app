@@ -165,90 +165,102 @@ export function useAuth() {
         return
       }
 
+      let parsed: {
+        id?: number; name?: string; role?: string
+        loginId?: string; phone?: string | null; authToken?: string
+      } | null = null
       try {
-        const parsed = JSON.parse(storedSession.raw)
-        if (parsed?.id) {
-          const { data, error } = await supabase
-            .from('app_users')
-            .select('id, name, phone, login_id, role')
-            .eq('id', parsed.id)
-            .maybeSingle()
+        parsed = JSON.parse(storedSession.raw)
+      } catch (e) {
+        console.error('Failed to parse auth_session', e)
+      }
+      if (!parsed?.id) {
+        if (!cancelled) setLoading(false)
+        return
+      }
 
-          if (error && !error.message?.includes('phone')) throw error
-          if (data && !cancelled) {
-            const restoredToken = parsed.authToken ?? getAuthToken()
+      // ═══ ① 토큰부터 확인한다 (사용자 조회보다 **먼저**) ═══
+      //
+      // ⚠ 2026-08-30 봉사 중에 크게 데었다. 세션은 30일 뒤 만료되는데 앱은
+      //   localStorage 만 보고 로그인 상태로 뒀다. 그래서 **토큰이 만료된 줄도
+      //   모르고 쓰던 사람이 62명 중 38명**이었고, 쓰기에 세션 관문을 걸자
+      //   그들의 방문 기록·배정이 전부 실패했다.
+      //   화면은 멀쩡한데 저장만 안 되는, 제일 나쁜 모양이었다.
+      //
+      // ⚠ **순서가 중요하다.** 예전엔 사용자 조회를 먼저 해서, 네트워크가 끊기면
+      //   거기서 throw 되어 그대로 로그인 화면이 됐다 — 지하·엘리베이터에서 앱을
+      //   열면 쫓겨나는 셈이다. 토큰 검증을 앞에 두고, 사용자 조회 실패는
+      //   저장된 정보로 넘긴다.
+      const restoredToken = parsed.authToken ?? getAuthToken()
+      if (!restoredToken) {
+        // 토큰이 없다 = 헤더를 못 보낸다 = 아무것도 저장 못 한다.
+        // 조용히 두면 '되는 줄 알고 쓰다가 다 날리는' 상황이 된다.
+        clearAuthStorage()
+        localStorage.removeItem('currentVisitor')
+        if (!cancelled) setLoading(false)
+        return
+      }
+      const { error: verifyError } = await supabase.rpc('verify_session', { p_token: restoredToken })
+      if (verifyError) console.warn('[auth] verify_session:', verifyError.code ?? '(네트워크)', verifyError.message)
+      if (shouldForceRelogin(verifyError)) {
+        clearAuthStorage()
+        localStorage.removeItem('currentVisitor')
+        if (!cancelled) setLoading(false)
+        return
+      }
 
-            // ⚠⚠ **토큰이 없거나 서버에서 무효면 자동 로그인하지 않는다.**
-            //
-            //   2026-08-30 봉사 중에 이것 때문에 크게 터졌다. 세션은 30일 뒤
-            //   만료되는데 앱은 localStorage 만 보고 로그인 상태로 뒀다.
-            //   그래서 **토큰이 만료된 줄도 모르고 쓰던 사람이 62명 중 38명**이었고,
-            //   쓰기에 세션 관문을 걸자 그들의 방문 기록·배정이 전부 실패했다.
-            //   화면은 멀쩡한데 저장만 안 되는, 제일 나쁜 모양이었다.
-            //
-            //   토큰이 살아 있는지 서버에 물어보고(그때 만료도 30일 연장된다),
-            //   아니면 **로그인 화면으로 보낸다.** 한 번 다시 로그인하면
-            //   그 뒤로는 쓰는 한 안 끊긴다.
-            let tokenOk = false
-            if (restoredToken) {
-              const { error: verifyError } = await supabase.rpc('verify_session', { p_token: restoredToken })
-              // ⚠ 오류를 뭉뚱그리면 안 된다. 서버가 **거부**한 것만 다시 로그인시키고,
-              //   서버에 **못 닿은 것**(지하·신호 끊김)은 그대로 둔다 — 안 그러면
-              //   봉사 중에 쫓겨난다. (`lib/sessionRelogin.ts`)
-              tokenOk = !shouldForceRelogin(verifyError)
-              if (verifyError) console.warn('[auth] verify_session 오류:', verifyError.code ?? '(네트워크)', verifyError.message)
-            }
-            if (!tokenOk) {
-              clearAuthStorage()
-              localStorage.removeItem('currentVisitor')
-              if (!cancelled) setLoading(false)
-              return
-            }
+      // ═══ ② 최신 사용자 정보 — 못 받아도 저장된 것으로 이어간다 ═══
+      let fresh: AuthUser | null = null
+      try {
+        const { data, error } = await supabase
+          .from('app_users')
+          .select('id, name, phone, login_id, role')
+          .eq('id', parsed.id)
+          .maybeSingle()
+        if (error && !error.message?.includes('phone')) throw error
+        if (data) fresh = { ...toAuthUser(data), authToken: restoredToken }
+      } catch (e) {
+        // 네트워크가 끊겼을 뿐이다. 토큰은 위에서 확인했으니 쫓아내지 않는다.
+        console.warn('[auth] 사용자 정보를 못 받아 저장된 것으로 복구한다:', e)
+      }
 
-            const freshUser = { ...toAuthUser(data), authToken: restoredToken ?? null }
-            setUser(freshUser)
-            localStorage.setItem('currentVisitor', freshUser.name)
-            setAuthSession(freshUser, storedSession.persistent)
-            if (restoredToken) setAuthToken(restoredToken, storedSession.persistent)
-            
-            // 자동 로그인 기록 (실패해도 로그인 흐름을 끊지 않는다)
-            // ⚠ `try/catch` 만으로는 못 잡는다 — supabase 는 DB 오류를 **던지지 않고**
-            //   `{ error }` 로 돌려준다. 그래서 예전에는 기록이 안 쌓여도 아무 흔적이
-            //   없었고, '로그인 기록이 8월 10일에 멈춘 것' 을 늦게야 알았다.
-            try {
-              const { error: recordError } = await supabase.rpc('auth_record_auto_login', {
-                p_user_id: data.id,
-                p_device_label: getDeviceLabel(),
-                p_user_agent: typeof navigator === 'undefined' ? null : navigator.userAgent
-              })
-              if (recordError) console.warn('[auth] 자동 로그인 기록 실패:', recordError.message)
-            } catch (err) {
-              console.error(err)
-            }
-
-            setLoading(false)
-            return
-          }
-        }
-
-        if (parsed && parsed.name && parsed.role && !cancelled) {
-          const restoredUser: AuthUser = {
+      const restored: AuthUser | null = fresh ?? (parsed.name && parsed.role
+        ? {
             id: parsed.id,
             loginId: parsed.loginId ?? parsed.name,
             name: parsed.name,
             phone: parsed.phone ?? null,
             role: isRole(parsed.role) ? parsed.role : 'user',
-            authToken: parsed.authToken ?? getAuthToken(),
+            authToken: restoredToken,
           }
-          setUser(restoredUser)
-          localStorage.setItem('currentVisitor', restoredUser.name)
-          setAuthSession(restoredUser, storedSession.persistent)
-        }
-      } catch (e) {
-        console.error('Failed to parse auth_session', e)
-      } finally {
+        : null)
+
+      if (!restored || cancelled) {
         if (!cancelled) setLoading(false)
+        return
       }
+
+      setUser(restored)
+      localStorage.setItem('currentVisitor', restored.name)
+      setAuthSession(restored, storedSession.persistent)
+      setAuthToken(restoredToken, storedSession.persistent)
+
+      // 자동 로그인 기록 (실패해도 로그인 흐름을 끊지 않는다)
+      // ⚠ `try/catch` 만으로는 못 잡는다 — supabase 는 DB 오류를 **던지지 않고**
+      //   `{ error }` 로 돌려준다. 그래서 기록이 안 쌓여도 흔적이 없었고,
+      //   '로그인 기록이 8월 10일에 멈춘 것' 을 늦게야 알았다.
+      try {
+        const { error: recordError } = await supabase.rpc('auth_record_auto_login', {
+          p_user_id: restored.id,
+          p_device_label: getDeviceLabel(),
+          p_user_agent: typeof navigator === 'undefined' ? null : navigator.userAgent,
+        })
+        if (recordError) console.warn('[auth] 자동 로그인 기록 실패:', recordError.message)
+      } catch (err) {
+        console.error(err)
+      }
+
+      if (!cancelled) setLoading(false)
     }
 
     void restoreSession()
