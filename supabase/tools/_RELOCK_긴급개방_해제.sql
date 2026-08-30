@@ -59,6 +59,10 @@ begin
       and p.policyname like 'TEMP\_session\_gate\_%'
       and p.cmd in (q.cmd, 'ALL')
       and ('anon' = any(p.roles) or 'public' = any(p.roles))
+      -- 이름만 TEMP인 using(true) 정책을 관문으로 오인하지 않는다.
+      -- 이 정규식은 정적 안전망이고, 실제 차단 증명은 HTTP smoke가 맡는다.
+      and (coalesce(p.qual, '') || ' ' || coalesce(p.with_check, ''))
+          ~* 'request_session_user_id|request_is_admin'
   );
   if v_missing_gate is not null then
     raise exception '재잠금 뒤 쓰기 관문이 없는 조합: %', v_missing_gate;

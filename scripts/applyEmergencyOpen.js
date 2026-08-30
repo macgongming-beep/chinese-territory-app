@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from 'node:fs'
 
 const REF = 'qdxemvdorasoryfysuoq'
 const FILE = 'supabase/tools/_EMERGENCY_쓰기_다시열기.sql'
+const PSQL = process.env.PSQL_BIN ?? 'psql'
 const die = (message) => { console.error(`\n  ✗ ${message}\n`); process.exit(1) }
 const arg = (name) => {
   const index = process.argv.indexOf(name)
@@ -29,7 +30,7 @@ const password = decodeURIComponent(url.password)
 if (!password) die('운영 DB 비밀번호가 없습니다')
 url.password = ''
 const env = { ...process.env, PGPASSWORD: password, PGCONNECT_TIMEOUT: '10' }
-const psql = (args, capture = false) => execFileSync('/opt/homebrew/bin/psql', [
+const psql = (args, capture = false) => execFileSync(PSQL, [
   '-X', '-v', 'ON_ERROR_STOP=1', url.toString(), ...args,
 ], { encoding: capture ? 'utf8' : undefined, stdio: capture ? 'pipe' : 'inherit', env })
 

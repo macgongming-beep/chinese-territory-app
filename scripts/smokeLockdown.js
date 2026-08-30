@@ -202,6 +202,9 @@ const main = async () => {
       .subscribe(async (status, err) => {
         if (status !== 'SUBSCRIBED') { rtStatus = `${status}${err ? ' · ' + (err.message ?? err) : ''}`; return }
         rtStatus = 'SUBSCRIBED'
+        // 정책 DDL 직후에는 채널 상태가 먼저 SUBSCRIBED가 되고 변경 스트림 등록이
+        // 아주 잠깐 늦을 수 있다. 즉시 INSERT하면 정상 구독도 한 번 놓쳐 거짓 실패한다.
+        await new Promise((ready) => setTimeout(ready, 750))
         const ins = await req('calendar_events?select=id', { method: 'POST',
           body: JSON.stringify({ event_date: '2030-01-01', title: RT_TITLE }) }, admin.token)
         rtInsert = `HTTP ${ins.status}`

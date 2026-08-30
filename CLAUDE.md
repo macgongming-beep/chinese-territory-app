@@ -40,7 +40,7 @@ npm run apply:relock          # 운영 읽기 전용 preflight (confirm 없이�
 ```bash
 npm run backup
 # 초기 전환은 이미 끝났다. `apply:lockdown`을 다시 실행하지 않는다.
-npm run apply:relock -- --confirm <project-ref>
+npm run apply:relock -- --confirm <project-ref> --off-hours --core-user-ready
 ```
 
 ⚠⚠ **Supabase SQL Editor 는 `begin; … commit;` 을 지키지 않는다.** 실측했다 —
