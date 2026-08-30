@@ -39,7 +39,7 @@ const TONE_COLORS: Record<PinTone, string> = {
 function pinColors(building: Building): { fill: string; ring: string; ringWidth: number } {
   const pin = getBuildingPin(building)
   if (pin.filled) return { fill: TONE_COLORS[pin.tone], ring: '#ffffff', ringWidth: 2 }
-  if (pin.ring) return { fill: '#ffffff', ring: TONE_COLORS[pin.ring], ringWidth: 4 }
+  if (pin.ring) return { fill: '#ffffff', ring: TONE_COLORS[pin.ring], ringWidth: 3 }
   return { fill: NEED_FILL, ring: '#ffffff', ringWidth: 2 }
 }
 

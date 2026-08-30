@@ -104,7 +104,7 @@ export const en = {
     'settings.fontScale.large': 'Large',
     'settings.fontScale.x-large': 'Extra large',
     'map.needsCheck': 'Needs check',
-    'map.unitsSurveyed': 'Units checked',
+    'map.unitsSurveyed': 'Units confirmed',
     'map.unitsSurveyedHint': 'Only then does it become “Done”',
     'settings.title': 'Settings',
     'settings.features': 'Features',

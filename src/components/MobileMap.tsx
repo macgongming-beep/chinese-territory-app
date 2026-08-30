@@ -1392,19 +1392,6 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                 onClick={() => setBuildingMenuId(null)}
                               />
                               <div className="bld-menu-popover" role="menu">
-                                {/* ⚠ **이 표시가 있어야 '완료'(채운 초록)로 바뀐다.**
-                                    시스템은 '등록된 세대' 만 안다 — 104·105호만 등록된 건물에서 둘 다 가면
-                                    100% 가 되어 아무도 안 갔다. 몇 세대가 있는지는 사람만 안다. */}
-                                {onSetUnitsSurveyed && (
-                                  <button
-                                    type="button"
-                                    className={building.unitsSurveyed ? 'bld-menu-on' : undefined}
-                                    onClick={() => {
-                                      setBuildingMenuId(null)
-                                      void onSetUnitsSurveyed(building.id, !building.unitsSurveyed)
-                                    }}
-                                  >{building.unitsSurveyed ? `✓ ${t(language, 'map.unitsSurveyed')}` : t(language, 'map.unitsSurveyed')}</button>
-                                )}
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1448,6 +1435,19 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                     )
                                   }}
                                 >{t(language, 'map.directions')}</button>
+                                {/* ⚠ **이 표시가 있어야 '완료'(채운 초록)로 바뀐다.**
+                                    시스템은 '등록된 세대' 만 안다 — 104·105호만 등록된 건물에서 둘 다 가면
+                                    100% 가 되어 아무도 안 갔다. 몇 세대가 있는지는 사람만 안다. */}
+                                {onSetUnitsSurveyed && (
+                                  <button
+                                    type="button"
+                                    className={building.unitsSurveyed ? 'bld-menu-on' : undefined}
+                                    onClick={() => {
+                                      setBuildingMenuId(null)
+                                      void onSetUnitsSurveyed(building.id, !building.unitsSurveyed)
+                                    }}
+                                  >{building.unitsSurveyed ? `✓ ${t(language, 'map.unitsSurveyed')}` : t(language, 'map.unitsSurveyed')}</button>
+                                )}
                               </div>
                             </>
                           )}

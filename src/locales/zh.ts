@@ -104,7 +104,7 @@ export const zh = {
     'settings.fontScale.large': '大',
     'settings.fontScale.x-large': '特大',
     'map.needsCheck': '需要确认',
-    'map.unitsSurveyed': '住户核对完成',
+    'map.unitsSurveyed': '住户确认完成',
     'map.unitsSurveyedHint': '有此标记才会变为「已完成」',
     'settings.title': '设置',
     'settings.features': '功能',

@@ -104,7 +104,7 @@ export const ko = {
     'settings.fontScale.large': '크게',
     'settings.fontScale.x-large': '아주 크게',
     'map.needsCheck': '확인필요',
-    'map.unitsSurveyed': '세대 체크 완료',
+    'map.unitsSurveyed': '세대 확인 완료',
     'map.unitsSurveyedHint': '이 표시가 있어야 완료로 바뀝니다',
     'settings.title': '설정',
     'settings.features': '기능',
