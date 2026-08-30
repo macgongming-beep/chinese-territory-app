@@ -11,6 +11,15 @@ export type VisitDraft = {
   timeSlot: TimeSlot
   visitedAt: string
   memo: string
+  /**
+   * 누가 방문했나. **관리자·인도자만 고칠 수 있다** (`visitorOptions` 를 받을 때만 칸이 보인다).
+   *
+   * 왜: 봉사를 마치고 한 사람이 몰아서 입력하면 **실제로 방문한 형제가 아니라
+   * 입력한 사람 이름**으로 남아 통계가 어긋난다. 새로 적을 때는 그대로 내 이름으로
+   * 두고, **여기서 고치게** 한다 — '대신 기록 모드' 를 켜 두는 방식은 끄는 것을
+   * 잊으면 며칠치가 통째로 남의 이름이 된다.
+   */
+  visitor?: string
 }
 
 type Props = {
@@ -19,6 +28,11 @@ type Props = {
   /** 어느 건물 · 어느 세대인지 사람이 읽는 형태 */
   label: string
   initial: VisitDraft
+  /**
+   * 고를 수 있는 방문자 목록. **비어 있거나 없으면 방문자 칸을 아예 안 그린다**
+   * (권한이 없는 사람에게는 있는지도 모르게).
+   */
+  visitorOptions?: string[]
   onClose: () => void
   /**
    * 저장. **성공하면 true, 실패하면 false.**
@@ -27,7 +41,7 @@ type Props = {
   onSave: (draft: VisitDraft) => Promise<boolean>
 }
 
-export function PointVisitEditor({ mode, label, initial, onClose, onSave }: Props) {
+export function PointVisitEditor({ mode, label, initial, visitorOptions, onClose, onSave }: Props) {
   const [draft, setDraft] = useState<VisitDraft>(initial)
   const [saving, setSaving] = useState(false)
   const set = <K extends keyof VisitDraft>(key: K, value: VisitDraft[K]) =>
@@ -85,6 +99,24 @@ export function PointVisitEditor({ mode, label, initial, onClose, onSave }: Prop
                 <option value="대상외">대상외</option>
               </select>
             </label>
+            {visitorOptions && visitorOptions.length > 0 && (
+              <label>
+                <span>방문자</span>
+                <select
+                  value={draft.visitor ?? ''}
+                  onChange={(e) => set('visitor', e.target.value)}
+                >
+                  {/* 지금 값이 목록에 없을 수 있다 (탈퇴했거나 이름이 바뀐 사람).
+                      그럴 때 목록에 없다고 조용히 다른 사람으로 바뀌면 안 된다. */}
+                  {draft.visitor && !visitorOptions.includes(draft.visitor) && (
+                    <option value={draft.visitor}>{draft.visitor}</option>
+                  )}
+                  {visitorOptions.map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="wide">
               <span>메모</span>
               <textarea

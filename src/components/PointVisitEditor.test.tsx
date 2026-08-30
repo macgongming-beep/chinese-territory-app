@@ -67,3 +67,46 @@ describe('PointVisitEditor', () => {
     expect(onClose).toHaveBeenCalled()
   })
 })
+
+describe('방문자 고르기', () => {
+  const OPTIONS = ['김휘민', '박진호', '정찬양']
+
+  test('⚠ 목록을 안 주면 방문자 칸이 **아예 없다** — 일반 사용자에게 보이면 안 된다', () => {
+    setup({ mode: 'edit' })
+    expect(screen.queryByText('방문자')).toBeNull()
+  })
+
+  test('목록을 주면 칸이 보이고 현재 방문자가 선택돼 있다', () => {
+    setup({ mode: 'edit', initial: { ...initial, visitor: '박진호' }, visitorOptions: OPTIONS })
+    expect(screen.getByText('방문자')).toBeTruthy()
+    expect((screen.getByDisplayValue('박진호') as HTMLSelectElement).value).toBe('박진호')
+  })
+
+  test('바꾸면 그 이름으로 저장된다', async () => {
+    const user = userEvent.setup()
+    const { onSave } = setup({
+      mode: 'edit', initial: { ...initial, visitor: '박진호' }, visitorOptions: OPTIONS,
+    })
+    onSave.mockResolvedValue(true)
+    await user.selectOptions(screen.getByDisplayValue('박진호'), '정찬양')
+    await user.click(save())
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ visitor: '정찬양' }))
+  })
+
+  test('⚠ 목록에 없는 이름도 유지된다 — 탈퇴·개명한 사람의 기록이 남의 것이 되면 안 된다', () => {
+    setup({ mode: 'edit', initial: { ...initial, visitor: '위팅' }, visitorOptions: OPTIONS })
+    const select = screen.getByDisplayValue('위팅') as HTMLSelectElement
+    expect(select.value).toBe('위팅')
+    expect([...select.options].map((o) => o.value)).toContain('위팅')
+  })
+
+  test('방문자를 안 건드리면 원래 이름 그대로 나간다', async () => {
+    const user = userEvent.setup()
+    const { onSave } = setup({
+      mode: 'edit', initial: { ...initial, visitor: '박진호' }, visitorOptions: OPTIONS,
+    })
+    onSave.mockResolvedValue(true)
+    await user.click(save())
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ visitor: '박진호' }))
+  })
+})

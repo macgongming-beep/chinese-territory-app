@@ -1,4 +1,5 @@
 import type { Building, ServiceSession, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../../types'
+import { buildVisitUpdatePayload } from '../../utils/visitUpdatePayload'
 import { getCurrentTimeSlot } from '../../utils/timeUtils'
 import { supabase, showToast, reportMutationError, getLocalDateString, requireVisitor } from './shared'
 import { logServiceAction } from './serviceLog'
@@ -373,16 +374,12 @@ export function makeVisitMutations(deps: {
   const updateVisitHistory = async (
     historyId: number,
     unitId: number,
-    input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string },
+    input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; visitor?: string },
   ): Promise<boolean> => {
+    // 무엇을 보낼지는 utils/visitUpdatePayload 가 정한다 (시험이 붙어 있다).
     const historyResult = await supabase
       .from('visit_histories')
-      .update({
-        result: input.result,
-        time_slot: input.timeSlot,
-        memo: input.memo.trim() || null,
-        visited_at: input.visitedAt,
-      })
+      .update(buildVisitUpdatePayload(input))
       .eq('id', historyId)
 
     if (historyResult.error) {
