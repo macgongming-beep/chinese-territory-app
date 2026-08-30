@@ -33,6 +33,16 @@ with user_counts as (
       where coalesce(is_active, true)
         and coalesce(approval_status, 'approved') = 'approved'
     )::integer as active_approved,
+    count(*) filter (
+      where coalesce(is_active, true)
+        and coalesce(approval_status, 'approved') = 'approved'
+        and last_login_at >= now() - interval '7 days'
+    )::integer as active_7d,
+    count(*) filter (
+      where coalesce(is_active, true)
+        and coalesce(approval_status, 'approved') = 'approved'
+        and last_login_at >= now() - interval '30 days'
+    )::integer as active_30d,
     count(*)::integer as total
   from public.app_users
 ), session_counts as (
@@ -41,7 +51,15 @@ with user_counts as (
     count(distinct s.user_id) filter (
       where s.expires_at > now()
         and s.last_used_at >= now() - interval '7 days'
-    )::integer as used_7d
+    )::integer as used_7d,
+    count(distinct s.user_id) filter (
+      where s.expires_at > now()
+        and u.last_login_at >= now() - interval '7 days'
+    )::integer as valid_for_active_7d,
+    count(distinct s.user_id) filter (
+      where s.expires_at > now()
+        and u.last_login_at >= now() - interval '30 days'
+    )::integer as valid_for_active_30d
   from public.auth_sessions s
   join public.app_users u on u.id = s.user_id
   where coalesce(u.is_active, true)
@@ -65,8 +83,12 @@ select json_build_object(
   'checked_at_kst', to_char(clock_timestamp() at time zone 'Asia/Seoul', 'YYYY-MM-DD HH24:MI:SS'),
   'total_users', u.total,
   'active_approved_users', u.active_approved,
+  'active_users_7d', u.active_7d,
+  'active_users_30d', u.active_30d,
   'valid_session_users', s.valid,
   'sessions_used_last_7d', s.used_7d,
+  'valid_sessions_for_active_7d', s.valid_for_active_7d,
+  'valid_sessions_for_active_30d', s.valid_for_active_30d,
   'emergency_open_policies', p.emergency,
   'session_gate_policies', p.session_gate,
   'select_all_policies', p.select_all,
@@ -119,6 +141,8 @@ console.log(`  전체 사용자                 ${status.total_users}명`)
 console.log(`  활성·승인 사용자            ${status.active_approved_users}명`)
 console.log(`  유효 토큰 보유              ${status.valid_session_users}명 (부족 ${Math.max(0, gap)}명)`)
 console.log(`  최근 7일 토큰 사용          ${status.sessions_used_last_7d}명`)
+console.log(`  최근 7일 사용자 중 토큰     ${status.valid_sessions_for_active_7d}/${status.active_users_7d}명`)
+console.log(`  최근 30일 사용자 중 토큰    ${status.valid_sessions_for_active_30d}/${status.active_users_30d}명`)
 console.log(`  긴급 개방 정책              ${status.emergency_open_policies}개`)
 console.log(`  세션 관문 정책              ${status.session_gate_policies}개`)
 console.log(`  SELECT 재현 정책            ${status.select_all_policies}개`)
