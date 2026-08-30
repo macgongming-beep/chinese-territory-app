@@ -128,6 +128,9 @@ export function DesktopApp({
   onToggleInvitationLeft,
   onUpdateUnitFlags,
   onUpdateBuilding,
+  // PC 화면은 아직 안 쓴다 (모바일에서 먼저 확인한 뒤 붙인다)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onSetUnitsSurveyed: _onSetUnitsSurveyed,
   onSaveCardBoundary,
   onRestoreCardBoundaries,
   onMergeCardBoundaries,
@@ -244,6 +247,7 @@ export function DesktopApp({
   onDeleteCards: (cardIds: number[]) => void
   onMergeDuplicateBuildings: (scopeCardId?: number, nameOverrides?: Record<number, string>, selectedPrimaryIds?: number[]) => Promise<MergeResult>
   onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => void
+  onSetUnitsSurveyed?: (buildingId: number, surveyed: boolean) => Promise<boolean> | void
   onMoveBuildingToCard: (buildingId: number, cardId: number) => void
   onReassignBuildingsToCards: (updates: Array<{ buildingId: number; cardId: number }>) => Promise<{ updated: number; failed: number }>
   onDeleteCardBoundary: (cardId: number) => void

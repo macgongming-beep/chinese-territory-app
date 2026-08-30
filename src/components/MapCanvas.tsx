@@ -4,6 +4,7 @@ import type { MouseEvent } from 'react'
 import type { Building, BuildingStatus, CardBoundary, GeoPoint, TerritoryCard } from '../types'
 import { clusterByGrid, getClusterThresholdKm } from '../utils/mapClustering'
 import { getBuildingStatus, getCardName, getMockPosition, isValidMapCoordinate } from '../utils/mapUtils'
+import { getBuildingPin, type PinTone } from '../utils/buildingPin'
 import { TERRITORY_BOUNDARY } from '../data/territoryBoundary'
 import { showToast } from '../lib/toast'
 import { msg } from '../lib/msg'
@@ -14,6 +15,24 @@ const STATUS_COLORS: Record<BuildingStatus, string> = {
   방문완료: '#4F7A4B',
   방문금지: '#1A1A18',
   정기방문: '#B8862A',
+}
+
+// 핀은 **속(채움)과 테두리**를 따로 쓴다.
+//   속   파랑 = 아직 가 볼 곳이 있다
+//   테두리 = 왜 눈여겨봐야 하는지 (초록: 다 갔지만 세대 미확인 · 금색: 정기방문인데 갈 곳 남음)
+// 예전에는 색 하나에 성격과 진행을 우겨넣어 **하나가 다른 하나를 가렸다.**
+const NEED_FILL = STATUS_COLORS.방문필요
+const TONE_COLORS: Record<PinTone, string> = {
+  보통: STATUS_COLORS.방문완료,
+  정기방문: STATUS_COLORS.정기방문,
+  방문금지: STATUS_COLORS.방문금지,
+}
+
+/** 핀 하나의 실제 색 두 개 */
+function pinColors(building: Building): { fill: string; ring: string } {
+  const pin = getBuildingPin(building)
+  if (pin.filled) return { fill: TONE_COLORS[pin.tone], ring: '#ffffff' }
+  return { fill: NEED_FILL, ring: pin.ring ? TONE_COLORS[pin.ring] : '#ffffff' }
 }
 
 function cssVar(name: string, fallback: string): string {
@@ -335,8 +354,8 @@ function previewPinHtml(): string {
 // 동일 그림자). 상태(color × dimmed)별 data URI 캐시.
 const markerIconCache = new Map<string, string>()
 
-function markerIconUrl(color: string, isDimmed: boolean): string {
-  const key = `${color}|${isDimmed ? 1 : 0}`
+function markerIconUrl(color: string, isDimmed: boolean, ring = '#ffffff'): string {
+  const key = `${color}|${ring}|${isDimmed ? 1 : 0}`
   const cached = markerIconCache.get(key)
   if (cached) return cached
   // CSS: 14x14 박스 + border 2px(inside) = 외곽 14 → SVG: 12x12 path + stroke 2(centered) = 외곽 14
@@ -348,7 +367,7 @@ function markerIconUrl(color: string, isDimmed: boolean): string {
     `</filter></defs>` +
     `<g transform="rotate(-45 20 20)"${isDimmed ? ' opacity="0.38"' : ''} filter="url(#s)">` +
     `<path d="M14 26 L14 20 A6 6 0 0 1 20 14 A6 6 0 0 1 26 20 A6 6 0 0 1 20 26 Z" ` +
-    `fill="${color}" stroke="#ffffff" stroke-width="2"/></g></svg>`
+    `fill="${color}" stroke="${ring}" stroke-width="2"/></g></svg>`
   const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
   markerIconCache.set(key, url)
   return url
@@ -685,7 +704,7 @@ function NaverMapCanvas({
                 anchor: new naver.maps.Point(20, 30),
               }
             : {
-                url: markerIconUrl(STATUS_COLORS[getBuildingStatus(building)], isDimmed),
+                url: (({ fill, ring }) => markerIconUrl(fill, isDimmed, ring))(pinColors(building)),
                 size: new naver.maps.Size(40, 40),
                 scaledSize: new naver.maps.Size(40, 40),
                 anchor: new naver.maps.Point(20, 30),

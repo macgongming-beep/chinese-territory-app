@@ -59,6 +59,7 @@ export type RawBuilding = {
   memo: string | null
   is_chinese_heavy: boolean | null
   is_restaurant?: boolean | null
+  units_surveyed?: boolean | null
   units: RawUnit[]
 }
 
@@ -244,6 +245,7 @@ export function toBuilding(raw: RawBuilding): Building {
     memo: raw.memo ?? undefined,
     isChineseHeavy: raw.is_chinese_heavy ?? false,
     isRestaurant: raw.is_restaurant ?? false,
+    unitsSurveyed: raw.units_surveyed ?? false,
     units: [...raw.units]
       .sort((a, b) => unitNumberCollator.compare(a.number, b.number))
       .map((u) => ({

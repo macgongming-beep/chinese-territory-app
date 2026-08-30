@@ -110,6 +110,7 @@ function App() {
     deleteBuildings,
     deleteCards,
     updateBuilding,
+    setUnitsSurveyed,
     moveBuildingToCard,
     reassignBuildingsToCards,
     saveCardBoundary,
@@ -373,6 +374,7 @@ function App() {
             onDeleteCards={deleteCards}
             onMergeDuplicateBuildings={mergeDuplicateBuildings}
             onUpdateBuilding={updateBuilding}
+              onSetUnitsSurveyed={setUnitsSurveyed}
             onMoveBuildingToCard={moveBuildingToCard}
             onReassignBuildingsToCards={reassignBuildingsToCards}
             onDeleteSpecialPeriod={deleteSpecialPeriod}
@@ -477,6 +479,7 @@ function App() {
               onCreateBuilding={createBuilding}
               onDeleteBuilding={deleteBuilding}
               onUpdateBuilding={updateBuilding}
+              onSetUnitsSurveyed={setUnitsSurveyed}
               onDeleteUnit={deleteUnitFromBuilding}
               onToggleUser={toggleUserOnCard}
               onEndServiceSession={endServiceSession}

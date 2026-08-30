@@ -246,6 +246,7 @@ export function MobileHome({
   onCreateBuilding,
   onDeleteBuilding,
   onUpdateBuilding,
+  onSetUnitsSurveyed,
   onDeleteUnit,
   onCreateCalendarEvent,
   onCreateRepeatCalendarEvents,
@@ -344,6 +345,8 @@ export function MobileHome({
   onCreateBuilding: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => void
   onDeleteBuilding: (buildingId: number) => void
   onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number) => void
+  /** 건물의 '세대를 다 파악함' 표시. 없으면 완료로 안 친다 (utils/buildingPin) */
+  onSetUnitsSurveyed?: (buildingId: number, surveyed: boolean) => Promise<boolean> | void
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onCreateCalendarEvent: (input: { date: string; time: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
   onCreateRepeatCalendarEvents?: (dates: string[], input: { time: string; endTime?: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
@@ -695,6 +698,7 @@ export function MobileHome({
             onCreateBuilding={onCreateBuilding}
             onDeleteBuilding={onDeleteBuilding}
             onUpdateBuilding={onUpdateBuilding}
+            onSetUnitsSurveyed={onSetUnitsSurveyed}
             onDeleteUnit={onDeleteUnit}
             onToggleRegularVisit={onToggleRegularVisit}
             onToggleChinese={onToggleChinese}

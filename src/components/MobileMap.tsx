@@ -4,10 +4,11 @@ import { canEditVisitor, visitorOptionsFrom, visitorOptionsWithCurrent } from '.
 import { useSearchParams } from 'react-router-dom'
 import { MapCanvas } from './MapCanvas'
 import type { MapAggregateMarker } from './MapCanvas'
-import type { Building, BuildingStatus, CalendarEvent, CardBoundary, EventRestaurantAssignment, InformalAsset, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, CalendarEvent, CardBoundary, EventRestaurantAssignment, InformalAsset, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t, translateKoreanAddress, currentLang } from '../i18n'
-import { getBuildingStatus, findCardForCoordinates } from '../utils/mapUtils'
+import { findCardForCoordinates } from '../utils/mapUtils'
+import { getPinGroup, type PinGroup } from '../utils/buildingPin'
 import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
@@ -60,6 +61,7 @@ export function MobileMap({
   visitHistories,
   specialPeriods,
   allUsers = [],
+  onSetUnitsSurveyed,
   onSetRegularVisitor,
   eventRestaurantAssignments = [],
   calendarEvents = [],
@@ -100,6 +102,8 @@ export function MobileMap({
   visitHistories: VisitHistory[]
   specialPeriods?: SpecialPeriod[]
   allUsers?: { id: number; name: string; approvalStatus?: 'pending' | 'approved' | 'blocked' }[]
+  /** 건물의 '세대를 다 파악함' 표시. 없으면 완료로 안 친다 (utils/buildingPin) */
+  onSetUnitsSurveyed?: (buildingId: number, surveyed: boolean) => Promise<boolean> | void
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   calendarEvents?: CalendarEvent[]
@@ -154,14 +158,14 @@ export function MobileMap({
 
   // 필터
   const [strategyFilter] = useState<StrategyFilter>('전체')
-  const [statusFilter] = useState<BuildingStatus | '전체'>('전체')
+  const [statusFilter] = useState<PinGroup | '전체'>('전체')
   const [buildingTypeFilter, setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
 
   // 지도/패널 상태
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(focusedBuildingId ?? null)
   const [expandedBuildingIds, setExpandedBuildingIds] = useState<Set<number>>(new Set())
-  const [collapsedStatusGroups, setCollapsedStatusGroups] = useState<Set<BuildingStatus>>(new Set(['방문완료']))
-  const [hiddenMapStatuses, setHiddenMapStatuses] = useState<Set<BuildingStatus>>(new Set())
+  const [collapsedStatusGroups, setCollapsedStatusGroups] = useState<Set<PinGroup>>(new Set(['완료']))
+  const [hiddenMapStatuses, setHiddenMapStatuses] = useState<Set<PinGroup>>(new Set())
   const [fullScreenUnit, setFullScreenUnit] = useState<{ unit: Unit; building: Building; unitHistories: VisitHistory[] } | null>(null)
   // buildings가 fetchAll 후 업데이트될 때 스냅샷이 아닌 최신 unit 사용
   // 비공식 봉사 장소 — PC 와 같은 규칙이다.
@@ -376,7 +380,7 @@ export function MobileMap({
     setSheetHeight((height) => Math.max(height, HALF_HEIGHT))
     setCollapsedStatusGroups((prev) => {
       const next = new Set(prev)
-      next.delete(getBuildingStatus(building))
+      next.delete(getPinGroup(building))
       return next
     })
     setTimeout(() => {
@@ -501,7 +505,7 @@ export function MobileMap({
       if (selectedCardId != null && b.cardId !== selectedCardId) return false
       if (selectedCardId == null && focusedCardIdSet.size > 0 && !focusedCardIdSet.has(b.cardId)) return false
       if (selectedCardId == null && (selectedArea || selectedRegion) && !scopedCardIds.has(b.cardId)) return false
-      if (statusFilter !== '전체' && getBuildingStatus(b) !== statusFilter) return false
+      if (statusFilter !== '전체' && getPinGroup(b) !== statusFilter) return false
       if (b.units.length > 0 && !b.units.some(unitMatchesStrategyFilter)) return false
       return true
     }),
@@ -523,13 +527,13 @@ export function MobileMap({
   )
 
   const statusCounts = useMemo(() =>
-    filteredBuildings.reduce<Record<BuildingStatus, number>>(
-      (acc, b) => { const s = getBuildingStatus(b); acc[s] += 1; return acc },
-      { 방문필요: 0, 방문완료: 0, 방문금지: 0, 정기방문: 0 }
+    filteredBuildings.reduce<Record<PinGroup, number>>(
+      (acc, b) => { const s = getPinGroup(b); acc[s] += 1; return acc },
+      { 방문필요: 0, 확인필요: 0, 완료: 0, 방문금지: 0, 정기방문: 0 }
     ), [filteredBuildings])
 
   const mapBuildings = useMemo(
-    () => filteredBuildings.filter((building) => !hiddenMapStatuses.has(getBuildingStatus(building))),
+    () => filteredBuildings.filter((building) => !hiddenMapStatuses.has(getPinGroup(building))),
     [filteredBuildings, hiddenMapStatuses],
   )
 
@@ -616,11 +620,13 @@ export function MobileMap({
 
   const buildingGroups = useMemo(() => {
     if (shouldUseAggregateMap) return []
-    const order: BuildingStatus[] = ['방문금지', '방문필요', '정기방문', '방문완료']
-    const grouped = new Map<BuildingStatus, Building[]>()
+    // 목록 순서: 가야 할 것부터. '확인 필요' 는 방문필요 바로 다음이다 —
+    // 가 볼 가치가 있는 곳이지 끝난 곳이 아니다.
+    const order: PinGroup[] = ['방문금지', '방문필요', '확인필요', '정기방문', '완료']
+    const grouped = new Map<PinGroup, Building[]>()
     order.forEach((status) => grouped.set(status, []))
     filteredBuildings.forEach((building) => {
-      grouped.get(getBuildingStatus(building))?.push(building)
+      grouped.get(getPinGroup(building))?.push(building)
     })
     return order.map((status) => ({
       status,
@@ -640,7 +646,7 @@ export function MobileMap({
     setFullScreenUnit(null)
   }, [filteredBuildings, selectedBuildingId])
 
-  const toggleStatusGroup = (status: BuildingStatus) => {
+  const toggleStatusGroup = (status: PinGroup) => {
     setCollapsedStatusGroups((prev) => {
       const next = new Set(prev)
       if (next.has(status)) next.delete(status)
@@ -649,7 +655,7 @@ export function MobileMap({
     })
   }
 
-  const toggleStatusFromMap = (status: BuildingStatus) => {
+  const toggleStatusFromMap = (status: PinGroup) => {
     const nextHidden = !hiddenMapStatuses.has(status)
     setHiddenMapStatuses((prev) => {
       const next = new Set(prev)
@@ -1112,7 +1118,7 @@ export function MobileMap({
                   // 해당 건물 그룹이 접혀 있으면 자동으로 펼치기 (예: 방문완료 그룹)
                   const b = buildings.find(item => item.id === id)
                   if (b) {
-                    const grp = getBuildingStatus(b)
+                    const grp = getPinGroup(b)
                     setCollapsedStatusGroups((prev) => { const n = new Set(prev); n.delete(grp); return n })
                   }
 
@@ -1174,10 +1180,13 @@ export function MobileMap({
             <div className="mobile-map-legend-card" aria-label={t(language, 'map.status')}>
               {([
                 { status: '방문필요', label: t(language, 'zone.summaryNeed') },
-                { status: '방문완료', label: t(language, 'zone.summaryDone') },
+                // ⚠ '확인 필요' — 등록된 세대는 다 갔지만 **세대를 다 파악했는지 모른다.**
+                //   예전에는 이것도 '완료'(초록)라 아무도 안 갔다.
+                { status: '확인필요', label: t(language, 'map.needsCheck') },
+                { status: '완료', label: t(language, 'zone.summaryDone') },
                 { status: '방문금지', label: t(language, 'map.forbidden') },
                 { status: '정기방문', label: t(language, 'map.regularVisit') },
-              ] as Array<{ status: BuildingStatus; label: string }>).map(({ status, label }) => {
+              ] as Array<{ status: PinGroup; label: string }>).map(({ status, label }) => {
                 const collapsed = collapsedStatusGroups.has(status)
                 const hidden = hiddenMapStatuses.has(status)
                 return (
@@ -1383,6 +1392,19 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                 onClick={() => setBuildingMenuId(null)}
                               />
                               <div className="bld-menu-popover" role="menu">
+                                {/* ⚠ **이 표시가 있어야 '완료'(채운 초록)로 바뀐다.**
+                                    시스템은 '등록된 세대' 만 안다 — 104·105호만 등록된 건물에서 둘 다 가면
+                                    100% 가 되어 아무도 안 갔다. 몇 세대가 있는지는 사람만 안다. */}
+                                {onSetUnitsSurveyed && (
+                                  <button
+                                    type="button"
+                                    className={building.unitsSurveyed ? 'bld-menu-on' : undefined}
+                                    onClick={() => {
+                                      setBuildingMenuId(null)
+                                      void onSetUnitsSurveyed(building.id, !building.unitsSurveyed)
+                                    }}
+                                  >{building.unitsSurveyed ? `✓ ${t(language, 'map.unitsSurveyed')}` : t(language, 'map.unitsSurveyed')}</button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => {

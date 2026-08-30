@@ -290,6 +290,33 @@ export function makeBuildingMutations(deps: {
     return result
   }
 
+  /**
+   * **이 건물의 세대를 다 파악했는가** 를 표시한다.
+   *
+   * ⚠ 이 표시가 없으면 등록된 세대를 다 방문해도 '완료' 로 치지 않는다
+   *   (`utils/buildingPin`). 시스템은 '등록된 세대' 만 알기 때문이다 —
+   *   104·105호만 등록된 건물에서 둘 다 가면 100% 가 되어 아무도 안 갔다.
+   */
+  const setUnitsSurveyed = async (buildingId: number, surveyed: boolean) => {
+    const result = await supabase.from('buildings')
+      .update({ units_surveyed: surveyed }).eq('id', buildingId)
+    if (result.error) {
+      reportMutationError(msg('세대 파악 표시를 저장하지 못했습니다.'), result.error)
+      return false
+    }
+    const building = buildings.find((b) => b.id === buildingId)
+    const card = building ? cards.find((c) => c.id === building.cardId) : undefined
+    await logServiceAction({
+      cardId: card?.id ?? null,
+      action: 'building_units_surveyed',
+      targetType: 'building',
+      targetId: buildingId,
+      details: { building_name: building?.name ?? null, surveyed },
+    })
+    await fetchAll()
+    return true
+  }
+
   const updateBuilding = async (
     buildingId: number,
     name: string,
@@ -377,6 +404,7 @@ export function makeBuildingMutations(deps: {
     deleteBuildings,
     mergeDuplicateBuildings,
     updateBuilding,
+    setUnitsSurveyed,
     moveBuildingToCard,
     reassignBuildingsToCards,
   }

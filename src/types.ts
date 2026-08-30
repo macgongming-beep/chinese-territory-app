@@ -162,6 +162,14 @@ export type Building = {
   memo?: string
   isChineseHeavy?: boolean
   isRestaurant?: boolean
+  /**
+   * **이 건물의 세대를 다 파악했는가.** 사람이 표시한다.
+   *
+   * ⚠ 시스템은 '등록된 세대' 만 안다. 등록이 둘뿐인데 둘 다 방문하면 100% 가 되어
+   *   '완료' 로 보였고, 실제로는 호수가 더 있는데 아무도 안 갔다.
+   *   이 표시가 없으면 **완료로 치지 않는다** (utils/buildingPin).
+   */
+  unitsSurveyed?: boolean
   units: Unit[]
 }
 
