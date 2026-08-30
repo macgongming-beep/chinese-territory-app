@@ -22,7 +22,8 @@
     "smoke:notify": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeNotifyRpc.js",
     "smoke:headers": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeHeaders.js",
     "smoke:lockdown": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeLockdown.js",
-    "apply:lockdown": "node scripts/applyLockdown.js"
+    "apply:lockdown": "node scripts/applyLockdown.js",
+    "apply:security-followup": "node scripts/applySecurityFollowup.js"
   },
   "dependencies": {
     "@sentry/react": "^10.53.1",
