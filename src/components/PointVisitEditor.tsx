@@ -4,6 +4,7 @@
 // 새 기록인지 수정인지도 부모가 판단한다 — 두 콜백이 갈리는 지점이라
 // 화면이 헷갈리면 기록을 덮어쓴다.
 import { useState } from 'react'
+import { visitorOptionsWithCurrent } from '../utils/visitorPicker'
 import type { TimeSlot, UnitStatus } from '../types'
 
 export type VisitDraft = {
@@ -106,12 +107,9 @@ export function PointVisitEditor({ mode, label, initial, visitorOptions, onClose
                   value={draft.visitor ?? ''}
                   onChange={(e) => set('visitor', e.target.value)}
                 >
-                  {/* 지금 값이 목록에 없을 수 있다 (탈퇴했거나 이름이 바뀐 사람).
-                      그럴 때 목록에 없다고 조용히 다른 사람으로 바뀌면 안 된다. */}
-                  {draft.visitor && !visitorOptions.includes(draft.visitor) && (
-                    <option value={draft.visitor}>{draft.visitor}</option>
-                  )}
-                  {visitorOptions.map((name) => (
+                  {/* 목록에 없는 이름(탈퇴·개명)은 utils/visitorPicker 가 끼워 넣는다 —
+                      빠지면 창을 열었다 닫기만 해도 남의 기록이 된다 */}
+                  {visitorOptionsWithCurrent(visitorOptions, draft.visitor).map((name) => (
                     <option key={name} value={name}>{name}</option>
                   ))}
                 </select>

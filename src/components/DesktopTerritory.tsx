@@ -1,4 +1,5 @@
 import { t } from '../i18n'
+import { canEditVisitor, visitorOptionsFrom } from '../utils/visitorPicker'
 import type { AppLanguage } from '../i18n'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
@@ -204,7 +205,7 @@ export function DesktopTerritory({
   // 방문자를 고칠 수 있는 사람: 관리자·개발자·인도자.
   // ⚠ 일반 사용자에게는 칸 자체를 안 보여준다 — 자기 기록만 적는 사람에게
   //   남의 이름을 고를 수단을 주면 실수로 엉뚱하게 남는다.
-  const canEditVisitor = role === 'admin' || role === 'developer' || role === 'leader'
+  const canEditVisitorHere = canEditVisitor(role)
   const [selectedCardId, setSelectedCardId] = useState<number | null>(null)
   const [checkedCardIds, setCheckedCardIds] = useState<Set<number>>(new Set())
   const [checkedBuildingIds, setCheckedBuildingIds] = useState<Set<number>>(new Set())
@@ -302,10 +303,10 @@ export function DesktopTerritory({
   useEffect(() => {
     // ⚠ 인도자도 방문자를 고칠 수 있으므로 목록이 필요하다.
     //   예전엔 관리자일 때만 받아서, 인도자에게는 고를 이름이 없었다.
-    if (canEditVisitor && allUsers.length === 0) {
+    if (canEditVisitorHere && allUsers.length === 0) {
       fetchAllUsers()
     }
-  }, [allUsers.length, fetchAllUsers, canEditVisitor])
+  }, [allUsers.length, fetchAllUsers, canEditVisitorHere])
 
   const cardMap = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards])
   const buildingsByCardId = useMemo(() => {
@@ -529,14 +530,7 @@ export function DesktopTerritory({
   // 방문자로 고를 수 있는 이름. 승인·활성인 사람만.
   // ⚠ 지금 기록에 적힌 이름이 목록에 없을 수 있다(탈퇴·개명). 그건 편집기가
   //   따로 살려 둔다 — 목록에 없다고 조용히 다른 사람으로 바뀌면 안 된다.
-  const visitorNameOptions = Array.from(
-    new Set(
-      allUsers
-        .filter((u) => (u.approvalStatus ?? 'approved') === 'approved')
-        .map((u) => u.name)
-        .filter(Boolean),
-    ),
-  ).sort((a, b) => a.localeCompare(b, 'ko'))
+  const visitorNameOptions = visitorOptionsFrom(allUsers)
 
   const leaderOptions = Array.from(
     new Set(
@@ -1246,7 +1240,7 @@ export function DesktopTerritory({
              적으므로 고를 이유가 없고, 있으면 남의 이름으로 적기 쉬워진다.
              ⚠ **새로 적을 때(add)는 안 준다** — 그때는 내 이름으로 남고,
                 다르면 저장한 뒤 수정에서 고친다. 적는 흐름을 무겁게 하지 않는다. */
-          visitorOptions={pointVisitEditor.mode === 'edit' && canEditVisitor ? visitorNameOptions : undefined}
+          visitorOptions={pointVisitEditor.mode === 'edit' && canEditVisitorHere ? visitorNameOptions : undefined}
           initial={pointVisitEditor.draft}
           label={pointVisitEditor.label}
           mode={pointVisitEditor.mode}

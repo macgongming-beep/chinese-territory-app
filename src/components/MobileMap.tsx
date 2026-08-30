@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- 네이버 지도 SDK(window.naver)는 공식 TS 타입이 없어 any 사용이 불가피함 */
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { canEditVisitor, visitorOptionsFrom, visitorOptionsWithCurrent } from '../utils/visitorPicker'
 import { useSearchParams } from 'react-router-dom'
 import { MapCanvas } from './MapCanvas'
 import type { MapAggregateMarker } from './MapCanvas'
@@ -91,7 +92,7 @@ export function MobileMap({
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
   onUndoLatestVisit: (buildingId: number, unitId: number) => void
-  onUpdateVisitHistory: (historyId: number, unitId: number, input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean }) => void
+  onUpdateVisitHistory: (historyId: number, unitId: number, input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean; visitor?: string }) => void
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
   onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
@@ -256,6 +257,14 @@ export function MobileMap({
     ? cards.find((card) => card.id === activeServiceSession.primaryCardId)
     : undefined
   const isUserMap = actualRole === 'user'
+
+  // 방문자를 고칠 수 있는 사람: 관리자·개발자·인도자.
+  // 봉사를 마치고 한 사람이 몰아서 입력하면 **실제로 간 형제가 아니라 입력한
+  // 사람 이름**으로 남아 통계가 어긋난다. 수정할 때 고칠 수 있게 한다.
+  // ⚠ 일반 사용자에게는 칸 자체를 안 보여준다 — 자기 기록만 적는 사람에게
+  //   남의 이름을 고를 수단을 주면 실수로 엉뚱하게 남는다.
+  const canEditVisitorHere = canEditVisitor(actualRole)
+  const visitorNameOptions = visitorOptionsFrom(allUsers)
   // territory 화면의 [지도] 버튼으로 진입 → focusedCardId 가 있음
   // 이 카드는 이미 userVisibleMapCardIds 로 본인 배정 카드만 통과했으므로
   // 봉사 시작 없이도 즉시 기록 가능
@@ -1730,6 +1739,24 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               </div>
             </div>
 
+            {/* 방문자 — 관리자·인도자만. 대신 입력한 기록을 실제 방문자로 돌려 놓는다 */}
+            {canEditVisitorHere && visitorNameOptions.length > 0 && (
+              <>
+                <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{msg('방문자')}</p>
+                <select
+                  value={historyToEdit.visitor || ''}
+                  onChange={e => setHistoryToEdit({ ...historyToEdit, visitor: e.target.value })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 13, boxSizing: 'border-box', marginBottom: 12 }}
+                >
+                  {/* 목록에 없는 이름(탈퇴·개명)은 utils/visitorPicker 가 끼워 넣는다 —
+                      빠지면 창을 열었다 닫기만 해도 남의 기록이 된다 */}
+                  {visitorOptionsWithCurrent(visitorNameOptions, historyToEdit.visitor).map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+              </>
+            )}
+
             {/* 메모 (그날 방문에 대한 것 — 세대 메모와 구분되게 라벨을 다르게) */}
             <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>{t(language, 'map.visitMemoLabel')}</p>
             <textarea
@@ -1769,6 +1796,9 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                     memo: historyToEdit.memo || '',
                     visitedAt: historyToEdit.visitedAt,
                     invitationLeft: historyToEdit.invitationLeft ?? false,
+                    // ⚠ 고칠 수 있는 사람이 아닐 때는 아예 안 넘긴다.
+                    //   넘기면(빈 값이라도) 이름이 지워질 수 있다.
+                    ...(canEditVisitorHere ? { visitor: historyToEdit.visitor } : {}),
                   })
                   setHistoryToEdit(null)
                 }}
@@ -1966,7 +1996,7 @@ function UnitDetailScreen({
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
-  onUpdateVisitHistory?: (historyId: number, unitId: number, input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean }) => void
+  onUpdateVisitHistory?: (historyId: number, unitId: number, input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean; visitor?: string }) => void
   currentVisitor?: string
   allUsers?: { id: number; name: string }[]
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
