@@ -16,7 +16,7 @@ const CARDS: Record<number, TerritoryCard> = {
 }
 const cardOf = (id: number) => CARDS[id]
 const SCOPE = { region: '전체', area: '전체', card: '전체' as const, type: '전체' }
-const TRAITS = { regularVisit: '전체', memo: '전체', chineseHeavy: '전체', restaurant: '전체' }
+const TRAITS = { regularVisit: '전체', memo: '전체', restaurant: '전체' }
 const ids = (list: Building[]) => list.map((b) => b.id)
 
 describe('① 범위', () => {
@@ -64,11 +64,6 @@ describe('② 속성', () => {
     expect(ids(filterBuildingsByTraits(list, { ...TRAITS, memo: '있음' }))).toEqual([])
   })
 
-  test('중국어 세대 많음', () => {
-    const list = [bld(1, { isChineseHeavy: true }), bld(2)]
-    expect(ids(filterBuildingsByTraits(list, { ...TRAITS, chineseHeavy: '있음' }))).toEqual([1])
-    expect(ids(filterBuildingsByTraits(list, { ...TRAITS, chineseHeavy: '없음' }))).toEqual([2])
-  })
 
   test('식당 / 식당 아님', () => {
     const list = [bld(1, { units: [unit({ isRestaurant: true })] }), bld(2)]

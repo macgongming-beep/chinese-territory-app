@@ -19,14 +19,12 @@ export function BuildingEditCells({
   chineseCount,
   onSave,
   onCancel,
-  onToggleHeavy,
 }: {
   building: Building
   cards: TerritoryCard[]
   chineseCount: number
   onSave: (draft: BuildingEditDraft) => void
   onCancel: () => void
-  onToggleHeavy: () => void
 }) {
   const [draft, setDraft] = useState<BuildingEditDraft>({
     name: building.name,
@@ -66,13 +64,6 @@ export function BuildingEditCells({
       </select>
       <span>{building.units.length}개</span>
       <span>{chineseCount}건</span>
-      <button
-        className={`building-heavy-toggle${building.isChineseHeavy ? ' active' : ''}`}
-        onClick={onToggleHeavy}
-        type="button"
-      >
-        {building.isChineseHeavy ? '다수' : '-'}
-      </button>
       <span className="building-row-actions">
         <button onClick={() => onSave(draft)} type="button">저장</button>
         <button onClick={onCancel} type="button">취소</button>

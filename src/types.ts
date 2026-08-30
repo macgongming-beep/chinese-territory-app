@@ -160,7 +160,6 @@ export type Building = {
   lng: number
   warning?: boolean
   memo?: string
-  isChineseHeavy?: boolean
   isRestaurant?: boolean
   /**
    * **이 건물의 세대를 다 파악했는가.** 사람이 표시한다.

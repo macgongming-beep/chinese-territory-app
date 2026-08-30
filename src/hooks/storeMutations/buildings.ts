@@ -325,14 +325,12 @@ export function makeBuildingMutations(deps: {
     lng?: number,
     type?: string,
     memo?: string,
-    isChineseHeavy?: boolean,
   ) => {
     const payload: Record<string, unknown> = { name, address }
     if (lat !== undefined) payload.lat = lat
     if (lng !== undefined) payload.lng = lng
     if (type !== undefined) payload.type = type
     if (memo !== undefined) payload.memo = memo
-    if (isChineseHeavy !== undefined) payload.is_chinese_heavy = isChineseHeavy
     const result = await supabase.from('buildings').update(payload).eq('id', buildingId)
     if (result.error) {
       reportMutationError(msg('건물 정보를 수정하지 못했습니다.'), result.error)

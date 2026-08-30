@@ -57,7 +57,6 @@ export type RawBuilding = {
   lng: number
   warning: boolean
   memo: string | null
-  is_chinese_heavy: boolean | null
   is_restaurant?: boolean | null
   units_surveyed?: boolean | null
   units: RawUnit[]
@@ -243,7 +242,6 @@ export function toBuilding(raw: RawBuilding): Building {
     lng: Number(raw.lng),
     warning: raw.warning,
     memo: raw.memo ?? undefined,
-    isChineseHeavy: raw.is_chinese_heavy ?? false,
     isRestaurant: raw.is_restaurant ?? false,
     unitsSurveyed: raw.units_surveyed ?? false,
     units: [...raw.units]

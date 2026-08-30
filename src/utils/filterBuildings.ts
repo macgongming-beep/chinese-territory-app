@@ -21,7 +21,6 @@ export type BuildingTraitFilters = {
   /** '전체' | '있음' | '없음' */
   regularVisit: string
   memo: string
-  chineseHeavy: string
   /** '전체' | '식당' | '식당 아님' */
   restaurant: string
 }
@@ -70,9 +69,6 @@ export function filterBuildingsByTraits(
     const hasMemo = buildingHasMemo(b)
     if (f.memo === '있음' && !hasMemo) return false
     if (f.memo === '없음' && hasMemo) return false
-
-    if (f.chineseHeavy === '있음' && !b.isChineseHeavy) return false
-    if (f.chineseHeavy === '없음' && b.isChineseHeavy) return false
 
     const restaurants = getRestaurantUnits(b).length
     if (f.restaurant === '식당' && restaurants === 0) return false

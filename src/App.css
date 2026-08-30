@@ -12505,7 +12505,7 @@ button:focus-visible {
   .building-management-head,
   .building-management-row {
     display: grid;
-    grid-template-columns: 34px minmax(130px, 1fr) minmax(190px, 1.3fr) minmax(140px, 0.85fr) 104px 56px 60px 52px 110px;
+    grid-template-columns: 34px minmax(130px, 1fr) minmax(190px, 1.3fr) minmax(140px, 0.85fr) 104px 56px 60px 110px;
     gap: 12px;
     align-items: center;
   }
@@ -12614,23 +12614,6 @@ button:focus-visible {
     font-weight: 700;
   }
 
-  .building-management-row .building-heavy-toggle {
-    justify-self: start;
-    min-height: 26px;
-    padding: 0 8px;
-    border-radius: var(--radius-full);
-    border-color: var(--border-default);
-    background: var(--bg-card);
-    color: var(--gray-400);
-    font-size: 11px;
-    font-weight: 800;
-  }
-
-  .building-management-row .building-heavy-toggle.active {
-    border-color: var(--warning-100);
-    background: var(--warning-50);
-    color: var(--warning-700);
-  }
 
   .building-management-row .building-name-link {
     min-height: auto;

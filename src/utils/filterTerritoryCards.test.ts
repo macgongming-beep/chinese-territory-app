@@ -13,12 +13,11 @@ const card = (id: number, over: Partial<TerritoryCard> = {}): TerritoryCard => (
 
 const ALL: CardFilters = {
   region: '전체', area: '전체', assignment: '전체', leader: '전체',
-  regularVisit: '전체', chineseHeavy: '전체', status: '전체',
+  regularVisit: '전체', status: '전체',
 }
 const deps = (over: Partial<CardFilterDeps> = {}): CardFilterDeps => ({
   leadersOf: () => [],
   hasRegularVisit: () => false,
-  chineseHeavyCount: () => 0,
   ...over,
 })
 const ids = (cards: TerritoryCard[]) => cards.map((c) => c.id)
@@ -52,11 +51,6 @@ describe('정기방문 · 중국어 세대', () => {
     const d = deps({ hasRegularVisit: (c) => c.id === 1 })
     expect(ids(filterTerritoryCards([card(1), card(2)], { ...ALL, regularVisit: '있음' }, d))).toEqual([1])
     expect(ids(filterTerritoryCards([card(1), card(2)], { ...ALL, regularVisit: '없음' }, d))).toEqual([2])
-  })
-  test('중국어 세대 있음/없음', () => {
-    const d = deps({ chineseHeavyCount: (id) => (id === 2 ? 3 : 0) })
-    expect(ids(filterTerritoryCards([card(1), card(2)], { ...ALL, chineseHeavy: '있음' }, d))).toEqual([2])
-    expect(ids(filterTerritoryCards([card(1), card(2)], { ...ALL, chineseHeavy: '없음' }, d))).toEqual([1])
   })
 })
 

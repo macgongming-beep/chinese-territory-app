@@ -18,7 +18,6 @@ export type CardFilters = {
   /** '전체' | '있음' | '없음' */
   regularVisit: string
   /** '전체' | '있음' | '없음' */
-  chineseHeavy: string
   /** '전체' | '완료·제외' | 카드 상태값 */
   status: string
 }
@@ -26,7 +25,6 @@ export type CardFilters = {
 export type CardFilterDeps = {
   leadersOf: (card: TerritoryCard) => string[]
   hasRegularVisit: (card: TerritoryCard) => boolean
-  chineseHeavyCount: (cardId: number) => number
 }
 
 export function filterTerritoryCards(
@@ -47,10 +45,6 @@ export function filterTerritoryCards(
     const hasRegular = deps.hasRegularVisit(card)
     if (f.regularVisit === '있음' && !hasRegular) return false
     if (f.regularVisit === '없음' && hasRegular) return false
-
-    const heavy = deps.chineseHeavyCount(card.id) > 0
-    if (f.chineseHeavy === '있음' && !heavy) return false
-    if (f.chineseHeavy === '없음' && heavy) return false
 
     if (f.status !== '전체') {
       if (f.status === '완료·제외') {

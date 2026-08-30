@@ -36,8 +36,6 @@ with checks as (
   select '컬럼: calendar_events.assignment_shared_at',
     case when exists (select 1 from information_schema.columns where table_name='calendar_events' and column_name='assignment_shared_at') then 'OK' else '❌ MISSING → event_assignment_status.sql' end
   union all
-  select '컬럼: buildings.is_chinese_heavy (중국어 다수)',
-    case when exists (select 1 from information_schema.columns where table_name='buildings' and column_name='is_chinese_heavy') then 'OK' else '❌ MISSING → add_is_chinese_heavy.sql' end
   union all
   select '컬럼: buildings.is_restaurant (식당 마킹)',
     case when exists (select 1 from information_schema.columns where table_name='buildings' and column_name='is_restaurant') then 'OK' else '❌ MISSING → v2_assignment_model.sql' end

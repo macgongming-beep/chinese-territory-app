@@ -142,7 +142,7 @@ export function DesktopTerritory({
   onImportBuildings: (inputs: CsvBuildingImport[]) => Promise<{ inserted: number; skipped: number }>
   onMoveBuildingToCard: (buildingId: number, cardId: number) => void
   onReassignBuildingsToCards: (updates: Array<{ buildingId: number; cardId: number }>) => Promise<{ updated: number; failed: number }>
-  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => void
+  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
@@ -234,7 +234,6 @@ export function DesktopTerritory({
   const [assignmentFilter, setAssignmentFilter] = useSessionState<'전체' | '배정' | '미배정'>('dt.assignmentFilter', '전체')
   const [leaderFilter, setLeaderFilter] = useSessionState('dt.leaderFilter', '전체')
   const [regularVisitFilter, setRegularVisitFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.regularVisitFilter', '전체')
-  const [cardChineseHeavyFilter, setCardChineseHeavyFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.cardChineseHeavyFilter', '전체')
   const [cardStatusFilter, setCardStatusFilter] = useSessionState<CardStatusFilter>('dt.cardStatusFilter', '전체')
   const [doneExcludedOpen, setDoneExcludedOpen] = useState(false)
   const [cardFilterPanelOpen, setCardFilterPanelOpen] = useState(false)
@@ -251,7 +250,6 @@ export function DesktopTerritory({
   const [pointKindFilter, setPointKindFilter] = useSessionState<PointKindFilter>('dt.pointKindFilter', '중국어')
   const [buildingRegularFilter, setBuildingRegularFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingRegularFilter', '전체')
   const [buildingMemoFilter, setBuildingMemoFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingMemoFilter', '전체')
-  const [buildingChineseHeavyFilter, setBuildingChineseHeavyFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.buildingChineseHeavyFilter', '전체')
   // 식당 등록 여부 — 상가 중 어디가 식당인지 골라 보기 위함
   const [buildingRestaurantFilter, setBuildingRestaurantFilter] = useSessionState<'전체' | '식당' | '식당 아님'>('dt.buildingRestaurantFilter', '전체')
   const [pointRegularFilter, setPointRegularFilter] = useSessionState<'전체' | '있음' | '없음'>('dt.pointRegularFilter', '전체')
@@ -428,9 +426,6 @@ export function DesktopTerritory({
     card.regularVisitPoints.length > 0 ||
     (buildingsByCardId.get(card.id) ?? []).some((building) => building.units.some((unit) => unit.isRegularVisit)),
     [buildingsByCardId])
-  const cardChineseHeavyCount = useCallback((cardId: number) =>
-    (buildingsByCardId.get(cardId) ?? []).filter((building) => building.isChineseHeavy).length,
-    [buildingsByCardId])
 
   const leaderFilterOptions = Array.from(
     new Set(cards.flatMap((card) => getCardLeaderList(card))),
@@ -445,16 +440,14 @@ export function DesktopTerritory({
       assignment: assignmentFilter,
       leader: leaderFilter,
       regularVisit: regularVisitFilter,
-      chineseHeavy: cardChineseHeavyFilter,
       status: cardStatusFilter,
     }, {
       leadersOf: getCardLeaderList,
       hasRegularVisit: cardHasRegularVisit,
-      chineseHeavyCount: cardChineseHeavyCount,
     }),
     [cards, regionFilter, areaFilter, assignmentFilter, leaderFilter,
-     regularVisitFilter, cardChineseHeavyFilter, cardStatusFilter,
-     getCardLeaderList, cardHasRegularVisit, cardChineseHeavyCount],
+     regularVisitFilter, cardStatusFilter,
+     getCardLeaderList, cardHasRegularVisit],
   )
   const isDoneExcludedCard = (card: TerritoryCard) => {
     const state = getTerritoryCardOperationalState(card)
@@ -490,12 +483,10 @@ export function DesktopTerritory({
   const activeAdvancedCardFilterCount =
     (leaderFilter !== '전체' ? 1 : 0) +
     (regularVisitFilter !== '전체' ? 1 : 0) +
-    (cardChineseHeavyFilter !== '전체' ? 1 : 0) +
     (cardStatusFilter !== '전체' ? 1 : 0)
   const activeAdvancedBuildingFilterCount =
     (buildingRegularFilter !== '전체' ? 1 : 0) +
-    (buildingMemoFilter !== '전체' ? 1 : 0) +
-    (buildingChineseHeavyFilter !== '전체' ? 1 : 0)
+    (buildingMemoFilter !== '전체' ? 1 : 0)
   const activeAdvancedPointFilterCount =
     (pointRegularFilter !== '전체' ? 1 : 0) +
     (pointMemoFilter !== '전체' ? 1 : 0)
@@ -605,10 +596,10 @@ export function DesktopTerritory({
   const filteredBuildings = useMemo(
     () => filterBuildingsByTraits(baseFilteredBuildings, {
       regularVisit: buildingRegularFilter, memo: buildingMemoFilter,
-      chineseHeavy: buildingChineseHeavyFilter, restaurant: buildingRestaurantFilter,
+      restaurant: buildingRestaurantFilter,
     }),
     [baseFilteredBuildings, buildingRegularFilter, buildingMemoFilter,
-     buildingChineseHeavyFilter, buildingRestaurantFilter],
+     buildingRestaurantFilter],
   )
 
 
@@ -807,19 +798,6 @@ export function DesktopTerritory({
     setEditingBuildingId(null)
   }
 
-  const toggleChineseHeavyBuilding = (building: Building) => {
-    onUpdateBuilding(
-      building.id,
-      building.name,
-      building.address,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      !building.isChineseHeavy,
-    )
-  }
-
   const totalCards = cards.length
   const assignedCards = cards.filter((card) => getCardLeaderList(card).length > 0).length
   const totalUnits = cards.reduce((sum, card) => sum + card.units, 0)
@@ -840,7 +818,7 @@ export function DesktopTerritory({
       // 세대ID 를 맨 앞에 — 엑셀에서 다른 파일(전화 조사 시트 등)과 이어 붙일 때 열쇠가 된다.
       // 상호·주소는 바뀌지만 세대ID 는 안 바뀐다
       ? ['세대ID', '카드명', '지역', '동', '건물명', '주소', '유형', '호수', '식당', '중국어', '정기방문', '정기방문자', '최근 방문', '메모']
-      : ['카드명', '지역', '동', '건물명', '주소', '유형', '식당', '세대', '중국어', '중국어 다수', '정기방문', '건물 메모', '세대 메모']
+      : ['카드명', '지역', '동', '건물명', '주소', '유형', '식당', '세대', '중국어', '정기방문', '건물 메모', '세대 메모']
     const rows = isPointList
       ? sortedPointRows.map(({ building, unit, latestHistory }) => {
           const card = cardMap.get(building.cardId)
@@ -879,7 +857,6 @@ export function DesktopTerritory({
             getRestaurantUnits(building).length || '',
             building.units.length,
             chineseCount,
-            building.isChineseHeavy ? 'Y' : '',
             regularCount,
             building.memo ?? '',
             unitMemos,
@@ -1590,14 +1567,6 @@ export function DesktopTerritory({
                     </div>
                   </div>
                   <div className="tbl-filter-group">
-                    <span className="tbl-filter-label">중국어 다수</span>
-                    <div className="tbl-mini-seg">
-                      {(['전체', '있음', '없음'] as const).map((f) => (
-                        <button key={f} className={cardChineseHeavyFilter === f ? 'active' : ''} onClick={() => setCardChineseHeavyFilter(f)} type="button">{f}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="tbl-filter-group">
                     <span className="tbl-filter-label">상태</span>
                     <div className="tbl-mini-seg">
                       {(['전체', '미배정', '완료·제외', '보류'] as CardStatusFilter[]).map((f) => (
@@ -1611,7 +1580,6 @@ export function DesktopTerritory({
                     onClick={() => {
                       setLeaderFilter('전체')
                       setRegularVisitFilter('전체')
-                      setCardChineseHeavyFilter('전체')
                       setCardStatusFilter('전체')
                     }}
                     type="button"
@@ -1673,21 +1641,12 @@ export function DesktopTerritory({
                       ))}
                     </div>
                   </div>
-                  <div className="tbl-filter-group">
-                    <span className="tbl-filter-label">중국어 다수</span>
-                    <div className="tbl-mini-seg">
-                      {(['전체', '있음', '없음'] as const).map((f) => (
-                        <button key={f} className={buildingChineseHeavyFilter === f ? 'active' : ''} onClick={() => setBuildingChineseHeavyFilter(f)} type="button">{f}</button>
-                      ))}
-                    </div>
-                  </div>
                   <button
                     className="tbl-filter-reset"
                     disabled={activeAdvancedBuildingFilterCount === 0}
                     onClick={() => {
                       setBuildingRegularFilter('전체')
                       setBuildingMemoFilter('전체')
-                      setBuildingChineseHeavyFilter('전체')
                     }}
                     type="button"
                   >
@@ -1830,7 +1789,6 @@ export function DesktopTerritory({
                 const chinesePointCount = cardBuildings.reduce((sum, b) => sum + b.units.filter((u) => u.isChinese).length, 0)
                 const storeCount = cardBuildings.filter((building) => building.type === '상가').length
                 const houseCount = cardBuildings.filter((building) => building.type === '주택').length
-                const chineseHeavyCount = cardChineseHeavyCount(card.id)
                 const hasBoundary = cardBoundaries.some((b) => b.cardId === card.id)
                 const leaders = getCardLeaderList(card)
                 // 인도자가 많아 이름을 다 나열하면 길어짐 → 인원수만 표시 (미배정/N명)
@@ -1886,7 +1844,6 @@ export function DesktopTerritory({
                     <td className="tnum" style={{ width: 80, textAlign: 'right', fontSize: 13 }}>
                       <div className="card-chinese-summary">
                         <span>{chinesePointCount}건</span>
-                        {chineseHeavyCount > 0 && <small>다수 {chineseHeavyCount}</small>}
                       </div>
                     </td>
                     <td className="tnum" style={{ width: 90, textAlign: 'right', fontSize: 13 }}>{card.regularVisits}건</td>
@@ -1982,7 +1939,6 @@ export function DesktopTerritory({
               <span>유형</span>
               <span>세대</span>
               <span>중국어</span>
-              <span>다수</span>
               <span>작업</span>
             </div>
             {sortedBuildings.map((building) => {
@@ -2009,7 +1965,6 @@ export function DesktopTerritory({
                         chineseCount={chineseCount}
                         onSave={(draft) => saveBuildingEdit(building, draft)}
                         onCancel={() => setEditingBuildingId(null)}
-                        onToggleHeavy={() => toggleChineseHeavyBuilding(building)}
                       />
                     ) : (
                       <>
@@ -2044,13 +1999,6 @@ export function DesktopTerritory({
                         </span>
                         <span>{building.units.length}개</span>
                         <span>{chineseCount}건</span>
-                        <button
-                          className={`building-heavy-toggle${building.isChineseHeavy ? ' active' : ''}`}
-                          onClick={() => toggleChineseHeavyBuilding(building)}
-                          type="button"
-                        >
-                          {building.isChineseHeavy ? '다수' : '-'}
-                        </button>
                         <span className="building-row-actions">
                           <button onClick={() => startBuildingEdit(building)} type="button">수정</button>
                           <button onClick={() => onOpenBuildingMap(building.id)} type="button">지도</button>
