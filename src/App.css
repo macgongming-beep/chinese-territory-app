@@ -6275,9 +6275,7 @@ button:focus-visible {
   border-left: 3px solid #4F7A4B;
 }
 .mobile-building-status-group.mobile-status-확인필요 {
-  /* 파란 선에 초록 안쪽선 — 핀의 '테두리만 초록' 과 같은 뜻 */
-  border-left: 3px solid #2D6CDF;
-  box-shadow: inset 3px 0 0 -1px #4F7A4B;
+  border-left: 3px solid #4F7A4B;
 }
 
 .mobile-building-status-group + .mobile-building-status-group {
@@ -6422,7 +6420,10 @@ button:focus-visible {
   background: #4F7A4B;
 }
 .status-확인필요 {
-  background: #2D6CDF;
+  /* 지도 핀과 같은 뜻으로 보여야 한다: **속이 비고 테두리만 색** =
+     "등록된 건 다 갔지만 세대를 다 파악했는지 모른다".
+     ⚠ 파란 속에 얇은 테두리로 했다가 **실제 크기에서 안 보여** 이렇게 바꿨다. */
+  background: #ffffff;
   box-shadow: inset 0 0 0 2px #4F7A4B;
 }
 

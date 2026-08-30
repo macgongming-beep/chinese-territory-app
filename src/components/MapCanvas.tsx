@@ -28,11 +28,19 @@ const TONE_COLORS: Record<PinTone, string> = {
   방문금지: STATUS_COLORS.방문금지,
 }
 
-/** 핀 하나의 실제 색 두 개 */
-function pinColors(building: Building): { fill: string; ring: string } {
+/**
+ * 핀 하나의 색 두 개와 테두리 굵기.
+ *
+ * ⚠ 처음엔 '파란 속 + 얇은 색 테두리' 로 했는데 **실제 크기에서 안 보였다**
+ *   (지도 위 핀은 26px 쯤이라 2px 테두리가 파랑에 먹힌다).
+ *   대신 **속을 비운다** — 색보다 형태가 먼저 눈에 들어오고,
+ *   "아직 안 채워졌다" 는 뜻도 그대로 맞는다. 채우면 꽉 찬 색이 된다.
+ */
+function pinColors(building: Building): { fill: string; ring: string; ringWidth: number } {
   const pin = getBuildingPin(building)
-  if (pin.filled) return { fill: TONE_COLORS[pin.tone], ring: '#ffffff' }
-  return { fill: NEED_FILL, ring: pin.ring ? TONE_COLORS[pin.ring] : '#ffffff' }
+  if (pin.filled) return { fill: TONE_COLORS[pin.tone], ring: '#ffffff', ringWidth: 2 }
+  if (pin.ring) return { fill: '#ffffff', ring: TONE_COLORS[pin.ring], ringWidth: 4 }
+  return { fill: NEED_FILL, ring: '#ffffff', ringWidth: 2 }
 }
 
 function cssVar(name: string, fallback: string): string {
@@ -354,8 +362,8 @@ function previewPinHtml(): string {
 // 동일 그림자). 상태(color × dimmed)별 data URI 캐시.
 const markerIconCache = new Map<string, string>()
 
-function markerIconUrl(color: string, isDimmed: boolean, ring = '#ffffff'): string {
-  const key = `${color}|${ring}|${isDimmed ? 1 : 0}`
+function markerIconUrl(color: string, isDimmed: boolean, ring = '#ffffff', ringWidth = 2): string {
+  const key = `${color}|${ring}|${ringWidth}|${isDimmed ? 1 : 0}`
   const cached = markerIconCache.get(key)
   if (cached) return cached
   // CSS: 14x14 박스 + border 2px(inside) = 외곽 14 → SVG: 12x12 path + stroke 2(centered) = 외곽 14
@@ -367,7 +375,7 @@ function markerIconUrl(color: string, isDimmed: boolean, ring = '#ffffff'): stri
     `</filter></defs>` +
     `<g transform="rotate(-45 20 20)"${isDimmed ? ' opacity="0.38"' : ''} filter="url(#s)">` +
     `<path d="M14 26 L14 20 A6 6 0 0 1 20 14 A6 6 0 0 1 26 20 A6 6 0 0 1 20 26 Z" ` +
-    `fill="${color}" stroke="${ring}" stroke-width="2"/></g></svg>`
+    `fill="${color}" stroke="${ring}" stroke-width="${ringWidth}"/></g></svg>`
   const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
   markerIconCache.set(key, url)
   return url
@@ -390,11 +398,12 @@ function markerHtml(
   isDimmed: boolean,
 ): string {
   const status = getBuildingStatus(building)
-  const color = STATUS_COLORS[status]
+  // ⚠ **선택된 핀도 같은 판정을 써야 한다.** 예전에 여기만 옛 판정을 써서,
+  //   테두리 핀을 누르면 초록·금색으로 바뀌어 버렸다 (실사용에서 바로 걸렸다).
+  const { fill: color, ring: strokeColor, ringWidth } = pinColors(building)
   const cardName = getCardName(cards, building.cardId)
   const hasRegularVisit = building.units.some((unit) => unit.isRegularVisit)
   const hasChineseNeedsReview = building.units.some((unit) => unit.isChinese && !unit.isRegularVisit)
-  const strokeColor = '#ffffff'
   const scale = isSelected ? 1.22 : 1
   const opacity = isDimmed ? 0.38 : 1
   const label = escapeAttr(`${building.name} · ${status} · ${cardName}${hasChineseNeedsReview ? ' · 중국어 사용자' : hasRegularVisit ? ' · 정기방문 있음' : ''}`)
@@ -420,7 +429,7 @@ function markerHtml(
         width: 14px;
         height: 14px;
         background: ${color};
-        border: 2px solid ${strokeColor};
+        border: ${ringWidth}px solid ${strokeColor};
         border-radius: 50% 50% 50% 0;
         box-sizing: border-box;
         transform: rotate(-45deg);
@@ -704,7 +713,7 @@ function NaverMapCanvas({
                 anchor: new naver.maps.Point(20, 30),
               }
             : {
-                url: (({ fill, ring }) => markerIconUrl(fill, isDimmed, ring))(pinColors(building)),
+                url: (({ fill, ring, ringWidth }) => markerIconUrl(fill, isDimmed, ring, ringWidth))(pinColors(building)),
                 size: new naver.maps.Size(40, 40),
                 scaledSize: new naver.maps.Size(40, 40),
                 anchor: new naver.maps.Point(20, 30),
