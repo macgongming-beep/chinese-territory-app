@@ -355,6 +355,9 @@ export function DesktopTerritory({
         // 세대 메모를 방문 기록 메모에 미리 채우지 않는다 —
         // 그대로 저장되면 같은 문장이 방문할 때마다 기록에 복제된다
         memo: history?.memo ?? '',
+        // ⚠ 이 줄이 빠지면 편집기가 **첫 항목을 고른 것처럼** 보이고,
+        //   열었다 저장만 해도 남의 기록이 된다. 실제로 한 번 빠뜨렸다.
+        visitor: history?.visitor ?? '',
       },
     })
   }

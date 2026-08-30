@@ -13,6 +13,18 @@ import { territoryProps, testBuilding, testCard, testUnit } from '../test/territ
 import { setRegions } from '../lib/regions'
 import type { VisitHistory } from '../types'
 
+// ⚠ `allUsers` 는 props 가 아니라 `useAuth()` 에서 온다. 이걸 안 채우면
+//   방문자 목록이 비어 **칸 자체가 안 그려지고**, 시험이 헛돈다.
+vi.mock('../hooks/useAuth', () => ({
+  useAuth: () => ({
+    allUsers: [
+      { id: 1, name: '박진호', role: 'admin', approvalStatus: 'approved' },
+      { id: 2, name: '정찬양', role: 'user', approvalStatus: 'approved' },
+    ],
+    fetchAllUsers: vi.fn(),
+  }),
+}))
+
 vi.mock('../lib/naverGeocode', () => ({
   geocodeFirstMatch: vi.fn(async () => null),
   geocodeQuery: vi.fn(async () => null),
@@ -163,5 +175,45 @@ describe('방문 기록 수정 — 새 기록과 갈리는 지점', () => {
       expect.objectContaining({ result: '부재', memo: '벨 안 눌림', visitedAt: '2026-08-01' }),
     )
     expect(props.onAddVisitHistory).not.toHaveBeenCalled()
+  })
+})
+
+describe('방문자 고치기 (조립)', () => {
+  // ⚠ 이 묶음이 필요한 이유: 편집기 단위 시험은 `initial.visitor` 를 **직접** 넣어
+  //   통과했지만, 정작 화면이 그 값을 안 넘기고 있었다. 그래서 실제로는
+  //   현재 방문자가 안 보이고 첫 항목이 고른 것처럼 보였다 —
+  //   **열었다 저장만 해도 남의 기록이 되는** 상태였다. 리뷰가 잡았다.
+  const history: VisitHistory = {
+    id: 900, unitId: 11, visitor: '정찬양', result: '부재',
+    timeSlot: '오후', visitedAt: '2026-08-30', memo: '',
+  } as VisitHistory
+
+  const openEdit = async (user: ReturnType<typeof userEvent.setup>) => {
+    await selectUnit(user)
+    const menuBtn = screen.getByRole('button', { name: '방문 기록 작업' })
+    await user.click(menuBtn)
+    // ⚠ '수정' 버튼은 화면에 여럿이다. **그 기록의 팝오버 안**에서 고른다
+    const popover = menuBtn.closest('.point-history-menu') as HTMLElement
+    await user.click(within(popover).getByRole('button', { name: '수정' }))
+  }
+
+  test('⚠ 편집기에 **현재 방문자**가 들어간다', async () => {
+    const user = userEvent.setup()
+    open({ visitHistories: [history] })
+    await openEdit(user)
+
+    const select = within(editor()).getByDisplayValue('정찬양') as HTMLSelectElement
+    expect(select.value).toBe('정찬양')
+  })
+
+  test('안 건드리고 저장하면 원래 방문자 그대로 나간다', async () => {
+    const user = userEvent.setup()
+    const props = open({ visitHistories: [history] })
+    await openEdit(user)
+    await user.click(within(editor()).getByRole('button', { name: '저장' }))
+
+    expect(props.onUpdateVisitHistory).toHaveBeenCalledWith(
+      900, 11, expect.objectContaining({ visitor: '정찬양' }),
+    )
   })
 })

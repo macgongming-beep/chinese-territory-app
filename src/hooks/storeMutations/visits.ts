@@ -376,6 +376,8 @@ export function makeVisitMutations(deps: {
     unitId: number,
     input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; visitor?: string },
   ): Promise<boolean> => {
+    // 바꾸기 **전** 방문자. 감사 로그에 남긴다 (아래).
+    const previousVisitor = visitHistories.find((h) => h.id === historyId)?.visitor ?? null
     // 무엇을 보낼지는 utils/visitUpdatePayload 가 정한다 (시험이 붙어 있다).
     const historyResult = await supabase
       .from('visit_histories')
@@ -414,6 +416,10 @@ export function makeVisitMutations(deps: {
         unit_id: unitId,
         result: input.result,
         time_slot: input.timeSlot,
+        // ⚠ **누구 기록인지를 바꾸는 기능**이다. 무엇에서 무엇으로 바꿨는지 안 남기면
+        //   나중에 통계가 이상할 때 누가 언제 옮겼는지 알 방법이 없다.
+        previous_visitor: previousVisitor ?? null,
+        visitor: input.visitor?.trim() || null,
         visited_at: input.visitedAt,
         memo: input.memo?.trim() || null,
       },

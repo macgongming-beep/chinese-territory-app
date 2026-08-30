@@ -706,7 +706,7 @@ export function MobileHome({
             onToggleInvitationLeft={onToggleInvitationLeft}
             visitHistories={visitHistories}
             specialPeriods={specialPeriods}
-            allUsers={allUsers.map(u => ({ id: u.id, name: u.name }))}
+            allUsers={allUsers.map(u => ({ id: u.id, name: u.name, approvalStatus: u.approvalStatus }))}
             onSetRegularVisitor={onSetRegularVisitor}
             onOpenLocationSettings={() => navigate('/location-permission-settings')}
           />

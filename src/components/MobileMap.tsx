@@ -92,14 +92,14 @@ export function MobileMap({
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
   onUndoLatestVisit: (buildingId: number, unitId: number) => void
-  onUpdateVisitHistory: (historyId: number, unitId: number, input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean; visitor?: string }) => void
+  onUpdateVisitHistory: (historyId: number, unitId: number, input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean; visitor?: string }) => void | Promise<boolean>
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
   onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
   onToggleInvitationLeft?: (buildingId: number, unitId: number, mode?: 'direct' | 'door') => void
   visitHistories: VisitHistory[]
   specialPeriods?: SpecialPeriod[]
-  allUsers?: { id: number; name: string }[]
+  allUsers?: { id: number; name: string; approvalStatus?: 'pending' | 'approved' | 'blocked' }[]
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   calendarEvents?: CalendarEvent[]
@@ -1789,8 +1789,8 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                 style={{ flex: 1, padding: '9px', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >{t(language, 'map.cancel')}</button>
               <button
-                onClick={() => {
-                  onUpdateVisitHistory(historyToEdit.id, historyToEdit.unitId, {
+                onClick={async () => {
+                  const ok = await onUpdateVisitHistory(historyToEdit.id, historyToEdit.unitId, {
                     result: historyToEdit.result,
                     timeSlot: historyToEdit.timeSlot,
                     memo: historyToEdit.memo || '',
@@ -1800,7 +1800,9 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                     //   넘기면(빈 값이라도) 이름이 지워질 수 있다.
                     ...(canEditVisitorHere ? { visitor: historyToEdit.visitor } : {}),
                   })
-                  setHistoryToEdit(null)
+                  // ⚠ **성공해야 닫는다.** 예전에는 결과를 안 기다리고 닫아서,
+                  //   저장이 실패하면 고른 방문자가 조용히 사라졌다.
+                  if (ok !== false) setHistoryToEdit(null)
                 }}
                 style={{ flex: 2, padding: '9px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
               >{t(language, 'map.save')}</button>
@@ -1996,7 +1998,7 @@ function UnitDetailScreen({
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
-  onUpdateVisitHistory?: (historyId: number, unitId: number, input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean; visitor?: string }) => void
+  onUpdateVisitHistory?: (historyId: number, unitId: number, input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean; visitor?: string }) => void | Promise<boolean>
   currentVisitor?: string
   allUsers?: { id: number; name: string }[]
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
