@@ -10,10 +10,15 @@ export function AddUnitRow({
   buildingId,
   existingNumbers,
   onAdd,
+  unitsSurveyed,
+  onSetUnitsSurveyed,
 }: {
   buildingId: number
   existingNumbers: Set<string>
   onAdd: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void | number[]>
+  /** 이 건물의 세대를 다 파악했나. 이 표시가 없으면 지도 핀이 '완료' 가 안 된다 */
+  unitsSurveyed?: boolean
+  onSetUnitsSurveyed?: (buildingId: number, surveyed: boolean) => Promise<boolean> | void
 }) {
   const [value, setValue] = useState('')
   const [showBulk, setShowBulk] = useState(false)
@@ -60,7 +65,9 @@ export function AddUnitRow({
           onKeyDown={(e) => { if (e.key === 'Enter') handleAdd() }}
         />
         <span className="unit-row-actions">
-          <button onClick={handleAdd} type="button">+ {t(currentLang(), 'map.addUnit', { defaultValue: '추가' })}</button>
+          <button onClick={handleAdd} type="button">{/* ⚠ 'map.addUnit' 값 자체가 이미 '+ 세대 추가' 다. 여기서 '+ ' 를 또 붙여
+            **'+ + 세대 추가'** 로 보였다. 번역값을 그대로 쓴다. */}
+          {t(currentLang(), 'map.addUnit', { defaultValue: '+ 추가' })}</button>
           <button
             className={`unit-bulk-toggle${showBulk ? ' active' : ''}`}
             onClick={() => setShowBulk((v) => !v)}
@@ -68,6 +75,19 @@ export function AddUnitRow({
           >
             {t(currentLang(), 'unit.bulkAddToggle')} {showBulk ? '▴' : '▾'}
           </button>
+          {/* ⚠ **이 표시가 있어야 지도 핀이 '완료'(채운 초록)로 바뀐다.**
+              시스템은 '등록된 세대' 만 안다 — 104·105호만 등록된 건물에서 둘 다 가면
+              100% 가 되어 아무도 안 갔다. 몇 세대인지는 사람만 안다.
+              세대를 넣는 자리 옆에 둔다 — 다 넣은 직후가 누를 때다. */}
+          {onSetUnitsSurveyed && (
+            <button
+              className={`unit-surveyed-toggle${unitsSurveyed ? ' active' : ''}`}
+              onClick={() => void onSetUnitsSurveyed(buildingId, !unitsSurveyed)}
+              type="button"
+            >
+              {unitsSurveyed ? '✓ ' : ''}{t(currentLang(), 'map.unitsSurveyed')}
+            </button>
+          )}
         </span>
       </div>
 

@@ -128,9 +128,7 @@ export function DesktopApp({
   onToggleInvitationLeft,
   onUpdateUnitFlags,
   onUpdateBuilding,
-  // PC 화면은 아직 안 쓴다 (모바일에서 먼저 확인한 뒤 붙인다)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onSetUnitsSurveyed: _onSetUnitsSurveyed,
+  onSetUnitsSurveyed,
   onSaveCardBoundary,
   onRestoreCardBoundaries,
   onMergeCardBoundaries,
@@ -627,6 +625,7 @@ export function DesktopApp({
               onDeleteCards={onDeleteCards}
               onMergeDuplicateBuildings={onMergeDuplicateBuildings}
               onAddUnit={onAddUnit}
+              onSetUnitsSurveyed={onSetUnitsSurveyed}
               onDeleteUnit={onDeleteUnit}
               onMoveBuildingToCard={onMoveBuildingToCard}
               onReassignBuildingsToCards={onReassignBuildingsToCards}
@@ -738,6 +737,7 @@ export function DesktopApp({
                 onDeleteCards={onDeleteCards}
                 onMergeDuplicateBuildings={onMergeDuplicateBuildings}
                 onAddUnit={onAddUnit}
+                onSetUnitsSurveyed={onSetUnitsSurveyed}
                 onDeleteUnit={onDeleteUnit}
                 onMoveBuildingToCard={onMoveBuildingToCard}
                 onReassignBuildingsToCards={onReassignBuildingsToCards}

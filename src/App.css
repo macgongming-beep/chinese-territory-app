@@ -3078,7 +3078,7 @@ button:focus-visible {
 }
 
 .mobile-user-avatar.user {
-  background: #2563eb;
+  background: var(--primary-600);
 }
 
 .mobile-users-row-main {
@@ -3122,8 +3122,8 @@ button:focus-visible {
 }
 
 .mobile-user-role-badge.user {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--primary-100);
+  color: var(--primary-700);
 }
 
 .mobile-users-chevron {
@@ -5671,9 +5671,9 @@ button:focus-visible {
 }
 
 .mobile-map-mode-banner.edit-pin {
-  border-color: #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border-color: var(--primary-200);
+  background: var(--primary-50);
+  color: var(--primary-700);
 }
 
 .mobile-map-mode-banner strong {
@@ -5810,9 +5810,9 @@ button:focus-visible {
 }
 
 .desktop-map-mode-banner.edit-pin {
-  border-color: #bfdbfe;
+  border-color: var(--primary-200);
   background: rgba(239, 246, 255, 0.96);
-  color: #1d4ed8;
+  color: var(--primary-700);
 }
 
 .desktop-map-mode-banner button {
@@ -12035,7 +12035,7 @@ button:focus-visible {
     padding: 6px 14px;
     border: 0;
     border-radius: 7px;
-    background: #2563eb;
+    background: var(--primary-600);
     color: #fff;
     font-size: 13px;
     font-weight: 700;
@@ -12046,7 +12046,7 @@ button:focus-visible {
   }
 
   .territory-add-building-btn:hover {
-    background: #1d4ed8;
+    background: var(--primary-700);
   }
 
   /* 건물 추가 모달 */
@@ -12107,8 +12107,8 @@ button:focus-visible {
 
   .add-building-input:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px #bfdbfe;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 2px var(--primary-200);
   }
 
   .add-building-geocode-btn {
@@ -12505,7 +12505,7 @@ button:focus-visible {
   .building-management-head,
   .building-management-row {
     display: grid;
-    grid-template-columns: 34px minmax(130px, 1fr) minmax(190px, 1.3fr) minmax(140px, 0.85fr) 104px 56px 60px 110px;
+    grid-template-columns: 34px minmax(130px, 1fr) minmax(190px, 1.3fr) minmax(140px, 0.85fr) 132px 56px 60px 110px;
     gap: 12px;
     align-items: center;
   }
@@ -12531,19 +12531,19 @@ button:focus-visible {
   .building-type-restaurant {
     margin-left: 4px;
     padding: 1px 5px;
-    border: 1px solid #f5cfa1;
+    border: 1px solid var(--warning-100);
     border-radius: 5px;
-    background: #fef3e7;
-    color: #b4621f;
+    background: var(--warning-50);
+    color: var(--warning-700);
     font-size: 10.5px;
     font-weight: 700;
     white-space: nowrap;
   }
 
   .unit-flag-chip.restaurant {
-    background: #fef3e7;
-    border-color: #f5cfa1;
-    color: #b4621f;
+    background: var(--warning-50);
+    border-color: var(--warning-100);
+    color: var(--warning-700);
   }
 
   .building-management-row:hover {
@@ -12870,8 +12870,8 @@ button:focus-visible {
   }
 
   .merge-name-chip:hover {
-    background: #eff6ff;
-    border-color: #93c5fd;
+    background: var(--primary-50);
+    border-color: var(--primary-200);
   }
 
   .merge-name-chip:disabled {
@@ -12880,9 +12880,9 @@ button:focus-visible {
   }
 
   .merge-name-chip.active {
-    background: #eff6ff;
-    border-color: #3b82f6;
-    color: #1d4ed8;
+    background: var(--primary-50);
+    border-color: var(--primary-500);
+    color: var(--primary-700);
     font-weight: 700;
   }
 
@@ -12901,8 +12901,8 @@ button:focus-visible {
 
   .merge-name-custom-input:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px #bfdbfe;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 2px var(--primary-200);
   }
 
   .merge-name-custom-input:disabled {
@@ -12933,8 +12933,8 @@ button:focus-visible {
 
   /* 수정 중인 건물 행 하이라이트 */
   .building-management-row.is-editing {
-    background: #eff6ff;
-    border-left: 3px solid #3b82f6;
+    background: var(--primary-50);
+    border-left: 3px solid var(--primary-500);
   }
 
   /* 세대 편집 패널 */
@@ -13140,9 +13140,9 @@ button:focus-visible {
     white-space: nowrap;
   }
 
-  .unit-flag-chip.forbidden { background: #fee2e2; color: #991b1b; }
-  .unit-flag-chip.regular   { background: #dcfce7; color: #166534; }
-  .unit-flag-chip.chinese   { background: #fef9c3; color: #854d0e; }
+  .unit-flag-chip.forbidden { background: var(--danger-100); color: var(--danger-700); }
+  .unit-flag-chip.regular   { background: var(--success-100); color: var(--success-700); }
+  .unit-flag-chip.chinese   { background: var(--warning-100); color: var(--warning-700); }
 
   /* 단일+일괄 추가 래퍼 */
   .unit-add-section {
@@ -13167,7 +13167,7 @@ button:focus-visible {
   .unit-bulk-panel {
     margin-top: 6px;
     padding: 14px 16px;
-    border: 1px solid #bfdbfe;
+    border: 1px solid var(--primary-200);
     border-radius: 10px;
     background: #f0f7ff;
     display: flex;
@@ -13225,7 +13225,7 @@ button:focus-visible {
   }
 
   .unit-bulk-preview-label strong {
-    color: #1d4ed8;
+    color: var(--primary-700);
     font-weight: 700;
   }
 
@@ -13242,8 +13242,8 @@ button:focus-visible {
   .unit-bulk-chip {
     padding: 3px 9px;
     border-radius: 20px;
-    background: #dbeafe;
-    color: #1e40af;
+    background: var(--primary-100);
+    color: var(--primary-700);
     font-size: 12px;
     font-weight: 600;
   }
@@ -13291,7 +13291,7 @@ button:focus-visible {
   .unit-bulk-checkbox-label input[type="checkbox"] {
     width: 15px;
     height: 15px;
-    accent-color: #2563eb;
+    accent-color: var(--primary-600);
     cursor: pointer;
   }
 
@@ -14651,7 +14651,7 @@ button:focus-visible {
   box-shadow: var(--elev-2);
 }
 
-.leader-team-card.tone-blue { border-left-color: #3b82f6; }
+.leader-team-card.tone-blue { border-left-color: var(--primary-500); }
 .leader-team-card.tone-green { border-left-color: #22c55e; }
 .leader-team-card.tone-orange { border-left-color: #f59e0b; }
 .leader-team-card.tone-purple { border-left-color: #8b5cf6; }
@@ -15906,7 +15906,7 @@ button:focus-visible {
   flex-shrink: 0;
 }
 
-.dla-team-dot.tone-blue   { background: #3b82f6; }
+.dla-team-dot.tone-blue   { background: var(--primary-500); }
 .dla-team-dot.tone-green  { background: #22c55e; }
 .dla-team-dot.tone-orange { background: #f59e0b; }
 .dla-team-dot.tone-purple { background: #8b5cf6; }
@@ -16647,7 +16647,7 @@ button:focus-visible {
   box-shadow: var(--elev-2);
 }
 
-.mobile-assignment-team.tone-blue { border-left-color: #3b82f6; }
+.mobile-assignment-team.tone-blue { border-left-color: var(--primary-500); }
 .mobile-assignment-team.tone-green { border-left-color: #22c55e; }
 .mobile-assignment-team.tone-orange { border-left-color: #f59e0b; }
 .mobile-assignment-team.tone-purple { border-left-color: #8b5cf6; }
@@ -17067,7 +17067,7 @@ button:focus-visible {
   background: #fff;
 }
 
-.ma-team-card.tone-blue  { border-left-color: #3b82f6; }
+.ma-team-card.tone-blue  { border-left-color: var(--primary-500); }
 .ma-team-card.tone-green { border-left-color: #22c55e; }
 .ma-team-card.tone-orange { border-left-color: #f59e0b; }
 .ma-team-card.tone-purple { border-left-color: #8b5cf6; }
@@ -17202,7 +17202,7 @@ button:focus-visible {
   background: #fff;
 }
 
-.ma-step3-team.tone-blue  { border-left-color: #3b82f6; }
+.ma-step3-team.tone-blue  { border-left-color: var(--primary-500); }
 .ma-step3-team.tone-green { border-left-color: #22c55e; }
 .ma-step3-team.tone-orange { border-left-color: #f59e0b; }
 .ma-step3-team.tone-purple { border-left-color: #8b5cf6; }
@@ -19851,7 +19851,7 @@ button:focus-visible {
 .strategy-chip.chinese {
   background: #ebf5ff;
   color: #1e3a8a;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--primary-200);
 }
 
 .map-marker.has-chinese::after {
@@ -19865,7 +19865,7 @@ button:focus-visible {
   place-items: center;
   border: 2px solid #ffffff;
   border-radius: var(--r-pill);
-  background: #3b82f6;
+  background: var(--primary-500);
   color: #ffffff;
   font-size: 10px;
   font-style: normal;
@@ -19875,7 +19875,7 @@ button:focus-visible {
 
 .unit-work-row button.chinese-active,
 .mobile-unit-row button.chinese-active {
-  background: #3b82f6;
+  background: var(--primary-500);
   color: #ffffff;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
 }
@@ -19957,8 +19957,8 @@ button:focus-visible {
 .icon-chip.active-chip {
   filter: none;
   opacity: 1;
-  background: #eff6ff;
-  border-color: #bfdbfe;
+  background: var(--primary-50);
+  border-color: var(--primary-200);
 }
 .modern-unit-action-bar {
   display: flex;
@@ -19973,8 +19973,8 @@ button:focus-visible {
   font-weight: 600;
 }
 .expand-action-btn {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--primary-50);
+  color: var(--primary-600);
   border-radius: var(--r-pill);
   padding: 8px 16px;
   font-size: 13px;
@@ -20012,9 +20012,9 @@ button:focus-visible {
   min-height: 42px;
 }
 .modern-btn-active {
-  background: #2563eb;
+  background: var(--primary-600);
   color: white;
-  border: 1px solid #2563eb;
+  border: 1px solid var(--primary-600);
   border-radius: var(--r-md);
   padding: 10px 0;
   font-size: 14px;
@@ -21177,8 +21177,8 @@ button:focus-visible {
   }
 
   .home-event-card.applied .home-event-badge {
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: var(--primary-100);
+    color: var(--primary-700);
   }
 
   .home-event-badge.muted {
@@ -22209,7 +22209,7 @@ button:focus-visible {
 
 .edit-input-group input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--primary-500);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -22232,11 +22232,11 @@ button:focus-visible {
 }
 
 .edit-save-btn {
-  background: #3b82f6;
+  background: var(--primary-500);
   color: white;
 }
 
-.edit-save-btn:hover { background: #2563eb; }
+.edit-save-btn:hover { background: var(--primary-600); }
 
 .edit-cancel-btn {
   background: #e2e8f0;
@@ -22317,7 +22317,7 @@ button:focus-visible {
 
 .inline-add-unit-form input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--primary-500);
 }
 
 .inline-add-unit-form button {
@@ -22325,7 +22325,7 @@ button:focus-visible {
   min-height: 36px;
   padding: 0 16px;
   border-radius: var(--r-md);
-  background: #3b82f6;
+  background: var(--primary-500);
   color: white;
   font-size: 13px;
   font-weight: 700;
@@ -22945,9 +22945,9 @@ button:focus-visible {
 }
 
 .ucb-korean {
-  background: #dbeafe;
-  border-color: #2563eb;
-  color: #2563eb;
+  background: var(--primary-100);
+  border-color: var(--primary-600);
+  color: var(--primary-600);
 }
 
 .ucb-absent {
@@ -23070,7 +23070,7 @@ button:focus-visible {
 
 .ugd-memo-textarea:focus {
   outline: none;
-  border-color: #93c5fd;
+  border-color: var(--primary-200);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
@@ -23261,7 +23261,7 @@ button:focus-visible {
 
 .modern-memo-textarea:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--primary-500);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -24491,7 +24491,7 @@ button:focus-visible {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
 }
 
-.ma-team-panel .ma-team-card.tone-blue { border-left-color: #3b82f6; }
+.ma-team-panel .ma-team-card.tone-blue { border-left-color: var(--primary-500); }
 .ma-team-panel .ma-team-card.tone-green { border-left-color: #22c55e; }
 .ma-team-panel .ma-team-card.tone-orange { border-left-color: #f59e0b; }
 .ma-team-panel .ma-team-card.tone-purple { border-left-color: #8b5cf6; }
@@ -24843,7 +24843,7 @@ button:focus-visible {
 }
 
 .ma-participant-list button.assigned span {
-  background: #dbeafe;
+  background: var(--primary-100);
   color: var(--brand-700);
 }
 
@@ -29962,4 +29962,22 @@ button > svg {
 .bld-menu-popover .bld-menu-on {
   color: #4F7A4B;
   font-weight: 700;
+}
+
+/* '세대 확인 완료' — 세대 추가·일괄 추가 옆. 다 넣은 직후가 누를 때다.
+   ⚠ 이 표시가 없으면 등록 세대를 다 방문해도 지도 핀이 '완료' 가 안 된다. */
+.unit-surveyed-toggle {
+  border: 1px solid var(--line, #d1d5db);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--muted, #6b7280);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.unit-surveyed-toggle.active {
+  border-color: var(--success-100);
+  background: var(--success-50);
+  color: var(--success-700);
 }

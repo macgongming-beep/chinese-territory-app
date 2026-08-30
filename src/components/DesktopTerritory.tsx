@@ -1,4 +1,5 @@
 import { t } from '../i18n'
+import { kindToFilters, filtersToKind, type BuildingKind } from '../utils/buildingKindFilter'
 import { canEditVisitor, visitorOptionsFrom } from '../utils/visitorPicker'
 import type { AppLanguage } from '../i18n'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -98,6 +99,7 @@ export function DesktopTerritory({
   onToggleRegularVisit,
   onSetRegularVisitor,
   onAddUnit,
+  onSetUnitsSurveyed,
   onDeleteUnit,
   onUpdateUnitFlags,
   onUpdateUnitStatus,
@@ -147,6 +149,8 @@ export function DesktopTerritory({
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
   onAddUnit: (buildingId: number, unitNumber: string | string[]) => Promise<number[] | false>
+  /** 건물의 '세대 확인 완료' 표시 (utils/buildingPin — 없으면 완료로 안 친다) */
+  onSetUnitsSurveyed?: (buildingId: number, surveyed: boolean) => Promise<boolean> | void
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
   onUpdateUnitStatus: (buildingId: number, unitId: number, status: UnitStatus, memo?: string) => void
@@ -1595,16 +1599,24 @@ export function DesktopTerritory({
           {activeTab === '건물 관리' && buildingSubTab === '건물 목록' && (
             <div className="tbl-filter-layer" style={{ gap: 12 }}>
               {/* 두 화면의 필터 순서를 같게 둔다: 구분 → 유형 → (카드|상태) → 필터 → 정렬 */}
+              {/* ⚠ '구분(식당)' 과 '유형(상가·주택)' 을 **한 줄로 합쳤다.**
+                  실측: 상가 565개 중 식당이 360개(64%), 주택 502개 중 식당은 7개(1%).
+                  **식당은 거의 상가다** — 따로 고를 일이 드문데 필터가 일곱 줄이었다.
+                  ⚠ 상태는 둘로 유지한다. `buildingTypeFilter` 는 세대 목록과 함께 쓰는
+                     값이라 없애면 그 화면의 유형 필터가 죽는다. (utils/buildingKindFilter) */}
               <span className="tbl-filter-label">구분</span>
               <div className="tbl-mini-seg">
-                {(['전체', '식당', '식당 아님'] as const).map((f) => (
-                  <button key={f} className={buildingRestaurantFilter === f ? 'active' : ''} onClick={() => setBuildingRestaurantFilter(f)} type="button">{f}</button>
-                ))}
-              </div>
-              <span className="tbl-filter-label">유형</span>
-              <div className="tbl-mini-seg">
-                {(['전체', '상가', '주택'] as Array<Building['type'] | '전체'>).map((f) => (
-                  <button key={f} className={buildingTypeFilter === f ? 'active' : ''} onClick={() => setBuildingTypeFilter(f)} type="button">{f}</button>
+                {(['전체', '주택', '상가', '식당'] as BuildingKind[]).map((f) => (
+                  <button
+                    key={f}
+                    className={filtersToKind(buildingTypeFilter, buildingRestaurantFilter) === f ? 'active' : ''}
+                    onClick={() => {
+                      const next = kindToFilters(f)
+                      setBuildingTypeFilter(next.type)
+                      setBuildingRestaurantFilter(next.restaurant)
+                    }}
+                    type="button"
+                  >{f}</button>
                 ))}
               </div>
               <span className="tbl-filter-label">카드</span>
@@ -2072,6 +2084,8 @@ export function DesktopTerritory({
                           buildingId={building.id}
                           existingNumbers={new Set(building.units.map((u) => u.number))}
                           onAdd={onAddUnit}
+                          unitsSurveyed={building.unitsSurveyed}
+                          onSetUnitsSurveyed={onSetUnitsSurveyed}
                         />
                       </div>
                     </div>
