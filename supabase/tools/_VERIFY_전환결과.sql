@@ -10,6 +10,7 @@ declare
   v_lost   text;
   v_open   text;
   v_gated  text;
+  v_rls_off text;
 begin
   -- (1) **표 × 명령 × 역할** anti-join.
   --     바꾸기 전에 되던 조합이 사라졌으면 그 화면이 조용히 죽는다.
@@ -181,7 +182,8 @@ begin
     raise exception E'전에 되던 것이 사라졌다 (표.명령(역할)): %\n  → 이 화면들이 조용히 죽는다', v_lost;
   end if;
 
-  -- (2) 아직 남아 있는 열린 쓰기 정책 = 안 막힌 것
+  -- (2) TEMP가 아닌 쓰기 정책도 실제 서버 관문이 있어야 한다.
+  --     정책 이름만 role_* 로 붙인 using(true)는 열린 정책과 같으므로 허용하지 않는다.
   select string_agg(format('%s.%s(%s)', tablename, policyname, cmd), ', ' order by tablename)
     into v_open
   from pg_policies
@@ -190,9 +192,29 @@ begin
     and policyname not like 'TEMP\_session\_gate\_%'
     and policyname <> 'app_private_settings_deny_all'
     -- 테스트 DB 에만 있는 실험용 표 (`npm run smoke:headers` 가 쓴다). 운영엔 없다.
-    and tablename not like '\_probe%';
+    and tablename not like '\_probe%'
+    and (coalesce(qual, '') || ' ' || coalesce(with_check, ''))
+      !~ 'request_(session_user_id|is_admin)';
   if v_open is not null then
-    raise exception '아직 열려 있는 쓰기 정책: %', v_open;
+    raise exception '서버 권한 조건이 없는 비-TEMP 쓰기 정책: %', v_open;
+  end if;
+
+  -- (2-1) 정책이 하나도 없어도 RLS 자체가 꺼져 있고 grant가 있으면 완전히 열린다.
+  --       special_periods와 login_logs를 이 검사 부재 때문에 놓쳤다.
+  select string_agg(c.relname, ', ' order by c.relname)
+    into v_rls_off
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public'
+    and c.relkind = 'r'
+    and not c.relrowsecurity
+    and (
+      has_table_privilege('anon', c.oid, 'insert')
+      or has_table_privilege('anon', c.oid, 'update')
+      or has_table_privilege('anon', c.oid, 'delete')
+    );
+  if v_rls_off is not null then
+    raise exception 'RLS가 꺼진 채 anon 쓰기 grant가 있는 표: %', v_rls_off;
   end if;
 
   -- (3) ⚠ **SELECT 정책이 세션을 요구하면 Realtime 이 끊긴다.**
@@ -213,7 +235,7 @@ begin
     raise exception 'app_users 역할 상승 차단 트리거가 없다';
   end if;
 
-  raise notice '✅ 검증 통과 — 잃은 조합 0 · 열린 쓰기 0 · SELECT 에 세션관문 0 · 트리거 있음';
+  raise notice '✅ 검증 통과 — 잃은 조합 0 · 열린 쓰기 0 · RLS-off 쓰기 0 · SELECT 에 세션관문 0 · 트리거 있음';
 end $$;
 
 

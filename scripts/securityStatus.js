@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 
 const REF = 'qdxemvdorasoryfysuoq'
+const PSQL = process.env.PSQL_BIN ?? 'psql'
 const die = (message) => { console.error(`\n  ✗ ${message}\n`); process.exit(1) }
 const envValue = (name) => {
   if (!existsSync('.env.local')) return null
@@ -78,6 +79,18 @@ with user_counts as (
   where n.nspname = 'public'
     and p.prosecdef
     and has_function_privilege('anon', p.oid, 'execute')
+), rls_off_writable as (
+  select coalesce(json_agg(c.relname order by c.relname), '[]'::json) as tables
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public'
+    and c.relkind = 'r'
+    and not c.relrowsecurity
+    and (
+      has_table_privilege('anon', c.oid, 'insert')
+      or has_table_privilege('anon', c.oid, 'update')
+      or has_table_privilege('anon', c.oid, 'delete')
+    )
 )
 select json_build_object(
   'checked_at_kst', to_char(clock_timestamp() at time zone 'Asia/Seoul', 'YYYY-MM-DD HH24:MI:SS'),
@@ -92,9 +105,10 @@ select json_build_object(
   'emergency_open_policies', p.emergency,
   'session_gate_policies', p.session_gate,
   'select_all_policies', p.select_all,
-  'anon_callable_definers', d.anon_callable
+  'anon_callable_definers', d.anon_callable,
+  'rls_off_anon_writable_tables', w.tables
 )
-from user_counts u, session_counts s, policy_counts p, definer_counts d;
+from user_counts u, session_counts s, policy_counts p, definer_counts d, rls_off_writable w;
 
 select coalesce(json_agg(row_to_json(x) order by x.jobname), '[]'::json)
 from (
@@ -118,7 +132,7 @@ commit;
 
 let output
 try {
-  output = execFileSync('/opt/homebrew/bin/psql', [
+  output = execFileSync(PSQL, [
     '-X', '-v', 'ON_ERROR_STOP=1', '-A', '-t', url.toString(), '-c', sql,
   ], {
     encoding: 'utf8',
@@ -147,6 +161,11 @@ console.log(`  긴급 개방 정책              ${status.emergency_open_policie
 console.log(`  세션 관문 정책              ${status.session_gate_policies}개`)
 console.log(`  SELECT 재현 정책            ${status.select_all_policies}개`)
 console.log(`  anon 실행 가능 definer      ${status.anon_callable_definers}개`)
+console.log(`  RLS 꺼진 anon 쓰기 표        ${status.rls_off_anon_writable_tables.length}개`)
+if (status.rls_off_anon_writable_tables.length > 0) {
+  console.log(`    ⚠ ${status.rls_off_anon_writable_tables.join(', ')}`)
+  process.exitCode = 1
+}
 
 console.log('\n  최근 cron 상태')
 for (const job of jobs) {

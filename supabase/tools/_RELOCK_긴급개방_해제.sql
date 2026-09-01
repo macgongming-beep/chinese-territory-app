@@ -25,6 +25,7 @@ declare
   n int := 0;
   v_missing_gate text;
   v_missing_select text;
+  v_rls_off text;
 begin
   -- 운영에서 만든 긴급 복구 정책만 정확히 있어야 한다.
   select count(*) into n from pg_policies
@@ -86,6 +87,22 @@ begin
   );
   if v_missing_select is not null then
     raise exception '재잠금 뒤 공개 SELECT가 없는 표: %', v_missing_select;
+  end if;
+
+  select string_agg(c.relname, ', ' order by c.relname)
+  into v_rls_off
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public'
+    and c.relkind = 'r'
+    and not c.relrowsecurity
+    and (
+      has_table_privilege('anon', c.oid, 'insert')
+      or has_table_privilege('anon', c.oid, 'update')
+      or has_table_privilege('anon', c.oid, 'delete')
+    );
+  if v_rls_off is not null then
+    raise exception 'RLS가 꺼진 채 anon 쓰기 grant가 있는 표: %', v_rls_off;
   end if;
 
   n := 0;

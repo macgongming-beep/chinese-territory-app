@@ -119,6 +119,52 @@ if (hasArg('--test')) {
     die('가짜 관문 변형 트랜잭션이 깨끗하게 롤백되지 않았습니다')
   }
   console.log('  ✅ 이름만 TEMP인 가짜 관문을 심으면 재잠금이 거부되고 전부 롤백됩니다.')
+
+  // 최종 역할 정책도 이름이 아니라 조건식으로 검사한다.
+  let finalPolicyRejected = false
+  try {
+    psql(conn, ['--single-transaction', '-c', `
+      drop policy role_admin_special_periods_insert on public.special_periods;
+      create policy role_admin_special_periods_insert on public.special_periods
+        for insert to public with check (true);
+    `, '-f', VERIFY])
+  } catch {
+    finalPolicyRejected = true
+  }
+  if (!finalPolicyRejected) die('가짜 최종 역할 정책을 심었는데도 검증이 통과했습니다')
+
+  const finalPolicyRestored = psql(conn, ['-A', '-t', '-c', String.raw`
+    select coalesce(with_check, '') ~ 'request_is_admin'
+    from pg_policies
+    where schemaname='public' and tablename='special_periods'
+      and policyname='role_admin_special_periods_insert';
+  `], true).trim()
+  if (finalPolicyRestored !== 't') die('가짜 최종 정책 변형이 깨끗하게 롤백되지 않았습니다')
+  console.log('  ✅ 이름만 role_admin인 가짜 최종 정책도 거부되고 전부 롤백됩니다.')
+
+  // RLS가 꺼진 표는 pg_policies만 세면 보이지 않는다. 이 상태에서도 재잠금은 거부해야 한다.
+  let rlsOffRejected = false
+  try {
+    psql(conn, ['--single-transaction', '-f', EMERGENCY, '-c', `
+      alter table public.login_logs disable row level security;
+      grant insert, update, delete on public.login_logs to anon;
+    `, '-f', RELOCK])
+  } catch {
+    rlsOffRejected = true
+  }
+  if (!rlsOffRejected) die('RLS-off anon 쓰기 표를 만들었는데도 재잠금이 통과했습니다')
+
+  const afterRlsOff = JSON.parse(psql(conn, ['-A', '-t', '-c', String.raw`
+    select json_build_object(
+      'emergency', (select count(*) from pg_policies where schemaname='public' and policyname like 'EMERGENCY\_open\_%'),
+      'rls_on', (select relrowsecurity from pg_class where oid='public.login_logs'::regclass),
+      'anon_insert', has_table_privilege('anon','public.login_logs','insert')
+    );
+  `], true).trim())
+  if (afterRlsOff.emergency !== 0 || !afterRlsOff.rls_on || afterRlsOff.anon_insert) {
+    die('RLS-off 변형 트랜잭션이 깨끗하게 롤백되지 않았습니다')
+  }
+  console.log('  ✅ RLS-off anon 쓰기 표가 있으면 재잠금이 거부되고 전부 롤백됩니다.')
   console.log('\n  ✅ 테스트 DB 재잠금 시뮬레이션과 최종 검증이 통과했습니다.\n')
   process.exit(0)
 }
@@ -142,7 +188,13 @@ with counts as (
     (select count(*) from pg_policies where schemaname='public'
       and policyname like 'TEMP\_session\_gate\_%')::integer as gates,
     (select count(*) from pg_policies where schemaname='public' and tablename='app_users'
-      and policyname like 'EMERGENCY\_open\_%')::integer as users_open
+      and policyname like 'EMERGENCY\_open\_%')::integer as users_open,
+    (select coalesce(json_agg(c.relname order by c.relname), '[]'::json)
+      from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='public' and c.relkind='r' and not c.relrowsecurity
+        and (has_table_privilege('anon',c.oid,'insert')
+          or has_table_privilege('anon',c.oid,'update')
+          or has_table_privilege('anon',c.oid,'delete'))) as rls_off_writable
 ), jobs as (
   select j.jobname, j.command, d.status, d.start_time
   from cron.job j
@@ -155,6 +207,7 @@ with counts as (
 select json_build_object(
   'users', c.users, 'tokens', c.tokens, 'emergency', c.emergency,
   'gates', c.gates, 'app_users_open', c.users_open,
+  'rls_off_writable', c.rls_off_writable,
   'cron_ready', coalesce((select count(*)=2 and bool_and(
     status='succeeded'
     and (start_time at time zone 'Asia/Seoul')::date = (now() at time zone 'Asia/Seoul')::date
@@ -189,11 +242,13 @@ try {
 console.log(`\n  대상                 ⚠ 운영 ${PROD_REF}`)
 console.log(`  활성·승인 / 유효토큰  ${state.users} / ${state.tokens}명`)
 console.log(`  긴급 개방 / 세션관문  ${state.emergency} / ${state.gates}개`)
+console.log(`  RLS 꺼진 anon 쓰기 표  ${state.rls_off_writable.length}개`)
 for (const job of state.cron) console.log(`  cron ${job.job.padEnd(22)} ${job.status ?? '없음'} (${job.run_kst ?? '없음'} KST)`)
 
 if (state.emergency !== 26) die(`긴급 개방 정책이 26개가 아닙니다: ${state.emergency}`)
 if (state.gates < 80) die(`세션 관문 정책이 모자랍니다: ${state.gates}`)
 if (state.app_users_open !== 0) die('app_users가 긴급 개방돼 있습니다')
+if (state.rls_off_writable.length !== 0) die(`RLS가 꺼진 anon 쓰기 표가 있습니다: ${state.rls_off_writable.join(', ')}`)
 if (state.cron.length !== 2) die(`필수 cron 작업은 2개여야 합니다: ${state.cron.length}`)
 if (JSON.stringify(state.emergency_names) !== JSON.stringify(expectedEmergencyNames)) {
   die('운영 긴급 정책 이름이 복구 파일의 26개와 정확히 일치하지 않습니다')
