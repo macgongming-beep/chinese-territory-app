@@ -72,6 +72,12 @@ with user_counts as (
       and ('anon'=any(roles) or 'public'=any(roles))
       and (coalesce(qual,'') || ' ' || coalesce(with_check,''))
           ~* 'request_session_user_id|request_is_admin')::integer as session_gate,
+    count(*) filter (where policyname like 'TEMP_session_gate_%')::integer as temporary_gate,
+    count(*) filter (where cmd in ('ALL','INSERT','UPDATE','DELETE')
+      and policyname not like 'TEMP_session_gate_%'
+      and ('anon'=any(roles) or 'public'=any(roles))
+      and (coalesce(qual,'') || ' ' || coalesce(with_check,''))
+          ~* 'request_session_user_id|request_is_admin')::integer as final_gate,
     count(*) filter (where policyname like '%_select_all')::integer as select_all
   from pg_policies
   where schemaname = 'public'
@@ -107,6 +113,8 @@ select json_build_object(
   'valid_sessions_for_active_30d', s.valid_for_active_30d,
   'emergency_open_policies', p.emergency,
   'session_gate_policies', p.session_gate,
+  'temporary_gate_policies', p.temporary_gate,
+  'final_gate_policies', p.final_gate,
   'select_all_policies', p.select_all,
   'anon_callable_definers', d.anon_callable,
   'rls_off_anon_writable_tables', w.tables
@@ -161,7 +169,7 @@ console.log(`  최근 7일 토큰 사용          ${status.sessions_used_last_7d
 console.log(`  최근 7일 사용자 중 토큰     ${status.valid_sessions_for_active_7d}/${status.active_users_7d}명`)
 console.log(`  최근 30일 사용자 중 토큰    ${status.valid_sessions_for_active_30d}/${status.active_users_30d}명`)
 console.log(`  긴급 개방 정책              ${status.emergency_open_policies}개`)
-console.log(`  세션 관문 정책              ${status.session_gate_policies}개`)
+console.log(`  쓰기 관문 정책              ${status.session_gate_policies}개 (TEMP ${status.temporary_gate_policies} · 최종 ${status.final_gate_policies})`)
 console.log(`  SELECT 재현 정책            ${status.select_all_policies}개`)
 console.log(`  anon 실행 가능 definer      ${status.anon_callable_definers}개`)
 console.log(`  RLS 꺼진 anon 쓰기 표        ${status.rls_off_anon_writable_tables.length}개`)
