@@ -57,10 +57,9 @@ begin
     select 1 from pg_policies p
     where p.schemaname = 'public'
       and p.tablename = q.tablename
-      and p.policyname like 'TEMP\_session\_gate\_%'
       and p.cmd in (q.cmd, 'ALL')
       and ('anon' = any(p.roles) or 'public' = any(p.roles))
-      -- 이름만 TEMP인 using(true) 정책을 관문으로 오인하지 않는다.
+      -- TEMP 관문과 역할별 최종 정책을 모두 실제 조건식으로 판정한다.
       -- 이 정규식은 정적 안전망이고, 실제 차단 증명은 HTTP smoke가 맡는다.
       and (coalesce(p.qual, '') || ' ' || coalesce(p.with_check, ''))
           ~* 'request_session_user_id|request_is_admin'

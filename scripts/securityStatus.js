@@ -68,7 +68,10 @@ with user_counts as (
 ), policy_counts as (
   select
     count(*) filter (where policyname like 'EMERGENCY_open_%')::integer as emergency,
-    count(*) filter (where policyname like 'TEMP_session_gate_%')::integer as session_gate,
+    count(*) filter (where cmd in ('ALL','INSERT','UPDATE','DELETE')
+      and ('anon'=any(roles) or 'public'=any(roles))
+      and (coalesce(qual,'') || ' ' || coalesce(with_check,''))
+          ~* 'request_session_user_id|request_is_admin')::integer as session_gate,
     count(*) filter (where policyname like '%_select_all')::integer as select_all
   from pg_policies
   where schemaname = 'public'

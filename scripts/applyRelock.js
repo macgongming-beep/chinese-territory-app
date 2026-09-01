@@ -186,7 +186,10 @@ with counts as (
     (select count(*) from pg_policies where schemaname='public'
       and policyname like 'EMERGENCY\_open\_%')::integer as emergency,
     (select count(*) from pg_policies where schemaname='public'
-      and policyname like 'TEMP\_session\_gate\_%')::integer as gates,
+      and cmd in ('ALL','INSERT','UPDATE','DELETE')
+      and ('anon'=any(roles) or 'public'=any(roles))
+      and (coalesce(qual,'') || ' ' || coalesce(with_check,''))
+          ~* 'request_session_user_id|request_is_admin')::integer as gates,
     (select count(*) from pg_policies where schemaname='public' and tablename='app_users'
       and policyname like 'EMERGENCY\_open\_%')::integer as users_open,
     (select coalesce(json_agg(c.relname order by c.relname), '[]'::json)
