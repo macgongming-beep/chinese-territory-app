@@ -36,7 +36,6 @@ with checks as (
   select '컬럼: calendar_events.assignment_shared_at',
     case when exists (select 1 from information_schema.columns where table_name='calendar_events' and column_name='assignment_shared_at') then 'OK' else '❌ MISSING → event_assignment_status.sql' end
   union all
-  union all
   select '컬럼: buildings.is_restaurant (식당 마킹)',
     case when exists (select 1 from information_schema.columns where table_name='buildings' and column_name='is_restaurant') then 'OK' else '❌ MISSING → v2_assignment_model.sql' end
   union all
@@ -59,6 +58,13 @@ with checks as (
   union all
   select 'RPC: auto_close_stale_sessions (봉사 자동종료)',
     case when exists (select 1 from pg_proc where proname='auto_close_stale_sessions') then 'OK' else '❌ MISSING → v1plus_auto_service_session_v2.sql' end
+  union all
+  select 'RPC: assign_cards_bulk_tx (참여자 카드 일괄 배정)',
+    case when exists (
+      select 1 from pg_proc p
+      join pg_namespace n on n.oid=p.pronamespace
+      where n.nspname='public' and p.proname='assign_cards_bulk_tx'
+    ) then 'OK' else '❌ MISSING → baseline/migration 재적용 후 클라이언트 폴백 제거' end
 
   -- ── 트리거 ──
   union all
