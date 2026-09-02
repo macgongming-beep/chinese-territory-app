@@ -69,6 +69,7 @@ begin
   end if;
 
   -- Realtime과 일반 조회가 의존하는 SELECT 정책도 표마다 남아 있어야 한다.
+  -- chat_room_mutes는 구독 대상이 아니고 본인만 읽는 최종 정책이므로 세션 조건을 허용한다.
   with emergency_tables as (
     select distinct tablename from pg_policies
     where schemaname = 'public' and policyname like 'EMERGENCY\_open\_%'
@@ -82,10 +83,13 @@ begin
       and p.tablename = e.tablename
       and p.cmd in ('SELECT', 'ALL')
       and ('anon' = any(p.roles) or 'public' = any(p.roles))
-      and coalesce(p.qual, '') !~* 'request_session|x-session-token'
+      and (
+        (e.tablename = 'chat_room_mutes' and coalesce(p.qual, '') ~* 'request_session_user_id')
+        or (e.tablename <> 'chat_room_mutes' and coalesce(p.qual, '') !~* 'request_session|x-session-token')
+      )
   );
   if v_missing_select is not null then
-    raise exception '재잠금 뒤 공개 SELECT가 없는 표: %', v_missing_select;
+    raise exception '재잠금 뒤 계약에 맞는 SELECT가 없는 표: %', v_missing_select;
   end if;
 
   select string_agg(c.relname, ', ' order by c.relname)

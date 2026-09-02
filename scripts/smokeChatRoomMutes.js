@@ -79,7 +79,13 @@ try {
   check('본인 행 INSERT를 허용한다', (await rows(ownInsert)).length === 1, `HTTP ${ownInsert.status}`)
 
   const publicRead = await rest(`chat_room_mutes?event_id=eq.${eventId}&user_id=eq.${a.id}&select=event_id`)
-  check('기존 공개 SELECT를 유지한다', (await rows(publicRead)).length === 1, `HTTP ${publicRead.status}`)
+  check('무세션 SELECT는 행을 숨긴다', publicRead.ok && (await rows(publicRead)).length === 0, `HTTP ${publicRead.status}`)
+
+  const ownRead = await rest(`chat_room_mutes?event_id=eq.${eventId}&user_id=eq.${a.id}&select=event_id`, {}, a.token)
+  check('본인 SELECT를 허용한다', (await rows(ownRead)).length === 1, `HTTP ${ownRead.status}`)
+
+  const otherRead = await rest(`chat_room_mutes?event_id=eq.${eventId}&user_id=eq.${a.id}&select=event_id`, {}, b.token)
+  check('타인의 SELECT는 행을 숨긴다', otherRead.ok && (await rows(otherRead)).length === 0, `HTTP ${otherRead.status}`)
 
   const otherInsert = await rest('chat_room_mutes?select=event_id', {
     method: 'POST', body: JSON.stringify({ event_id: eventId, user_id: b.id }),
@@ -101,7 +107,7 @@ try {
   }, b.token)
   check('남의 행 DELETE를 막는다', (await rows(otherDelete)).length === 0, `HTTP ${otherDelete.status}`)
 
-  const stillThere = await rest(`chat_room_mutes?event_id=eq.${eventId}&user_id=eq.${a.id}&select=event_id`)
+  const stillThere = await rest(`chat_room_mutes?event_id=eq.${eventId}&user_id=eq.${a.id}&select=event_id`, {}, a.token)
   check('거부 뒤 본인 행이 남아 있다', (await rows(stillThere)).length === 1)
 
   const ownDelete = await rest(`chat_room_mutes?event_id=eq.${eventId}&user_id=eq.${a.id}&select=event_id`, {

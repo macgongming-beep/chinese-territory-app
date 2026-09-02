@@ -224,6 +224,7 @@ begin
   from pg_policies
   where schemaname = 'public'
     and cmd in ('SELECT', 'ALL')
+    and tablename <> 'chat_room_mutes'
     and coalesce(qual, '') like '%request_session%';
   if v_gated is not null then
     raise exception E'SELECT 정책이 세션을 요구한다: %\n  → WebSocket 은 헤더를 안 보내므로 Realtime 구독이 끊긴다', v_gated;
