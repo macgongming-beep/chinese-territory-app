@@ -25,6 +25,7 @@
     "smoke:special-periods": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeSpecialPeriods.js",
     "smoke:login-logs": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeLoginLogs.js",
     "smoke:chat-room-mutes": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeChatRoomMutes.js",
+    "smoke:comments": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeComments.js",
     "apply:lockdown": "node scripts/applyLockdown.js",
     "apply:security-followup": "node scripts/applySecurityFollowup.js",
     "status:security": "node scripts/securityStatus.js",
