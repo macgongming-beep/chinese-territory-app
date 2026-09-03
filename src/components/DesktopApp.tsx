@@ -306,11 +306,11 @@ export function DesktopApp({
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   informalGroups?: InformalGroup[]
   onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
-  onDeleteInformalAsset?: (assetId: number) => Promise<void>
+  onDeleteInformalAsset?: (assetId: number) => Promise<boolean>
   onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
   onRenameInformalGroup?: (groupId: number, name: string) => Promise<boolean>
   onDeleteInformalGroup?: (groupId: number) => Promise<boolean>
-  onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
+  onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<boolean>
   onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
   onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
   onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; unitId?: number | null; assignedBy: string }) => Promise<boolean>

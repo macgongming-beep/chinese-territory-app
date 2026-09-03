@@ -14,6 +14,7 @@ const scripts = [
   'smokeTerritoryRegions.js',
   'smokeServiceSuggestions.js',
   'smokeInformalGroups.js',
+  'smokeInformalAssets.js',
   'smokePhoneSurveys.js',
 ]
 

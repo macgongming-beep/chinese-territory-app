@@ -33,7 +33,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       showToast(msg('이름을 입력해 주세요'), 'error')
       return false
     }
-    const { error } = await supabase.from('informal_assets').insert({
+    const { data, error } = await supabase.from('informal_assets').insert({
       name,
       // 사진이 없는 자료다. 빈 글자로 두어 기존 화면이 그대로 동작하게 한다
       image_url: '',
@@ -45,7 +45,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       lng: input.lng,
       memo: input.memo?.trim() || null,
       zoom: input.zoom ?? null,
-    })
+    }).select('id')
     if (error) {
       const message = (error as { message?: string }).message ?? ''
       if (/lat|lng|memo|zoom|column/.test(message)) {
@@ -55,6 +55,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       }
       return false
     }
+    if (!ensureAffectedRows(data, msg('비공식 장소를 등록하지 못했습니다.'))) return false
     await fetchAll()
     showToast(msg('등록했습니다'))
     return true
@@ -73,10 +74,11 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     points: { lat: number; lng: number }[],
   ): Promise<boolean> => {
     const value = points.length >= 2 ? points : null
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('informal_assets')
       .update({ [field]: value })
       .eq('id', assetId)
+      .select('id')
     if (error) {
       const message = (error as { message?: string }).message ?? ''
       if (/boundary|route|column/.test(message)) {
@@ -86,6 +88,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       }
       return false
     }
+    if (!ensureAffectedRows(data, msg('지도 모양을 저장하지 못했습니다.'))) return false
     await fetchAll()
     showToast(value ? msg('저장했습니다') : msg('지웠습니다'))
     return true
@@ -104,11 +107,12 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     if (input.zoom !== undefined) patch.zoom = input.zoom
     if (Object.keys(patch).length === 0) return true
 
-    const { error } = await supabase.from('informal_assets').update(patch).eq('id', assetId)
+    const { data, error } = await supabase.from('informal_assets').update(patch).eq('id', assetId).select('id')
     if (error) {
       reportMutationError(msg('비공식 장소를 수정하지 못했습니다.'), error)
       return false
     }
+    if (!ensureAffectedRows(data, msg('비공식 장소를 수정하지 못했습니다.'))) return false
     await fetchAll()
     showToast(msg('저장했습니다'))
     return true
@@ -207,27 +211,37 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     return true
   }
 
-  const moveAssetToGroup = async (assetId: number, groupId: number | null) => {
-    const { error } = await supabase
+  const moveAssetToGroup = async (assetId: number, groupId: number | null): Promise<boolean> => {
+    const { data, error } = await supabase
       .from('informal_assets')
       .update({ group_id: groupId })
       .eq('id', assetId)
-    if (error) showToast(msg('자료 이동 실패: {message}', { message: error.message }), 'error')
-    else await fetchAll()
+      .select('id')
+    if (error) {
+      showToast(msg('자료 이동 실패: {message}', { message: error.message }), 'error')
+      return false
+    }
+    if (!ensureAffectedRows(data, msg('자료를 이동하지 못했습니다.'))) return false
+    await fetchAll()
+    return true
   }
 
-  const deleteInformalAsset = async (assetId: number) => {
+  const deleteInformalAsset = async (assetId: number): Promise<boolean> => {
     const token = getAuthToken()
     if (!token) {
       showToast(msg('로그인 세션을 확인할 수 없습니다.'), 'error')
-      return
+      return false
     }
-    const { error } = await supabase.rpc('delete_informal_asset_secure', {
+    const { data, error } = await supabase.rpc('delete_informal_asset_secure', {
       p_token: token,
       p_asset_id: assetId,
     })
-    if (error) showToast(msg('자료 삭제 실패: {message}', { message: error.message }), 'error')
-    else await fetchAll()
+    if (error || data !== true) {
+      showToast(msg('자료 삭제 실패: {message}', { message: error?.message ?? '자료를 찾지 못했습니다.' }), 'error')
+      return false
+    }
+    await fetchAll()
+    return true
   }
 
   // ── 비공식 배정 ────────────────────────────────────

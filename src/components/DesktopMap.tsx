@@ -991,13 +991,18 @@ export function DesktopMap({
     // 그리기가 꺼져 있으면 저장할 것이 없다 — 위 안전망이 끈 뒤 눌린 경우
     if (!drawingBoundary) return
     setSavingBoundary(true)
-    if (informalShapeTarget && onSaveInformalShape) {
-      await onSaveInformalShape(informalShapeTarget.assetId, informalShapeTarget.field, draftBoundaryPoints)
-      setInformalShapeTarget(null)
-    } else {
-      await onSaveCardBoundary(boundaryCardId, draftBoundaryPoints)
+    let saved = true
+    try {
+      if (informalShapeTarget && onSaveInformalShape) {
+        saved = await onSaveInformalShape(informalShapeTarget.assetId, informalShapeTarget.field, draftBoundaryPoints)
+      } else {
+        await onSaveCardBoundary(boundaryCardId, draftBoundaryPoints)
+      }
+    } finally {
+      setSavingBoundary(false)
     }
-    setSavingBoundary(false)
+    if (!saved) return
+    if (informalShapeTarget) setInformalShapeTarget(null)
     setDrawingBoundary(false)
     setDraftBoundaryPoints([])
     setUndoStack([])
@@ -2723,7 +2728,8 @@ export function DesktopMap({
 
       {/* 비공식 장소로 들어왔을 때 — 그 장소의 모양을 그리는 자리.
           그리는 중에는 아래쪽 구역선 도구(저장/취소)가 그대로 뜬다 */}
-      {selectedInformal && showInformal && !drawingBoundary && onSaveInformalShape && (
+      {selectedInformal && showInformal && !drawingBoundary && onSaveInformalShape
+        && (actualRole === 'admin' || actualRole === 'developer') && (
         <div style={{
           position: 'absolute', left: 16, bottom: 16, zIndex: 30,
           background: 'var(--surface, #fff)', border: '1px solid var(--line)',

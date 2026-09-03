@@ -182,11 +182,11 @@ type Props = {
   informalGroups: InformalGroup[]
   onUpload: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) =>
     Promise<{ ok: boolean; assetId?: number; error?: string }>
-  onDelete: (assetId: number) => Promise<void>
+  onDelete: (assetId: number) => Promise<boolean>
   onCreateGroup: (input: { name: string; createdBy: string }) => Promise<number | null>
   onRenameGroup: (groupId: number, name: string) => Promise<boolean>
   onDeleteGroup: (groupId: number) => Promise<boolean>
-  onMoveAsset: (assetId: number, groupId: number | null) => Promise<void>
+  onMoveAsset: (assetId: number, groupId: number | null) => Promise<boolean>
   language?: AppLanguage
 }
 
@@ -793,7 +793,7 @@ export function InformalCardsTab({
       {sortedGroups.map((g) => renderGroupSection(g, assetsByGroup.get(g.id) ?? []))}
       {(unassignedAssets.length > 0 || sortedGroups.length === 0) && renderGroupSection(null, unassignedAssets)}
 
-      {/* + 그룹 추가 (admin 만, 디자인 05 의 dashed ghost) */}
+      {/* + 그룹 추가 (admin/developer, 디자인 05 의 dashed ghost) */}
       {admin && (
         <button
           type="button"
@@ -913,8 +913,7 @@ export function InformalCardsTab({
               <button
                 type="button"
                 onClick={async () => {
-                  await onDelete(confirmDelete.id)
-                  setConfirmDelete(null)
+                  if (await onDelete(confirmDelete.id)) setConfirmDelete(null)
                 }}
                 style={{
                   flex: 1, padding: '10px', borderRadius: 10,
@@ -994,8 +993,7 @@ export function InformalCardsTab({
             <button
               type="button"
               onClick={async () => {
-                await onMoveAsset(moveTargetAsset.id, null)
-                setMoveTargetAsset(null)
+                if (await onMoveAsset(moveTargetAsset.id, null)) setMoveTargetAsset(null)
               }}
               style={{
                 width: '100%', padding: '14px 16px', textAlign: 'left',
@@ -1013,8 +1011,7 @@ export function InformalCardsTab({
                 key={g.id}
                 type="button"
                 onClick={async () => {
-                  await onMoveAsset(moveTargetAsset.id, g.id)
-                  setMoveTargetAsset(null)
+                  if (await onMoveAsset(moveTargetAsset.id, g.id)) setMoveTargetAsset(null)
                 }}
                 style={{
                   width: '100%', padding: '14px 16px', textAlign: 'left',
@@ -1112,10 +1109,15 @@ export function InformalCardsTab({
                 type="button"
                 onClick={async () => {
                   const ids = Array.from(selectedAssetIds)
-                  await Promise.all(ids.map((id) => onMoveAsset(id, null)))
-                  setBulkMoveOpen(false)
-                  clearSelection()
-                  showToast(copy.movedUnclassified(ids.length), 'success')
+                  const results = await Promise.all(ids.map((id) => onMoveAsset(id, null)))
+                  const failed = ids.filter((_id, index) => !results[index])
+                  if (failed.length === 0) {
+                    setBulkMoveOpen(false)
+                    clearSelection()
+                    showToast(copy.movedUnclassified(ids.length), 'success')
+                  } else {
+                    setSelectedAssetIds(new Set(failed))
+                  }
                 }}
                 style={{
                   width: '100%', textAlign: 'left',
@@ -1133,10 +1135,15 @@ export function InformalCardsTab({
                   type="button"
                   onClick={async () => {
                     const ids = Array.from(selectedAssetIds)
-                    await Promise.all(ids.map((id) => onMoveAsset(id, g.id)))
-                    setBulkMoveOpen(false)
-                    clearSelection()
-                    showToast(copy.movedGroup(ids.length, g.name), 'success')
+                    const results = await Promise.all(ids.map((id) => onMoveAsset(id, g.id)))
+                    const failed = ids.filter((_id, index) => !results[index])
+                    if (failed.length === 0) {
+                      setBulkMoveOpen(false)
+                      clearSelection()
+                      showToast(copy.movedGroup(ids.length, g.name), 'success')
+                    } else {
+                      setSelectedAssetIds(new Set(failed))
+                    }
                   }}
                   style={{
                     width: '100%', textAlign: 'left',
@@ -1193,9 +1200,14 @@ export function InformalCardsTab({
                 onClick={async () => {
                   const ids = Array.from(selectedAssetIds)
                   setBulkDeleteConfirm(false)
-                  await Promise.all(ids.map((id) => onDelete(id)))
-                  clearSelection()
-                  showToast(copy.deletedMany(ids.length), 'success')
+                  const results = await Promise.all(ids.map((id) => onDelete(id)))
+                  const failed = ids.filter((_id, index) => !results[index])
+                  if (failed.length === 0) {
+                    clearSelection()
+                    showToast(copy.deletedMany(ids.length), 'success')
+                  } else {
+                    setSelectedAssetIds(new Set(failed))
+                  }
                 }}
                 style={{
                   flex: 1, height: 40, minHeight: 40, border: 'none',
