@@ -211,7 +211,8 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     return true
   }
 
-  const moveAssetToGroup = async (assetId: number, groupId: number | null): Promise<boolean> => {
+  /** 재조회를 뺀 알맹이. 일괄 작업이 항목마다 다시 읽지 않도록 분리했다. */
+  const moveAssetToGroupCore = async (assetId: number, groupId: number | null): Promise<boolean> => {
     const { data, error } = await supabase
       .from('informal_assets')
       .update({ group_id: groupId })
@@ -221,12 +222,17 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       showToast(msg('자료 이동 실패: {message}', { message: error.message }), 'error')
       return false
     }
-    if (!ensureAffectedRows(data, msg('자료를 이동하지 못했습니다.'))) return false
+    return ensureAffectedRows(data, msg('자료를 이동하지 못했습니다.'))
+  }
+
+  const moveAssetToGroup = async (assetId: number, groupId: number | null): Promise<boolean> => {
+    if (!await moveAssetToGroupCore(assetId, groupId)) return false
     await fetchAll()
     return true
   }
 
-  const deleteInformalAsset = async (assetId: number): Promise<boolean> => {
+  /** 재조회를 뺀 알맹이. Storage 정리까지 여기서 끝낸다. */
+  const deleteInformalAssetCore = async (assetId: number): Promise<boolean> => {
     const token = getAuthToken()
     if (!token) {
       showToast(msg('로그인 세션을 확인할 수 없습니다.'), 'error')
@@ -266,9 +272,46 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       }
     }
 
+    return true
+  }
+
+  const deleteInformalAsset = async (assetId: number): Promise<boolean> => {
+    if (!await deleteInformalAssetCore(assetId)) return false
     await fetchAll()
     return true
   }
+
+  /**
+   * 여러 자료를 한 번에 처리한다. 항목마다 재조회하면 20개 지울 때 20번을 다시
+   * 읽는다 — 병렬로 돌리고 **끝나고 딱 한 번**만 읽는다.
+   *
+   * ⚠ 재조회는 `finally` 에 둔다. 하나가 던져도 반드시 실행돼야 한다 —
+   *   성공한 삭제가 화면에 안 비치면 사용자는 안 지워진 줄 알고 다시 누른다.
+   */
+  const runBulk = async (
+    ids: number[],
+    one: (id: number) => Promise<boolean>,
+  ): Promise<{ failed: number[] }> => {
+    if (ids.length === 0) return { failed: [] }
+    try {
+      // allSettled 를 쓴다 — 하나가 던져도 나머지 결과를 잃지 않는다
+      const results = await Promise.allSettled(ids.map((id) => one(id)))
+      return {
+        failed: ids.filter((_id, index) => {
+          const r = results[index]
+          return r.status !== 'fulfilled' || r.value !== true
+        }),
+      }
+    } finally {
+      await fetchAll()
+    }
+  }
+
+  const deleteInformalAssets = (assetIds: number[]) =>
+    runBulk(assetIds, deleteInformalAssetCore)
+
+  const moveAssetsToGroup = (assetIds: number[], groupId: number | null) =>
+    runBulk(assetIds, (id) => moveAssetToGroupCore(id, groupId))
 
   // ── 비공식 배정 ────────────────────────────────────
   const assignInformalToUser = async (input: {
@@ -400,10 +443,12 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     saveInformalShape,
     uploadInformalAsset,
     deleteInformalAsset,
+    deleteInformalAssets,
     createInformalGroup,
     renameInformalGroup,
     deleteInformalGroup,
     moveAssetToGroup,
+    moveAssetsToGroup,
     assignInformalToUser,
     removeInformalAssignment,
     assignRestaurantToUser,

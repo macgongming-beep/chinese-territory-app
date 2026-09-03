@@ -54,10 +54,12 @@ type Props = {
   onShowMapView: () => void
   onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
   onDeleteInformalAsset?: (assetId: number) => Promise<boolean>
+  onDeleteInformalAssets?: (assetIds: number[]) => Promise<{ failed: number[] }>
   onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
   onRenameInformalGroup?: (groupId: number, name: string) => Promise<boolean>
   onDeleteInformalGroup?: (groupId: number) => Promise<boolean>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<boolean>
+  onMoveAssetsToGroup?: (assetIds: number[], groupId: number | null) => Promise<{ failed: number[] }>
   /** 핀이 찍힌 장소를 지도에서 보여 준다 */
   onOpenInformalOnMap?: (assetId: number) => void
   /** 사진 없이 지도 핀으로 장소 만들기 (docs/비공식-봉사-재설계.md) */
@@ -131,10 +133,12 @@ export function AdminMobileZone({
   onShowMapView,
   onUploadInformalAsset,
   onDeleteInformalAsset,
+  onDeleteInformalAssets,
   onCreateInformalGroup,
   onRenameInformalGroup,
   onDeleteInformalGroup,
   onMoveAssetToGroup,
+  onMoveAssetsToGroup,
   onCreateInformalPlace,
   onOpenInformalOnMap,
   onToggleBuildingRestaurant,
@@ -412,10 +416,12 @@ export function AdminMobileZone({
           informalGroups={informalGroups}
           onUpload={onUploadInformalAsset || (() => Promise.resolve({ ok: false }))}
           onDelete={onDeleteInformalAsset || (() => Promise.resolve(false))}
+          onDeleteMany={onDeleteInformalAssets}
           onCreateGroup={onCreateInformalGroup || (() => Promise.resolve(null))}
           onRenameGroup={onRenameInformalGroup || (() => Promise.resolve(false))}
           onDeleteGroup={onDeleteInformalGroup || (() => Promise.resolve(false))}
           onMoveAsset={onMoveAssetToGroup || (() => Promise.resolve(false))}
+          onMoveMany={onMoveAssetsToGroup}
           language={language}
         />
       </div>

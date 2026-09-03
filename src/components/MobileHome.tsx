@@ -289,11 +289,13 @@ export function MobileHome({
   informalGroups = [],
   onUploadInformalAsset,
   onDeleteInformalAsset,
+  onDeleteInformalAssets,
   onCreateInformalGroup,
   onCreateInformalPlace,
   onRenameInformalGroup,
   onDeleteInformalGroup,
   onMoveAssetToGroup,
+  onMoveAssetsToGroup,
   onAssignInformalToUser,
   onRemoveInformalAssignment,
   onAssignRestaurantToUser,
@@ -390,12 +392,14 @@ export function MobileHome({
   informalGroups?: InformalGroup[]
   onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
   onDeleteInformalAsset?: (assetId: number) => Promise<boolean>
+  onDeleteInformalAssets?: (assetIds: number[]) => Promise<{ failed: number[] }>
   onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
   /** 사진 없이 지도 핀으로 장소 만들기 (docs/비공식-봉사-재설계.md) */
   onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
   onRenameInformalGroup?: (groupId: number, name: string) => Promise<boolean>
   onDeleteInformalGroup?: (groupId: number) => Promise<boolean>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<boolean>
+  onMoveAssetsToGroup?: (assetIds: number[], groupId: number | null) => Promise<{ failed: number[] }>
   onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
   onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
   onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; unitId?: number | null; assignedBy: string }) => Promise<boolean>
@@ -1025,10 +1029,12 @@ export function MobileHome({
                 /* 비공식 자료와 그룹 관리는 admin/developer */
                 onUploadInformalAsset={role === 'admin' || role === 'developer' ? onUploadInformalAsset : undefined}
                 onDeleteInformalAsset={role === 'admin' || role === 'developer' ? onDeleteInformalAsset : undefined}
+                onDeleteInformalAssets={role === 'admin' || role === 'developer' ? onDeleteInformalAssets : undefined}
                 onCreateInformalGroup={role === 'admin' || role === 'developer' ? onCreateInformalGroup : undefined}
                 onRenameInformalGroup={role === 'admin' || role === 'developer' ? onRenameInformalGroup : undefined}
                 onDeleteInformalGroup={role === 'admin' || role === 'developer' ? onDeleteInformalGroup : undefined}
                 onMoveAssetToGroup={role === 'admin' || role === 'developer' ? onMoveAssetToGroup : undefined}
+                onMoveAssetsToGroup={role === 'admin' || role === 'developer' ? onMoveAssetsToGroup : undefined}
                 /* 식당 토글은 leader/admin 모두, user 는 제외 */
                 onToggleBuildingRestaurant={role === 'user' ? undefined : onToggleBuildingRestaurant}
                 restaurantRequests={restaurantRequests}

@@ -169,4 +169,90 @@ describe('비공식 그룹 쓰기 결과 계약', () => {
     await mutations.deleteInformalAsset(7)
     expect(state.toast).toHaveBeenCalledWith(expect.stringContaining('이미 지워진 자료입니다.'), 'error')
   })
+
+  // ── 일괄 처리: 재조회는 딱 한 번 ────────────────────
+  // 항목마다 다시 읽으면 20개 지울 때 슬라이스를 20번 읽는다.
+
+  test('일괄 삭제는 항목이 몇 개든 재조회를 한 번만 한다', async () => {
+    state.rpc.mockResolvedValue({ data: '', error: null })
+    const fetchAll = vi.fn().mockResolvedValue(undefined)
+    const mutations = makeV2AssignmentMutations({ fetchAll })
+
+    const result = await mutations.deleteInformalAssets([1, 2, 3, 4, 5])
+    expect(result.failed).toEqual([])
+    expect(state.rpc).toHaveBeenCalledTimes(5)
+    expect(fetchAll).toHaveBeenCalledOnce()
+  })
+
+  test('일괄 삭제는 실패한 id 만 돌려준다', async () => {
+    // 2번과 4번만 권한으로 막힌다
+    state.rpc.mockImplementation((_fn: string, args: { p_asset_id: number }) =>
+      Promise.resolve(args.p_asset_id % 2 === 0
+        ? { data: null, error: { message: 'permission denied' } }
+        : { data: '', error: null }))
+    const fetchAll = vi.fn().mockResolvedValue(undefined)
+    const mutations = makeV2AssignmentMutations({ fetchAll })
+
+    const result = await mutations.deleteInformalAssets([1, 2, 3, 4, 5])
+    expect(result.failed).toEqual([2, 4])
+    expect(fetchAll).toHaveBeenCalledOnce()
+  })
+
+  test('전부 실패해도 재조회는 한 번 한다', async () => {
+    state.rpc.mockResolvedValue({ data: null, error: { message: 'permission denied' } })
+    const fetchAll = vi.fn().mockResolvedValue(undefined)
+    const mutations = makeV2AssignmentMutations({ fetchAll })
+
+    const result = await mutations.deleteInformalAssets([7, 8])
+    expect(result.failed).toEqual([7, 8])
+    expect(fetchAll).toHaveBeenCalledOnce()
+  })
+
+  test('하나가 예외를 던져도 재조회는 반드시 실행된다', async () => {
+    // ⚠ 여기가 핵심이다. 던진 뒤 재조회를 건너뛰면, 성공한 삭제가 화면에
+    //   안 비쳐서 사용자는 안 지워진 줄 알고 다시 누른다.
+    state.rpc.mockImplementation((_fn: string, args: { p_asset_id: number }) =>
+      args.p_asset_id === 2
+        ? Promise.reject(new Error('네트워크 끊김'))
+        : Promise.resolve({ data: '', error: null }))
+    const fetchAll = vi.fn().mockResolvedValue(undefined)
+    const mutations = makeV2AssignmentMutations({ fetchAll })
+
+    const result = await mutations.deleteInformalAssets([1, 2, 3])
+    expect(result.failed).toEqual([2])
+    expect(fetchAll).toHaveBeenCalledOnce()
+  })
+
+  test('빈 목록은 서버도 재조회도 건드리지 않는다', async () => {
+    const fetchAll = vi.fn()
+    const mutations = makeV2AssignmentMutations({ fetchAll })
+
+    expect((await mutations.deleteInformalAssets([])).failed).toEqual([])
+    expect(state.rpc).not.toHaveBeenCalled()
+    expect(fetchAll).not.toHaveBeenCalled()
+  })
+
+  test('일괄 이동도 재조회를 한 번만 하고 실패한 id 를 돌려준다', async () => {
+    let call = 0
+    state.select.mockImplementation(() => {
+      call += 1
+      // 두 번째만 0행 (권한 없음)
+      return Promise.resolve({ data: call === 2 ? [] : [{ id: call }], error: null })
+    })
+    const fetchAll = vi.fn().mockResolvedValue(undefined)
+    const mutations = makeV2AssignmentMutations({ fetchAll })
+
+    const result = await mutations.moveAssetsToGroup([11, 12, 13], 5)
+    expect(result.failed).toEqual([12])
+    expect(fetchAll).toHaveBeenCalledOnce()
+  })
+
+  test('단건 삭제는 지금처럼 스스로 재조회한다', async () => {
+    state.rpc.mockResolvedValue({ data: '', error: null })
+    const fetchAll = vi.fn().mockResolvedValue(undefined)
+    const mutations = makeV2AssignmentMutations({ fetchAll })
+
+    await expect(mutations.deleteInformalAsset(7)).resolves.toBe(true)
+    expect(fetchAll).toHaveBeenCalledOnce()
+  })
 })

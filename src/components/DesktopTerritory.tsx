@@ -120,10 +120,12 @@ export function DesktopTerritory({
   informalGroups = [],
   onUploadInformalAsset,
   onDeleteInformalAsset,
+  onDeleteInformalAssets,
   onCreateInformalGroup,
   onRenameInformalGroup,
   onDeleteInformalGroup,
   onMoveAssetToGroup,
+  onMoveAssetsToGroup,
   onToggleBuildingRestaurant,
   onRemoveRestaurantUnit,
   onBulkSetRestaurant,
@@ -192,10 +194,12 @@ export function DesktopTerritory({
   informalGroups?: InformalGroup[]
   onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
   onDeleteInformalAsset?: (assetId: number) => Promise<boolean>
+  onDeleteInformalAssets?: (assetIds: number[]) => Promise<{ failed: number[] }>
   onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
   onRenameInformalGroup?: (groupId: number, name: string) => Promise<boolean>
   onDeleteInformalGroup?: (groupId: number) => Promise<boolean>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<boolean>
+  onMoveAssetsToGroup?: (assetIds: number[], groupId: number | null) => Promise<{ failed: number[] }>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
   onRemoveRestaurantUnit?: (unitId: number, buildingId: number) => Promise<void>
   onBulkSetRestaurant?: (buildingIds: number[], nameUpdates?: { id: number; name: string }[]) => Promise<void>
@@ -1311,10 +1315,12 @@ export function DesktopTerritory({
                 informalGroups={informalGroups}
                 onUpload={onUploadInformalAsset}
                 onDelete={onDeleteInformalAsset}
+                onDeleteMany={onDeleteInformalAssets}
                 onCreateGroup={onCreateInformalGroup}
                 onRenameGroup={onRenameInformalGroup}
                 onDeleteGroup={onDeleteInformalGroup}
                 onMoveAsset={onMoveAssetToGroup}
+                onMoveMany={onMoveAssetsToGroup}
               />
             ) : (
               <p style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>

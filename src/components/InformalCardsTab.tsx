@@ -186,16 +186,35 @@ type Props = {
   onUpload: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) =>
     Promise<{ ok: boolean; assetId?: number; error?: string }>
   onDelete: (assetId: number) => Promise<boolean>
+  /** 일괄 삭제. 항목마다 다시 읽지 않고 끝나고 한 번만 읽는다. 없으면 단건을 반복한다. */
+  onDeleteMany?: (assetIds: number[]) => Promise<{ failed: number[] }>
   onCreateGroup: (input: { name: string; createdBy: string }) => Promise<number | null>
   onRenameGroup: (groupId: number, name: string) => Promise<boolean>
   onDeleteGroup: (groupId: number) => Promise<boolean>
   onMoveAsset: (assetId: number, groupId: number | null) => Promise<boolean>
+  /** 일괄 이동. 위와 같은 이유로 나뉘어 있다. */
+  onMoveMany?: (assetIds: number[], groupId: number | null) => Promise<{ failed: number[] }>
   language?: AppLanguage
+}
+
+/**
+ * 일괄 처리 결과(실패한 id 목록). 일괄 함수가 없으면 단건을 반복해
+ * 같은 모양으로 맞춘다 — 프롭을 안 내려준 화면에서도 동작이 깨지지 않게.
+ */
+async function runMany(
+  ids: number[],
+  many: ((ids: number[]) => Promise<{ failed: number[] }>) | undefined,
+  one: (id: number) => Promise<boolean>,
+): Promise<number[]> {
+  if (many) return (await many(ids)).failed
+  const results = await Promise.all(ids.map((id) => one(id)))
+  return ids.filter((_id, index) => !results[index])
 }
 
 export function InformalCardsTab({
   role, currentVisitor, informalAssets, informalGroups,
   onUpload, onDelete, onCreateGroup, onRenameGroup, onDeleteGroup, onMoveAsset,
+  onDeleteMany, onMoveMany,
   onCreatePlace,
   onOpenOnMap,
   language = 'ko',
@@ -1112,8 +1131,11 @@ export function InformalCardsTab({
                 type="button"
                 onClick={async () => {
                   const ids = Array.from(selectedAssetIds)
-                  const results = await Promise.all(ids.map((id) => onMoveAsset(id, null)))
-                  const failed = ids.filter((_id, index) => !results[index])
+                  const failed = await runMany(
+                    ids,
+                    onMoveMany ? (many) => onMoveMany(many, null) : undefined,
+                    (id) => onMoveAsset(id, null),
+                  )
                   if (failed.length === 0) {
                     setBulkMoveOpen(false)
                     clearSelection()
@@ -1139,8 +1161,11 @@ export function InformalCardsTab({
                   type="button"
                   onClick={async () => {
                     const ids = Array.from(selectedAssetIds)
-                    const results = await Promise.all(ids.map((id) => onMoveAsset(id, g.id)))
-                    const failed = ids.filter((_id, index) => !results[index])
+                    const failed = await runMany(
+                      ids,
+                      onMoveMany ? (many) => onMoveMany(many, g.id) : undefined,
+                      (id) => onMoveAsset(id, g.id),
+                    )
                     if (failed.length === 0) {
                       setBulkMoveOpen(false)
                       clearSelection()
@@ -1205,8 +1230,7 @@ export function InformalCardsTab({
                 onClick={async () => {
                   const ids = Array.from(selectedAssetIds)
                   setBulkDeleteConfirm(false)
-                  const results = await Promise.all(ids.map((id) => onDelete(id)))
-                  const failed = ids.filter((_id, index) => !results[index])
+                  const failed = await runMany(ids, onDeleteMany, onDelete)
                   if (failed.length === 0) {
                     clearSelection()
                     showToast(copy.deletedMany(ids.length), 'success')

@@ -168,10 +168,12 @@ function App() {
     upsertGlobalSetting,
     uploadInformalAsset,
     deleteInformalAsset,
+    deleteInformalAssets,
     createInformalGroup,
     renameInformalGroup,
     deleteInformalGroup,
     moveAssetToGroup,
+    moveAssetsToGroup,
     assignInformalToUser,
     removeInformalAssignment,
     assignRestaurantToUser,
@@ -423,10 +425,12 @@ function App() {
             informalGroups={informalGroups}
             onUploadInformalAsset={uploadInformalAsset}
             onDeleteInformalAsset={deleteInformalAsset}
+            onDeleteInformalAssets={deleteInformalAssets}
             onCreateInformalGroup={createInformalGroup}
             onRenameInformalGroup={renameInformalGroup}
             onDeleteInformalGroup={deleteInformalGroup}
             onMoveAssetToGroup={moveAssetToGroup}
+            onMoveAssetsToGroup={moveAssetsToGroup}
             onAssignInformalToUser={assignInformalToUser}
             onRemoveInformalAssignment={removeInformalAssignment}
             onAssignRestaurantToUser={assignRestaurantToUser}
@@ -517,11 +521,13 @@ function App() {
               informalGroups={informalGroups}
               onUploadInformalAsset={uploadInformalAsset}
               onDeleteInformalAsset={deleteInformalAsset}
+              onDeleteInformalAssets={deleteInformalAssets}
               onCreateInformalGroup={createInformalGroup}
               onCreateInformalPlace={createInformalPlace}
               onRenameInformalGroup={renameInformalGroup}
               onDeleteInformalGroup={deleteInformalGroup}
               onMoveAssetToGroup={moveAssetToGroup}
+              onMoveAssetsToGroup={moveAssetsToGroup}
               onAssignInformalToUser={assignInformalToUser}
               onRemoveInformalAssignment={removeInformalAssignment}
               onAssignRestaurantToUser={assignRestaurantToUser}

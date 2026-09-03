@@ -152,10 +152,12 @@ export function DesktopApp({
   onSaveInformalShape,
   onUploadInformalAsset,
   onDeleteInformalAsset,
+  onDeleteInformalAssets,
   onCreateInformalGroup,
   onRenameInformalGroup,
   onDeleteInformalGroup,
   onMoveAssetToGroup,
+  onMoveAssetsToGroup,
   onAssignInformalToUser,
   onRemoveInformalAssignment,
   onAssignRestaurantToUser,
@@ -307,10 +309,12 @@ export function DesktopApp({
   informalGroups?: InformalGroup[]
   onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
   onDeleteInformalAsset?: (assetId: number) => Promise<boolean>
+  onDeleteInformalAssets?: (assetIds: number[]) => Promise<{ failed: number[] }>
   onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
   onRenameInformalGroup?: (groupId: number, name: string) => Promise<boolean>
   onDeleteInformalGroup?: (groupId: number) => Promise<boolean>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<boolean>
+  onMoveAssetsToGroup?: (assetIds: number[], groupId: number | null) => Promise<{ failed: number[] }>
   onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
   onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
   onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; unitId?: number | null; assignedBy: string }) => Promise<boolean>
@@ -650,10 +654,12 @@ export function DesktopApp({
               informalGroups={informalGroups}
               onUploadInformalAsset={onUploadInformalAsset}
               onDeleteInformalAsset={onDeleteInformalAsset}
+              onDeleteInformalAssets={onDeleteInformalAssets}
               onCreateInformalGroup={onCreateInformalGroup}
               onRenameInformalGroup={onRenameInformalGroup}
               onDeleteInformalGroup={onDeleteInformalGroup}
               onMoveAssetToGroup={onMoveAssetToGroup}
+              onMoveAssetsToGroup={onMoveAssetsToGroup}
               onToggleBuildingRestaurant={onToggleBuildingRestaurant}
               onRemoveRestaurantUnit={onRemoveRestaurantUnit}
               onBulkSetRestaurant={onBulkSetRestaurant}
@@ -762,10 +768,12 @@ export function DesktopApp({
                 informalGroups={informalGroups}
                 onUploadInformalAsset={onUploadInformalAsset}
                 onDeleteInformalAsset={onDeleteInformalAsset}
+                onDeleteInformalAssets={onDeleteInformalAssets}
                 onCreateInformalGroup={onCreateInformalGroup}
                 onRenameInformalGroup={onRenameInformalGroup}
                 onDeleteInformalGroup={onDeleteInformalGroup}
                 onMoveAssetToGroup={onMoveAssetToGroup}
+                onMoveAssetsToGroup={onMoveAssetsToGroup}
                 onToggleBuildingRestaurant={onToggleBuildingRestaurant}
                 onRemoveRestaurantUnit={onRemoveRestaurantUnit}
                 onBulkSetRestaurant={onBulkSetRestaurant}
