@@ -191,6 +191,8 @@ PC 건물 목록엔 `세대 확인` 필터(`전체/확인필요/확인됨`)가 �
 | **사용자 이름을 FK 대신 문자열로 담는 칸을 만들면 `rename_user_name_references` 에 추가** | 이 앱은 사람을 이름 문자열로 들고 있다 (22칸). 안 넣으면 이름 바꿀 때 옛 이름이 남는다. **건물명·카드명 같은 다른 이름은 해당 없다** |
 | **`app_users.role`·`approval_status`·`is_active` 를 쓰는 `security definer` 함수를 만들면 그 안에서 권한을 직접 확인한다** | 역할 상승 차단 트리거는 `current_user='postgres'` 를 통과시키는데, **definer 함수 안이 바로 그 상태**다. 트리거가 안 막아 준다 |
 | **행별 트리거가 한 작업에 중복 알림을 낼 때만 억제한다** | `set_config('app.suppress_notifications','on',true)` (트랜잭션 안에서만 유효). 끄고 끝내지 말고 **작업 뒤 요약 알림을 한 번 보낸다** — 무조건 억제하면 필요한 알림까지 조용히 사라진다 |
+| **`storage.objects` 정책은 `alter ... rename` 이 안 된다** | 소유자가 `supabase_storage_admin` 이라 `postgres` 는 42501 을 받는다. **대시보드 SQL Editor 도 똑같이 실패한다** (거기도 postgres 다). `create`/`drop` 은 되므로 **지우고 다시 만든다** — 한 트랜잭션 안에서 |
+| **쓰기 뒤에는 `.select()` 로 바뀐 행이 있는지 본다** | PostgREST 는 RLS 로 막힌 UPDATE/DELETE 에 **오류가 아니라 0행**을 준다. `error` 만 보면 앱이 "저장했습니다" 를 띄우고 아무것도 안 바뀐다. `ensureAffectedRows` 를 쓰고, Storage 의 `remove` 도 같은 이유로 **지워진 개수**를 본다 (막혀도 빈 배열을 준다). `writeResultGuard.test.ts` 가 감시한다 |
 
 ### 검증 도구 (새로 생김 — 다음에도 쓸 것)
 

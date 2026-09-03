@@ -5,8 +5,16 @@
 -- (버킷도 public=true 라 공개 엔드포인트로도 읽힌다. 읽기를 여는 것 자체는 의도다.)
 -- 이름만 보고 감사하면 정반대로 읽게 되므로 이름을 바꾼다. 동작은 그대로다.
 
-alter policy informal_assets_admin_read on storage.objects
-  rename to informal_assets_public_read;
+-- ⚠ `alter policy ... rename to` 는 쓸 수 없다. storage.objects 의 소유자는
+--    supabase_storage_admin 이고, Supabase 는 postgres 에 create/drop policy 는
+--    열어 두었지만 rename 은 열어 두지 않았다 (실측: 42501 must be owner).
+--    대시보드 SQL Editor 도 postgres 로 돌아 같은 오류가 난다.
+--    그래서 지우고 같은 조건으로 다시 만든다 — 한 트랜잭션 안이라 빈틈이 없다.
+drop policy if exists informal_assets_admin_read on storage.objects;
+drop policy if exists informal_assets_public_read on storage.objects;
+create policy informal_assets_public_read on storage.objects
+  for select to public
+  using (bucket_id = 'informal-assets');
 
 do $$
 declare
