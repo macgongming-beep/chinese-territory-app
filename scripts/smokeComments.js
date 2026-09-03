@@ -49,6 +49,8 @@ try {
   const admin = await login('test-admin', '1234')
   adminToken = admin?.token ?? null
   if (!adminToken) throw new Error('테스트 관리자로 로그인하지 못했습니다')
+  const adminRow = (await rows(await rest('app_users?login_id=eq.test-admin&select=id,name', {}, adminToken)))[0]
+  if (!adminRow?.id || !adminRow?.name) throw new Error('테스트 관리자 정보를 읽지 못했습니다')
 
   const eventResponse = await rest('calendar_events?select=id', {
     method: 'POST', body: JSON.stringify({ event_date: '2030-01-01', title: marker }),
@@ -116,6 +118,22 @@ try {
   }, b.token)
   check('다른 사용자는 내용을 수정하지 못한다', (await rows(otherUpdate)).length === 0, `HTTP ${otherUpdate.status}`)
 
+  const adminEditsOther = await rest(`comments?id=eq.${ownId}&select=id`, {
+    method: 'PATCH', body: JSON.stringify({ content: `${marker}_admin_rewrite` }),
+  }, adminToken)
+  check('관리자는 남의 댓글 내용을 수정하지 못한다', !adminEditsOther.ok, `HTTP ${adminEditsOther.status}`)
+
+  const adminInsert = await rest('comments?select=id', {
+    method: 'POST', body: JSON.stringify(comment(adminRow, `${marker}_admin_own`)),
+  }, adminToken)
+  const adminCommentId = (await rows(adminInsert))[0]?.id ?? null
+  if (adminCommentId) commentIds.push(adminCommentId)
+  const adminOwnUpdate = await rest(`comments?id=eq.${adminCommentId}&select=id,content`, {
+    method: 'PATCH', body: JSON.stringify({ content: `${marker}_admin_own_edited` }),
+  }, adminToken)
+  check('관리자도 자기 댓글 내용은 수정할 수 있다',
+    (await rows(adminOwnUpdate))[0]?.content === `${marker}_admin_own_edited`)
+
   const moveTarget = await rest(`comments?id=eq.${ownId}&select=id`, {
     method: 'PATCH', body: JSON.stringify({ target_id: eventId + 1 }),
   }, a.token)
@@ -176,13 +194,25 @@ try {
   const realtime = createClient(env.url, env.anonKey)
   const realtimeContent = `${marker}_realtime`
   let rtStatus = '(구독 콜백 없음)'
-  let rtInsert = '(INSERT 안 함)'
+  const rtInserts = []
+  let realtimeReceived = false
   const got = await new Promise((resolve) => {
     const timer = setTimeout(() => resolve(null), 15000)
+    let retryTimer = null
+    const insertRealtime = async (suffix) => {
+      const inserted = await rest('comments?select=id', {
+        method: 'POST', body: JSON.stringify(comment(b, `${realtimeContent}_${suffix}`)),
+      }, b.token)
+      const id = (await rows(inserted))[0]?.id ?? null
+      rtInserts.push(`HTTP ${inserted.status} · id=${id ?? '없음'}`)
+      if (id) commentIds.push(id)
+    }
     realtime.channel(marker)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (payload) => {
-        if (payload.new?.content === realtimeContent) {
+        if (payload.new?.content?.startsWith(realtimeContent)) {
+          realtimeReceived = true
           clearTimeout(timer)
+          if (retryTimer) clearTimeout(retryTimer)
           resolve(payload.new)
         }
       })
@@ -193,16 +223,14 @@ try {
         }
         rtStatus = 'SUBSCRIBED'
         await new Promise((ready) => setTimeout(ready, 750))
-        const inserted = await rest('comments?select=id', {
-          method: 'POST', body: JSON.stringify(comment(b, realtimeContent)),
-        }, b.token)
-        const id = (await rows(inserted))[0]?.id ?? null
-        rtInsert = `HTTP ${inserted.status} · id=${id ?? '없음'}`
-        if (id) commentIds.push(id)
+        await insertRealtime('first')
+        // 정책/publication DDL 직후 Realtime 등록이 채널 상태보다 늦은 경우가 있다.
+        // 첫 이벤트만 놓친 정상 채널을 고장으로 오판하지 않도록 같은 채널에서 한 번 재시도한다.
+        if (!realtimeReceived) retryTimer = setTimeout(() => void insertRealtime('retry'), 3000)
       })
   })
   check('헤더 없는 Realtime에서 실제 댓글 INSERT를 받는다', Boolean(got),
-    `${rtStatus} · ${rtInsert}`)
+    `${rtStatus} · ${rtInserts.join(' / ') || 'INSERT 안 함'}`)
   await realtime.removeAllChannels()
 } catch (error) {
   console.error(`❌ smoke 중단 — ${error?.message ?? error}`)
