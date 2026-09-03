@@ -26,9 +26,9 @@ export function DesktopTerritoryRegions({
 }: {
   /** 지역 이름 → 구역 카드 수. 삭제해도 되는지 보여 준다 */
   cardCounts: Record<string, number>
-  onUpdateRegion: (id: number, input: { city?: string; nameZh?: string; nameEn?: string }) => Promise<void>
-  onMoveRegion: (id: number, direction: 'up' | 'down') => Promise<void>
-  onDeleteRegion: (id: number, name: string) => Promise<void>
+  onUpdateRegion: (id: number, input: { city?: string; nameZh?: string; nameEn?: string }) => Promise<boolean>
+  onMoveRegion: (id: number, direction: 'up' | 'down') => Promise<boolean>
+  onDeleteRegion: (id: number, name: string) => Promise<boolean>
 }) {
   // ⚠ getRegions() 는 모듈 상태라 그 자체로는 다시 그리기를 부르지 않는다.
   //   순서를 바꾸면 fetchAll → cards 가 새로 들어오고 → cardCounts 가 바뀌어
@@ -45,13 +45,13 @@ export function DesktopTerritoryRegions({
   const save = async () => {
     if (!editing || busy) return
     setBusy(true)
-    await onUpdateRegion(regions[editing.index].id, {
+    const saved = await onUpdateRegion(regions[editing.index].id, {
       city: editing.row.city,
       nameZh: editing.row.nameZh,
       nameEn: editing.row.nameEn,
     })
     setBusy(false)
-    setEditing(null)
+    if (saved) setEditing(null)
   }
 
   const remove = async (index: number) => {

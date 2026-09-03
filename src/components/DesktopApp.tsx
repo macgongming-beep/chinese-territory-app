@@ -222,9 +222,9 @@ export function DesktopApp({
     pinCount: number
   }) => Promise<number | null> | number | null
   onCreateTerritoryRegion?: (input: { name: string; city?: string }) => Promise<boolean>
-  onUpdateTerritoryRegion?: (id: number, input: { city?: string; nameZh?: string; nameEn?: string }) => Promise<void>
-  onMoveTerritoryRegion?: (id: number, direction: 'up' | 'down') => Promise<void>
-  onDeleteTerritoryRegion?: (id: number, name: string) => Promise<void>
+  onUpdateTerritoryRegion?: (id: number, input: { city?: string; nameZh?: string; nameEn?: string }) => Promise<boolean>
+  onMoveTerritoryRegion?: (id: number, direction: 'up' | 'down') => Promise<boolean>
+  onDeleteTerritoryRegion?: (id: number, name: string) => Promise<boolean>
   // ⚠ 예전에 => void 였다. TypeScript 는 반환값 있는 함수를 void 콜백에 넣게
   //    해 주므로 컴파일은 됐지만, **실패 계약이 이 층에서 지워졌다.**
   //    저장이 실패해도 화면은 성공으로 알았다.
@@ -900,9 +900,9 @@ export function DesktopApp({
             (viewMode === 'admin' || viewMode === 'developer')
               ? <DesktopTerritoryRegions
                   cardCounts={regionCardCounts}
-                  onDeleteRegion={async (id, name) => { await onDeleteTerritoryRegion?.(id, name) }}
-                  onMoveRegion={async (id, dir) => { await onMoveTerritoryRegion?.(id, dir) }}
-                  onUpdateRegion={async (id, input) => { await onUpdateTerritoryRegion?.(id, input) }}
+                  onDeleteRegion={async (id, name) => (await onDeleteTerritoryRegion?.(id, name)) ?? false}
+                  onMoveRegion={async (id, dir) => (await onMoveTerritoryRegion?.(id, dir)) ?? false}
+                  onUpdateRegion={async (id, input) => (await onUpdateTerritoryRegion?.(id, input)) ?? false}
                 />
               : <Navigate to="/settings/profile" replace />
           } />

@@ -39,3 +39,16 @@ export function reportMutationError(message: string, error: unknown) {
   // 짐작할 수 없는 오류는 원래 문구만 띄운다 (지어내지 않는다).
   showToast(describeDbError(message, error), 'error')
 }
+
+/**
+ * PostgREST의 UPDATE/DELETE는 RLS로 대상 행이 가려져도 오류 대신 0행을 돌려준다.
+ * 성공으로 오인하지 않도록 쓰기 호출은 `.select()` 결과를 이 함수로 확인한다.
+ */
+export function ensureAffectedRows(data: unknown[] | null | undefined, message: string): boolean {
+  if (Array.isArray(data) && data.length > 0) return true
+  reportMutationError(message, {
+    code: 'P0001',
+    message: '변경할 자료를 찾지 못했거나 권한이 없습니다.',
+  })
+  return false
+}

@@ -6,6 +6,9 @@
 
 alter table public.territory_regions enable row level security;
 
+-- RLS는 TRUNCATE에 적용되지 않는다. 앱이 쓰지 않는 스키마 변경 권한도 함께 회수한다.
+revoke truncate, references, trigger on public.territory_regions from public, anon, authenticated;
+
 drop policy if exists territory_regions_select_all on public.territory_regions;
 create policy territory_regions_select_all on public.territory_regions
   for select to anon, authenticated
@@ -57,6 +60,15 @@ begin
       and policyname like 'TEMP\_session\_gate\_%'
   ) then
     raise exception 'territory_regions 임시 세션 정책이 남았습니다';
+  end if;
+
+  if has_table_privilege('anon', 'public.territory_regions', 'TRUNCATE')
+     or has_table_privilege('authenticated', 'public.territory_regions', 'TRUNCATE')
+     or has_table_privilege('anon', 'public.territory_regions', 'REFERENCES')
+     or has_table_privilege('authenticated', 'public.territory_regions', 'REFERENCES')
+     or has_table_privilege('anon', 'public.territory_regions', 'TRIGGER')
+     or has_table_privilege('authenticated', 'public.territory_regions', 'TRIGGER') then
+    raise exception 'territory_regions에 불필요한 테이블 권한이 남았습니다';
   end if;
 end $$;
 

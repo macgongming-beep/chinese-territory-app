@@ -192,12 +192,25 @@ const main = async () => {
   //     event_participants · comments · chat_* · event_card_assignment*.
   const rt = createClient(URL_, KEY)
   const RT_TITLE = SENTINEL + '_rt'
-  let rtStatus = '(구독 콜백 없음)', rtInsert = '(INSERT 안 함)'
+  let rtStatus = '(구독 콜백 없음)', rtInsert = '(INSERT 안 함)', realtimeReceived = false
   const got = await new Promise((resolve) => {
     const timer = setTimeout(() => resolve(null), 15000)
+    let retryTimer = null
+    const insertRealtime = async (suffix) => {
+      const ins = await req('calendar_events?select=id', { method: 'POST',
+        body: JSON.stringify({ event_date: '2030-01-01', title: `${RT_TITLE}_${suffix}` }) }, admin.token)
+      const id = (await rowsOf(ins))[0]?.id ?? null
+      rtInsert = `${rtInsert === '(INSERT 안 함)' ? '' : `${rtInsert} / `}HTTP ${ins.status} · id=${id ?? '없음'}`
+      if (id) willClean(`calendar_events?id=eq.${id}`)
+    }
     rt.channel('_smoke_lockdown')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'calendar_events' }, (p) => {
-        if (p.new?.title === RT_TITLE) { clearTimeout(timer); resolve(p.new) }
+        if (p.new?.title?.startsWith(RT_TITLE)) {
+          realtimeReceived = true
+          clearTimeout(timer)
+          if (retryTimer) clearTimeout(retryTimer)
+          resolve(p.new)
+        }
       })
       .subscribe(async (status, err) => {
         if (status !== 'SUBSCRIBED') { rtStatus = `${status}${err ? ' · ' + (err.message ?? err) : ''}`; return }
@@ -205,9 +218,9 @@ const main = async () => {
         // 정책 DDL 직후에는 채널 상태가 먼저 SUBSCRIBED가 되고 변경 스트림 등록이
         // 아주 잠깐 늦을 수 있다. 즉시 INSERT하면 정상 구독도 한 번 놓쳐 거짓 실패한다.
         await new Promise((ready) => setTimeout(ready, 750))
-        const ins = await req('calendar_events?select=id', { method: 'POST',
-          body: JSON.stringify({ event_date: '2030-01-01', title: RT_TITLE }) }, admin.token)
-        rtInsert = `HTTP ${ins.status}`
+        await insertRealtime('first')
+        // SUBSCRIBED 직후 첫 이벤트만 놓치는 경우 같은 채널에서 한 번 더 증명한다.
+        if (!realtimeReceived) retryTimer = setTimeout(() => void insertRealtime('retry'), 3000)
         //   ⚠ INSERT 가 실패하면 이벤트가 안 오는 게 당연하다. 그걸 'Realtime 이 깨졌다'
         //     로 읽으면 엉뚱한 곳을 파게 된다 — 그래서 둘을 따로 보고한다.
       })
@@ -215,7 +228,6 @@ const main = async () => {
   check('구독이 살아 있고 INSERT 이벤트가 도착한다 (15초 안)', Boolean(got),
     got ? `id=${got.id}` : `못 받음 · 구독=${rtStatus} · INSERT=${rtInsert}`)
   await rt.removeAllChannels()
-  if (got?.id) willClean(`calendar_events?id=eq.${got.id}`)
 
   return admin.token
 }

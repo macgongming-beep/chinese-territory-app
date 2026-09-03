@@ -95,7 +95,13 @@ const main = async () => {
   const rest = async (path, init) => {
     const r = await fetch(`${URL_}/rest/v1/${path}`, {
       ...init,
-      headers: { apikey: KEY, 'Content-Type': 'application/json', Prefer: 'return=representation', ...(init?.headers ?? {}) },
+      headers: {
+        apikey: KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+        'x-session-token': token,
+        ...(init?.headers ?? {}),
+      },
     })
     return { status: r.status, data: await r.json().catch(() => null) }
   }

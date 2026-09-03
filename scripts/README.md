@@ -1,5 +1,19 @@
 # 백업 / 복원
 
+## 권한 변경 검증
+
+GitHub CI는 비밀값 없이 `lint + unit test + build`만 실행한다. **CI가 초록이어도
+DB 정책이 맞다는 뜻은 아니다.** 역할 정책 마이그레이션을 테스트 DB에 적용한 뒤,
+운영 적용 전에 별도의 수동 관문을 실행한다.
+
+```bash
+npm run smoke:all
+```
+
+이 명령은 `.env.test.local`의 등록된 테스트 프로젝트만 쓰며, 운영 ref이거나
+`KNOWN_TEST_REFS`에 없는 프로젝트면 중단한다. 표별 smoke가 늘어나면
+`scripts/smokeAll.js` 목록에도 추가한다.
+
 ## 백업 실행
 
 ```bash
