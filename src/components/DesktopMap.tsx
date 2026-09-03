@@ -115,7 +115,7 @@ export function DesktopMap({
   }) => Promise<boolean>
   onDeleteBuilding: (buildingId: number) => void
   onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => void
-  onDeleteCardBoundary: (cardId: number) => void
+  onDeleteCardBoundary: (cardId: number) => Promise<boolean>
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onSaveCardBoundary: (cardId: number, points: GeoPoint[]) => Promise<boolean>
   onMergeCardBoundaries?: (input: {
@@ -1257,8 +1257,11 @@ export function DesktopMap({
     setCardFilter(mergeTargetCardId)
   }
 
-  const handleDeleteBoundary = (cardId: number) => {
-    onDeleteCardBoundary(cardId)
+  const handleDeleteBoundary = async (cardId: number) => {
+    // ⚠ 결과를 기다렸다가 성공일 때만 편집 상태를 비운다. 예전에는 기다리지
+    //   않고 바로 비워서, RLS 로 삭제가 0행이어도 그리던 점이 사라졌다.
+    const deleted = await onDeleteCardBoundary(cardId)
+    if (!deleted) return
     if (cardId === boundaryCardId) {
       setDrawingBoundary(false)
       setDraftBoundaryPoints([])

@@ -5,9 +5,6 @@ const state = vi.hoisted(() => ({
   select: vi.fn(),
   rpc: vi.fn(),
   toast: vi.fn(),
-  /** 삭제 직전에 읽는 사진 경로. 빈 값이면 지울 파일이 없다는 뜻 */
-  assetRow: { data: null as { image_path: string | null } | null, error: null as unknown },
-  readAssetRow: vi.fn(),
   storageRemove: vi.fn(),
 }))
 
@@ -17,7 +14,6 @@ vi.mock('../../lib/supabase', () => ({
       update: () => ({ eq: () => ({ select: state.select }) }),
       insert: () => ({ select: state.select }),
       delete: () => ({ eq: () => ({ select: state.select }) }),
-      select: () => ({ eq: () => ({ maybeSingle: state.readAssetRow }) }),
     }),
     rpc: state.rpc,
     storage: { from: () => ({ remove: state.storageRemove }) },
@@ -32,9 +28,8 @@ describe('비공식 그룹 쓰기 결과 계약', () => {
   beforeEach(() => {
     state.result = { data: [], error: null }
     state.select.mockReset().mockImplementation(() => Promise.resolve(state.result))
-    state.rpc.mockReset().mockResolvedValue({ data: false, error: null })
-    state.assetRow = { data: { image_path: 'abc.png' }, error: null }
-    state.readAssetRow.mockReset().mockImplementation(() => Promise.resolve(state.assetRow))
+    // v2 RPC 는 지운 행의 사진 경로(text)를 돌려준다. 문자열이 아니면 실패다.
+    state.rpc.mockReset().mockResolvedValue({ data: null, error: null })
     state.storageRemove.mockReset().mockResolvedValue({ data: [{ name: 'abc.png' }], error: null })
     state.toast.mockClear()
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -103,7 +98,7 @@ describe('비공식 그룹 쓰기 결과 계약', () => {
     expect(fetchAll).toHaveBeenCalledOnce()
   })
 
-  test('삭제 RPC가 false를 돌려주면 성공으로 보지 않는다', async () => {
+  test('삭제 RPC가 경로를 안 돌려주면 성공으로 보지 않는다', async () => {
     const fetchAll = vi.fn()
     const mutations = makeV2AssignmentMutations({ fetchAll })
 
@@ -111,8 +106,8 @@ describe('비공식 그룹 쓰기 결과 계약', () => {
     expect(fetchAll).not.toHaveBeenCalled()
   })
 
-  test('삭제 RPC가 true를 돌려준 때만 성공한다', async () => {
-    state.rpc.mockResolvedValue({ data: true, error: null })
+  test('삭제 RPC가 경로를 돌려준 때만 성공한다', async () => {
+    state.rpc.mockResolvedValue({ data: 'abc.png', error: null })
     const fetchAll = vi.fn().mockResolvedValue(undefined)
     const mutations = makeV2AssignmentMutations({ fetchAll })
 
@@ -124,28 +119,25 @@ describe('비공식 그룹 쓰기 결과 계약', () => {
   // 버킷이 공개라 파일이 남으면 지운 뒤에도 주소만 알면 계속 보인다.
 
   test('자료를 지우면 Storage 사진도 지운다', async () => {
-    state.rpc.mockResolvedValue({ data: true, error: null })
+    state.rpc.mockResolvedValue({ data: 'abc.png', error: null })
     const mutations = makeV2AssignmentMutations({ fetchAll: vi.fn().mockResolvedValue(undefined) })
 
     await expect(mutations.deleteInformalAsset(7)).resolves.toBe(true)
     expect(state.storageRemove).toHaveBeenCalledWith(['abc.png'])
   })
 
-  test('사진 경로는 행이 사라지기 전에 읽는다 — RPC 보다 먼저', async () => {
-    // 순서가 뒤집히면 행이 이미 없어 경로를 못 읽고, 파일만 영영 남는다.
-    const order: string[] = []
-    state.readAssetRow.mockImplementation(() => { order.push('select'); return Promise.resolve(state.assetRow) })
-    state.rpc.mockImplementation(() => { order.push('rpc'); return Promise.resolve({ data: true, error: null }) })
-    state.storageRemove.mockImplementation(() => { order.push('remove'); return Promise.resolve({ data: [{ name: 'abc.png' }], error: null }) })
+  test('사진 경로를 따로 조회하지 않는다 — 서버가 돌려준 값만 쓴다', async () => {
+    // 따로 조회하면 그 조회만 실패했을 때 행은 지워지고 파일이 남는다.
+    // 또 조회와 삭제 사이에 사진이 바뀌면 옛 파일을 지운다.
+    state.rpc.mockResolvedValue({ data: '서버가준경로.png', error: null })
     const mutations = makeV2AssignmentMutations({ fetchAll: vi.fn().mockResolvedValue(undefined) })
 
     await mutations.deleteInformalAsset(7)
-    expect(order).toEqual(['select', 'rpc', 'remove'])
+    expect(state.storageRemove).toHaveBeenCalledWith(['서버가준경로.png'])
   })
 
   test('사진이 없는 자료는 Storage 를 건드리지 않는다', async () => {
-    state.assetRow = { data: { image_path: '' }, error: null }
-    state.rpc.mockResolvedValue({ data: true, error: null })
+    state.rpc.mockResolvedValue({ data: '', error: null })
     const mutations = makeV2AssignmentMutations({ fetchAll: vi.fn().mockResolvedValue(undefined) })
 
     await expect(mutations.deleteInformalAsset(7)).resolves.toBe(true)
@@ -154,7 +146,7 @@ describe('비공식 그룹 쓰기 결과 계약', () => {
 
   test('Storage 가 0개를 지웠다면 파일이 남았다고 알린다', async () => {
     // ⚠ remove 는 정책으로 막혀도 오류가 아니라 빈 배열을 준다. 개수를 봐야 안다.
-    state.rpc.mockResolvedValue({ data: true, error: null })
+    state.rpc.mockResolvedValue({ data: 'abc.png', error: null })
     state.storageRemove.mockResolvedValue({ data: [], error: null })
     const mutations = makeV2AssignmentMutations({ fetchAll: vi.fn().mockResolvedValue(undefined) })
 

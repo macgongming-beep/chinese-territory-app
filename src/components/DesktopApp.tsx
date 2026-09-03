@@ -248,7 +248,7 @@ export function DesktopApp({
   onSetUnitsSurveyed?: (buildingId: number, surveyed: boolean) => Promise<boolean> | void
   onMoveBuildingToCard: (buildingId: number, cardId: number) => void
   onReassignBuildingsToCards: (updates: Array<{ buildingId: number; cardId: number }>) => Promise<{ updated: number; failed: number }>
-  onDeleteCardBoundary: (cardId: number) => void
+  onDeleteCardBoundary: (cardId: number) => Promise<boolean>
   onDeleteNotice: (id: number) => void
   onDeleteSpecialPeriod: (id: number) => void
   specialPeriods: SpecialPeriod[]

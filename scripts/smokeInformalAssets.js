@@ -175,12 +175,32 @@ try {
     removedObject.error?.message ?? `지워진 개수 ${removedObject.data?.length ?? 0}`)
   if (!removedObject.error) storagePath = ''
 
-  const removed = await rest('rpc/delete_informal_asset_secure', {
+  // v2 는 지운 행의 사진 경로(text)를 돌려준다. 있으면 그쪽을 시험한다.
+  // ⚠ 조용히 건너뛰지 않는다 — 없으면 눈에 띄게 알린다 (테스트 DB 마이그레이션 누락).
+  const v2Probe = await rest('rpc/delete_informal_asset_secure_v2', {
+    method: 'POST', body: JSON.stringify({ p_token: null, p_asset_id: -1 }),
+  })
+  const hasV2 = v2Probe.status !== 404
+  if (!hasV2) {
+    console.log('⚠️  delete_informal_asset_secure_v2 가 없다 — 20260904_1100 마이그레이션을 이 DB 에 적용할 것')
+  } else {
+    for (const actor of actors.filter(({ role }) => role !== 'admin')) {
+      const deniedV2 = await rest('rpc/delete_informal_asset_secure_v2', {
+        method: 'POST', body: JSON.stringify({ p_token: actor.token, p_asset_id: assetId }),
+      }, actor.token)
+      check(`${actor.role}는 v2 삭제 RPC를 통과하지 못한다`, !deniedV2.ok, `HTTP ${deniedV2.status}`)
+    }
+  }
+
+  const rpcName = hasV2 ? 'delete_informal_asset_secure_v2' : 'delete_informal_asset_secure'
+  const removed = await rest(`rpc/${rpcName}`, {
     method: 'POST', body: JSON.stringify({ p_token: developerToken, p_asset_id: assetId }),
   }, developerToken)
   const removedBody = await removed.json().catch(() => null)
-  check('개발자는 삭제 RPC로 자료를 삭제한다', removed.ok && removedBody === true, `HTTP ${removed.status}`)
-  if (removed.ok && removedBody === true) assetId = null
+  // v2 는 사진 경로(빈 글자 가능), 옛 함수는 true 를 돌려준다
+  const deleteOk = removed.ok && (hasV2 ? typeof removedBody === 'string' : removedBody === true)
+  check(`개발자는 삭제 RPC로 자료를 삭제한다 (${hasV2 ? 'v2' : '구버전'})`, deleteOk, `HTTP ${removed.status}`)
+  if (deleteOk) assetId = null
 } catch (error) {
   console.error(`❌ smoke 중단 — ${error?.message ?? error}`)
   failures += 1

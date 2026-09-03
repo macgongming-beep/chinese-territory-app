@@ -232,21 +232,16 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       showToast(msg('로그인 세션을 확인할 수 없습니다.'), 'error')
       return false
     }
-    // ⚠ 지울 파일의 경로를 **행이 사라지기 전에** 읽어 둔다.
-    //   RPC 는 행만 지우므로, 여기서 안 읽으면 Storage 파일을 영영 못 찾는다.
-    //   버킷이 공개라 남은 파일은 주소만 알면 계속 보인다.
-    const { data: target } = await supabase
-      .from('informal_assets')
-      .select('image_path')
-      .eq('id', assetId)
-      .maybeSingle()
-    const imagePath = (target as { image_path?: string | null } | null)?.image_path ?? ''
-
-    const { data, error } = await supabase.rpc('delete_informal_asset_secure', {
+    // ⚠ 지운 행의 사진 경로를 **서버가 돌려준다** (delete ... returning).
+    //   전에는 지우기 전에 따로 SELECT 했는데, 그 조회만 실패하면 경로가 빈 값이
+    //   되고 삭제는 성공해서 **공개 버킷에 파일만 조용히 남았다.** 조회와 삭제
+    //   사이에 사진이 바뀌면 옛 파일을 지우는 문제도 있었다.
+    //   옛 delete_informal_asset_secure 는 캐시에 남은 앱을 위해 서버에 그대로 둔다.
+    const { data, error } = await supabase.rpc('delete_informal_asset_secure_v2', {
       p_token: token,
       p_asset_id: assetId,
     })
-    if (error || data !== true) {
+    if (error || typeof data !== 'string') {
       // 권한 없음과 없는 행을 구분한다 — 관리자가 "왜 안 지워지지" 를 알 수 있게
       const raw = error?.message ?? ''
       const reason = /permission denied/i.test(raw)
@@ -258,6 +253,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       return false
     }
 
+    const imagePath = data
     if (imagePath) {
       const { data: removed, error: removeError } = await supabase.storage
         .from('informal-assets').remove([imagePath])
