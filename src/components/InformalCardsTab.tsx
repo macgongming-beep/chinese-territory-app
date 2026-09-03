@@ -184,8 +184,8 @@ type Props = {
     Promise<{ ok: boolean; assetId?: number; error?: string }>
   onDelete: (assetId: number) => Promise<void>
   onCreateGroup: (input: { name: string; createdBy: string }) => Promise<number | null>
-  onRenameGroup: (groupId: number, name: string) => Promise<void>
-  onDeleteGroup: (groupId: number) => Promise<void>
+  onRenameGroup: (groupId: number, name: string) => Promise<boolean>
+  onDeleteGroup: (groupId: number) => Promise<boolean>
   onMoveAsset: (assetId: number, groupId: number | null) => Promise<void>
   language?: AppLanguage
 }
@@ -960,8 +960,8 @@ export function InformalCardsTab({
               <button
                 type="button"
                 onClick={async () => {
-                  await onDeleteGroup(confirmDeleteGroup.id)
-                  setConfirmDeleteGroup(null)
+                  const deleted = await onDeleteGroup(confirmDeleteGroup.id)
+                  if (deleted) setConfirmDeleteGroup(null)
                 }}
                 style={{
                   flex: 1, padding: '10px', borderRadius: 10,

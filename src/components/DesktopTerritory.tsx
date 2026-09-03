@@ -193,8 +193,8 @@ export function DesktopTerritory({
   onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
   onDeleteInformalAsset?: (assetId: number) => Promise<void>
   onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
-  onRenameInformalGroup?: (groupId: number, name: string) => Promise<void>
-  onDeleteInformalGroup?: (groupId: number) => Promise<void>
+  onRenameInformalGroup?: (groupId: number, name: string) => Promise<boolean>
+  onDeleteInformalGroup?: (groupId: number) => Promise<boolean>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
   onRemoveRestaurantUnit?: (unitId: number, buildingId: number) => Promise<void>

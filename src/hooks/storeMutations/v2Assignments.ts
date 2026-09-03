@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase'
 import { showToast } from '../../lib/toast'
 import { getAuthToken } from '../../lib/authToken'
 import { msg } from '../../lib/msg'
-import { reportMutationError } from './shared'
+import { ensureAffectedRows, reportMutationError } from './shared'
 
 export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> }) {
   const { fetchAll } = deps
@@ -180,20 +180,31 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     return data?.id ?? null
   }
 
-  const renameInformalGroup = async (groupId: number, name: string) => {
-    const { error } = await supabase
+  const renameInformalGroup = async (groupId: number, name: string): Promise<boolean> => {
+    const { data, error } = await supabase
       .from('informal_groups')
       .update({ name: name.trim() || '새 그룹' })
       .eq('id', groupId)
-    if (error) showToast(msg('그룹 이름 변경 실패: {message}', { message: error.message }), 'error')
-    else await fetchAll()
+      .select('id')
+    if (error) {
+      showToast(msg('그룹 이름 변경 실패: {message}', { message: error.message }), 'error')
+      return false
+    }
+    if (!ensureAffectedRows(data, msg('그룹 이름을 변경하지 못했습니다.'))) return false
+    await fetchAll()
+    return true
   }
 
-  const deleteInformalGroup = async (groupId: number) => {
+  const deleteInformalGroup = async (groupId: number): Promise<boolean> => {
     // 그룹 내 자료는 group_id 가 NULL 로 풀림 (FK on delete set null)
-    const { error } = await supabase.from('informal_groups').delete().eq('id', groupId)
-    if (error) showToast(msg('그룹 삭제 실패: {message}', { message: error.message }), 'error')
-    else await fetchAll()
+    const { data, error } = await supabase.from('informal_groups').delete().eq('id', groupId).select('id')
+    if (error) {
+      showToast(msg('그룹 삭제 실패: {message}', { message: error.message }), 'error')
+      return false
+    }
+    if (!ensureAffectedRows(data, msg('그룹을 삭제하지 못했습니다.'))) return false
+    await fetchAll()
+    return true
   }
 
   const moveAssetToGroup = async (assetId: number, groupId: number | null) => {

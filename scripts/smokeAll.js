@@ -13,6 +13,7 @@ const scripts = [
   'smokeComments.js',
   'smokeTerritoryRegions.js',
   'smokeServiceSuggestions.js',
+  'smokeInformalGroups.js',
 ]
 
 for (const script of scripts) {

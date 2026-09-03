@@ -55,8 +55,8 @@ type Props = {
   onUploadInformalAsset?: (input: { file: File; name: string; uploadedBy: string; groupId?: number | null }) => Promise<{ ok: boolean; assetId?: number; error?: string }>
   onDeleteInformalAsset?: (assetId: number) => Promise<void>
   onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
-  onRenameInformalGroup?: (groupId: number, name: string) => Promise<void>
-  onDeleteInformalGroup?: (groupId: number) => Promise<void>
+  onRenameInformalGroup?: (groupId: number, name: string) => Promise<boolean>
+  onDeleteInformalGroup?: (groupId: number) => Promise<boolean>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<void>
   /** 핀이 찍힌 장소를 지도에서 보여 준다 */
   onOpenInformalOnMap?: (assetId: number) => void
@@ -413,8 +413,8 @@ export function AdminMobileZone({
           onUpload={onUploadInformalAsset || (() => Promise.resolve({ ok: false }))}
           onDelete={onDeleteInformalAsset || (() => Promise.resolve())}
           onCreateGroup={onCreateInformalGroup || (() => Promise.resolve(null))}
-          onRenameGroup={onRenameInformalGroup || (() => Promise.resolve())}
-          onDeleteGroup={onDeleteInformalGroup || (() => Promise.resolve())}
+          onRenameGroup={onRenameInformalGroup || (() => Promise.resolve(false))}
+          onDeleteGroup={onDeleteInformalGroup || (() => Promise.resolve(false))}
           onMoveAsset={onMoveAssetToGroup || (() => Promise.resolve())}
           language={language}
         />
