@@ -27,6 +27,7 @@
     "smoke:chat-room-mutes": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeChatRoomMutes.js",
     "smoke:comments": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeComments.js",
     "smoke:territory-regions": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeTerritoryRegions.js",
+    "smoke:service-suggestions": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeServiceSuggestions.js",
     "smoke:all": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeAll.js",
     "apply:lockdown": "node scripts/applyLockdown.js",
     "apply:security-followup": "node scripts/applySecurityFollowup.js",

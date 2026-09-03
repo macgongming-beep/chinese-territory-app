@@ -1206,7 +1206,7 @@ export function MobileHome({
             
             {/* 봉사 제안 관리 */}
             <Route path="/suggestions" element={
-              role === 'admin' ? (
+              (role === 'admin' || role === 'developer') ? (
                 <div className="mobile-settings-page" style={{ paddingBottom: 60 }}>
                   <AppHeader
                     pageTitle={msg('대화 방법 제안 관리')}

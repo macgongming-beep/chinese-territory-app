@@ -227,7 +227,7 @@ export function AdminSuggestions(_props: Props) {
 
     setSaving(true)
     try {
-      await saveServiceSuggestion({
+      const saved = await saveServiceSuggestion({
         id: editingSuggestion.id,
         title: editingSuggestion.title,
         show_title_on_home: editingSuggestion.show_title_on_home ?? false,
@@ -235,6 +235,7 @@ export function AdminSuggestions(_props: Props) {
         is_visible: editingSuggestion.is_visible ?? false,
         content: editingSuggestion.content ?? []
       })
+      if (!saved) return
       await fetchSuggestions()
       setEditingSuggestion(null)
     } catch (err) {
@@ -247,7 +248,7 @@ export function AdminSuggestions(_props: Props) {
 
   const handleToggleVisible = async (sugg: ServiceSuggestion, nextVisible: boolean) => {
     try {
-      await saveServiceSuggestion({
+      const saved = await saveServiceSuggestion({
         id: sugg.id,
         title: sugg.title,
         show_title_on_home: sugg.show_title_on_home,
@@ -255,6 +256,7 @@ export function AdminSuggestions(_props: Props) {
         is_visible: nextVisible,
         content: sugg.content
       })
+      if (!saved) return
       await fetchSuggestions()
     } catch (err) {
       console.error(err)
@@ -265,7 +267,8 @@ export function AdminSuggestions(_props: Props) {
   const handleDelete = async (id: number) => {
     if (!(await confirmDialog({ message: '정말 이 제안 묶음을 삭제하시겠습니까?', danger: true, confirmLabel: '삭제' }))) return
     try {
-      await deleteServiceSuggestion(id)
+      const deleted = await deleteServiceSuggestion(id)
+      if (!deleted) return
       await fetchSuggestions()
       if (editingSuggestion?.id === id) {
         setEditingSuggestion(null)
@@ -347,7 +350,7 @@ export function AdminSuggestions(_props: Props) {
     let fail = 0
     for (const s of importPreview) {
       try {
-        await saveServiceSuggestion({
+        const saved = await saveServiceSuggestion({
           id: s.id || undefined,
           title: s.title,
           show_title_on_home: s.show_title_on_home,
@@ -355,7 +358,8 @@ export function AdminSuggestions(_props: Props) {
           is_visible: s.is_visible,
           content: s.content,
         })
-        ok++
+        if (saved) ok++
+        else fail++
       } catch {
         fail++
       }
