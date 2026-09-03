@@ -15,6 +15,7 @@ import { showToast } from '../lib/toast'
 import { msg } from '../lib/msg'
 import { parseCsv, toCsv, downloadCsvFile } from '../utils/roundTripCsv'
 import { parseCsvDate } from '../utils/csvBuildingImport'
+import { savePhoneSurveyRows, type PhoneSurveyWriteRow } from '../hooks/storeMutations/phoneSurveys'
 import {
   matchSurveyRows,
   normalizeSurveyAnswer,
@@ -195,7 +196,7 @@ export function PhoneSurveyPanel({ currentVisitor = '' }: { currentVisitor?: str
     if (answered.length === 0) return
     setBusy('save')
     try {
-      const rowsToSave = answered
+      const rowsToSave: PhoneSurveyWriteRow[] = answered
         .filter((r) => r.row.placeId)
         .map((r) => ({
           place_id: r.row.placeId,
@@ -216,19 +217,7 @@ export function PhoneSurveyPanel({ currentVisitor = '' }: { currentVisitor?: str
       // 같은 업체가 두 줄 있으면 upsert 가 통째로 거부된다 (한 행을 두 번 못 고침)
       const payload = [...new Map(rowsToSave.map((p) => [p.place_id, p])).values()]
       const skipped = answered.length - payload.length
-      let { error } = await supabase.from('phone_surveys').upsert(payload, { onConflict: 'place_id' })
-      // 식당 칸을 더하는 SQL 을 아직 안 돌렸을 수 있다. 그것 때문에 조사 기록을
-      // 통째로 잃는 건 손해가 크므로, 그 칸만 빼고 한 번 더 시도한다.
-      if (error && /restaurant/.test(error.message)) {
-        const without = payload.map(({ restaurant: _restaurant, ...rest }) => rest)
-        ;({ error } = await supabase.from('phone_surveys').upsert(without, { onConflict: 'place_id' }))
-      }
-      if (error) {
-        console.error(error)
-        // 원인을 감추면 다음에도 똑같이 막힌다 — 서버가 준 말을 그대로 보여 준다
-        showToast(`${msg('저장 실패')} — ${error.message}`, 'error')
-        return
-      }
+      if (!(await savePhoneSurveyRows(payload))) return
 
       // 대조로 "이 세대가 그 업소"임을 확인한 순간이 업체ID 를 채울 최적의 시점이다.
       // 여기서 안 붙이면 다음 대조에서도 주소·이름으로 흐릿하게 맞춰야 한다.

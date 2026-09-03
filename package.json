@@ -29,6 +29,7 @@
     "smoke:territory-regions": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeTerritoryRegions.js",
     "smoke:service-suggestions": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeServiceSuggestions.js",
     "smoke:informal-groups": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeInformalGroups.js",
+    "smoke:phone-surveys": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokePhoneSurveys.js",
     "smoke:all": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeAll.js",
     "apply:lockdown": "node scripts/applyLockdown.js",
     "apply:security-followup": "node scripts/applySecurityFollowup.js",
