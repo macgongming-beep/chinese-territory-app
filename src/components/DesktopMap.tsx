@@ -865,7 +865,7 @@ export function DesktopMap({
       label: labels[status],
       buildings: grouped.get(status) ?? [],
     }))
-  }, [panelBuildings])
+  }, [language, panelBuildings])
   const panelUnitTotal = useMemo(() => panelBuildings.reduce((total, building) => total + building.units.length, 0), [panelBuildings])
   const panelVisitedTotal = useMemo(() => panelBuildings.reduce(
     (total, building) => total + building.units.filter((unit) => unit.status !== '미방문').length,
