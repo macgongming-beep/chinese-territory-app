@@ -281,7 +281,7 @@ export function DesktopApp({
   onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus, invitationLeft?: boolean) => void
   onToggleInvitationLeft: (buildingId: number, unitId: number) => void
   onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
-  onSaveCardBoundary: (cardId: number, points: GeoPoint[]) => Promise<void> | void
+  onSaveCardBoundary: (cardId: number, points: GeoPoint[]) => Promise<boolean>
   onRestoreCardBoundaries?: (boundaries: CardBoundary[]) => Promise<void> | void
   onMergeCardBoundaries?: (input: {
     targetCardId: number

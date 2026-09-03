@@ -73,6 +73,7 @@ const informalCopy = {
     deleteManyTitle: (count: number) => `${count}개 자료를 삭제할까요?`,
     deleteManyHelp: '삭제한 자료는 되돌릴 수 없습니다.',
     deletedMany: (count: number) => `${count}개 자료를 삭제했습니다`,
+    partialFailure: (done: number, failed: number) => `${done}개는 됐고 ${failed}개는 권한이 없거나 이미 없어 실패했습니다`,
   },
   zh: {
     defaultAssetName: '非正式证据卡',
@@ -119,6 +120,7 @@ const informalCopy = {
     deleteManyTitle: (count: number) => `要删除 ${count} 个资料吗？`,
     deleteManyHelp: '删除后无法恢复。',
     deletedMany: (count: number) => `已删除 ${count} 个资料`,
+    partialFailure: (done: number, failed: number) => `${done} 个成功，${failed} 个失败（无权限或已不存在）`,
   },
   en: {
     defaultAssetName: 'Informal Evidence Card',
@@ -165,6 +167,7 @@ const informalCopy = {
     deleteManyTitle: (count: number) => `Delete ${count} items?`,
     deleteManyHelp: 'Deleted items cannot be restored.',
     deletedMany: (count: number) => `Deleted ${count} items`,
+    partialFailure: (done: number, failed: number) => `${done} succeeded, ${failed} failed (no permission or already gone)`,
   },
 }
 
@@ -1117,6 +1120,7 @@ export function InformalCardsTab({
                     showToast(copy.movedUnclassified(ids.length), 'success')
                   } else {
                     setSelectedAssetIds(new Set(failed))
+                    showToast(copy.partialFailure(ids.length - failed.length, failed.length), 'error')
                   }
                 }}
                 style={{
@@ -1143,6 +1147,7 @@ export function InformalCardsTab({
                       showToast(copy.movedGroup(ids.length, g.name), 'success')
                     } else {
                       setSelectedAssetIds(new Set(failed))
+                      showToast(copy.partialFailure(ids.length - failed.length, failed.length), 'error')
                     }
                   }}
                   style={{
@@ -1207,6 +1212,7 @@ export function InformalCardsTab({
                     showToast(copy.deletedMany(ids.length), 'success')
                   } else {
                     setSelectedAssetIds(new Set(failed))
+                    showToast(copy.partialFailure(ids.length - failed.length, failed.length), 'error')
                   }
                 }}
                 style={{

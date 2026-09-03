@@ -232,14 +232,44 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
       showToast(msg('로그인 세션을 확인할 수 없습니다.'), 'error')
       return false
     }
+    // ⚠ 지울 파일의 경로를 **행이 사라지기 전에** 읽어 둔다.
+    //   RPC 는 행만 지우므로, 여기서 안 읽으면 Storage 파일을 영영 못 찾는다.
+    //   버킷이 공개라 남은 파일은 주소만 알면 계속 보인다.
+    const { data: target } = await supabase
+      .from('informal_assets')
+      .select('image_path')
+      .eq('id', assetId)
+      .maybeSingle()
+    const imagePath = (target as { image_path?: string | null } | null)?.image_path ?? ''
+
     const { data, error } = await supabase.rpc('delete_informal_asset_secure', {
       p_token: token,
       p_asset_id: assetId,
     })
     if (error || data !== true) {
-      showToast(msg('자료 삭제 실패: {message}', { message: error?.message ?? '자료를 찾지 못했습니다.' }), 'error')
+      // 권한 없음과 없는 행을 구분한다 — 관리자가 "왜 안 지워지지" 를 알 수 있게
+      const raw = error?.message ?? ''
+      const reason = /permission denied/i.test(raw)
+        ? msg('삭제 권한이 없습니다.')
+        : /not found/i.test(raw) || !raw
+          ? msg('이미 지워진 자료입니다.')
+          : raw
+      showToast(msg('자료 삭제 실패: {message}', { message: reason }), 'error')
       return false
     }
+
+    if (imagePath) {
+      const { data: removed, error: removeError } = await supabase.storage
+        .from('informal-assets').remove([imagePath])
+      // ⚠ Storage 의 remove 는 권한으로 막혀도 오류가 아니라 **빈 배열**을 준다.
+      //   DB 쪽 ensureAffectedRows 와 같은 이유로 개수를 봐야 한다.
+      // 행은 이미 지워졌다. 파일만 남은 것은 삭제 실패가 아니므로 true 를 유지하고,
+      // 대신 남았다는 사실을 숨기지 않는다.
+      if (removeError || (removed?.length ?? 0) === 0) {
+        showToast(msg('자료는 지웠지만 사진 파일이 남았습니다. 관리자에게 알려 주세요.'), 'error')
+      }
+    }
+
     await fetchAll()
     return true
   }

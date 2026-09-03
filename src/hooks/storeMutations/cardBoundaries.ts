@@ -5,7 +5,7 @@ export type CardMergeUndoSnapshot = {
   buildingCards: Array<{ buildingId: number; cardId: number }>
   targetCardName: string
 }
-import { supabase, showToast, reportMutationError } from './shared'
+import { supabase, showToast, reportMutationError, ensureAffectedRows } from './shared'
 import { msg } from '../../lib/msg'
 
 export function makeCardBoundaryMutations(deps: {
@@ -15,10 +15,15 @@ export function makeCardBoundaryMutations(deps: {
 }) {
   const { fetchAll, cardBoundaries } = deps
 
-  const saveCardBoundary = async (cardId: number, points: GeoPoint[]) => {
+  /**
+   * ⚠ 성공 여부를 돌려준다. 호출부는 이 값을 보고서야 그린 것을 지운다 —
+   * RLS 로 막히면 PostgREST 가 오류가 아니라 0행을 주기 때문에,
+   * 결과를 안 보면 저장 실패인데도 화면이 성공처럼 닫힌다.
+   */
+  const saveCardBoundary = async (cardId: number, points: GeoPoint[]): Promise<boolean> => {
     if (points.length < 3) {
       showToast(msg('카드 구역선은 최소 3개 점이 필요합니다.'), 'error')
-      return
+      return false
     }
     const result = await supabase.from('card_boundaries').upsert(
       {
@@ -27,25 +32,28 @@ export function makeCardBoundaryMutations(deps: {
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'card_id' },
-    )
+    ).select('card_id')
     if (result.error) {
       reportMutationError(msg('카드 구역선을 저장하지 못했습니다. Supabase에 card_boundaries 테이블이 있는지 확인해 주세요.'), result.error)
-      return
+      return false
     }
+    if (!ensureAffectedRows(result.data, msg('카드 구역선을 저장하지 못했습니다.'))) return false
     await fetchAll()
     showToast(msg('구역선이 저장됐습니다'))
+    return true
   }
 
-  const deleteCardBoundary = async (cardId: number) => {
+  const deleteCardBoundary = async (cardId: number): Promise<boolean> => {
     // 삭제 전 현재 데이터 백업 (복구용)
     const originalBoundary = cardBoundaries.find((b) => b.cardId === cardId)
     const originalPoints = originalBoundary ? [...originalBoundary.points] : null
 
-    const result = await supabase.from('card_boundaries').delete().eq('card_id', cardId)
+    const result = await supabase.from('card_boundaries').delete().eq('card_id', cardId).select('card_id')
     if (result.error) {
       reportMutationError(msg('카드 구역선을 삭제하지 못했습니다.'), result.error)
-      return
+      return false
     }
+    if (!ensureAffectedRows(result.data, msg('카드 구역선을 삭제하지 못했습니다.'))) return false
     await fetchAll()
 
     if (originalPoints) {
@@ -58,6 +66,7 @@ export function makeCardBoundaryMutations(deps: {
     } else {
       showToast(msg('구역선이 삭제됐습니다'))
     }
+    return true
   }
 
   const restoreCardBoundaries = async (boundaries: CardBoundary[]) => {

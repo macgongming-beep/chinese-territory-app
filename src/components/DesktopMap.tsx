@@ -117,7 +117,7 @@ export function DesktopMap({
   onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => void
   onDeleteCardBoundary: (cardId: number) => void
   onDeleteUnit: (buildingId: number, unitId: number) => void
-  onSaveCardBoundary: (cardId: number, points: GeoPoint[]) => Promise<void> | void
+  onSaveCardBoundary: (cardId: number, points: GeoPoint[]) => Promise<boolean>
   onMergeCardBoundaries?: (input: {
     targetCardId: number
     sourceCardIds: number[]
@@ -241,7 +241,7 @@ export function DesktopMap({
     ? cards.find((card) => card.id === activeServiceSession.primaryCardId)
     : undefined
   const canRecordVisits = actualRole !== 'user' || !!todayRecordableSession
-  const isAdmin = actualRole === 'admin'
+  const isAdmin = actualRole === 'admin' || actualRole === 'developer'
 
   const requireRecordAccess = () => {
     if (canRecordVisits) return true
@@ -996,7 +996,9 @@ export function DesktopMap({
       if (informalShapeTarget && onSaveInformalShape) {
         saved = await onSaveInformalShape(informalShapeTarget.assetId, informalShapeTarget.field, draftBoundaryPoints)
       } else {
-        await onSaveCardBoundary(boundaryCardId, draftBoundaryPoints)
+        // ⚠ 구역선도 결과를 봐야 한다. 안 보면 저장에 실패해도 아래에서
+        //   draftBoundaryPoints 를 비워 한참 그린 것이 소리 없이 사라진다.
+        saved = await onSaveCardBoundary(boundaryCardId, draftBoundaryPoints)
       }
     } finally {
       setSavingBoundary(false)

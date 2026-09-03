@@ -129,11 +129,12 @@ try {
   check('관리자는 자료를 수정한다', (await rows(updated))[0]?.name === `${marker}_admin`,
     `HTTP ${updated.status}`)
 
-  const userToken = actors.find((actor) => actor.role === 'user')?.token
-  const deniedRpc = await rest('rpc/delete_informal_asset_secure', {
-    method: 'POST', body: JSON.stringify({ p_token: userToken, p_asset_id: assetId }),
-  }, userToken)
-  check('일반 사용자는 삭제 RPC를 통과하지 못한다', !deniedRpc.ok, `HTTP ${deniedRpc.status}`)
+  for (const actor of actors.filter(({ role }) => role !== 'admin')) {
+    const deniedRpc = await rest('rpc/delete_informal_asset_secure', {
+      method: 'POST', body: JSON.stringify({ p_token: actor.token, p_asset_id: assetId }),
+    }, actor.token)
+    check(`${actor.role}는 삭제 RPC를 통과하지 못한다`, !deniedRpc.ok, `HTTP ${deniedRpc.status}`)
+  }
 
   const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
   const noSessionUpload = await storage(null).upload(`${marker}_none.png`, bytes, { contentType: 'image/png' })
@@ -148,10 +149,30 @@ try {
   if (uploaded.error) throw uploaded.error
   const publicObject = await fetch(`${env.url}/storage/v1/object/public/informal-assets/${storagePath}`)
   check('Storage 공개 읽기를 유지한다', publicObject.ok, `HTTP ${publicObject.status}`)
+  // ⚠ Storage 의 remove 는 정책으로 막혀도 오류가 아니라 **빈 배열**을 준다.
+  //    error 만 보면 무조건 통과하므로 지워진 개수를 봐야 한다.
+  for (const actor of actors.filter(({ role }) => role !== 'admin')) {
+    const otherUpdate = await storage(actor.token).update(storagePath, bytes, { contentType: 'image/png' })
+    check(`${actor.role}는 Storage 파일을 수정하지 못한다`, Boolean(otherUpdate.error))
+
+    const otherRemove = await storage(actor.token).remove([storagePath])
+    check(`${actor.role}는 Storage 파일을 지우지 못한다`,
+      Boolean(otherRemove.error) || (otherRemove.data?.length ?? 0) === 0,
+      otherRemove.error?.message ?? `지워진 개수 ${otherRemove.data?.length ?? 0}`)
+  }
+  // ⚠ 공개 URL 로 확인하면 안 된다 — CDN 이 캐시해서 이미 지워진 파일도 200 을 준다.
+  //    (실측: 파일을 지운 뒤에도 통과했다.) 목록 API 는 DB 를 보므로 진실을 말한다.
+  const survivedList = await storage(developerToken).list('', { search: storagePath })
+  check('차단된 요청 뒤에도 파일이 남아 있다',
+    (survivedList.data ?? []).some((entry) => entry.name === storagePath),
+    survivedList.error?.message ?? `찾은 개수 ${(survivedList.data ?? []).length}`)
+
   const replaced = await storage(adminToken).update(storagePath, bytes, { contentType: 'image/png' })
   check('관리자는 Storage 파일을 수정한다', !replaced.error, replaced.error?.message ?? '')
   const removedObject = await storage(developerToken).remove([storagePath])
-  check('개발자는 Storage 파일을 삭제한다', !removedObject.error, removedObject.error?.message ?? '')
+  check('개발자는 Storage 파일을 삭제한다',
+    !removedObject.error && (removedObject.data?.length ?? 0) === 1,
+    removedObject.error?.message ?? `지워진 개수 ${removedObject.data?.length ?? 0}`)
   if (!removedObject.error) storagePath = ''
 
   const removed = await rest('rpc/delete_informal_asset_secure', {
