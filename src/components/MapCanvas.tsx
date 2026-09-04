@@ -465,6 +465,7 @@ function NaverMapCanvas({
   onUpdateBoundaryPoint,
   onMapRightClick,
   onMapClick,
+  pickingPoint,
   onMapLongClick,
   highlightedCardIds,
   isMobile = false,
@@ -513,6 +514,12 @@ function NaverMapCanvas({
   onUpdateBoundaryPoint?: (index: number, point: GeoPoint) => void
   onMapRightClick?: (lat: number, lng: number) => void
   onMapClick?: (lat: number, lng: number) => void
+  /**
+   * 건물 추가가 아니어도 지도 클릭을 받는다 (비공식 포인트 찍기 등).
+   * ⚠ 예전에는 addingBuilding 일 때만 클릭을 들어서, 다른 모드에서는
+   *   onMapClick 을 넘겨도 아무 일도 일어나지 않았다.
+   */
+  pickingPoint?: boolean
   onMapLongClick?: (lat: number, lng: number) => void
   highlightedCardIds?: Set<number>
   isMobile?: boolean
@@ -1526,7 +1533,7 @@ function NaverMapCanvas({
           onAddBoundaryPoint({ lat: event.coord.lat(), lng: event.coord.lng() })
         },
       )
-    } else if (addingBuilding) {
+    } else if (addingBuilding || pickingPoint) {
       clickListenerRef.current = naver.maps.Event.addListener(
         mapInstanceRef.current,
         'click',
@@ -1542,7 +1549,7 @@ function NaverMapCanvas({
         clickListenerRef.current = null
       }
     }
-  }, [drawingBoundary, addingBuilding, onAddBoundaryPoint])
+  }, [drawingBoundary, addingBuilding, pickingPoint, onAddBoundaryPoint])
 
   // 가상 핀(정기방문 주소) 변경 시 마커 재생성
   useEffect(() => {
@@ -1863,6 +1870,7 @@ export function MapCanvas({
   onUpdateBoundaryPoint,
   onMapRightClick,
   onMapClick,
+  pickingPoint,
   onMapLongClick,
   highlightedCardIds,
   selectedCardIds,
@@ -1912,6 +1920,12 @@ export function MapCanvas({
   onUpdateBoundaryPoint?: (index: number, point: GeoPoint) => void
   onMapRightClick?: (lat: number, lng: number) => void
   onMapClick?: (lat: number, lng: number) => void
+  /**
+   * 건물 추가가 아니어도 지도 클릭을 받는다 (비공식 포인트 찍기 등).
+   * ⚠ 예전에는 addingBuilding 일 때만 클릭을 들어서, 다른 모드에서는
+   *   onMapClick 을 넘겨도 아무 일도 일어나지 않았다.
+   */
+  pickingPoint?: boolean
   onMapLongClick?: (lat: number, lng: number) => void
   highlightedCardIds?: Set<number>
   selectedCardIds?: Set<number>
@@ -1970,6 +1984,7 @@ export function MapCanvas({
           onUpdateBoundaryPoint={onUpdateBoundaryPoint}
           onMapRightClick={onMapRightClick}
           onMapClick={onMapClick}
+          pickingPoint={pickingPoint}
           onMapLongClick={onMapLongClick}
           highlightedCardIds={highlightedCardIds}
           isMobile={isMobile}

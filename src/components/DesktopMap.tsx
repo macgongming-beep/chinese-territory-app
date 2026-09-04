@@ -450,8 +450,10 @@ export function DesktopMap({
   const handleMapClick = (lat: number, lng: number) => {
     // 구역 안의 점을 찍는 중이면 그쪽이 우선이다
     if (addingChildKind !== null) {
-      // ⚠ 모드는 끄지 않는다 — 이어서 여러 개를 찍는 것이 보통이다
+      // 한 번 찍으면 모드를 끈다. 여러 개를 넣을 때는 메뉴에서 다시 고른다 —
+      // 계속 켜져 있으면 지도를 누를 때마다 창이 떠서 다른 일을 못 한다.
       setChildDraft({ lat, lng, name: '', kind: addingChildKind })
+      setAddingChildKind(null)
       return
     }
     openAddBuildingAt(lat, lng)
@@ -1090,7 +1092,6 @@ export function DesktopMap({
                 parentId: selectedInformal.id,
               })
               setSavingChild(false)
-              // 모드는 그대로 둔다 — 다음 자리를 바로 찍을 수 있게
               if (ok) setChildDraft(null)
             }}
             type="button"
@@ -1810,30 +1811,6 @@ export function DesktopMap({
                         </span>
                       </div>
                     ))}
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 7,
-                      padding: '3px 2px', fontSize: 12, color: 'var(--gray-600)',
-                      borderTop: '1px solid var(--line)', marginTop: 3, paddingTop: 6,
-                    }}>
-                      <span style={{ width: 13, borderTop: '2px dashed #C44536', flexShrink: 0 }} />
-                      <span style={{ flex: 1 }}>{msg('중심거리')}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>
-                        {selectedInformal?.route?.length ?? 0}
-                      </span>
-                    </div>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 7,
-                      padding: '3px 2px', fontSize: 12, color: 'var(--gray-600)',
-                    }}>
-                      <span style={{
-                        width: 13, height: 10, flexShrink: 0, borderRadius: 2,
-                        border: '1.5px solid #7A5C8A', background: 'rgba(122,92,138,0.12)',
-                      }} />
-                      <span style={{ flex: 1 }}>{msg('구역 경계')}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>
-                        {selectedInformal?.boundary?.length ? 1 : 0}
-                      </span>
-                    </div>
                 </div>
               )}
               {!informalOnlyBoundaries && (
@@ -2032,6 +2009,7 @@ export function DesktopMap({
                 if (place) showToast(place.memo?.trim() || place.name, 'info')
               }}
               onMapClick={(addingBuilding || addingChildKind !== null) ? handleMapClick : undefined}
+              pickingPoint={addingChildKind !== null}
               onMovePreviewPin={(lat, lng) => {
                 setNewBuildingLat(lat)
                 setNewBuildingLng(lng)
@@ -2080,7 +2058,10 @@ export function DesktopMap({
                         style={on ? { color: INFORMAL_KIND_STYLE[kind].color, fontWeight: 700 } : undefined}
                         type="button"
                       >
-                        {on ? msg('그만 추가') : `+ ${informalKindLabel(kind)}`}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <InformalKindIcon kind={kind} size={13} />
+                          {on ? msg('그만 추가') : `+ ${informalKindLabel(kind)}`}
+                        </span>
                       </button>
                     )
                   })
