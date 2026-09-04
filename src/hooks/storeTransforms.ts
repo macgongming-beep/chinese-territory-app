@@ -5,6 +5,7 @@
  * mutate 로직은 useStore.ts 에 그대로 두고, 순수 변환만 분리.
  */
 import { compareUnitNumbers } from '../utils/unitNumber'
+import { INFORMAL_KINDS, type InformalKind } from '../types'
 import type {
   Building,
   CalendarEvent,
@@ -109,6 +110,7 @@ export type RawEventCardAssignment = {
 export type RawInformalAsset = {
   id: number
   name: string
+  kind?: string | null
   image_url: string
   image_path: string
   uploaded_by: string
@@ -386,6 +388,8 @@ export function toInformalAsset(raw: RawInformalAsset): InformalAsset {
   return {
     id: raw.id,
     name: raw.name,
+    // 모르는 값이 오면 '비공식구역' 으로 떨어뜨린다 — 지도가 안 그려지는 것보다 낫다
+    kind: INFORMAL_KINDS.includes(raw.kind as InformalKind) ? (raw.kind as InformalKind) : '비공식구역',
     imageUrl: raw.image_url,
     imagePath: raw.image_path,
     uploadedBy: raw.uploaded_by ?? '',

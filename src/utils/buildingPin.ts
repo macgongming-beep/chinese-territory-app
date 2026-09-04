@@ -19,6 +19,24 @@ import type { Building } from '../types'
 
 export type PinTone = '방문금지' | '정기방문' | '보통'
 
+/**
+ * 건물 상태별 색. **판정과 색을 같은 곳에 둔다** — 예전에 지도 핀과 선택된 핀을
+ * 두 곳에서 따로 그려서 누를 때만 색이 달라진 적이 있다.
+ * 비공식 장소 종류(utils/informalKind)가 이 색들과 겹치지 않는지 시험이 지킨다.
+ */
+export const BUILDING_STATUS_COLORS = {
+  방문필요: '#2D6CDF',
+  방문완료: '#4F7A4B',
+  방문금지: '#1A1A18',
+  정기방문: '#B8862A',
+} as const
+
+export const TONE_COLORS: Record<PinTone, string> = {
+  보통: BUILDING_STATUS_COLORS.방문완료,
+  정기방문: BUILDING_STATUS_COLORS.정기방문,
+  방문금지: BUILDING_STATUS_COLORS.방문금지,
+}
+
 export type BuildingPin = {
   tone: PinTone
   /** true = 채운 핀(안 가도 됨) · false = 파란 핀(가 볼 곳이 있다) */

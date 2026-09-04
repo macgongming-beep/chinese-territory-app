@@ -7,6 +7,7 @@ import { showToast } from '../../lib/toast'
 import { getAuthToken } from '../../lib/authToken'
 import { msg } from '../../lib/msg'
 import { ensureAffectedRows, reportMutationError } from './shared'
+import type { InformalKind } from '../../types'
 
 export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> }) {
   const { fetchAll } = deps
@@ -27,6 +28,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     lng: number
     memo?: string
     zoom?: number | null
+    kind?: InformalKind
   }): Promise<boolean> => {
     const name = input.name.trim()
     if (!name) {
@@ -35,6 +37,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     }
     const { data, error } = await supabase.from('informal_assets').insert({
       name,
+      kind: input.kind ?? '비공식구역',
       // 사진이 없는 자료다. 빈 글자로 두어 기존 화면이 그대로 동작하게 한다
       image_url: '',
       image_path: '',
@@ -97,7 +100,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
   /** 핀·메모 고치기. 사진이 있는 기존 자료에도 그대로 쓴다 */
   const updateInformalPlace = async (
     assetId: number,
-    input: { name?: string; memo?: string; lat?: number; lng?: number; zoom?: number | null },
+    input: { name?: string; memo?: string; lat?: number; lng?: number; zoom?: number | null; kind?: InformalKind },
   ): Promise<boolean> => {
     const patch: Record<string, unknown> = {}
     if (input.name !== undefined) patch.name = input.name.trim()
@@ -105,6 +108,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     if (input.lat !== undefined) patch.lat = input.lat
     if (input.lng !== undefined) patch.lng = input.lng
     if (input.zoom !== undefined) patch.zoom = input.zoom
+    if (input.kind !== undefined) patch.kind = input.kind
     if (Object.keys(patch).length === 0) return true
 
     const { data, error } = await supabase.from('informal_assets').update(patch).eq('id', assetId).select('id')

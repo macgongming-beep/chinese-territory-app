@@ -61,9 +61,18 @@ export type EventCardAssignment = {
   memo: string
 }
 
+/**
+ * 비공식 장소의 종류. **값이 판단 기준이고 라벨은 t()/msg() 로 번역한다.**
+ * 번역된 글자를 값 비교에 쓰지 말 것 (요일 라벨을 '주말' 과 비교해 생긴 버그 있었음).
+ */
+export const INFORMAL_KINDS = ['비공식구역', '거점', '대화장소'] as const
+export type InformalKind = (typeof INFORMAL_KINDS)[number]
+
 export type InformalAsset = {
   id: number
   name: string
+  /** 종류. 옛 자료는 전부 '비공식구역' 이다 (DB 기본값) */
+  kind: InformalKind
   /** 사진 — 지도 핀으로 옮기는 중이라 이제 선택이다 (docs/비공식-봉사-재설계.md) */
   imageUrl: string
   imagePath: string

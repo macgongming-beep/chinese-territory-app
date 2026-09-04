@@ -4,29 +4,21 @@ import type { MouseEvent } from 'react'
 import type { Building, BuildingStatus, CardBoundary, GeoPoint, TerritoryCard } from '../types'
 import { clusterByGrid, getClusterThresholdKm } from '../utils/mapClustering'
 import { getBuildingStatus, getCardName, getMockPosition, isValidMapCoordinate } from '../utils/mapUtils'
-import { getBuildingPin, type PinTone } from '../utils/buildingPin'
+import { getBuildingPin, BUILDING_STATUS_COLORS, TONE_COLORS } from '../utils/buildingPin'
+import { INFORMAL_KIND_STYLE, informalKindSvgPath } from '../utils/informalKind'
+import type { InformalKind } from '../types'
 import { TERRITORY_BOUNDARY } from '../data/territoryBoundary'
 import { showToast } from '../lib/toast'
 import { msg } from '../lib/msg'
 import { stripRegionPrefix } from '../lib/regions'
 
-const STATUS_COLORS: Record<BuildingStatus, string> = {
-  방문필요: '#2D6CDF',
-  방문완료: '#4F7A4B',
-  방문금지: '#1A1A18',
-  정기방문: '#B8862A',
-}
+const STATUS_COLORS: Record<BuildingStatus, string> = BUILDING_STATUS_COLORS
 
 // 핀은 **속(채움)과 테두리**를 따로 쓴다.
 //   속   파랑 = 아직 가 볼 곳이 있다
 //   테두리 = 왜 눈여겨봐야 하는지 (초록: 다 갔지만 세대 미확인 · 금색: 정기방문인데 갈 곳 남음)
 // 예전에는 색 하나에 성격과 진행을 우겨넣어 **하나가 다른 하나를 가렸다.**
 const NEED_FILL = STATUS_COLORS.방문필요
-const TONE_COLORS: Record<PinTone, string> = {
-  보통: STATUS_COLORS.방문완료,
-  정기방문: STATUS_COLORS.정기방문,
-  방문금지: STATUS_COLORS.방문금지,
-}
 
 /**
  * 핀 하나의 색 두 개와 테두리 굵기.
@@ -149,7 +141,7 @@ function escapeAttr(value: string): string {
 //  줌을 한 칸 옮길 때마다 그걸 다시 했다 — 지도 진입이 느리던 주된 원인)
 
 /** 지도에 찍을 비공식 장소. 지도는 이름과 좌표만 알면 된다 */
-export type InformalPlacePin = { id: number; name: string; lat: number; lng: number }
+export type InformalPlacePin = { id: number; name: string; lat: number; lng: number; kind?: InformalKind }
 
 type BuildingCluster = { buildings: Building[]; lat: number; lng: number }
 export type MapAggregateMarker = {
@@ -279,14 +271,19 @@ function routeStepHtml(index: number): string {
     border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35)">${label}</div>`
 }
 
-function informalMarkerHtml(name: string): string {
+function informalMarkerHtml(name: string, kind: InformalKind = '비공식구역'): string {
   const safe = String(name ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .slice(0, 20)
+  const color = INFORMAL_KIND_STYLE[kind]?.color ?? INFORMAL_KIND_STYLE.비공식구역.color
+  // ⚠ 색만으로 나누지 않는다. 26px 에서는 형태가 색보다 먼저 보인다.
+  const glyph = `<svg width="13" height="13" viewBox="0 0 24 24" fill="#fff" style="transform:rotate(45deg)">
+      <path d="${informalKindSvgPath(kind)}"/></svg>`
   return `
     <div style="position:relative;transform:translateZ(0)">
       <div style="width:26px;height:26px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);
-                  background:#7A5C8A;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>
+                  background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);
+                  display:flex;align-items:center;justify-content:center">${glyph}</div>
       <div style="position:absolute;left:31px;top:2px;white-space:nowrap;font-size:11.5px;font-weight:700;
                   color:#4b3a58;background:rgba(255,255,255,.88);padding:1px 5px;border-radius:4px">${safe}</div>
     </div>`
@@ -644,7 +641,7 @@ function NaverMapCanvas({
         map: mapInstanceRef.current,
         position: new naver.maps.LatLng(lat, lng),
         icon: {
-          content: informalMarkerHtml(place.name),
+          content: informalMarkerHtml(place.name, place.kind),
           anchor: new naver.maps.Point(13, 30),
         },
         zIndex: 6,

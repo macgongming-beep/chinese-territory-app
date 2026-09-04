@@ -175,7 +175,7 @@ export function MobileMap({
   const informalPins = useMemo(
     () => (!showInformal ? [] : informalAssets)
       .filter((a) => typeof a.lat === 'number' && typeof a.lng === 'number')
-      .map((a) => ({ id: a.id, name: a.name, lat: a.lat as number, lng: a.lng as number })),
+      .map((a) => ({ id: a.id, name: a.name, kind: a.kind, lat: a.lat as number, lng: a.lng as number })),
     [informalAssets, showInformal],
   )
   const selectedInformal = useMemo(

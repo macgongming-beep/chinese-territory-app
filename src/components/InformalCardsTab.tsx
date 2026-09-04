@@ -2,7 +2,8 @@
 // 구역 탭 > 비공식 카드 sub-tab 안에 렌더링
 import { MapCanvas } from './MapCanvas'
 import { useRef, useState } from 'react'
-import type { InformalAsset, InformalGroup, Role } from '../types'
+import { INFORMAL_KINDS, type InformalAsset, type InformalGroup, type InformalKind, type Role } from '../types'
+import { INFORMAL_KIND_STYLE } from '../utils/informalKind'
 import { showToast } from '../lib/toast'
 import { compressImage } from '../lib/imageCompress'
 import type { AppLanguage } from '../i18n'
@@ -46,6 +47,8 @@ const informalCopy = {
     renameGroup: '이름 변경',
     deleteGroup: '그룹 삭제',
     noAssets: '자료 없음',
+    kindLabel: '종류',
+    kindName: { 비공식구역: '비공식 구역', 거점: '거점', 대화장소: '대화하기 좋은 장소' } as Record<InformalKind, string>,
     countLine: (assets: number, groups: number) => `전체 ${assets}개 · 그룹 ${groups}`,
     addAsset: '+ 자료 추가',
     addPlace: '+ 장소 추가',
@@ -93,6 +96,8 @@ const informalCopy = {
     renameGroup: '重命名',
     deleteGroup: '删除分组',
     noAssets: '没有资料',
+    kindLabel: '类型',
+    kindName: { 비공식구역: '非正式区域', 거점: '据点', 대화장소: '适合交谈的地方' } as Record<InformalKind, string>,
     countLine: (assets: number, groups: number) => `共 ${assets} 个 · 分组 ${groups}`,
     addAsset: '+ 添加资料',
     addPlace: '+ 添加地点',
@@ -140,6 +145,8 @@ const informalCopy = {
     renameGroup: 'Rename',
     deleteGroup: 'Delete group',
     noAssets: 'No items',
+    kindLabel: 'Type',
+    kindName: { 비공식구역: 'Informal zone', 거점: 'Base', 대화장소: 'Good to talk' } as Record<InformalKind, string>,
     countLine: (assets: number, groups: number) => `${assets} total · ${groups} groups`,
     addAsset: '+ Add item',
     addPlace: '+ Add place',
@@ -175,6 +182,7 @@ type Props = {
   role: Role
   /** 사진 없이 지도 핀으로 장소 만들기 (docs/비공식-봉사-재설계.md) */
   onCreatePlace?: (input: {
+    kind?: InformalKind
     name: string; createdBy: string; groupId?: number | null
     lat: number; lng: number; memo?: string
   }) => Promise<boolean>
@@ -232,7 +240,7 @@ export function InformalCardsTab({
   const [moveTargetAsset, setMoveTargetAsset] = useState<InformalAsset | null>(null)
   // 장소 추가 — 지도에서 한 점을 고른 뒤 이름·메모를 받는다
   const [placeDraft, setPlaceDraft] = useState<
-    { groupId: number | null; lat: number | null; lng: number | null; name: string; memo: string } | null
+    { groupId: number | null; lat: number | null; lng: number | null; name: string; memo: string; kind: InformalKind } | null
   >(null)
   const [savingPlace, setSavingPlace] = useState(false)
   // ⋮ 메뉴 / 선택 모드
@@ -660,7 +668,7 @@ export function InformalCardsTab({
         )}
         {admin && onCreatePlace && (
           <button
-            onClick={() => setPlaceDraft({ groupId: uploadGroupId, lat: null, lng: null, name: '', memo: '' })}
+            onClick={() => setPlaceDraft({ groupId: uploadGroupId, lat: null, lng: null, name: '', memo: '', kind: '비공식구역' })}
             type="button"
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -1279,6 +1287,33 @@ export function InformalCardsTab({
               </div>
 
               <div className="cal-field" style={{ marginTop: 12 }}>
+                <label>{copy.kindLabel}</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {INFORMAL_KINDS.map((kind) => {
+                    const on = placeDraft.kind === kind
+                    const style = INFORMAL_KIND_STYLE[kind]
+                    return (
+                      <button
+                        key={kind}
+                        type="button"
+                        onClick={() => setPlaceDraft({ ...placeDraft, kind })}
+                        style={{
+                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          height: 38, minHeight: 38, borderRadius: 9, cursor: 'pointer',
+                          border: `1px solid ${on ? style.color : 'var(--line-2)'}`,
+                          background: on ? `${style.color}14` : 'var(--surface)',
+                          color: on ? style.color : 'var(--muted)',
+                          fontSize: 13, fontWeight: on ? 700 : 500,
+                        }}
+                      >
+                        <span aria-hidden style={{ color: style.color }}>{style.glyph}</span>
+                        {copy.kindName[kind]}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div className="cal-field">
                 <label>이름</label>
                 <input
                   className="cal-input"
@@ -1311,6 +1346,7 @@ export function InformalCardsTab({
                   setSavingPlace(true)
                   const ok = await onCreatePlace({
                     name: placeDraft.name,
+                    kind: placeDraft.kind,
                     createdBy: currentVisitor,
                     groupId: placeDraft.groupId,
                     lat: placeDraft.lat,
