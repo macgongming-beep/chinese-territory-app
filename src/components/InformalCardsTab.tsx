@@ -545,11 +545,13 @@ export function InformalCardsTab({
                     }}
                   >
                     <div
+                      className={asset.imageUrl ? undefined : 'informal-asset-thumb'}
                       style={{
                         position: 'relative', borderRadius: 10,
-                        // 사진은 4:3 비율을 지켜야 하지만, 핀 장소는 보여 줄 그림이
+                        // 높이는 화면폭에 따라 다르다 (App.css 의 .informal-asset-thumb).
+                        // 사진은 4:3 을 지켜야 하지만, 핀 장소는 보여 줄 그림이
                         // 없어 같은 비율을 쓰면 빈 상자만 크게 남는다
-                        ...(asset.imageUrl ? { aspectRatio: '4 / 3' } : { height: 108 }),
+                        ...(asset.imageUrl ? { aspectRatio: '4 / 3' } : {}),
                         border: isSelected ? '2px solid var(--ink)' : '1px solid var(--line)',
                         overflow: 'hidden', background: 'var(--paper)',
                         cursor: 'pointer',
