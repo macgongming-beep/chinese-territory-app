@@ -583,86 +583,66 @@ export function InformalCardsTab({
                 return (
                   <div
                     key={asset.id}
+                    onClick={() => {
+                      if (isSelectionMode) toggleSelect(asset.id)
+                      else setPreview(asset)
+                    }}
                     style={{
-                      display: 'flex', flexDirection: 'column', gap: 6,
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '9px 10px 9px 12px',
+                      background: 'var(--surface)',
+                      border: isSelected ? '1px solid var(--ink)' : '1px solid var(--line)',
+                      borderRadius: 10, cursor: 'pointer',
                     }}
                   >
-                    <div
-                      className={asset.imageUrl ? undefined : 'informal-asset-thumb'}
-                      style={{
-                        position: 'relative', borderRadius: 10,
-                        // 높이는 화면폭에 따라 다르다 (App.css 의 .informal-asset-thumb).
-                        // 사진은 4:3 을 지켜야 하지만, 핀 장소는 보여 줄 그림이
-                        // 없어 같은 비율을 쓰면 빈 상자만 크게 남는다
-                        ...(asset.imageUrl ? { aspectRatio: '4 / 3' } : {}),
-                        border: isSelected ? '2px solid var(--ink)' : '1px solid var(--line)',
-                        overflow: 'hidden', background: 'var(--paper)',
-                        cursor: 'pointer',
-                      }}
-                      onClick={() => {
-                        if (isSelectionMode) toggleSelect(asset.id)
-                        else setPreview(asset)
-                      }}
-                    >
-                      {asset.imageUrl ? (
-                        <img
-                          src={asset.imageUrl}
-                          alt={asset.name}
-                          style={{
-                            width: '100%', height: '100%', objectFit: 'cover', display: 'block',
-                            opacity: isSelectionMode && !isSelected ? 0.6 : 1,
-                            transition: 'opacity 0.15s',
-                          }}
-                          loading="lazy"
-                        />
-                      ) : (
-                        /* 사진 없이 지도 핀으로 만든 장소. 빈 src 를 그대로 두면
-                           깨진 이미지 아이콘이 뜬다 (docs/비공식-봉사-재설계.md) */
-                        <div style={{
-                          width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-                          alignItems: 'center', justifyContent: 'center', gap: 4, padding: '8px 10px',
-                          background: 'linear-gradient(160deg,#f3f0f7,#e8e2ef)', textAlign: 'center',
-                          opacity: isSelectionMode && !isSelected ? 0.6 : 1,
-                        }}>
-                          <svg width={20} height={20} viewBox="0 0 24 24" fill="none"
-                               stroke="#7A5C8A" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
-                            <circle cx="12" cy="10" r="2.5" />
-                          </svg>
-                          {asset.memo?.trim() && (
-                            <span style={{
-                              fontSize: 11.5, lineHeight: 1.4, color: '#5b4a68',
-                              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                            }}>{asset.memo}</span>
-                          )}
-                        </div>
-                      )}
-                      {isSelectionMode && (
-                        <span
-                          aria-hidden
-                          style={{
-                            position: 'absolute', top: 6, right: 6,
-                            width: 22, height: 22, borderRadius: 6,
-                            background: isSelected ? 'var(--ink)' : 'rgba(255,255,255,0.85)',
-                            border: isSelected ? 'none' : '1.5px solid var(--line-2)',
-                            display: 'grid', placeItems: 'center',
-                            color: '#fff',
-                          }}
-                        >
-                          {isSelected && (
-                            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="5 13 10 18 19 8" />
-                            </svg>
-                          )}
-                        </span>
-                      )}
+                    {/* 왼쪽 표시 — 사진이 있으면 작은 그림, 없으면 종류 아이콘.
+                        식당 목록과 같은 줄 모양이라 세로 자리를 훨씬 덜 먹는다.
+                        예전엔 큰 타일이라 핀 하나와 짧은 글귀에 200px 을 썼다. */}
+                    {asset.imageUrl ? (
+                      <img
+                        src={asset.imageUrl}
+                        alt=""
+                        loading="lazy"
+                        style={{
+                          width: 40, height: 40, flexShrink: 0,
+                          objectFit: 'cover', borderRadius: 8, display: 'block',
+                        }}
+                      />
+                    ) : (
+                      <span style={{
+                        width: 40, height: 40, flexShrink: 0, borderRadius: 8,
+                        display: 'grid', placeItems: 'center',
+                        background: `${INFORMAL_KIND_STYLE[asset.kind].color}14`,
+                      }}>
+                        <InformalKindIcon kind={asset.kind} size={18} />
+                      </span>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 14.5, fontWeight: 600, color: 'var(--ink)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{asset.name}</div>
+                      <div style={{
+                        fontSize: 12, color: 'var(--muted)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {[copy.kindName[asset.kind], asset.memo?.trim() || null].filter(Boolean).join(' · ')}
+                      </div>
                     </div>
-                    <div style={{
-                      padding: '0 2px', fontSize: 13, fontWeight: 600,
-                      color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>{asset.name}</div>
+                    {isSelectionMode && (
+                      <span aria-hidden style={{
+                        width: 22, height: 22, flexShrink: 0, borderRadius: 6,
+                        background: isSelected ? 'var(--ink)' : 'var(--surface)',
+                        border: isSelected ? 'none' : '1.5px solid var(--line-2)',
+                        display: 'grid', placeItems: 'center', color: '#fff',
+                      }}>
+                        {isSelected && (
+                          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="5 13 10 18 19 8" />
+                          </svg>
+                        )}
+                      </span>
+                    )}
                   </div>
                 )
               })

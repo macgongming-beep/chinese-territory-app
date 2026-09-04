@@ -29986,25 +29986,12 @@ button > svg {
    모바일은 두 칸이 적당하지만, 같은 규칙을 PC 에 쓰면 카드 하나가 940px 폭에
    108px 높이인 납작한 띠가 된다 (내용은 핀 하나와 짧은 글귀뿐인데).
    그래서 PC 에서는 폭에 맞춰 칸을 채운다. */
+/* 비공식 자료 목록. 식당 목록과 같은 '가로 줄' 이다 —
+   내용이 이름과 짧은 메모뿐이라 큰 타일은 자리만 먹었다. */
 .informal-asset-grid {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-/* 사진 없는 '핀 장소' 타일. 내용은 핀 하나와 짧은 글귀뿐이라 낮게 잡는다.
-   (사진 타일은 4:3 을 지켜야 하므로 이 클래스를 쓰지 않는다.) */
-.informal-asset-thumb {
-  height: 84px;
-}
 
-@media (min-width: 980px) {
-  .informal-asset-grid {
-    /* 200px 아래로는 글귀가 두 줄에서 잘린다 */
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
-  }
-  .informal-asset-thumb {
-    height: 108px;
-  }
-}
