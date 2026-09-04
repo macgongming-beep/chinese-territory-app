@@ -11,6 +11,7 @@ import { showToast } from '../lib/toast'
 import { msg } from '../lib/msg'
 import { compressImage } from '../lib/imageCompress'
 import type { AppLanguage } from '../i18n'
+import { useSessionState } from '../hooks/useSessionState'
 
 const MAX_ORIGINAL_SIZE_MB = 30
 const TARGET_SIZE_MB = 0.5  // Phase 5: 1.5MB → 0.5MB (대역폭 절감, 폰 화면에 충분)
@@ -239,6 +240,8 @@ type Props = {
   /** 일괄 이동. 위와 같은 이유로 나뉘어 있다. */
   onMoveMany?: (assetIds: number[], groupId: number | null) => Promise<{ failed: number[] }>
   language?: AppLanguage
+  /** 지도에서 돌아왔을 때 펼친 그룹을 복원하기 위한 화면별 저장 키. */
+  expandedStateKey: string
 }
 
 /**
@@ -263,6 +266,7 @@ export function InformalCardsTab({
   onOpenOnMap,
   onUpdatePlace,
   language = 'ko',
+  expandedStateKey,
 }: Props) {
   const copy = informalCopy[language]
   const admin = isAdminLike(role)
@@ -273,7 +277,8 @@ export function InformalCardsTab({
   const [preview, setPreview] = useState<InformalAsset | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<InformalAsset | null>(null)
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<InformalGroup | null>(null)
-  const [expandedGroups, setExpandedGroups] = useState<Set<number | 'null'>>(new Set())
+  const [expandedGroupKeys, setExpandedGroupKeys] = useSessionState<Array<number | 'null'>>(expandedStateKey, [])
+  const expandedGroups = new Set(expandedGroupKeys)
   const [moveTargetAsset, setMoveTargetAsset] = useState<InformalAsset | null>(null)
   // 장소 추가 — 지도에서 한 점을 고른 뒤 이름·메모를 받는다
   const [placeDraft, setPlaceDraft] = useState<
@@ -504,11 +509,11 @@ export function InformalCardsTab({
   }
 
   const toggleGroup = (key: number | 'null') => {
-    setExpandedGroups((prev) => {
+    setExpandedGroupKeys((prev) => {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
       else next.add(key)
-      return next
+      return [...next]
     })
   }
 

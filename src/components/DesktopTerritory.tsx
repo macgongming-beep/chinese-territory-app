@@ -24,6 +24,7 @@ import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundari
 import { compareUnitNumbers } from '../utils/unitNumber'
 import type { Building, CardBoundary, GeoPoint, InformalAsset, InformalGroup, InformalKind, Role, TerritoryCard, TerritoryRegion, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import { InformalCardsTab } from './InformalCardsTab'
+import { countInformalCards } from '../utils/informalAssets'
 import { RestaurantsTab } from './RestaurantsTab'
 import type { CsvBuildingImport } from '../utils/csvBuildingImport'
 import { AddUnitRow } from './AddUnitRow'
@@ -232,7 +233,7 @@ export function DesktopTerritory({
   // v2: 종류 sub-tab
   type ZoneKind = 'territory' | 'informal' | 'restaurant'
   const [zoneKind, setZoneKind] = useSessionState<ZoneKind>('dt.zoneKind', 'territory')
-  const informalCount = informalAssets.length
+  const informalCount = countInformalCards(informalAssets)
   const restaurantCount = buildings.reduce((acc, b) => {
     const units = getRestaurantUnits(b).length
     if (units === 0) return acc + (b.isRestaurant ? 1 : 0)
@@ -1328,6 +1329,7 @@ export function DesktopTerritory({
                 onDeleteGroup={onDeleteInformalGroup}
                 onMoveAsset={onMoveAssetToGroup}
                 onMoveMany={onMoveAssetsToGroup}
+                expandedStateKey="desktop.informalExpandedGroups"
               />
             ) : (
               <p style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>

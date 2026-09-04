@@ -396,7 +396,17 @@ export function MobileHome({
   onDeleteInformalAssets?: (assetIds: number[]) => Promise<{ failed: number[] }>
   onCreateInformalGroup?: (input: { name: string; createdBy: string }) => Promise<number | null>
   /** 사진 없이 지도 핀으로 장소 만들기 (docs/비공식-봉사-재설계.md) */
-  onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
+  onCreateInformalPlace?: (input: {
+    name: string
+    createdBy: string
+    groupId?: number | null
+    lat: number
+    lng: number
+    memo?: string
+    zoom?: number | null
+    kind?: InformalKind
+    parentId?: number | null
+  }) => Promise<boolean>
   onRenameInformalGroup?: (groupId: number, name: string) => Promise<boolean>
   /** 만든 뒤에 종류·이름을 고친다 */
   onUpdateInformalPlace?: (

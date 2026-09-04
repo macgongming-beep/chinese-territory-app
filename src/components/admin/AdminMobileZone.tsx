@@ -23,6 +23,7 @@ import { RestaurantsTab } from '../RestaurantsTab'
 import { Card } from '../ui'
 import { msg } from '../../lib/msg'
 import { getRestaurantUnits } from '../../utils/restaurants'
+import { countInformalCards } from '../../utils/informalAssets'
 
 type ZoneKind = 'territory' | 'informal' | 'restaurant'
 type Scope = 'mine' | 'all'
@@ -162,8 +163,12 @@ export function AdminMobileZone({
   const urlScope: Scope = (searchParams.get('scope') === 'all' || searchParams.get('scope') === 'mine')
     ? (searchParams.get('scope') as Scope)
     : defaultScope
+  const urlZoneKind: ZoneKind = searchParams.get('tab') === 'informal'
+    ? 'informal'
+    : searchParams.get('tab') === 'restaurant'
+      ? 'restaurant'
+      : 'territory'
 
-  const [zoneKind, setZoneKind] = useState<ZoneKind>('territory')
   const [scope, setScope] = useState<Scope>(urlScope)
   const [view, setView] = useState<ViewMode>('list')
   const [level, setLevel] = useState<Level>(urlLevel)
@@ -176,6 +181,12 @@ export function AdminMobileZone({
   // 방문필요만 보기 — 켜면 방문필요 건물만 카운트/표시, 방문필요 없는 동·카드는 숨김
   const [onlyNeedsVisit, setOnlyNeedsVisit] = useState(false)
   const placeLabel = (value: string) => translateKoreanAddress(value, language, translatePlaceNames)
+
+  const setZoneKind = (kind: ZoneKind) => {
+    const next = new URLSearchParams(searchParams)
+    if (kind === 'territory') next.delete('tab'); else next.set('tab', kind)
+    setSearchParams(next, { replace: true })
+  }
 
   // 드릴 상태 + scope URL 동기화 (replace — 히스토리 오염 방지)
   useEffect(() => {
@@ -200,7 +211,7 @@ export function AdminMobileZone({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlLevel, urlRegion, urlDong, urlScope])
 
-  const informalCount = informalAssets.length
+  const informalCount = countInformalCards(informalAssets)
   const restaurantCount = buildings.reduce((acc, b) => {
     const units = getRestaurantUnits(b).length
     if (units === 0) return acc + (b.isRestaurant ? 1 : 0)
@@ -409,7 +420,7 @@ export function AdminMobileZone({
   }
 
   // ── 비공식/식당 탭이면 위임 ─────────────────
-  if (zoneKind === 'informal') {
+  if (urlZoneKind === 'informal') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 16px 24px' }}>
         <TerritoryInlineTabs language={language} active="informal" onChange={setZoneKind} cardCount={cards.length} informalCount={informalCount} restaurantCount={restaurantCount} />
@@ -430,12 +441,13 @@ export function AdminMobileZone({
           onMoveAsset={onMoveAssetToGroup || (() => Promise.resolve(false))}
           onMoveMany={onMoveAssetsToGroup}
           language={language}
+          expandedStateKey="mobile.informalExpandedGroups"
         />
       </div>
     )
   }
 
-  if (zoneKind === 'restaurant') {
+  if (urlZoneKind === 'restaurant') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 16px 24px' }}>
         <TerritoryInlineTabs language={language} active="restaurant" onChange={setZoneKind} cardCount={cards.length} informalCount={informalCount} restaurantCount={restaurantCount} />

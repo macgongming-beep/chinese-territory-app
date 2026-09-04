@@ -30003,6 +30003,121 @@ button > svg {
   gap: 8px;
 }
 
+/* 모바일 비공식 지도: 작은 목록 대신 현장에서 바로 읽히는 장소 카드. */
+.informal-map-parent-memo {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-left: 3px solid #7a5c8a;
+  border-radius: 0 6px 6px 0;
+  background: #f7f5f8;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.informal-point-memo-input {
+  min-height: 104px;
+  height: auto;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.informal-point-section {
+  margin-bottom: 18px;
+}
+
+.informal-point-section-title {
+  margin: 0 2px 8px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.informal-point-section-title span {
+  margin-left: 3px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.informal-point-card {
+  display: flex;
+  align-items: stretch;
+  min-height: 64px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.informal-point-card.is-selected {
+  border-color: var(--informal-accent, var(--ink));
+  box-shadow: inset 3px 0 0 var(--informal-accent, var(--ink));
+}
+
+.informal-point-card-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 64px;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 10px 12px 13px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.informal-point-card-main > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.informal-point-card-copy {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+}
+
+.informal-point-card-copy strong {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.informal-point-card-copy small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.informal-point-edit {
+  display: grid;
+  width: 44px;
+  min-height: 44px;
+  align-self: center;
+  flex: 0 0 44px;
+  place-items: center;
+  margin-right: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
 /* 바텀시트는 폰 모양이다. PC 에서 그대로 두면 화면 폭 전체로 깔려
    가로로 텅 비고 세로로 잘린다. 넓은 화면에서는 가운데 창으로 띄운다. */
 @media (min-width: 980px) {

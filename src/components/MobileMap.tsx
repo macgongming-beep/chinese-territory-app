@@ -37,6 +37,15 @@ function informalKindLabel(kind: InformalKind): string {
       : msg('대화하기 좋은 장소')
 }
 
+function EditIcon({ size = 17 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
+    </svg>
+  )
+}
+
 export function MobileMap({
   language,
   translatePlaceNames = false,
@@ -211,10 +220,14 @@ export function MobileMap({
   /** 추가 중인 비공식 포인트의 종류. null 이면 추가 모드가 아니다 */
   const [addingChildKind, setAddingChildKind] = useState<InformalKind | null>(null)
   const [childDraft, setChildDraft] = useState<
-    { lat: number; lng: number; name: string; kind: InformalKind } | null
+    { lat: number; lng: number; name: string; memo: string; kind: InformalKind } | null
   >(null)
   const [savingChild, setSavingChild] = useState(false)
   const [focusedChildId, setFocusedChildId] = useState<number | null>(null)
+  const [editInformalDraft, setEditInformalDraft] = useState<
+    { id: number; name: string; memo: string } | null
+  >(null)
+  const [savingInformalEdit, setSavingInformalEdit] = useState(false)
 
   const selectedInformal = useMemo(
     () => (focusedInformalId ? informalAssets.find((a) => a.id === focusedInformalId) ?? null : null),
@@ -262,13 +275,24 @@ export function MobileMap({
           </strong>
         </div>
         <div className="mobile-form-field">
-          <label>{msg('이름')}</label>
+          <label htmlFor="informal-child-name">{msg('이름')}</label>
           <input
+            id="informal-child-name"
             className="cal-input"
             autoFocus
             placeholder={msg('예: 롯데백화점 앞')}
             value={childDraft.name}
             onChange={(e) => setChildDraft({ ...childDraft, name: e.target.value })}
+          />
+        </div>
+        <div className="mobile-form-field" style={{ marginTop: 12 }}>
+          <label htmlFor="informal-child-memo">{msg('메모')}</label>
+          <textarea
+            id="informal-child-memo"
+            className="cal-input informal-point-memo-input"
+            placeholder={msg('이 장소에서 기억할 내용을 적어 주세요.')}
+            value={childDraft.memo}
+            onChange={(e) => setChildDraft({ ...childDraft, memo: e.target.value })}
           />
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
@@ -287,21 +311,79 @@ export function MobileMap({
             onClick={async () => {
               if (!onCreateInformalPlace) return
               setSavingChild(true)
-              const ok = await onCreateInformalPlace({
-                name: childDraft.name,
-                createdBy: currentVisitor,
-                lat: childDraft.lat,
-                lng: childDraft.lng,
-                kind: childDraft.kind,
-                // ⚠ 언제나 지금 보고 있는 구역의 자식이다
-                parentId: selectedInformal.id,
-              })
-              setSavingChild(false)
-              if (ok) setChildDraft(null)
+              try {
+                const ok = await onCreateInformalPlace({
+                  name: childDraft.name,
+                  createdBy: currentVisitor,
+                  lat: childDraft.lat,
+                  lng: childDraft.lng,
+                  kind: childDraft.kind,
+                  memo: childDraft.memo.trim(),
+                  // ⚠ 언제나 지금 보고 있는 구역의 자식이다
+                  parentId: selectedInformal.id,
+                })
+                if (ok) setChildDraft(null)
+              } finally {
+                setSavingChild(false)
+              }
             }}
             type="button"
           >
             {savingChild ? msg('저장 중…') : msg('저장')}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
+
+  const editInformalModal = editInformalDraft ? (
+    <div className="mobile-sheet-backdrop" onClick={() => setEditInformalDraft(null)}>
+      <div className="mobile-sheet" onClick={(event) => event.stopPropagation()}>
+        <div className="mobile-sheet-title">
+          <h2>{msg('장소 수정')}</h2>
+          <button className="mobile-sheet-close" type="button" aria-label={msg('닫기')} onClick={() => setEditInformalDraft(null)}>×</button>
+        </div>
+        <div className="mobile-form-field">
+          <label htmlFor="informal-edit-name">{msg('이름')}</label>
+          <input
+            id="informal-edit-name"
+            className="cal-input"
+            value={editInformalDraft.name}
+            onChange={(event) => setEditInformalDraft({ ...editInformalDraft, name: event.target.value })}
+          />
+        </div>
+        <div className="mobile-form-field" style={{ marginTop: 12 }}>
+          <label htmlFor="informal-edit-memo">{msg('메모')}</label>
+          <textarea
+            id="informal-edit-memo"
+            className="cal-input informal-point-memo-input"
+            placeholder={msg('이 장소에서 기억할 내용을 적어 주세요.')}
+            value={editInformalDraft.memo}
+            onChange={(event) => setEditInformalDraft({ ...editInformalDraft, memo: event.target.value })}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <button className="cal-cancel-btn" style={{ flex: 1 }} type="button" onClick={() => setEditInformalDraft(null)}>{msg('취소')}</button>
+          <button
+            className="cal-save-btn"
+            style={{ flex: 1 }}
+            type="button"
+            disabled={savingInformalEdit || !editInformalDraft.name.trim()}
+            onClick={async () => {
+              if (!onUpdateInformalPlace) return
+              setSavingInformalEdit(true)
+              try {
+                const ok = await onUpdateInformalPlace(editInformalDraft.id, {
+                  name: editInformalDraft.name.trim(),
+                  memo: editInformalDraft.memo.trim(),
+                })
+                if (ok) setEditInformalDraft(null)
+              } finally {
+                setSavingInformalEdit(false)
+              }
+            }}
+          >
+            {savingInformalEdit ? msg('저장 중…') : msg('저장')}
           </button>
         </div>
       </div>
@@ -921,6 +1003,7 @@ export function MobileMap({
       style={hasAreaChips && navLevel === 'map' ? { '--map-chips-push': '53px' } as React.CSSProperties : undefined}
     >
       {childDraftModal}
+      {editInformalModal}
       {/* 통합 헤더 — map 레벨에서는 floating + blur (디자인 23) */}
       <header className={`mobile-map-header${navLevel === 'map' ? ' mobile-map-header--floating' : ''}`}>
         <button onClick={handleBack} type="button" className="mm-back-btn" aria-label="Back">‹</button>
@@ -1260,7 +1343,7 @@ export function MobileMap({
                 if (addingChildKind !== null) {
                   // 한 번 찍으면 모드를 끈다 — 계속 켜져 있으면 지도를 누를
                   // 때마다 창이 떠서 다른 일을 못 한다
-                  setChildDraft({ lat, lng, name: '', kind: addingChildKind })
+                  setChildDraft({ lat, lng, name: '', memo: '', kind: addingChildKind })
                   setAddingChildKind(null)
                 } else if (addingBuildingMode) {
                   handleAddBuildingAt(lat, lng)
@@ -1454,13 +1537,9 @@ export function MobileMap({
                 /* 비공식 장소 화면 — 구역 목록(처인구·기흥구…)은 이 장소와 상관없다.
                    그 자리를 메모에 준다. 헤더보다 넓어 길게 적어도 읽힌다 */
                 <div style={{ padding: '4px 2px 20px' }}>
-                  {selectedInformal.memo?.trim() ? (
-                    <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.75, color: 'var(--ink)', whiteSpace: 'pre-wrap' }}>
+                  {selectedInformal.memo?.trim() && (
+                    <p className="informal-map-parent-memo">
                       {selectedInformal.memo}
-                    </p>
-                  ) : (
-                    <p style={{ margin: 0, fontSize: 13.5, color: 'var(--muted)' }}>
-                      {msg('메모가 없습니다. PC 에서 이 장소를 열어 적을 수 있습니다.')}
                     </p>
                   )}
                   {/* 종류 바꾸기. 목록에서 점을 고르면 그 점이, 아니면 이 구역이 대상이다. */}
@@ -1481,11 +1560,9 @@ export function MobileMap({
                         }}>{msg('{v1} 의 종류', { v1: target.name })}</span>
                         <button
                           type="button"
-                          aria-label={msg('이름 변경')}
+                          aria-label={msg('장소 수정')}
                           onClick={() => {
-                            const next = prompt(msg('장소 이름을 입력하세요'), target.name)
-                            if (!next || !next.trim() || next.trim() === target.name) return
-                            void onUpdateInformalPlace(target.id, { name: next.trim() })
+                            setEditInformalDraft({ id: target.id, name: target.name, memo: target.memo ?? '' })
                           }}
                           style={{
                             height: 28, minHeight: 28, padding: '0 10px', flexShrink: 0,
@@ -1494,7 +1571,7 @@ export function MobileMap({
                             fontSize: 12, cursor: 'pointer',
                           }}
                         >
-                          {msg('이름 변경')}
+                          {msg('수정')}
                         </button>
                       </div>
                       <div style={{ display: 'flex', gap: 6 }}>
@@ -1530,32 +1607,42 @@ export function MobileMap({
                         const rows = informalChildren.filter((child) => child.kind === kind)
                         if (rows.length === 0) return null
                         return (
-                          <div key={kind} style={{ marginBottom: 10 }}>
-                            <div style={{
-                              fontSize: 12.5, fontWeight: 700, color: 'var(--muted)', marginBottom: 4,
-                            }}>{informalKindLabel(kind)} {rows.length}</div>
-                            {rows.map((child) => (
-                              <button
-                                key={child.id}
-                                type="button"
-                                onClick={() => setFocusedChildId(child.id)}
-                                style={{
-                                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                                  textAlign: 'left', padding: '9px 10px', marginBottom: 6,
-                                  height: 'auto', minHeight: 0, lineHeight: 1.45,
-                                  borderRadius: 10, cursor: 'pointer',
-                                  border: focusedChildId === child.id
-                                    ? '1px solid var(--ink)' : '1px solid var(--line)',
-                                  background: 'var(--surface)',
-                                }}
-                              >
-                                <InformalKindIcon kind={child.kind} size={15} />
-                                <span style={{
-                                  flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--ink)',
-                                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                }}>{child.name}</span>
-                              </button>
-                            ))}
+                          <div key={kind} className="informal-point-section">
+                            <div className="informal-point-section-title">
+                              {informalKindLabel(kind)} <span>{rows.length}</span>
+                            </div>
+                            {rows.map((child) => {
+                              const style = INFORMAL_KIND_STYLE[child.kind]
+                              return (
+                                <div
+                                  className={`informal-point-card${focusedChildId === child.id ? ' is-selected' : ''}`}
+                                  key={child.id}
+                                  style={{ '--informal-accent': style.color } as React.CSSProperties}
+                                >
+                                  <button
+                                    className="informal-point-card-main"
+                                    type="button"
+                                    onClick={() => setFocusedChildId(child.id)}
+                                  >
+                                    <InformalKindIcon kind={child.kind} size={22} />
+                                    <span className="informal-point-card-copy">
+                                      <strong>{child.name}</strong>
+                                      {child.memo?.trim() && <small>{child.memo}</small>}
+                                    </span>
+                                  </button>
+                                  {onUpdateInformalPlace && (
+                                    <button
+                                      className="informal-point-edit"
+                                      type="button"
+                                      aria-label={msg('{v1} 수정', { v1: child.name })}
+                                      onClick={() => setEditInformalDraft({ id: child.id, name: child.name, memo: child.memo ?? '' })}
+                                    >
+                                      <EditIcon />
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
                         )
                       })}
