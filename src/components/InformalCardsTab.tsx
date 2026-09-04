@@ -53,6 +53,7 @@ const informalCopy = {
     noAssets: '자료 없음',
     kindLabel: '종류',
     pointCount: (n: number) => `포인트 ${n}`,
+    changeKind: '종류 바꾸기 (눌러서 전환)',
     addressPlaceholder: '이름이나 주소로 찾기 (예: 용인 강남대학교)',
     noPlaceResults: '찾지 못했습니다. 지도를 눌러 위치를 정해 주세요.',
     search: '찾기',
@@ -109,6 +110,7 @@ const informalCopy = {
     noAssets: '没有资料',
     kindLabel: '类型',
     pointCount: (n: number) => `地点 ${n}`,
+    changeKind: '更改类型',
     addressPlaceholder: '按名称或地址搜索',
     noPlaceResults: '没有找到。请点击地图设定位置。',
     search: '搜索',
@@ -165,6 +167,7 @@ const informalCopy = {
     noAssets: 'No items',
     kindLabel: 'Type',
     pointCount: (n: number) => `${n} points`,
+    changeKind: 'Change type',
     addressPlaceholder: 'Search by name or address',
     noPlaceResults: 'Not found. Tap the map to set the location.',
     search: 'Search',
@@ -213,6 +216,8 @@ type Props = {
   }) => Promise<boolean>
   /** 핀이 찍힌 장소를 지도에서 보여 준다 */
   onOpenOnMap?: (assetId: number) => void
+  /** 만든 뒤에 종류를 고친다 */
+  onUpdatePlace?: (assetId: number, input: { kind?: InformalKind }) => Promise<boolean>
   currentVisitor: string
   informalAssets: InformalAsset[]
   informalGroups: InformalGroup[]
@@ -250,6 +255,7 @@ export function InformalCardsTab({
   onDeleteMany, onMoveMany,
   onCreatePlace,
   onOpenOnMap,
+  onUpdatePlace,
   language = 'ko',
 }: Props) {
   const copy = informalCopy[language]
@@ -670,6 +676,29 @@ export function InformalCardsTab({
                           objectFit: 'cover', borderRadius: 8, display: 'block',
                         }}
                       />
+                    ) : onUpdatePlace && admin ? (
+                      /* 아이콘을 누르면 종류가 다음 것으로 넘어간다.
+                         잘못 고른 것을 되돌리려고 카드를 열 필요가 없다. */
+                      <button
+                        type="button"
+                        title={copy.changeKind}
+                        aria-label={copy.changeKind}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const next = INFORMAL_KINDS[
+                            (INFORMAL_KINDS.indexOf(asset.kind) + 1) % INFORMAL_KINDS.length
+                          ]
+                          void onUpdatePlace(asset.id, { kind: next })
+                        }}
+                        style={{
+                          width: 40, height: 40, minHeight: 40, flexShrink: 0, borderRadius: 8,
+                          display: 'grid', placeItems: 'center', cursor: 'pointer',
+                          border: '1px solid var(--line)',
+                          background: `${INFORMAL_KIND_STYLE[asset.kind].color}14`,
+                        }}
+                      >
+                        <InformalKindIcon kind={asset.kind} size={18} />
+                      </button>
                     ) : (
                       <span style={{
                         width: 40, height: 40, flexShrink: 0, borderRadius: 8,

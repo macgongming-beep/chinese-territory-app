@@ -51,6 +51,7 @@ export function MobileMap({
   informalAssets = [],
   focusedInformalId,
   onCreateInformalPlace,
+  onUpdateInformalPlace,
   focusedCardIds = [],
   focusedBuildingId,
   regularVisitScope = false,
@@ -104,6 +105,11 @@ export function MobileMap({
     kind?: InformalKind
     parentId?: number | null
   }) => Promise<boolean>
+  /** 만든 뒤에 종류·이름을 고친다 */
+  onUpdateInformalPlace?: (
+    assetId: number,
+    input: { name?: string; memo?: string; lat?: number; lng?: number; zoom?: number | null; kind?: InformalKind },
+  ) => Promise<boolean>
   focusedCardIds?: number[]
   focusedBuildingId?: number | null
   regularVisitScope?: boolean
@@ -1457,7 +1463,44 @@ export function MobileMap({
                       {msg('메모가 없습니다. PC 에서 이 장소를 열어 적을 수 있습니다.')}
                     </p>
                   )}
-                  {/* 이 구역에 속한 점들. 누르면 그 자리로 지도가 간다 (핀을 누른 것과 같다). */}
+                  {/* 종류 바꾸기. 목록에서 점을 고르면 그 점이, 아니면 이 구역이 대상이다. */}
+                {onUpdateInformalPlace && (() => {
+                  const target = (focusedChildId
+                    ? informalChildren.find((child) => child.id === focusedChildId)
+                    : null) ?? selectedInformal
+                  if (!target) return null
+                  return (
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 6 }}>
+                        {msg('{v1} 의 종류', { v1: target.name })}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {INFORMAL_KINDS.map((kind) => {
+                          const on = target.kind === kind
+                          const style = INFORMAL_KIND_STYLE[kind]
+                          return (
+                            <button
+                              key={kind}
+                              type="button"
+                              onClick={() => { void onUpdateInformalPlace(target.id, { kind }) }}
+                              style={{
+                                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                gap: 6, height: 40, minHeight: 40, borderRadius: 10, cursor: 'pointer',
+                                border: `1px solid ${on ? style.color : 'var(--line-2)'}`,
+                                background: on ? `${style.color}14` : 'var(--surface)',
+                                color: on ? style.color : 'var(--muted)',
+                                fontSize: 12.5, fontWeight: on ? 700 : 500,
+                              }}
+                            >
+                              <InformalKindIcon kind={kind} size={14} color={on ? style.color : 'var(--muted-2)'} />
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
+                {/* 이 구역에 속한 점들. 누르면 그 자리로 지도가 간다 (핀을 누른 것과 같다). */}
                   {informalChildren.length > 0 && (
                     <div style={{ marginTop: 14 }}>
                       {INFORMAL_KINDS.map((kind) => {

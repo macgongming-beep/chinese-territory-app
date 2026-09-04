@@ -15,7 +15,7 @@ import type { AppLanguage } from '../../i18n'
 
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import type { Building, InformalAsset, InformalGroup, Role, TerritoryCard, VisitHistory } from '../../types'
+import type { Building, InformalAsset, InformalGroup, InformalKind, Role, TerritoryCard, VisitHistory } from '../../types'
 import { compareTerritoryCardsByOperationalPriority, getTerritoryCardOperationalState } from '../../utils/cardSearch'
 import { getBuildingStatus } from '../../utils/mapUtils'
 import { InformalCardsTab } from '../InformalCardsTab'
@@ -64,6 +64,11 @@ type Props = {
   onOpenInformalOnMap?: (assetId: number) => void
   /** 사진 없이 지도 핀으로 장소 만들기 (docs/비공식-봉사-재설계.md) */
   onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
+  /** 만든 뒤에 종류·이름을 고친다 */
+  onUpdateInformalPlace?: (
+    assetId: number,
+    input: { name?: string; memo?: string; lat?: number; lng?: number; zoom?: number | null; kind?: InformalKind },
+  ) => Promise<boolean>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
   restaurantRequests?: import('../../types').RestaurantRequest[]
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
@@ -140,6 +145,7 @@ export function AdminMobileZone({
   onMoveAssetToGroup,
   onMoveAssetsToGroup,
   onCreateInformalPlace,
+  onUpdateInformalPlace,
   onOpenInformalOnMap,
   onToggleBuildingRestaurant,
   onApproveRestaurantRequest,
@@ -410,6 +416,7 @@ export function AdminMobileZone({
         <InformalCardsTab
           role={role}
           onCreatePlace={onCreateInformalPlace}
+          onUpdatePlace={onUpdateInformalPlace}
           onOpenOnMap={onOpenInformalOnMap}
           currentVisitor={currentVisitor}
           informalAssets={informalAssets}

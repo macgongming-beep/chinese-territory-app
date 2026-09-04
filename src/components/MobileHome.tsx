@@ -17,7 +17,7 @@ import { RegularVisitManagement } from './RegularVisitManagement'
 import { PrivacyPolicy } from './PrivacyPolicy'
 import { MobileProfileSettings } from './MobileProfileSettings'
 import { UserMobileHome } from './UserMobileHome'
-import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, InformalKind, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 // InformalCardsTab / RestaurantsTab 은 AdminMobileZone 내부에서 사용됨 (직접 import 불필요)
 import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import type { AppLanguage } from '../i18n'
@@ -292,6 +292,7 @@ export function MobileHome({
   onDeleteInformalAssets,
   onCreateInformalGroup,
   onCreateInformalPlace,
+  onUpdateInformalPlace,
   onRenameInformalGroup,
   onDeleteInformalGroup,
   onMoveAssetToGroup,
@@ -397,6 +398,11 @@ export function MobileHome({
   /** 사진 없이 지도 핀으로 장소 만들기 (docs/비공식-봉사-재설계.md) */
   onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
   onRenameInformalGroup?: (groupId: number, name: string) => Promise<boolean>
+  /** 만든 뒤에 종류·이름을 고친다 */
+  onUpdateInformalPlace?: (
+    assetId: number,
+    input: { name?: string; memo?: string; lat?: number; lng?: number; zoom?: number | null; kind?: InformalKind },
+  ) => Promise<boolean>
   onDeleteInformalGroup?: (groupId: number) => Promise<boolean>
   onMoveAssetToGroup?: (assetId: number, groupId: number | null) => Promise<boolean>
   onMoveAssetsToGroup?: (assetIds: number[], groupId: number | null) => Promise<{ failed: number[] }>
@@ -684,6 +690,7 @@ export function MobileHome({
             informalAssets={informalAssets}
             focusedInformalId={focusedInformalId}
             onCreateInformalPlace={role === 'admin' || role === 'developer' ? onCreateInformalPlace : undefined}
+            onUpdateInformalPlace={role === 'admin' || role === 'developer' ? onUpdateInformalPlace : undefined}
             buildings={mapBuildings}
             cardBoundaries={mapCardBoundaries}
             cards={mapCards}
@@ -1005,6 +1012,7 @@ export function MobileHome({
                   admin: 모든 콜백 / leader: 식당 토글만 / user: 자료 관리 콜백 일체 차단 */}
               <AdminMobileZone
                 onCreateInformalPlace={role === 'admin' || role === 'developer' ? onCreateInformalPlace : undefined}
+                onUpdateInformalPlace={role === 'admin' || role === 'developer' ? onUpdateInformalPlace : undefined}
                 onOpenInformalOnMap={(assetId) => navigate(`/map?informalId=${assetId}`)}
                 language={language}
                 translatePlaceNames={translatePlaceNames}

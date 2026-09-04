@@ -143,6 +143,7 @@ export function DesktopApp({
   eventRestaurantAssignments = [],
   informalGroups = [],
   onCreateInformalPlace,
+  onUpdateInformalPlace,
   onSaveInformalShape,
   onUploadInformalAsset,
   onDeleteInformalAsset,
@@ -292,6 +293,11 @@ export function DesktopApp({
   informalAssets?: InformalAsset[]
   onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null; kind?: InformalKind; parentId?: number | null }) => Promise<boolean>
   onSaveInformalShape?: (assetId: number, field: 'boundary' | 'route', points: GeoPoint[]) => Promise<boolean>
+  /** 만든 뒤에 종류·이름을 고친다 */
+  onUpdateInformalPlace?: (
+    assetId: number,
+    input: { name?: string; memo?: string; lat?: number; lng?: number; zoom?: number | null; kind?: InformalKind },
+  ) => Promise<boolean>
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   informalGroups?: InformalGroup[]
@@ -676,6 +682,7 @@ export function DesktopApp({
                 informalAssets={informalAssets}
                 focusedInformalId={focusedInformalId}
                 onCreateInformalPlace={onCreateInformalPlace}
+                onUpdateInformalPlace={onUpdateInformalPlace}
                 onSaveInformalShape={onSaveInformalShape}
                 boundaryEditRequest={boundaryEditRequest}
                 cardBoundaries={cardBoundaries}
@@ -719,6 +726,7 @@ export function DesktopApp({
                 onCreateCard={onCreateCard}
                 onCreateTerritoryRegion={onCreateTerritoryRegion}
                 onCreateInformalPlace={onCreateInformalPlace}
+                onUpdateInformalPlace={onUpdateInformalPlace}
                 onOpenInformalOnMap={openInformalOnMap}
                 onImportBuildings={onImportBuildings}
                 onDeleteBuildings={onDeleteBuildings}
@@ -772,6 +780,7 @@ export function DesktopApp({
             informalAssets={informalAssets}
             focusedInformalId={focusedInformalId}
             onCreateInformalPlace={onCreateInformalPlace}
+            onUpdateInformalPlace={onUpdateInformalPlace}
             onSaveInformalShape={onSaveInformalShape}
             boundaryEditRequest={boundaryEditRequest}
             cardBoundaries={mapCardBoundaries}

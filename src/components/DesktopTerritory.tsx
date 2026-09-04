@@ -87,6 +87,7 @@ export function DesktopTerritory({
   onCreateCard,
   onCreateTerritoryRegion,
   onCreateInformalPlace,
+  onUpdateInformalPlace,
   onOpenInformalOnMap,
   onDeleteBuildings,
   onDeleteCards,
@@ -185,6 +186,11 @@ export function DesktopTerritory({
   }) => Promise<number | null> | number | null
   /** 지역 추가 — 관리자·개발자만 호출된다 (모달에서 canAddRegion 으로 막는다) */
   onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null; kind?: InformalKind; parentId?: number | null }) => Promise<boolean>
+  /** 만든 뒤에 종류·이름을 고친다 */
+  onUpdateInformalPlace?: (
+    assetId: number,
+    input: { name?: string; memo?: string; lat?: number; lng?: number; zoom?: number | null; kind?: InformalKind },
+  ) => Promise<boolean>
   onOpenInformalOnMap?: (assetId: number) => void
   onCreateTerritoryRegion?: (input: { name: string; city?: string }) => Promise<boolean>
   onCreateBuilding?: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => Promise<boolean>
@@ -1309,6 +1315,7 @@ export function DesktopTerritory({
               <InformalCardsTab
                 role={role}
                 onCreatePlace={onCreateInformalPlace}
+                onUpdatePlace={onUpdateInformalPlace}
                 onOpenOnMap={onOpenInformalOnMap}
                 currentVisitor={currentVisitor}
                 informalAssets={informalAssets}
