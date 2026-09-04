@@ -29,6 +29,8 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     memo?: string
     zoom?: number | null
     kind?: InformalKind
+    /** 이 장소를 품는 상위 장소. 없으면 스스로가 그릇이다 */
+    parentId?: number | null
   }): Promise<boolean> => {
     const name = input.name.trim()
     if (!name) {
@@ -38,6 +40,7 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     const { data, error } = await supabase.from('informal_assets').insert({
       name,
       kind: input.kind ?? '비공식구역',
+      parent_id: input.parentId ?? null,
       // 사진이 없는 자료다. 빈 글자로 두어 기존 화면이 그대로 동작하게 한다
       image_url: '',
       image_path: '',

@@ -111,6 +111,7 @@ export type RawInformalAsset = {
   id: number
   name: string
   kind?: string | null
+  parent_id?: number | null
   image_url: string
   image_path: string
   uploaded_by: string
@@ -390,6 +391,7 @@ export function toInformalAsset(raw: RawInformalAsset): InformalAsset {
     name: raw.name,
     // 모르는 값이 오면 '비공식구역' 으로 떨어뜨린다 — 지도가 안 그려지는 것보다 낫다
     kind: INFORMAL_KINDS.includes(raw.kind as InformalKind) ? (raw.kind as InformalKind) : '비공식구역',
+    parentId: raw.parent_id ?? null,
     imageUrl: raw.image_url,
     imagePath: raw.image_path,
     uploadedBy: raw.uploaded_by ?? '',

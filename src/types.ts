@@ -73,6 +73,11 @@ export type InformalAsset = {
   name: string
   /** 종류. 옛 자료는 전부 '비공식구역' 이다 (DB 기본값) */
   kind: InformalKind
+  /**
+   * 이 장소를 품고 있는 상위 장소. null 이면 스스로가 그릇이다.
+   * 깊이는 한 단계까지다 (DB 트리거가 막는다).
+   */
+  parentId?: number | null
   /** 사진 — 지도 핀으로 옮기는 중이라 이제 선택이다 (docs/비공식-봉사-재설계.md) */
   imageUrl: string
   imagePath: string
