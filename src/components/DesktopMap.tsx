@@ -51,6 +51,13 @@ type HistoryEditor = {
 }
 
 
+/** 종류의 화면 이름. 값(kind)과 라벨을 섞지 않는다 — 판단은 값으로 한다. */
+function informalKindLabel(kind: InformalKind): string {
+  return kind === '비공식구역' ? msg('비공식 구역')
+    : kind === '거점' ? msg('거점')
+      : msg('대화하기 좋은 장소')
+}
+
 export function DesktopMap({
   language,
   buildings,
@@ -203,13 +210,16 @@ export function DesktopMap({
    * 도구는 그대로 쓰고 '어디에 저장하느냐' 만 바꾼다.
    */
   /** 구역 안의 점을 찍는 중인가. 찍으면 아래 childDraft 가 채워진다 */
-  const [addingChildPoint, setAddingChildPoint] = useState(false)
+  /**
+   * 추가 중인 비공식 포인트의 종류. null 이면 추가 모드가 아니다.
+   * ⚠ 예전에는 '점 추가' 하나였는데, 무엇이 추가되는지 누른 다음에야 알 수
+   *   있어서 이게 무슨 기능인지 알아볼 수가 없었다. 종류를 버튼으로 꺼낸다.
+   */
+  const [addingChildKind, setAddingChildKind] = useState<InformalKind | null>(null)
   const [childDraft, setChildDraft] = useState<
     { lat: number; lng: number; name: string; kind: InformalKind } | null
   >(null)
   const [savingChild, setSavingChild] = useState(false)
-  /** 방금 찍은 점의 종류. 이어서 찍을 때 같은 종류로 시작한다 */
-  const [lastChildKind, setLastChildKind] = useState<InformalKind>('대화장소')
   const [informalShapeTarget, setInformalShapeTarget] = useState<
     { assetId: number; field: 'boundary' | 'route' } | null
   >(null)
@@ -439,9 +449,9 @@ export function DesktopMap({
   // 항상 미분류 '비공식구역' 으로 들어갔다.
   const handleMapClick = (lat: number, lng: number) => {
     // 구역 안의 점을 찍는 중이면 그쪽이 우선이다
-    if (addingChildPoint) {
-      setAddingChildPoint(false)
-      setChildDraft({ lat, lng, name: '', kind: lastChildKind })
+    if (addingChildKind !== null) {
+      // ⚠ 모드는 끄지 않는다 — 이어서 여러 개를 찍는 것이 보통이다
+      setChildDraft({ lat, lng, name: '', kind: addingChildKind })
       return
     }
     openAddBuildingAt(lat, lng)
@@ -1080,13 +1090,8 @@ export function DesktopMap({
                 parentId: selectedInformal.id,
               })
               setSavingChild(false)
-              if (ok) {
-                // ⚠ 모드를 유지한다 — 봉사 준비할 때는 한 자리만 찍는 일이 거의 없다.
-                //   종류도 그대로 두어 다음 점을 이름만 바꿔 빠르게 넣는다.
-                setChildDraft(null)
-                setLastChildKind(childDraft.kind)
-                setAddingChildPoint(true)
-              }
+              // 모드는 그대로 둔다 — 다음 자리를 바로 찍을 수 있게
+              if (ok) setChildDraft(null)
             }}
             type="button"
           >
@@ -1368,7 +1373,7 @@ export function DesktopMap({
 
   return (
     <section className={detailOpen ? 'map-layout ots-theme' : 'map-layout detail-collapsed ots-theme'}>
-      {addingChildPoint && !childDraft && (
+      {addingChildKind !== null && !childDraft && (
         <div style={{
           position: 'absolute', left: '50%', top: 16, transform: 'translateX(-50%)',
           zIndex: 40, display: 'flex', alignItems: 'center', gap: 10,
@@ -1378,7 +1383,7 @@ export function DesktopMap({
         }}>
           {msg('지도를 눌러 점을 찍습니다')}
           <button
-            onClick={() => setAddingChildPoint(false)}
+            onClick={() => setAddingChildKind(null)}
             style={{
               border: 'none', background: 'rgba(255,255,255,.18)', color: '#fff',
               borderRadius: 999, padding: '3px 10px', minHeight: 0,
@@ -1786,6 +1791,51 @@ export function DesktopMap({
 
           <div className="map-canvas-panel">
               {/* 건물 상태 범례도 비공식 화면에서는 뜻이 없다 (여기 건물을 안 그린다) */}
+              {/* 비공식 화면에서는 건물 상태 대신 **비공식 범례**를 보여 준다.
+                  무슨 색·모양이 무슨 뜻인지 지도 옆에 있어야 읽힌다. */}
+              {informalOnlyBoundaries && (
+                <div className="map-legend-card">
+                    {INFORMAL_KINDS.map((kind) => (
+                      <div
+                        key={kind}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 7,
+                          padding: '3px 2px', fontSize: 12, color: 'var(--gray-600)',
+                        }}
+                      >
+                        <InformalKindIcon kind={kind} size={13} />
+                        <span style={{ flex: 1 }}>{informalKindLabel(kind)}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>
+                          {informalChildren.filter((child) => child.kind === kind).length}
+                        </span>
+                      </div>
+                    ))}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 7,
+                      padding: '3px 2px', fontSize: 12, color: 'var(--gray-600)',
+                      borderTop: '1px solid var(--line)', marginTop: 3, paddingTop: 6,
+                    }}>
+                      <span style={{ width: 13, borderTop: '2px dashed #C44536', flexShrink: 0 }} />
+                      <span style={{ flex: 1 }}>{msg('중심거리')}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>
+                        {selectedInformal?.route?.length ?? 0}
+                      </span>
+                    </div>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 7,
+                      padding: '3px 2px', fontSize: 12, color: 'var(--gray-600)',
+                    }}>
+                      <span style={{
+                        width: 13, height: 10, flexShrink: 0, borderRadius: 2,
+                        border: '1.5px solid #7A5C8A', background: 'rgba(122,92,138,0.12)',
+                      }} />
+                      <span style={{ flex: 1 }}>{msg('구역 경계')}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>
+                        {selectedInformal?.boundary?.length ? 1 : 0}
+                      </span>
+                    </div>
+                </div>
+              )}
               {!informalOnlyBoundaries && (
               <div className="map-legend-card">
                 {[
@@ -1981,7 +2031,7 @@ export function DesktopMap({
                 const place = informalAssets.find((a) => a.id === id)
                 if (place) showToast(place.memo?.trim() || place.name, 'info')
               }}
-              onMapClick={(addingBuilding || addingChildPoint) ? handleMapClick : undefined}
+              onMapClick={(addingBuilding || addingChildKind !== null) ? handleMapClick : undefined}
               onMovePreviewPin={(lat, lng) => {
                 setNewBuildingLat(lat)
                 setNewBuildingLng(lng)
@@ -1995,7 +2045,6 @@ export function DesktopMap({
               }}
               isMobile={false}
               onOpenActionMenu={() => setShowMapActionMenu((open) => !open)}
-              hideActionButton={informalOnlyBoundaries}
               onToggleAddingBuilding={(val) => {
                 if (!val) {
                   closeAddBuildingModal()
@@ -2015,6 +2064,28 @@ export function DesktopMap({
             />
             {showMapActionMenu && (
               <div className="desktop-map-action-popover">
+                {/* 비공식 장소를 보고 있으면 여기서 하는 일이 다르다. 건물 작업 대신
+                    그 구역에 넣을 포인트를 고른다. 종류를 항목으로 꺼내야 무엇이
+                    추가되는지 누르기 전에 보인다. */}
+                {informalOnlyBoundaries && onCreateInformalPlace ? (
+                  INFORMAL_KINDS.map((kind) => {
+                    const on = addingChildKind === kind
+                    return (
+                      <button
+                        key={kind}
+                        onClick={() => {
+                          setAddingChildKind(on ? null : kind)
+                          setShowMapActionMenu(false)
+                        }}
+                        style={on ? { color: INFORMAL_KIND_STYLE[kind].color, fontWeight: 700 } : undefined}
+                        type="button"
+                      >
+                        {on ? msg('그만 추가') : `+ ${informalKindLabel(kind)}`}
+                      </button>
+                    )
+                  })
+                ) : (
+                  <>
                 <button onClick={openAddBuildingMode} type="button">건물 추가</button>
                 <button
                   onClick={() => { setShowInformal((v) => !v); setShowMapActionMenu(false) }}
@@ -2025,6 +2096,8 @@ export function DesktopMap({
                 <button onClick={toggleEditPinMode} type="button">
                   {editingPinMode ? '핀 수정 종료' : '핀 위치 수정'}
                 </button>
+                  </>
+                )}
               </div>
             )}
           </div>{/* /map-canvas-panel */}
@@ -2854,29 +2927,6 @@ export function DesktopMap({
             </p>
           )}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {onCreateInformalPlace && (
-              addingChildPoint ? (
-                <button
-                  className="ds-btn"
-                  onClick={() => setAddingChildPoint(false)}
-                  style={{ borderColor: 'var(--ink)', color: 'var(--ink)', fontWeight: 700 }}
-                  type="button"
-                >
-                  {msg('점 찍기 끝내기')}
-                </button>
-              ) : (
-                <button
-                  className="ds-btn"
-                  onClick={() => {
-                    setAddingChildPoint(true)
-                    showToast(msg('지도를 누를 때마다 점이 추가됩니다. 끝나면 끝내기를 누르세요'), 'info')
-                  }}
-                  type="button"
-                >
-                  {msg('점 추가')}
-                </button>
-              )
-            )}
             <button className="ds-btn" onClick={() => startInformalShapeDrawing('boundary')} type="button">
               {selectedInformal.boundary?.length ? msg('구역선 수정') : msg('구역선 그리기')}
             </button>
