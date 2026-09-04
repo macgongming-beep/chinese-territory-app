@@ -17371,6 +17371,9 @@ button:focus-visible {
 }
 
   .map-layout {
+    /* 비공식 장소 도구처럼 지도 위에 얹는 것들이 이 상자를 기준으로 놓인다.
+       없으면 문서 전체를 기준으로 잡혀 엉뚱한 자리에 뜬다. */
+    position: relative;
     display: grid;
     grid-template-columns: minmax(760px, 1fr) 430px;
     gap: 28px;

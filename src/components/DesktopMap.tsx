@@ -1726,8 +1726,8 @@ export function DesktopMap({
             )}
 
             <MapCanvas
-              buildings={aggregateMapBuildings}
-              aggregateMarkers={mapAggregateMarkers}
+              buildings={informalOnlyBoundaries ? [] : aggregateMapBuildings}
+              aggregateMarkers={informalOnlyBoundaries ? [] : mapAggregateMarkers}
               onSelectAggregate={handleSelectAggregateMarker}
               cardBoundaries={informalOnlyBoundaries ? [] : cardBoundaries}
               highlightedCardIds={highlightedCardIds}
@@ -1822,6 +1822,7 @@ export function DesktopMap({
               }}
               isMobile={false}
               onOpenActionMenu={() => setShowMapActionMenu((open) => !open)}
+              hideActionButton={informalOnlyBoundaries}
               onToggleAddingBuilding={(val) => {
                 if (!val) {
                   closeAddBuildingModal()
