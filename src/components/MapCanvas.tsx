@@ -1587,7 +1587,9 @@ function NaverMapCanvas({
         map: mapInstanceRef.current,
         path: toPath(shape.route),
         strokeColor: '#C44536', strokeOpacity: 0.9, strokeWeight: 4,
-        // 어느 쪽으로 가는지 — 끝에 화살표를 붙인다
+        // 점선이다. 실선으로 두면 지도의 도로선과 헷갈린다 —
+        // 이건 길이 아니라 '이 줄기를 따라 걷는다' 는 표시다.
+        strokeStyle: 'shortdash',
         // 어느 쪽으로 가는지. 선이 4px 이라 화살표가 작으면 묻힌다
         endIcon: naver.maps.PointingIcon.OPEN_ARROW,
         endIconSize: 20,
