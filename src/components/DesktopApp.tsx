@@ -24,7 +24,7 @@ import { LocationPermissionSettings } from './LocationPermissionSettings'
 import { ServiceLogPage } from './ServiceLogPage'
 import { RegularVisitManagement } from './RegularVisitManagement'
 import { AppHeaderActionButtons } from './AppHeader'
-import type { Building, CalendarEvent, CardBoundary, DesktopPage, EventInformalAssignment, EventRestaurantAssignment, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, CalendarEvent, CardBoundary, DesktopPage, EventInformalAssignment, EventRestaurantAssignment, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { CsvBuildingImport } from '../utils/csvBuildingImport'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
@@ -137,12 +137,6 @@ export function DesktopApp({
   onChangeViewMode,
   onLogout,
   leaderNames,
-  reviewTasks,
-  onCreateReviewTask,
-  onCompleteReviewTask,
-  onUncompleteReviewTask,
-  onUpdateReviewTask,
-  onDeleteReviewTask,
   // v2 신 배정 모델
   informalAssets = [],
   eventInformalAssignments = [],
@@ -294,12 +288,6 @@ export function DesktopApp({
   visitHistories: VisitHistory[]
   onChangeViewMode: (role: Role) => void
   onLogout: () => void
-  reviewTasks: ReviewTask[]
-  onCreateReviewTask: (title: string, content: string, createdBy: string) => Promise<void>
-  onCompleteReviewTask: (id: number) => Promise<void>
-  onUncompleteReviewTask: (id: number) => Promise<void>
-  onUpdateReviewTask: (id: number, title: string, content: string) => Promise<void>
-  onDeleteReviewTask: (id: number) => Promise<void>
   // v2 신 배정 모델
   informalAssets?: InformalAsset[]
   onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
@@ -570,12 +558,6 @@ export function DesktopApp({
             globalSettings={globalSettings}
             onEndServiceSession={onEndServiceSession}
             onOpenTerritory={() => navigate('/territory')}
-            reviewTasks={reviewTasks}
-            onCreateReviewTask={(title, content) => onCreateReviewTask(title, content, currentVisitor)}
-            onCompleteReviewTask={onCompleteReviewTask}
-            onUncompleteReviewTask={onUncompleteReviewTask}
-            onUpdateReviewTask={onUpdateReviewTask}
-            onDeleteReviewTask={onDeleteReviewTask}
             specialPeriods={specialPeriods}
             onOpenSettings={() => navigate('/settings')}
           />

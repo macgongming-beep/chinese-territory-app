@@ -523,11 +523,7 @@ export function InformalCardsTab({
           )}
         </div>
         {!isCollapsed && (
-          <div style={{
-            display: 'grid', gap: 10,
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            marginBottom: 14,
-          }}>
+          <div className="informal-asset-grid" style={{ marginBottom: 14 }}>
             {sorted.length === 0 ? (
               <p style={{
                 gridColumn: '1 / -1', textAlign: 'center', padding: '20px 0',

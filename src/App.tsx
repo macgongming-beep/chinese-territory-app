@@ -151,12 +151,6 @@ function App() {
     createSpecialPeriod,
     updateSpecialPeriod,
     deleteSpecialPeriod,
-    reviewTasks,
-    createReviewTask,
-    completeReviewTask,
-    uncompleteReviewTask,
-    updateReviewTask,
-    deleteReviewTask,
     refetchAll,
     refetchSlices,
     // v2 신 배정 모델
@@ -413,12 +407,6 @@ function App() {
             visitHistories={visitHistories}
             onChangeViewMode={handleChangeViewMode}
             onLogout={logout}
-            reviewTasks={reviewTasks}
-            onCreateReviewTask={createReviewTask}
-            onCompleteReviewTask={completeReviewTask}
-            onUncompleteReviewTask={uncompleteReviewTask}
-            onUpdateReviewTask={updateReviewTask}
-            onDeleteReviewTask={deleteReviewTask}
             informalAssets={informalAssets}
             eventInformalAssignments={eventInformalAssignments}
             eventRestaurantAssignments={eventRestaurantAssignments}

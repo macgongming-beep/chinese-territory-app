@@ -10,7 +10,6 @@
 export { makeNoticeMutations } from './notices'
 export { makeSpecialPeriodMutations } from './specialPeriods'
 export { makeCardBoundaryMutations } from './cardBoundaries'
-export { makeReviewTaskMutations } from './reviewTasks'
 export { makeCalendarMutations } from './calendar'
 export type { CalendarEventInput } from './calendar'
 export { makeCardMutations } from './cards'

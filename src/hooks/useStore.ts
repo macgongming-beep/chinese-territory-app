@@ -15,8 +15,6 @@ import type {
   RestaurantRequest,
   ReturnVisit,
   ReturnVisitLog,
-  ReviewTask,
-  ReviewTaskStatus,
   ServiceSession,
   SpecialPeriod,
   TerritoryCard,
@@ -44,7 +42,6 @@ import {
   makeNoticeMutations,
   makeSpecialPeriodMutations,
   makeTerritoryRegionMutations,
-  makeReviewTaskMutations,
   makeCardBoundaryMutations,
   makeCalendarMutations,
   makeCardMutations,
@@ -117,7 +114,6 @@ export function useStore(enabled: boolean = true) {
   const [specialPeriods, setSpecialPeriods] = useState<SpecialPeriod[]>([])
   const [returnVisits, setReturnVisits] = useState<ReturnVisit[]>([])
   const [returnVisitLogs, setReturnVisitLogs] = useState<ReturnVisitLog[]>([])
-  const [reviewTasks, setReviewTasks] = useState<ReviewTask[]>([])
   const [informalAssets, setInformalAssets] = useState<InformalAsset[]>([])
   const [eventInformalAssignments, setEventInformalAssignments] = useState<EventInformalAssignment[]>([])
   const [eventRestaurantAssignments, setEventRestaurantAssignments] = useState<EventRestaurantAssignment[]>([])
@@ -154,7 +150,6 @@ export function useStore(enabled: boolean = true) {
   //   communication → notices
   //   returnVisits → return_visits, return_visit_logs
   //   specialPeriods → special_periods
-  //   reviewTasks → review_tasks
   //   restaurantRequests → restaurant_requests
   //   system      → app_settings
 
@@ -168,13 +163,12 @@ export function useStore(enabled: boolean = true) {
     | 'communication'
     | 'returnVisits'
     | 'specialPeriods'
-    | 'reviewTasks'
     | 'restaurantRequests'
     | 'system'
 
   const ALL_SLICES: Slice[] = [
     'buildings', 'cards', 'cardBoundaries', 'visits', 'calendar', 'resources',
-    'communication', 'returnVisits', 'specialPeriods', 'reviewTasks', 'restaurantRequests', 'system',
+    'communication', 'returnVisits', 'specialPeriods', 'restaurantRequests', 'system',
   ]
 
   // 각 slice를 독립적으로 fetch. 페이로드 크기 누적 반환.
@@ -442,23 +436,6 @@ export function useStore(enabled: boolean = true) {
         setSpecialPeriods(periodsRes.error ? [] : (periodsRes.data as { id: number; label: string; start_date: string; end_date: string; color: string; has_invitation?: boolean }[]).map((r) => ({
           id: r.id, label: r.label, startDate: r.start_date, endDate: r.end_date, color: r.color, hasInvitation: r.has_invitation ?? false,
         })))
-        return approxBytes
-      }
-
-      case 'reviewTasks': {
-        const reviewTasksRes = await supabase.from('review_tasks').select('*').neq('status', 'deleted').order('created_at', { ascending: false })
-        measure(reviewTasksRes.data)
-        setReviewTasks(reviewTasksRes.error ? [] : (reviewTasksRes.data as {
-          id: number; title: string; content: string | null; status: ReviewTaskStatus;
-          created_by: string; created_at: string; completed_at: string | null; updated_at: string;
-        }[]).map((r) => ({
-          id: r.id, title: r.title, content: r.content ?? '', status: r.status,
-          createdBy: r.created_by, createdAt: r.created_at,
-          completedAt: r.completed_at, updatedAt: r.updated_at,
-        })))
-        if (reviewTasksRes.error) {
-          console.warn('검토 항목 로드 실패 (review_tasks 미적용 가능).', reviewTasksRes.error)
-        }
         return approxBytes
       }
 
@@ -767,13 +744,6 @@ export function useStore(enabled: boolean = true) {
   const {
     createTerritoryRegion, updateTerritoryRegion, moveTerritoryRegion, deleteTerritoryRegion,
   } = makeTerritoryRegionMutations({ fetchAll: refetchCards })
-  const {
-    createReviewTask,
-    completeReviewTask,
-    uncompleteReviewTask,
-    updateReviewTask,
-    deleteReviewTask,
-  } = makeReviewTaskMutations({ fetchAll, setReviewTasks })  // reviewTasks는 setter 직접 사용 (fetchAll 호출 거의 없음)
 
   const {
     createInformalPlace,
@@ -898,12 +868,6 @@ export function useStore(enabled: boolean = true) {
     updateSpecialPeriod,
     deleteSpecialPeriod,
     getActiveSpecialPeriodIdForDate,
-    reviewTasks,
-    createReviewTask,
-    completeReviewTask,
-    uncompleteReviewTask,
-    updateReviewTask,
-    deleteReviewTask,
     // v2 신 배정 모델
     informalAssets,
     eventInformalAssignments,

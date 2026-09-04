@@ -29981,3 +29981,21 @@ button > svg {
   background: var(--success-50);
   color: var(--success-700);
 }
+
+/* 비공식 자료 타일.
+   모바일은 두 칸이 적당하지만, 같은 규칙을 PC 에 쓰면 카드 하나가 940px 폭에
+   108px 높이인 납작한 띠가 된다 (내용은 핀 하나와 짧은 글귀뿐인데).
+   그래서 PC 에서는 폭에 맞춰 칸을 채운다. */
+.informal-asset-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 980px) {
+  .informal-asset-grid {
+    /* 200px 아래로는 글귀가 두 줄에서 잘린다 */
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+}

@@ -284,19 +284,6 @@ export type ReturnVisitLog = {
   createdBy: string
 }
 
-export type ReviewTaskStatus = 'pending' | 'done' | 'deleted'
-
-export type ReviewTask = {
-  id: number
-  title: string
-  content: string
-  status: ReviewTaskStatus
-  createdBy: string
-  createdAt: string
-  completedAt: string | null
-  updatedAt: string
-}
-
 /** 식당봉사 활성 세션 (localStorage에 저장) */
 export type ActiveRestaurantSession =
   | { kind: 'building'; buildingId: number; unitId: number; name: string; address: string; startedAt: string }

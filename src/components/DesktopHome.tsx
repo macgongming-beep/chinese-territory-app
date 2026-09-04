@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { CalendarEvent, ReturnVisit, ReturnVisitLog, ReviewTask, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot } from '../types'
+import type { CalendarEvent, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot } from '../types'
 import type { AppLanguage } from '../i18n'
 import { SpecialPeriodBanner } from './SpecialPeriodBanner'
 import { AdminMobileHome } from './admin/AdminMobileHome'
@@ -22,12 +22,6 @@ export function DesktopHome({
   onStartServiceSession: _osss,
   onEndServiceSession: _oess,
   onOpenTerritory: _oot,
-  reviewTasks: _rt,
-  onCreateReviewTask: _ocrt,
-  onCompleteReviewTask: _ocort,
-  onUncompleteReviewTask: _ourt,
-  onUpdateReviewTask: _ourvt,
-  onDeleteReviewTask: _odrt,
   globalSettings = {},
 }: {
   language: AppLanguage
@@ -50,12 +44,6 @@ export function DesktopHome({
   }) => Promise<number | null>
   onEndServiceSession: (sessionId: number) => void
   onOpenTerritory: () => void
-  reviewTasks: ReviewTask[]
-  onCreateReviewTask: (title: string, content: string) => Promise<void>
-  onCompleteReviewTask: (id: number) => Promise<void>
-  onUncompleteReviewTask: (id: number) => Promise<void>
-  onUpdateReviewTask: (id: number, title: string, content: string) => Promise<void>
-  onDeleteReviewTask: (id: number) => Promise<void>
   specialPeriods?: SpecialPeriod[]
   onOpenSettings?: () => void
   globalSettings?: Record<string, string>
