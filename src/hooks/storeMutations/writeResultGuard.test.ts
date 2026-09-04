@@ -22,11 +22,11 @@ const WRITE_METHODS = new Set(['insert', 'update', 'upsert', 'delete'])
 const NARROWED_TABLES = new Set([
   'login_logs', 'special_periods', 'chat_room_mutes', 'comments',
   'territory_regions', 'service_suggestions', 'informal_groups', 'informal_assets',
-  'phone_surveys', 'review_tasks',
+  'phone_surveys', 'review_tasks', 'restaurant_requests',
 ])
 
 /** 아직 TEMP 관문인 표들의 현재 위반 수. **줄이기만 한다.** */
-const REMAINING_MAX = 107
+const REMAINING_MAX = 103
 
 type Violation = { file: string; line: number; table: string }
 

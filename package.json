@@ -31,6 +31,7 @@
     "smoke:informal-groups": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeInformalGroups.js",
     "smoke:informal-assets": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeInformalAssets.js",
     "smoke:review-tasks": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeReviewTasks.js",
+    "smoke:restaurant-requests": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeRestaurantRequests.js",
     "smoke:phone-surveys": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokePhoneSurveys.js",
     "smoke:all": "PLAYWRIGHT_ALLOW_WRITES=true node scripts/smokeAll.js",
     "apply:lockdown": "node scripts/applyLockdown.js",

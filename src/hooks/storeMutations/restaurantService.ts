@@ -3,7 +3,7 @@ import { findCardForCoordinates } from '../../utils/mapUtils'
 import { geocodeFirstMatch } from '../../lib/naverGeocode'
 import { getGeocodeCandidates } from '../../utils/geocodeCandidates'
 import { shortAddress } from '../../utils/shortAddress'
-import { supabase, showToast, reportMutationError } from './shared'
+import { ensureAffectedRows, reportMutationError, showToast, supabase } from './shared'
 import { msg } from '../../lib/msg'
 
 export function makeRestaurantServiceMutations(deps: {
@@ -57,11 +57,12 @@ export function makeRestaurantServiceMutations(deps: {
       requested_by: requestedBy,
       memo: memo.trim() || null,
       visited_at: new Date().toISOString(),
-    })
+    }).select('id')
     if (result.error) {
       reportMutationError(msg('식당 추가 신청을 하지 못했습니다.'), result.error)
       return
     }
+    if (!ensureAffectedRows(result.data, msg('식당 추가 신청을 하지 못했습니다.'))) return
     await fetchAll()
     showToast(msg('식당 추가 신청이 완료됐습니다. 관리자 승인 후 반영됩니다.'))
   }
@@ -75,10 +76,13 @@ export function makeRestaurantServiceMutations(deps: {
       .from('restaurant_requests')
       .update({ memo: memo.trim() || null })
       .eq('id', requestId)
+      .select('id')
     if (result.error) {
       reportMutationError(msg('메모를 저장하지 못했습니다.'), result.error)
       return
     }
+    // 남의 신청이면 RLS 로 0행이 온다 — 오류가 아니므로 행 수로 봐야 한다
+    if (!ensureAffectedRows(result.data, msg('메모를 저장하지 못했습니다.'))) return
     await fetchAll()
     showToast(msg('메모가 저장됐습니다 🍜'))
   }
@@ -223,11 +227,13 @@ export function makeRestaurantServiceMutations(deps: {
         reviewed_at: new Date().toISOString(),
       })
       .eq('id', requestId)
+      .select('id')
 
     if (updateRes.error) {
       reportMutationError(msg('신청 상태 업데이트에 실패했습니다.'), updateRes.error)
       return
     }
+    if (!ensureAffectedRows(updateRes.data, msg('신청 상태 업데이트에 실패했습니다.'))) return
 
     await fetchAll()
     showToast(msg('식당 신청이 승인됐습니다.'))
@@ -246,10 +252,12 @@ export function makeRestaurantServiceMutations(deps: {
         reviewed_at: new Date().toISOString(),
       })
       .eq('id', requestId)
+      .select('id')
     if (result.error) {
       reportMutationError(msg('신청 거절에 실패했습니다.'), result.error)
       return
     }
+    if (!ensureAffectedRows(result.data, msg('신청 거절에 실패했습니다.'))) return
     await fetchAll()
     showToast(msg('식당 신청이 거절됐습니다.'))
   }
