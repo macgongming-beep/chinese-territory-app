@@ -31,6 +31,9 @@ export default defineConfig({
   resolve: {
     alias: [
       // 테스트에서는 진짜 Supabase 클라이언트를 쓰지 않는다.
+      // lib 안의 모듈은 `./supabase` 로도 가져온다. 이 형태를 놓치면 CI처럼
+      // 환경변수가 없는 곳에서 진짜 createClient가 실행돼 테스트 로드가 깨진다.
+      { find: /^\.\/supabase$/, replacement: r('./src/test/supabaseStub.ts') },
       { find: /^(.*\/)?lib\/supabase$/, replacement: r('./src/test/supabaseStub.ts') },
     ],
   },

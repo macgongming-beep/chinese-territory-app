@@ -283,9 +283,17 @@ export function InformalCardsTab({
     setPlaceResults(null)
 
     const found = await searchPlaces(query)
-    if (found.length > 0) {
+    if (found.ok && found.places.length > 0) {
       setSearchingAddress(false)
-      setPlaceResults(found)
+      setPlaceResults(found.places)
+      return
+    }
+    if (!found.ok) {
+      // ⚠ '결과 없음' 과 다른 문구여야 한다. 같으면 고장인지 없는 건지 모른다.
+      setSearchingAddress(false)
+      showToast(found.reason === 'no_session'
+        ? msg('로그인 세션을 확인할 수 없습니다. 다시 로그인해 주세요.')
+        : msg('장소 검색을 쓸 수 없습니다. 잠시 뒤 다시 시도해 주세요.'), 'error')
       return
     }
 
@@ -617,6 +625,9 @@ export function InformalCardsTab({
                     key={asset.id}
                     onClick={() => {
                       if (isSelectionMode) toggleSelect(asset.id)
+                      // 좌표가 있으면 바로 지도로 간다. 예전에는 창이 하나 더 떠서
+                      // '지도에서 보기' 를 다시 눌러야 했다 — 한 번이면 될 일이었다.
+                      else if (typeof asset.lat === 'number' && onOpenOnMap) onOpenOnMap(asset.id)
                       else setPreview(asset)
                     }}
                     style={{
@@ -1155,6 +1166,7 @@ export function InformalCardsTab({
       {/* ── 일괄 이동 시트 (그룹 선택) ──────────── */}
       {bulkMoveOpen && (
         <div
+          className="informal-bulk-backdrop"
           onClick={() => setBulkMoveOpen(false)}
           style={{
             position: 'fixed', inset: 0, zIndex: 200,
@@ -1163,6 +1175,7 @@ export function InformalCardsTab({
           }}
         >
           <div
+            className="informal-bulk-sheet"
             onClick={(e) => e.stopPropagation()}
             style={{
               background: 'var(--bg)',
@@ -1172,7 +1185,7 @@ export function InformalCardsTab({
               display: 'flex', flexDirection: 'column',
             }}
           >
-            <div style={{ width: 32, height: 4, borderRadius: 99, background: 'var(--line-2)', margin: '4px auto 14px' }} />
+            <div className="informal-bulk-grabber" style={{ width: 32, height: 4, borderRadius: 99, background: 'var(--line-2)', margin: '4px auto 14px' }} />
             <div style={{ marginBottom: 12 }}>
               <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>{copy.moveGroupSheet}</span>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--muted)' }}>

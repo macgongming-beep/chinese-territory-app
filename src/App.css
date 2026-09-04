@@ -30003,4 +30003,25 @@ button > svg {
   gap: 8px;
 }
 
-
+/* 바텀시트는 폰 모양이다. PC 에서 그대로 두면 화면 폭 전체로 깔려
+   가로로 텅 비고 세로로 잘린다. 넓은 화면에서는 가운데 창으로 띄운다. */
+@media (min-width: 980px) {
+  .v2-picker-backdrop,
+  .informal-bulk-backdrop {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .v2-picker-sheet,
+  .informal-bulk-sheet {
+    width: min(560px, 92vw);
+    border-radius: 18px;
+    padding-bottom: 20px;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+  }
+  /* 손잡이는 끌어내리는 시늉이라 PC 에서는 뜻이 없다 */
+  .v2-picker-grabber,
+  .informal-bulk-grabber {
+    display: none;
+  }
+}
