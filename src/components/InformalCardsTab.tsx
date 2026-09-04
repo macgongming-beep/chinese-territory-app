@@ -54,6 +54,8 @@ const informalCopy = {
     kindLabel: '종류',
     pointCount: (n: number) => `포인트 ${n}`,
     changeKind: '종류 바꾸기 (눌러서 전환)',
+    renamePlace: '이름 변경',
+    renamePlacePrompt: '장소 이름을 입력하세요',
     addressPlaceholder: '이름이나 주소로 찾기 (예: 용인 강남대학교)',
     noPlaceResults: '찾지 못했습니다. 지도를 눌러 위치를 정해 주세요.',
     search: '찾기',
@@ -111,6 +113,8 @@ const informalCopy = {
     kindLabel: '类型',
     pointCount: (n: number) => `地点 ${n}`,
     changeKind: '更改类型',
+    renamePlace: '重命名',
+    renamePlacePrompt: '请输入地点名称',
     addressPlaceholder: '按名称或地址搜索',
     noPlaceResults: '没有找到。请点击地图设定位置。',
     search: '搜索',
@@ -168,6 +172,8 @@ const informalCopy = {
     kindLabel: 'Type',
     pointCount: (n: number) => `${n} points`,
     changeKind: 'Change type',
+    renamePlace: 'Rename',
+    renamePlacePrompt: 'Enter the place name',
     addressPlaceholder: 'Search by name or address',
     noPlaceResults: 'Not found. Tap the map to set the location.',
     search: 'Search',
@@ -217,7 +223,7 @@ type Props = {
   /** 핀이 찍힌 장소를 지도에서 보여 준다 */
   onOpenOnMap?: (assetId: number) => void
   /** 만든 뒤에 종류를 고친다 */
-  onUpdatePlace?: (assetId: number, input: { kind?: InformalKind }) => Promise<boolean>
+  onUpdatePlace?: (assetId: number, input: { kind?: InformalKind; name?: string }) => Promise<boolean>
   currentVisitor: string
   informalAssets: InformalAsset[]
   informalGroups: InformalGroup[]
@@ -483,6 +489,14 @@ export function InformalCardsTab({
     await onCreateGroup({ name: name.trim(), createdBy: currentVisitor })
   }
 
+  /** 장소 이름 바꾸기. 그룹 이름 바꾸기와 같은 방식을 쓴다 */
+  const handleRenamePlace = async (asset: InformalAsset) => {
+    if (!onUpdatePlace) return
+    const next = prompt(copy.renamePlacePrompt, asset.name)
+    if (!next || !next.trim() || next.trim() === asset.name) return
+    await onUpdatePlace(asset.id, { name: next.trim() })
+  }
+
   const handleRenameGroup = async (group: InformalGroup) => {
     const next = prompt(copy.renameGroupPrompt, group.name)
     if (!next || !next.trim() || next.trim() === group.name) return
@@ -726,6 +740,26 @@ export function InformalCardsTab({
                         ].filter(Boolean).join(' · ')}
                       </div>
                     </div>
+                    {!isSelectionMode && onUpdatePlace && admin && (
+                      <button
+                        type="button"
+                        title={copy.renamePlace}
+                        aria-label={copy.renamePlace}
+                        onClick={(e) => { e.stopPropagation(); void handleRenamePlace(asset) }}
+                        style={{
+                          width: 32, height: 32, minHeight: 32, flexShrink: 0,
+                          display: 'grid', placeItems: 'center', borderRadius: 8,
+                          border: '1px solid var(--line)', background: 'var(--surface)',
+                          color: 'var(--muted)', cursor: 'pointer',
+                        }}
+                      >
+                        <svg width={14} height={14} viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 20h9" />
+                          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                        </svg>
+                      </button>
+                    )}
                     {isSelectionMode && (
                       <span aria-hidden style={{
                         width: 22, height: 22, flexShrink: 0, borderRadius: 6,

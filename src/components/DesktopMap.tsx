@@ -2952,8 +2952,37 @@ export function DesktopMap({
             if (!target) return null
             return (
               <div style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 4 }}>
-                  {msg('{v1} 의 종류', { v1: target.name })}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  fontSize: 11.5, color: 'var(--muted)', marginBottom: 4,
+                }}>
+                  <span style={{
+                    flex: 1, minWidth: 0, overflow: 'hidden',
+                    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{msg('{v1} 의 종류', { v1: target.name })}</span>
+                  {/* 자식 점은 목록에만 있어서 여기서 이름을 못 바꾸면 고칠 길이 없다 */}
+                  <button
+                    type="button"
+                    title={msg('이름 변경')}
+                    aria-label={msg('이름 변경')}
+                    onClick={() => {
+                      const next = prompt(msg('장소 이름을 입력하세요'), target.name)
+                      if (!next || !next.trim() || next.trim() === target.name) return
+                      void onUpdateInformalPlace(target.id, { name: next.trim() })
+                    }}
+                    style={{
+                      width: 24, height: 24, minHeight: 24, flexShrink: 0,
+                      display: 'grid', placeItems: 'center', borderRadius: 6,
+                      border: '1px solid var(--line)', background: 'var(--surface)',
+                      color: 'var(--muted)', cursor: 'pointer',
+                    }}
+                  >
+                    <svg width={12} height={12} viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                    </svg>
+                  </button>
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   {INFORMAL_KINDS.map((kind) => {

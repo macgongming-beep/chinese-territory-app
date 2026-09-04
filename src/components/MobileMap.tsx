@@ -1471,8 +1471,31 @@ export function MobileMap({
                   if (!target) return null
                   return (
                     <div style={{ marginTop: 14 }}>
-                      <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 6 }}>
-                        {msg('{v1} 의 종류', { v1: target.name })}
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        fontSize: 12.5, color: 'var(--muted)', marginBottom: 6,
+                      }}>
+                        <span style={{
+                          flex: 1, minWidth: 0, overflow: 'hidden',
+                          textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>{msg('{v1} 의 종류', { v1: target.name })}</span>
+                        <button
+                          type="button"
+                          aria-label={msg('이름 변경')}
+                          onClick={() => {
+                            const next = prompt(msg('장소 이름을 입력하세요'), target.name)
+                            if (!next || !next.trim() || next.trim() === target.name) return
+                            void onUpdateInformalPlace(target.id, { name: next.trim() })
+                          }}
+                          style={{
+                            height: 28, minHeight: 28, padding: '0 10px', flexShrink: 0,
+                            borderRadius: 8, border: '1px solid var(--line)',
+                            background: 'var(--surface)', color: 'var(--text)',
+                            fontSize: 12, cursor: 'pointer',
+                          }}
+                        >
+                          {msg('이름 변경')}
+                        </button>
                       </div>
                       <div style={{ display: 'flex', gap: 6 }}>
                         {INFORMAL_KINDS.map((kind) => {
