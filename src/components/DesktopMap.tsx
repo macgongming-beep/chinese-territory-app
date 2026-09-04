@@ -22,6 +22,9 @@ import type {
   VisitHistory,
   SpecialPeriod,
 } from '../types'
+import { INFORMAL_KINDS, type InformalKind } from '../types'
+import { INFORMAL_KIND_STYLE } from '../utils/informalKind'
+import { InformalKindIcon } from './InformalKindIcon'
 import { formatDisplayAddress, getCardName, findCardForCoordinates, isValidMapCoordinate, normalizeMapCoordinates } from '../utils/mapUtils'
 import { getPinGroup, type PinGroup } from '../utils/buildingPin'
 import { showToast } from '../lib/toast'
@@ -82,6 +85,7 @@ export function DesktopMap({
   onSwitchToList,
   informalAssets = [],
   focusedInformalId,
+  onCreateInformalPlace,
   onSaveInformalShape,
 }: {
   language: AppLanguage;
@@ -90,7 +94,26 @@ export function DesktopMap({
   informalAssets?: InformalAsset[]
   /** 비공식 화면에서 '지도에서 보기' 로 들어왔을 때 그 장소로 옮긴다 */
   focusedInformalId?: number | null
-  onSaveInformalShape?: (assetId: number, field: 'boundary' | 'route', points: GeoPoint[]) => Promise<boolean>
+  /**
+   * 구역 안의 점(거점·대화장소 …)을 만든다.
+   * ⚠ 최상위 비공식 장소는 **비공식 카드 탭에서만** 만든다. 여기서 만드는 것은
+   *   언제나 지금 보고 있는 구역의 자식이다 (parentId 를 강제한다).
+   */
+  onCreateInformalPlace?: (input: {
+    name: string
+    createdBy: string
+    lat: number
+    lng: number
+    memo?: string
+    kind?: InformalKind
+    parentId?: number | null
+  }) => Promise<boolean>
+  onSaveInformalShape?: (
+    assetId: number,
+    field: 'boundary' | 'route',
+    points: GeoPoint[],
+    existingRoutes?: GeoPoint[][],
+  ) => Promise<boolean>
   boundaryEditRequest?: number
   cardBoundaries: CardBoundary[]
   cards: TerritoryCard[]
@@ -179,6 +202,12 @@ export function DesktopMap({
    * 구역선 그리기의 대상. null 이면 구역 카드(기존 동작).
    * 도구는 그대로 쓰고 '어디에 저장하느냐' 만 바꾼다.
    */
+  /** 구역 안의 점을 찍는 중인가. 찍으면 아래 childDraft 가 채워진다 */
+  const [addingChildPoint, setAddingChildPoint] = useState(false)
+  const [childDraft, setChildDraft] = useState<
+    { lat: number; lng: number; name: string; kind: InformalKind } | null
+  >(null)
+  const [savingChild, setSavingChild] = useState(false)
   const [informalShapeTarget, setInformalShapeTarget] = useState<
     { assetId: number; field: 'boundary' | 'route' } | null
   >(null)
@@ -384,6 +413,12 @@ export function DesktopMap({
   // 두었더니 같은 일을 두 곳에서 하게 되고, 지도에서는 그룹·종류를 고를 수 없어
   // 항상 미분류 '비공식구역' 으로 들어갔다.
   const handleMapClick = (lat: number, lng: number) => {
+    // 구역 안의 점을 찍는 중이면 그쪽이 우선이다
+    if (addingChildPoint) {
+      setAddingChildPoint(false)
+      setChildDraft({ lat, lng, name: '', kind: '대화장소' })
+      return
+    }
     openAddBuildingAt(lat, lng)
   }
 
@@ -920,7 +955,13 @@ export function DesktopMap({
     let saved = true
     try {
       if (informalShapeTarget && onSaveInformalShape) {
-        saved = await onSaveInformalShape(informalShapeTarget.assetId, informalShapeTarget.field, draftBoundaryPoints)
+        saved = await onSaveInformalShape(
+          informalShapeTarget.assetId,
+          informalShapeTarget.field,
+          draftBoundaryPoints,
+          // 동선은 이미 있는 줄들 뒤에 붙인다
+          selectedInformal?.route ?? [],
+        )
       } else {
         // ⚠ 구역선도 결과를 봐야 한다. 안 보면 저장에 실패해도 아래에서
         //   draftBoundaryPoints 를 비워 한참 그린 것이 소리 없이 사라진다.
@@ -942,10 +983,88 @@ export function DesktopMap({
     setShowMapActionMenu(false)
     setShowInformal(true)
     setInformalShapeTarget({ assetId: selectedInformal.id, field })
-    setDraftBoundaryPoints((field === 'boundary' ? selectedInformal.boundary : selectedInformal.route) ?? [])
+    // ⚠ 동선은 **새 줄**을 그린다 — 기존 줄에 이어 붙이면 한 줄이 계속 길어진다.
+    //   구역선은 하나뿐이라 있던 것을 불러와 고친다.
+    setDraftBoundaryPoints(field === 'boundary' ? (selectedInformal.boundary ?? []) : [])
     setUndoStack([])
     setDrawingBoundary(true)
   }
+
+
+  /** 구역 안에 찍은 점의 이름·종류를 정하는 창 */
+  const childDraftModal = (childDraft && selectedInformal) ? (
+    <div className="cal-modal-backdrop" onClick={() => setChildDraft(null)}>
+      <div className="cal-modal" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+        <div className="cal-modal-head">
+          <div className="cal-modal-title"><h2>{msg('{v1} 안에 점 추가', { v1: selectedInformal.name })}</h2></div>
+          <button className="cal-modal-close" onClick={() => setChildDraft(null)} type="button">✕</button>
+        </div>
+        <div className="cal-modal-body">
+          <div className="cal-field">
+            <label>{msg('종류')}</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {INFORMAL_KINDS.map((kind) => {
+                const on = childDraft.kind === kind
+                const style = INFORMAL_KIND_STYLE[kind]
+                return (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() => setChildDraft({ ...childDraft, kind })}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      height: 38, minHeight: 38, borderRadius: 9, cursor: 'pointer',
+                      border: `1px solid ${on ? style.color : 'var(--line-2)'}`,
+                      background: on ? `${style.color}14` : 'var(--surface)',
+                      color: on ? style.color : 'var(--muted)',
+                      fontSize: 13, fontWeight: on ? 700 : 500,
+                    }}
+                  >
+                    <InformalKindIcon kind={kind} color={on ? style.color : 'var(--muted-2)'} />
+                    {kind === '비공식구역' ? msg('비공식 구역') : kind === '거점' ? msg('거점') : msg('대화하기 좋은 장소')}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div className="cal-field">
+            <label>{msg('이름')}</label>
+            <input
+              className="cal-input"
+              placeholder="예: 롯데백화점 앞"
+              value={childDraft.name}
+              onChange={(e) => setChildDraft({ ...childDraft, name: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="cal-modal-foot">
+          <button className="cal-cancel-btn" onClick={() => setChildDraft(null)} type="button">{msg('취소')}</button>
+          <button
+            className="cal-save-btn"
+            disabled={savingChild || !childDraft.name.trim()}
+            onClick={async () => {
+              if (!onCreateInformalPlace) return
+              setSavingChild(true)
+              const ok = await onCreateInformalPlace({
+                name: childDraft.name,
+                createdBy: currentVisitor,
+                lat: childDraft.lat,
+                lng: childDraft.lng,
+                kind: childDraft.kind,
+                // ⚠ 언제나 지금 보고 있는 구역의 자식이다
+                parentId: selectedInformal.id,
+              })
+              setSavingChild(false)
+              if (ok) setChildDraft(null)
+            }}
+            type="button"
+          >
+            {savingChild ? msg('저장 중…') : msg('저장')}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
 
   const handleSelectCardForMap = (cardId: number) => {
     if (drawingBoundary) return
@@ -1218,6 +1337,7 @@ export function DesktopMap({
 
   return (
     <section className={detailOpen ? 'map-layout ots-theme' : 'map-layout detail-collapsed ots-theme'}>
+      {childDraftModal}
       {mapMergeUndo && (
         <div style={{
           position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
@@ -1808,7 +1928,7 @@ export function DesktopMap({
                 const place = informalAssets.find((a) => a.id === id)
                 if (place) showToast(place.memo?.trim() || place.name, 'info')
               }}
-              onMapClick={addingBuilding ? handleMapClick : undefined}
+              onMapClick={(addingBuilding || addingChildPoint) ? handleMapClick : undefined}
               onMovePreviewPin={(lat, lng) => {
                 setNewBuildingLat(lat)
                 setNewBuildingLng(lng)
@@ -2681,12 +2801,46 @@ export function DesktopMap({
             </p>
           )}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {onCreateInformalPlace && (
+              <button
+                className="ds-btn"
+                onClick={() => {
+                  setAddingChildPoint(true)
+                  showToast(msg('지도에서 점을 찍을 자리를 누르세요'), 'info')
+                }}
+                type="button"
+              >
+                {msg('점 추가')}
+              </button>
+            )}
             <button className="ds-btn" onClick={() => startInformalShapeDrawing('boundary')} type="button">
               {selectedInformal.boundary?.length ? msg('구역선 수정') : msg('구역선 그리기')}
             </button>
             <button className="ds-btn" onClick={() => startInformalShapeDrawing('route')} type="button">
-              {selectedInformal.route?.length ? msg('동선 수정') : msg('동선 그리기')}
+              {/* 늘 '추가' 다 — 누르면 새 줄을 그린다. 기존 줄은 그대로 남는다. */}
+              {selectedInformal.route?.length
+                ? msg('중심거리 추가 ({n})', { n: selectedInformal.route.length })
+                : msg('중심거리 그리기')}
             </button>
+            {selectedInformal.route?.length ? (
+              <button
+                className="ds-btn"
+                onClick={async () => {
+                  if (!onSaveInformalShape) return
+                  const ok = await confirmDialog({
+                    message: msg('중심거리 {n}개를 모두 지울까요?', { n: selectedInformal.route?.length ?? 0 }),
+                    danger: true,
+                    confirmLabel: '삭제',
+                  })
+                  if (!ok) return
+                  // 빈 목록을 주면 지워진다 (기존 줄도 안 넘긴다)
+                  await onSaveInformalShape(selectedInformal.id, 'route', [], [])
+                }}
+                type="button"
+              >
+                {msg('중심거리 지우기')}
+              </button>
+            ) : null}
           </div>
           <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.55 }}>
             {msg('지도를 눌러 점을 찍습니다. 구역선은 3점, 동선은 2점부터 저장됩니다.')}

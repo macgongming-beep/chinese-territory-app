@@ -24,7 +24,7 @@ import { LocationPermissionSettings } from './LocationPermissionSettings'
 import { ServiceLogPage } from './ServiceLogPage'
 import { RegularVisitManagement } from './RegularVisitManagement'
 import { AppHeaderActionButtons } from './AppHeader'
-import type { Building, CalendarEvent, CardBoundary, DesktopPage, EventInformalAssignment, EventRestaurantAssignment, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { InformalKind, Building, CalendarEvent, CardBoundary, DesktopPage, EventInformalAssignment, EventRestaurantAssignment, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { CsvBuildingImport } from '../utils/csvBuildingImport'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
@@ -290,7 +290,7 @@ export function DesktopApp({
   onLogout: () => void
   // v2 신 배정 모델
   informalAssets?: InformalAsset[]
-  onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null }) => Promise<boolean>
+  onCreateInformalPlace?: (input: { name: string; createdBy: string; groupId?: number | null; lat: number; lng: number; memo?: string; zoom?: number | null; kind?: InformalKind; parentId?: number | null }) => Promise<boolean>
   onSaveInformalShape?: (assetId: number, field: 'boundary' | 'route', points: GeoPoint[]) => Promise<boolean>
   eventInformalAssignments?: EventInformalAssignment[]
   eventRestaurantAssignments?: EventRestaurantAssignment[]
@@ -675,6 +675,7 @@ export function DesktopApp({
                 buildings={buildings}
                 informalAssets={informalAssets}
                 focusedInformalId={focusedInformalId}
+                onCreateInformalPlace={onCreateInformalPlace}
                 onSaveInformalShape={onSaveInformalShape}
                 boundaryEditRequest={boundaryEditRequest}
                 cardBoundaries={cardBoundaries}
@@ -770,6 +771,7 @@ export function DesktopApp({
             buildings={mapBuildings}
             informalAssets={informalAssets}
             focusedInformalId={focusedInformalId}
+            onCreateInformalPlace={onCreateInformalPlace}
             onSaveInformalShape={onSaveInformalShape}
             boundaryEditRequest={boundaryEditRequest}
             cardBoundaries={mapCardBoundaries}

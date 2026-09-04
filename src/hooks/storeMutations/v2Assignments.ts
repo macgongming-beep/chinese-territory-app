@@ -78,8 +78,19 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
     assetId: number,
     field: 'boundary' | 'route',
     points: { lat: number; lng: number }[],
+    /**
+     * 동선은 **여러 줄**이라 이미 있는 줄들을 함께 받는다.
+     * 새 줄을 뒤에 붙여 저장한다. 비우려면 빈 배열을 준다.
+     */
+    existingRoutes?: { lat: number; lng: number }[][],
   ): Promise<boolean> => {
-    const value = points.length >= 2 ? points : null
+    const value = field === 'route'
+      ? (() => {
+          const kept = existingRoutes ?? []
+          const lines = points.length >= 2 ? [...kept, points] : kept
+          return lines.length > 0 ? lines : null
+        })()
+      : (points.length >= 3 ? points : null)
     const { data, error } = await supabase
       .from('informal_assets')
       .update({ [field]: value })

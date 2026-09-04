@@ -90,9 +90,13 @@ export type InformalAsset = {
   lng?: number | null
   /** '1층 카페 앞. 점심때 사람 많음' — 사진보다 이게 더 쓸모 있다 */
   memo?: string
-  /** 구역선(닫힌 도형)과 동선(열린 선). 형식이 같아 그리기 도구를 함께 쓴다 */
+  /** 구역선(닫힌 도형). 한 장소에 하나다 */
   boundary?: GeoPoint[] | null
-  route?: GeoPoint[] | null
+  /**
+   * 중심거리(열린 선) **여럿**. 한 구역에 걸어다닐 줄기가 여러 개일 수 있다.
+   * ⚠ 옛 자료는 점 목록 하나(GeoPoint[])로 저장돼 있다 — 변환에서 감싼다.
+   */
+  route?: GeoPoint[][] | null
   /** 비우면 도형에 맞춰 자동(fitBounds). 핀만 있거나 직접 정할 때만 채운다 */
   zoom?: number | null
 }

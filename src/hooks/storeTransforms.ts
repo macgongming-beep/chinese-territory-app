@@ -385,6 +385,25 @@ function toGeoPoints(value: unknown): GeoPoint[] | null {
   return points.length > 0 ? points : null
 }
 
+/**
+ * jsonb → 선 여러 개.
+ * 옛 자료는 점 목록 하나(GeoPoint[])로 저장돼 있어 그것도 받아 감싼다.
+ * 마이그레이션 없이 두 모양을 함께 읽는 쪽이 안전하다 — 자료를 건드리지 않는다.
+ */
+function toGeoPointLines(value: unknown): GeoPoint[][] | null {
+  if (!Array.isArray(value) || value.length === 0) return null
+  const first = value[0]
+  if (first && typeof first === 'object' && !Array.isArray(first)
+      && typeof (first as GeoPoint).lat === 'number') {
+    const single = toGeoPoints(value)
+    return single ? [single] : null
+  }
+  const lines = value
+    .map((line) => toGeoPoints(line))
+    .filter((line): line is GeoPoint[] => line !== null && line.length >= 2)
+  return lines.length > 0 ? lines : null
+}
+
 export function toInformalAsset(raw: RawInformalAsset): InformalAsset {
   return {
     id: raw.id,
@@ -402,7 +421,7 @@ export function toInformalAsset(raw: RawInformalAsset): InformalAsset {
     lng: raw.lng ?? null,
     memo: raw.memo ?? '',
     boundary: toGeoPoints(raw.boundary),
-    route: toGeoPoints(raw.route),
+    route: toGeoPointLines(raw.route),
     zoom: raw.zoom ?? null,
   }
 }

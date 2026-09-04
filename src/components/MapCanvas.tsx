@@ -264,12 +264,6 @@ function pointInRing(x: number, y: number, ring: [number, number][]): boolean {
 // → 삐뚤어진/사다리꼴 구역에서도 라벨이 안쪽에 들어옴.
 /** 비공식 장소 핀. 건물 핀과 색을 달리해 섞이지 않게 한다 */
 /** 동선의 순서 표시. A, B, C … 26곳을 넘으면 숫자로 */
-function routeStepHtml(index: number): string {
-  const label = index < 26 ? String.fromCharCode(65 + index) : String(index + 1)
-  return `<div style="width:18px;height:18px;border-radius:50%;background:#C44536;color:#fff;
-    font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;
-    border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35)">${label}</div>`
-}
 
 function informalMarkerHtml(name: string, kind: InformalKind = '비공식구역'): string {
   const safe = String(name ?? '')
@@ -490,7 +484,7 @@ function NaverMapCanvas({
   informalPlaces?: InformalPlacePin[]
   onSelectInformal?: (id: number) => void
   /** 선택한 장소의 모양만 그린다. 전부 그리면 지도가 못 볼 지경이 된다 */
-  informalShape?: { boundary?: GeoPoint[] | null; route?: GeoPoint[] | null } | null
+  informalShape?: { boundary?: GeoPoint[] | null; route?: GeoPoint[][] | null } | null
   /** 이 좌표로 지도를 옮긴다. 마커는 그리지 않는다 — 이미 그려진 핀을 보여 주려는 것이다 */
   focusPoint?: { lat: number; lng: number; zoom?: number | null } | null
   aggregateMarkers?: MapAggregateMarker[]
@@ -1585,10 +1579,13 @@ function NaverMapCanvas({
       }))
     }
 
-    if (shape.route && shape.route.length >= 2) {
+    // 중심거리는 **여러 줄**일 수 있다. 한 구역에 걸어다닐 줄기가 여럿이다.
+    // ⒶⒷ 순서 표시는 뺐다 — 줄이 여러 개가 되면 번호가 서로 섞여 읽기 어렵다.
+    for (const line of shape.route ?? []) {
+      if (!line || line.length < 2) continue
       informalShapeOverlaysRef.current.push(new naver.maps.Polyline({
         map: mapInstanceRef.current,
-        path: toPath(shape.route),
+        path: toPath(line),
         strokeColor: '#C44536', strokeOpacity: 0.9, strokeWeight: 4,
         // 점선이다. 실선으로 두면 지도의 도로선과 헷갈린다 —
         // 이건 길이 아니라 '이 줄기를 따라 걷는다' 는 표시다.
@@ -1597,22 +1594,6 @@ function NaverMapCanvas({
         endIcon: naver.maps.PointingIcon.OPEN_ARROW,
         endIconSize: 20,
       }))
-      // 순서를 알려 주는 Ⓐ Ⓑ Ⓒ.
-      // 점이 가까우면 라벨이 서로 덮으므로, 겹치는 것끼리 조금씩 어긋나게 놓는다.
-      const placed: { lat: number; lng: number; n: number }[] = []
-      shape.route.forEach((p, i) => {
-        const near = placed.filter((q) =>
-          Math.abs(q.lat - p.lat) < 0.00025 && Math.abs(q.lng - p.lng) < 0.00025)
-        placed.push({ lat: p.lat, lng: p.lng, n: near.length })
-        // 겹친 순서대로 왼쪽 위 → 오른쪽 아래로 조금씩 비껴 놓는다
-        const shift = near.length * 11
-        informalShapeOverlaysRef.current.push(new naver.maps.Marker({
-          map: mapInstanceRef.current,
-          position: new naver.maps.LatLng(p.lat, p.lng),
-          icon: { content: routeStepHtml(i), anchor: new naver.maps.Point(9 - shift, 9 + shift) },
-          zIndex: 7 + near.length,
-        }))
-      })
     }
   }
 
@@ -1906,7 +1887,7 @@ export function MapCanvas({
   buildings: Building[]
   informalPlaces?: InformalPlacePin[]
   onSelectInformal?: (id: number) => void
-  informalShape?: { boundary?: GeoPoint[] | null; route?: GeoPoint[] | null } | null
+  informalShape?: { boundary?: GeoPoint[] | null; route?: GeoPoint[][] | null } | null
   focusPoint?: { lat: number; lng: number; zoom?: number | null } | null
   aggregateMarkers?: MapAggregateMarker[]
   cardBoundaries?: CardBoundary[]

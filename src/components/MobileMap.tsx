@@ -1261,7 +1261,7 @@ export function MobileMap({
                   <em>
                     {[
                       selectedInformal.boundary?.length ? msg('구역선') : null,
-                      selectedInformal.route?.length ? msg('동선 {n}곳', { n: selectedInformal.route.length }) : null,
+                      selectedInformal.route?.length ? msg('중심거리 {n}개', { n: selectedInformal.route.length }) : null,
                     ].filter(Boolean).join(' · ') || msg('핀')}
                   </em>
                 </>
