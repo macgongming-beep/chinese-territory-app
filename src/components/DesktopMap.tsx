@@ -208,6 +208,8 @@ export function DesktopMap({
     { lat: number; lng: number; name: string; kind: InformalKind } | null
   >(null)
   const [savingChild, setSavingChild] = useState(false)
+  /** 방금 찍은 점의 종류. 이어서 찍을 때 같은 종류로 시작한다 */
+  const [lastChildKind, setLastChildKind] = useState<InformalKind>('대화장소')
   const [informalShapeTarget, setInformalShapeTarget] = useState<
     { assetId: number; field: 'boundary' | 'route' } | null
   >(null)
@@ -369,6 +371,11 @@ export function DesktopMap({
     openAddBuildingAt(lat, lng)
   }
 
+  useEffect(() => {
+    // 다른 구역으로 옮겨 가면 골라 둔 점은 뜻이 없다
+    setFocusedChildId(null)
+  }, [focusedInformalId])
+
   const informalPins = useMemo(
     () => (!showInformal ? [] : informalAssets)
       .filter((a) => typeof a.lat === 'number' && typeof a.lng === 'number')
@@ -402,12 +409,30 @@ export function DesktopMap({
     return { boundary: selectedInformal.boundary, route: selectedInformal.route }
   }, [selectedInformal, showInformal, informalShapeTarget])
 
+  /** 목록에서 고른 점. 정해지면 지도가 그 자리로 간다 (핀을 누른 것과 같다) */
+  const [focusedChildId, setFocusedChildId] = useState<number | null>(null)
+
+  /** 지금 보고 있는 구역에 속한 점들 */
+  const informalChildren = useMemo(
+    () => (selectedInformal
+      ? informalAssets.filter((a) => a.parentId === selectedInformal.id)
+      : []),
+    [informalAssets, selectedInformal],
+  )
+
   const informalFocusPoint = useMemo(() => {
-    if (!focusedInformalId) return null
-    const place = informalAssets.find((a) => a.id === focusedInformalId)
+    // 목록에서 고른 점이 있으면 그쪽이 우선이다
+    const targetId = focusedChildId ?? focusedInformalId
+    if (!targetId) return null
+    const place = informalAssets.find((a) => a.id === targetId)
     if (!place || typeof place.lat !== 'number' || typeof place.lng !== 'number') return null
-    return { lat: place.lat, lng: place.lng, zoom: place.zoom ?? null }
-  }, [focusedInformalId, informalAssets])
+    return {
+      lat: place.lat,
+      lng: place.lng,
+      // 점 하나를 보러 가는 것이라 구역의 zoom 보다 조금 더 당긴다
+      zoom: focusedChildId ? 18 : (place.zoom ?? null),
+    }
+  }, [focusedChildId, focusedInformalId, informalAssets])
 
   // 비공식 장소는 **비공식 카드 화면에서만** 만든다. 지도에서도 만들 수 있게
   // 두었더니 같은 일을 두 곳에서 하게 되고, 지도에서는 그룹·종류를 고를 수 없어
@@ -416,7 +441,7 @@ export function DesktopMap({
     // 구역 안의 점을 찍는 중이면 그쪽이 우선이다
     if (addingChildPoint) {
       setAddingChildPoint(false)
-      setChildDraft({ lat, lng, name: '', kind: '대화장소' })
+      setChildDraft({ lat, lng, name: '', kind: lastChildKind })
       return
     }
     openAddBuildingAt(lat, lng)
@@ -1055,7 +1080,13 @@ export function DesktopMap({
                 parentId: selectedInformal.id,
               })
               setSavingChild(false)
-              if (ok) setChildDraft(null)
+              if (ok) {
+                // ⚠ 모드를 유지한다 — 봉사 준비할 때는 한 자리만 찍는 일이 거의 없다.
+                //   종류도 그대로 두어 다음 점을 이름만 바꿔 빠르게 넣는다.
+                setChildDraft(null)
+                setLastChildKind(childDraft.kind)
+                setAddingChildPoint(true)
+              }
             }}
             type="button"
           >
@@ -1337,6 +1368,28 @@ export function DesktopMap({
 
   return (
     <section className={detailOpen ? 'map-layout ots-theme' : 'map-layout detail-collapsed ots-theme'}>
+      {addingChildPoint && !childDraft && (
+        <div style={{
+          position: 'absolute', left: '50%', top: 16, transform: 'translateX(-50%)',
+          zIndex: 40, display: 'flex', alignItems: 'center', gap: 10,
+          background: 'var(--ink)', color: '#fff', borderRadius: 999,
+          padding: '8px 14px', fontSize: 13, fontWeight: 600,
+          boxShadow: '0 6px 18px rgba(0,0,0,.24)',
+        }}>
+          {msg('지도를 눌러 점을 찍습니다')}
+          <button
+            onClick={() => setAddingChildPoint(false)}
+            style={{
+              border: 'none', background: 'rgba(255,255,255,.18)', color: '#fff',
+              borderRadius: 999, padding: '3px 10px', minHeight: 0,
+              fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            }}
+            type="button"
+          >
+            {msg('끝내기')}
+          </button>
+        </div>
+      )}
       {childDraftModal}
       {mapMergeUndo && (
         <div style={{
@@ -2802,16 +2855,27 @@ export function DesktopMap({
           )}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {onCreateInformalPlace && (
-              <button
-                className="ds-btn"
-                onClick={() => {
-                  setAddingChildPoint(true)
-                  showToast(msg('지도에서 점을 찍을 자리를 누르세요'), 'info')
-                }}
-                type="button"
-              >
-                {msg('점 추가')}
-              </button>
+              addingChildPoint ? (
+                <button
+                  className="ds-btn"
+                  onClick={() => setAddingChildPoint(false)}
+                  style={{ borderColor: 'var(--ink)', color: 'var(--ink)', fontWeight: 700 }}
+                  type="button"
+                >
+                  {msg('점 찍기 끝내기')}
+                </button>
+              ) : (
+                <button
+                  className="ds-btn"
+                  onClick={() => {
+                    setAddingChildPoint(true)
+                    showToast(msg('지도를 누를 때마다 점이 추가됩니다. 끝나면 끝내기를 누르세요'), 'info')
+                  }}
+                  type="button"
+                >
+                  {msg('점 추가')}
+                </button>
+              )
             )}
             <button className="ds-btn" onClick={() => startInformalShapeDrawing('boundary')} type="button">
               {selectedInformal.boundary?.length ? msg('구역선 수정') : msg('구역선 그리기')}
@@ -2842,6 +2906,52 @@ export function DesktopMap({
               </button>
             ) : null}
           </div>
+          {/* 이 구역에 속한 점들. 누르면 그 자리로 지도가 간다 — 핀을 누른 것과 같다. */}
+          {informalChildren.length > 0 && (
+            <div style={{
+              marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)',
+              display: 'flex', flexDirection: 'column', gap: 4,
+              maxHeight: 190, overflowY: 'auto',
+            }}>
+              {INFORMAL_KINDS.map((kind) => {
+                const rows = informalChildren.filter((child) => child.kind === kind)
+                if (rows.length === 0) return null
+                return (
+                  <div key={kind}>
+                    <div style={{
+                      fontSize: 11.5, fontWeight: 700, color: 'var(--muted)',
+                      margin: '4px 0 2px',
+                    }}>
+                      {(kind === '비공식구역' ? msg('비공식 구역')
+                        : kind === '거점' ? msg('거점') : msg('대화하기 좋은 장소'))} {rows.length}
+                    </div>
+                    {rows.map((child) => (
+                      <button
+                        key={child.id}
+                        type="button"
+                        onClick={() => setFocusedChildId(child.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+                          textAlign: 'left', padding: '5px 6px', minHeight: 0,
+                          border: 'none', borderRadius: 6, cursor: 'pointer',
+                          background: focusedChildId === child.id ? 'var(--tint)' : 'transparent',
+                          fontSize: 12.5,
+                          color: focusedChildId === child.id ? 'var(--ink)' : 'var(--text)',
+                          fontWeight: focusedChildId === child.id ? 700 : 500,
+                        }}
+                      >
+                        <InformalKindIcon kind={child.kind} size={12} />
+                        <span style={{
+                          minWidth: 0, overflow: 'hidden',
+                          textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>{child.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          )}
           <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.55 }}>
             {msg('지도를 눌러 점을 찍습니다. 구역선은 3점, 동선은 2점부터 저장됩니다.')}
           </p>
