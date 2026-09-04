@@ -17397,6 +17397,12 @@ button:focus-visible {
     align-items: stretch;
   }
 
+  /* 비공식 장소를 보고 있을 때는 왼쪽 구역 카드 목록을 감춘다.
+     칸을 그대로 두면 지도가 280px 자리로 찌그러진다. */
+  .map-workspace.informal-only {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .map-card-panel {
     overflow: hidden;
     border: 1px solid #d8dde3;

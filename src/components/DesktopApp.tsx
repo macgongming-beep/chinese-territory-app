@@ -674,7 +674,6 @@ export function DesktopApp({
               <DesktopMap language={language}
                 buildings={buildings}
                 informalAssets={informalAssets}
-                onCreateInformalPlace={onCreateInformalPlace}
                 focusedInformalId={focusedInformalId}
                 onSaveInformalShape={onSaveInformalShape}
                 boundaryEditRequest={boundaryEditRequest}
@@ -770,7 +769,6 @@ export function DesktopApp({
           <DesktopMap language={language}
             buildings={mapBuildings}
             informalAssets={informalAssets}
-            onCreateInformalPlace={onCreateInformalPlace}
             focusedInformalId={focusedInformalId}
             onSaveInformalShape={onSaveInformalShape}
             boundaryEditRequest={boundaryEditRequest}

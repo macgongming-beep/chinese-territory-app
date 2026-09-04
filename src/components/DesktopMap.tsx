@@ -81,7 +81,6 @@ export function DesktopMap({
   specialPeriods,
   onSwitchToList,
   informalAssets = [],
-  onCreateInformalPlace,
   focusedInformalId,
   onSaveInformalShape,
 }: {
@@ -92,10 +91,6 @@ export function DesktopMap({
   /** 비공식 화면에서 '지도에서 보기' 로 들어왔을 때 그 장소로 옮긴다 */
   focusedInformalId?: number | null
   onSaveInformalShape?: (assetId: number, field: 'boundary' | 'route', points: GeoPoint[]) => Promise<boolean>
-  onCreateInformalPlace?: (input: {
-    name: string; createdBy: string; groupId?: number | null
-    lat: number; lng: number; memo?: string; zoom?: number | null
-  }) => Promise<boolean>
   boundaryEditRequest?: number
   cardBoundaries: CardBoundary[]
   cards: TerritoryCard[]
@@ -177,12 +172,9 @@ export function DesktopMap({
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'ok' | 'fail'>('idle')
   const [addingBuilding, setAddingBuilding] = useState(false)
   // 비공식 봉사 장소 (docs/비공식-봉사-재설계.md)
-  const [addingInformal, setAddingInformal] = useState(false)
   // 비공식은 기본으로 감춘다. 호별방문 지도에 섞이면 구역이 안 보인다.
   // 비공식 화면에서 '지도에서 보기' 로 들어온 경우(informalId)에는 켜고 시작한다.
   const [showInformal, setShowInformal] = useState<boolean>(() => Boolean(focusedInformalId))
-  const [informalDraft, setInformalDraft] = useState<{ lat: number; lng: number; name: string; memo: string } | null>(null)
-  const [savingInformal, setSavingInformal] = useState(false)
   /**
    * 구역선 그리기의 대상. null 이면 구역 카드(기존 동작).
    * 도구는 그대로 쓰고 '어디에 저장하느냐' 만 바꾼다.
@@ -355,52 +347,6 @@ export function DesktopMap({
     [informalAssets, showInformal],
   )
 
-  const informalDraftModal = informalDraft ? (
-    <div className="cal-modal-backdrop" onClick={() => setInformalDraft(null)}>
-      <div className="cal-modal" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
-        <div className="cal-modal-head">
-          <div className="cal-modal-title"><h2>비공식 봉사 장소</h2></div>
-          <button className="cal-modal-close" onClick={() => setInformalDraft(null)} type="button">×</button>
-        </div>
-        <div className="cal-modal-body">
-          <div className="cal-field">
-            <label>이름</label>
-            <input
-              autoFocus
-              className="cal-input"
-              placeholder="예: 명지대(함박관)"
-              value={informalDraft.name}
-              onChange={(e) => setInformalDraft({ ...informalDraft, name: e.target.value })}
-            />
-          </div>
-          <div className="cal-field">
-            <label>메모</label>
-            <textarea
-              className="cal-input"
-              placeholder="1층 카페 앞. 점심때 사람 많음"
-              rows={3}
-              value={informalDraft.memo}
-              onChange={(e) => setInformalDraft({ ...informalDraft, memo: e.target.value })}
-            />
-            <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6 }}>
-              사진보다 이런 메모가 실제로 도움이 됩니다. 어디로 들어가는지, 언제 사람이 많은지.
-            </p>
-          </div>
-        </div>
-        <div className="cal-modal-foot">
-          <button className="cal-cancel-btn" onClick={() => setInformalDraft(null)} type="button">취소</button>
-          <button
-            className="cal-save-btn"
-            disabled={savingInformal || !informalDraft.name.trim()}
-            onClick={() => void saveInformalDraft()}
-            type="button"
-          >
-            {savingInformal ? '저장 중…' : '저장'}
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : null
 
   const selectedInformal = useMemo(
     () => (focusedInformalId ? informalAssets.find((a) => a.id === focusedInformalId) ?? null : null),
@@ -434,39 +380,13 @@ export function DesktopMap({
     return { lat: place.lat, lng: place.lng, zoom: place.zoom ?? null }
   }, [focusedInformalId, informalAssets])
 
+  // 비공식 장소는 **비공식 카드 화면에서만** 만든다. 지도에서도 만들 수 있게
+  // 두었더니 같은 일을 두 곳에서 하게 되고, 지도에서는 그룹·종류를 고를 수 없어
+  // 항상 미분류 '비공식구역' 으로 들어갔다.
   const handleMapClick = (lat: number, lng: number) => {
-    // 비공식 추가 중이면 그쪽이 우선이다. 두 모드가 동시에 켜지지 않게 서로 끈다.
-    if (addingInformal) {
-      setAddingInformal(false)
-      setInformalDraft({ lat, lng, name: '', memo: '' })
-      return
-    }
     openAddBuildingAt(lat, lng)
   }
 
-  const openAddInformalMode = () => {
-    setShowMapActionMenu(false)
-    setEditingPinMode(false)
-    setAddingBuilding(false)
-    setAddingInformal(true)
-    setShowInformal(true)
-    showToast(msg('지도에서 비공식 봉사 장소를 누르세요'), 'info')
-  }
-
-  const saveInformalDraft = async () => {
-    if (!informalDraft || !onCreateInformalPlace || savingInformal) return
-    if (!informalDraft.name.trim()) return
-    setSavingInformal(true)
-    const ok = await onCreateInformalPlace({
-      name: informalDraft.name,
-      createdBy: currentVisitor,
-      lat: informalDraft.lat,
-      lng: informalDraft.lng,
-      memo: informalDraft.memo,
-    })
-    setSavingInformal(false)
-    if (ok) setInformalDraft(null)
-  }
 
   const openAddBuildingMode = () => {
     setShowMapActionMenu(false)
@@ -1544,7 +1464,10 @@ export function DesktopMap({
           )}
         </div>
 
-        <div className="map-workspace">
+        <div className={`map-workspace${informalOnlyBoundaries ? ' informal-only' : ''}`}>
+          {/* 비공식 장소를 보고 있을 때는 구역 카드 목록이 뜻이 없다 —
+              여기 온 목적은 그 장소 하나다. */}
+          {!informalOnlyBoundaries && (
           <aside className="map-card-panel" aria-label="지도 카드 목록">
             {/* 패널 헤더 */}
             <div className="map-card-panel-head">
@@ -1686,8 +1609,11 @@ export function DesktopMap({
               )}
             </div>
           </aside>
+          )}
 
           <div className="map-canvas-panel">
+              {/* 건물 상태 범례도 비공식 화면에서는 뜻이 없다 (여기 건물을 안 그린다) */}
+              {!informalOnlyBoundaries && (
               <div className="map-legend-card">
                 {[
                   { status: '방문필요', color: '#2D6CDF', label: '방문필요' },
@@ -1716,6 +1642,7 @@ export function DesktopMap({
                   )
                 })}
               </div>
+              )}
 
             {drawingBoundary && (
               <div className="boundary-toolbar editing" aria-label="카드 구역선 편집">
@@ -1881,7 +1808,7 @@ export function DesktopMap({
                 const place = informalAssets.find((a) => a.id === id)
                 if (place) showToast(place.memo?.trim() || place.name, 'info')
               }}
-              onMapClick={(addingBuilding || addingInformal) ? handleMapClick : undefined}
+              onMapClick={addingBuilding ? handleMapClick : undefined}
               onMovePreviewPin={(lat, lng) => {
                 setNewBuildingLat(lat)
                 setNewBuildingLng(lng)
@@ -1915,9 +1842,6 @@ export function DesktopMap({
             {showMapActionMenu && (
               <div className="desktop-map-action-popover">
                 <button onClick={openAddBuildingMode} type="button">건물 추가</button>
-                {onCreateInformalPlace && (actualRole === 'admin' || actualRole === 'developer') && (
-                  <button onClick={openAddInformalMode} type="button">비공식 장소 추가</button>
-                )}
                 <button
                   onClick={() => { setShowInformal((v) => !v); setShowMapActionMenu(false) }}
                   type="button"
@@ -2735,7 +2659,6 @@ export function DesktopMap({
         </div>
       )}
 
-      {informalDraftModal}
 
       {/* 비공식 장소로 들어왔을 때 — 그 장소의 모양을 그리는 자리.
           그리는 중에는 아래쪽 구역선 도구(저장/취소)가 그대로 뜬다 */}

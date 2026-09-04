@@ -477,6 +477,7 @@ function NaverMapCanvas({
   bottomPadding,
   onToggleAddingBuilding,
   onOpenActionMenu,
+  hideActionButton,
   onToggleDrawingBoundary: _onToggleDrawingBoundary,
   onLocationPermissionBlocked,
   onMovePreviewPin,
@@ -524,6 +525,8 @@ function NaverMapCanvas({
   bottomPadding?: number
   onToggleAddingBuilding?: (val: boolean) => void
   onOpenActionMenu?: () => void
+  /** 비공식 장소를 보고 있을 때처럼 건물 작업이 뜻이 없는 화면에서 감춘다 */
+  hideActionButton?: boolean
   onToggleDrawingBoundary?: (val: boolean) => void
   onLocationPermissionBlocked?: () => void
   onMovePreviewPin?: (lat: number, lng: number) => void
@@ -1760,20 +1763,22 @@ function NaverMapCanvas({
             <path fill="currentColor" d="m5.766 14l-.787.315C2.993 15.109 2 15.507 2 16s.993.89 2.979 1.685l2.808 1.124C9.773 19.603 10.767 20 12 20s2.227-.397 4.213-1.192l2.808-1.123C21.007 16.891 22 16.494 22 16c0-.493-.993-.89-2.979-1.685L18.234 14l-2.021.809C14.227 15.603 13.233 16 12 16s-2.227-.397-4.213-1.191z" opacity="0.4"/>
           </svg>
         </button>
-        <button 
-          className={`toolbar-btn${addingBuilding || editingBuildingLocation ? ' active' : ''}`} 
-          onClick={() => {
-            if (onOpenActionMenu) onOpenActionMenu()
-            else onToggleAddingBuilding?.(!addingBuilding)
-          }}
-          title="지도 작업"
-          type="button"
-          aria-label="지도 작업"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="currentColor" fillRule="evenodd" d="M2.52 7.823C2 8.77 2 9.915 2 12.203v1.522c0 3.9 0 5.851 1.172 7.063S6.229 22 10 22h4c3.771 0 5.657 0 6.828-1.212S22 17.626 22 13.725v-1.521c0-2.289 0-3.433-.52-4.381c-.518-.949-1.467-1.537-3.364-2.715l-2-1.241C14.111 2.622 13.108 2 12 2s-2.11.622-4.116 1.867l-2 1.241C3.987 6.286 3.038 6.874 2.519 7.823M12.75 11a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V17a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25z" clipRule="evenodd"/>
-          </svg>
-        </button>
+        {!hideActionButton && (
+          <button 
+            className={`toolbar-btn${addingBuilding || editingBuildingLocation ? ' active' : ''}`} 
+            onClick={() => {
+              if (onOpenActionMenu) onOpenActionMenu()
+              else onToggleAddingBuilding?.(!addingBuilding)
+            }}
+            title="지도 작업"
+            type="button"
+            aria-label="지도 작업"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" fillRule="evenodd" d="M2.52 7.823C2 8.77 2 9.915 2 12.203v1.522c0 3.9 0 5.851 1.172 7.063S6.229 22 10 22h4c3.771 0 5.657 0 6.828-1.212S22 17.626 22 13.725v-1.521c0-2.289 0-3.433-.52-4.381c-.518-.949-1.467-1.537-3.364-2.715l-2-1.241C14.111 2.622 13.108 2 12 2s-2.11.622-4.116 1.867l-2 1.241C3.987 6.286 3.038 6.874 2.519 7.823M12.75 11a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V17a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25z" clipRule="evenodd"/>
+            </svg>
+          </button>
+        )}
         <button className="toolbar-btn" onClick={handleGPS} title="현재 위치" type="button" aria-label="현재 위치">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3"/>
@@ -1885,6 +1890,7 @@ export function MapCanvas({
   bottomPadding,
   onToggleAddingBuilding,
   onOpenActionMenu,
+  hideActionButton,
   onToggleDrawingBoundary,
   onLocationPermissionBlocked,
   onMovePreviewPin,
@@ -1933,6 +1939,8 @@ export function MapCanvas({
   bottomPadding?: number
   onToggleAddingBuilding?: (val: boolean) => void
   onOpenActionMenu?: () => void
+  /** 비공식 장소를 보고 있을 때처럼 건물 작업이 뜻이 없는 화면에서 감춘다 */
+  hideActionButton?: boolean
   onToggleDrawingBoundary?: (val: boolean) => void
   onLocationPermissionBlocked?: () => void
   onMovePreviewPin?: (lat: number, lng: number) => void
@@ -1988,6 +1996,7 @@ export function MapCanvas({
           bottomPadding={bottomPadding}
           onToggleAddingBuilding={onToggleAddingBuilding}
           onOpenActionMenu={onOpenActionMenu}
+          hideActionButton={hideActionButton}
           onToggleDrawingBoundary={onToggleDrawingBoundary}
           onLocationPermissionBlocked={onLocationPermissionBlocked}
           onMovePreviewPin={onMovePreviewPin}
