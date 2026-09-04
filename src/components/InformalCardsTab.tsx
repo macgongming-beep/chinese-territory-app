@@ -6,6 +6,7 @@ import { INFORMAL_KINDS, type InformalAsset, type InformalGroup, type InformalKi
 import { INFORMAL_KIND_STYLE } from '../utils/informalKind'
 import { InformalKindIcon } from './InformalKindIcon'
 import { geocodeQuery } from '../lib/naverGeocode'
+import { searchPlaces, type PlaceCandidate } from '../lib/placeSearch'
 import { showToast } from '../lib/toast'
 import { msg } from '../lib/msg'
 import { compressImage } from '../lib/imageCompress'
@@ -51,7 +52,8 @@ const informalCopy = {
     deleteGroup: '그룹 삭제',
     noAssets: '자료 없음',
     kindLabel: '종류',
-    addressPlaceholder: '주소로 찾기 (예: 용인시 기흥구 …)',
+    addressPlaceholder: '이름이나 주소로 찾기 (예: 용인 강남대학교)',
+    noPlaceResults: '찾지 못했습니다. 지도를 눌러 위치를 정해 주세요.',
     search: '찾기',
     searching: '찾는 중…',
     pickOnMap: '지도에서 장소를 눌러 위치를 정하세요.',
@@ -105,7 +107,8 @@ const informalCopy = {
     deleteGroup: '删除分组',
     noAssets: '没有资料',
     kindLabel: '类型',
-    addressPlaceholder: '按地址搜索',
+    addressPlaceholder: '按名称或地址搜索',
+    noPlaceResults: '没有找到。请点击地图设定位置。',
     search: '搜索',
     searching: '搜索中…',
     pickOnMap: '请在地图上点击以设定位置。',
@@ -159,7 +162,8 @@ const informalCopy = {
     deleteGroup: 'Delete group',
     noAssets: 'No items',
     kindLabel: 'Type',
-    addressPlaceholder: 'Search by address',
+    addressPlaceholder: 'Search by name or address',
+    noPlaceResults: 'Not found. Tap the map to set the location.',
     search: 'Search',
     searching: 'Searching…',
     pickOnMap: 'Tap the map to set the location.',
@@ -263,20 +267,48 @@ export function InformalCardsTab({
   const [savingPlace, setSavingPlace] = useState(false)
   const [addressQuery, setAddressQuery] = useState('')
   const [searchingAddress, setSearchingAddress] = useState(false)
+  const [placeResults, setPlaceResults] = useState<PlaceCandidate[] | null>(null)
 
-  /** 주소 → 좌표. 찾으면 미리보기 핀을 그 자리로 옮긴다 */
+  /**
+   * 이름이나 주소로 찾는다.
+   *
+   * 이름 검색(네이버 지역 검색)을 먼저 쓴다 — '용인 강남대학교' 처럼 사람이
+   * 실제로 치는 말이 그쪽으로만 걸린다. 후보가 없으면 주소 지오코딩으로
+   * 한 번 더 시도한다 (정확한 도로명을 넣은 경우).
+   */
   const runAddressSearch = async () => {
     const query = addressQuery.trim()
     if (!query || searchingAddress) return
     setSearchingAddress(true)
-    const found = await geocodeQuery(query)
-    setSearchingAddress(false)
-    if (!found) {
-      showToast(msg('주소를 찾지 못했습니다. 지도를 눌러 위치를 정해 주세요.'), 'error')
+    setPlaceResults(null)
+
+    const found = await searchPlaces(query)
+    if (found.length > 0) {
+      setSearchingAddress(false)
+      setPlaceResults(found)
       return
     }
-    // ⚠ setPlaceDraft 는 최신 값을 받아 쓴다 — 검색하는 동안 이름·메모를 고쳤을 수 있다
-    setPlaceDraft((prev) => (prev ? { ...prev, lat: found.lat, lng: found.lng } : prev))
+
+    const geo = await geocodeQuery(query)
+    setSearchingAddress(false)
+    if (!geo) {
+      showToast(msg('찾지 못했습니다. 지도를 눌러 위치를 정해 주세요.'), 'error')
+      return
+    }
+    // ⚠ 최신 값을 받아 쓴다 — 검색하는 동안 이름·메모를 고쳤을 수 있다
+    setPlaceDraft((prev) => (prev ? { ...prev, lat: geo.lat, lng: geo.lng } : prev))
+  }
+
+  /** 후보를 고르면 그 자리로 핀을 옮기고, 이름이 비어 있으면 채워 준다 */
+  const pickPlaceCandidate = (place: PlaceCandidate) => {
+    setPlaceResults(null)
+    setAddressQuery('')
+    setPlaceDraft((prev) => (prev ? {
+      ...prev,
+      lat: place.lat,
+      lng: place.lng,
+      name: prev.name.trim() || place.name,
+    } : prev))
   }
   // ⋮ 메뉴 / 선택 모드
   const [openGroupMenu, setOpenGroupMenu] = useState<number | 'null' | null>(null)
@@ -1299,6 +1331,43 @@ export function InformalCardsTab({
                   {searchingAddress ? copy.searching : copy.search}
                 </button>
               </div>
+              {/* 후보 목록 — 네이버처럼 여러 개를 보여 주고 고르게 한다.
+                  지역 검색은 최대 5개까지 준다. */}
+              {placeResults !== null && (
+                placeResults.length === 0 ? (
+                  <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--muted)' }}>
+                    {copy.noPlaceResults}
+                  </p>
+                ) : (
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8,
+                    maxHeight: 168, overflowY: 'auto',
+                  }}>
+                    {placeResults.map((place, index) => (
+                      <button
+                        key={`${place.name}-${index}`}
+                        type="button"
+                        onClick={() => pickPlaceCandidate(place)}
+                        style={{
+                          display: 'block', width: '100%', textAlign: 'left',
+                          padding: '8px 10px', minHeight: 0, borderRadius: 8,
+                          border: '1px solid var(--line)', background: 'var(--surface)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{
+                          fontSize: 13.5, fontWeight: 600, color: 'var(--ink)',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>{place.name}</div>
+                        <div style={{
+                          fontSize: 12, color: 'var(--muted)',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>{[place.address, place.category].filter(Boolean).join(' · ')}</div>
+                      </button>
+                    ))}
+                  </div>
+                )
+              )}
               <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--muted)' }}>
                 {placeDraft.lat == null
                   ? copy.pickOnMap
