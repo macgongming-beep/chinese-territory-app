@@ -52,6 +52,7 @@ const informalCopy = {
     deleteGroup: '그룹 삭제',
     noAssets: '자료 없음',
     kindLabel: '종류',
+    pointCount: (n: number) => `포인트 ${n}`,
     addressPlaceholder: '이름이나 주소로 찾기 (예: 용인 강남대학교)',
     noPlaceResults: '찾지 못했습니다. 지도를 눌러 위치를 정해 주세요.',
     search: '찾기',
@@ -107,6 +108,7 @@ const informalCopy = {
     deleteGroup: '删除分组',
     noAssets: '没有资料',
     kindLabel: '类型',
+    pointCount: (n: number) => `地点 ${n}`,
     addressPlaceholder: '按名称或地址搜索',
     noPlaceResults: '没有找到。请点击地图设定位置。',
     search: '搜索',
@@ -162,6 +164,7 @@ const informalCopy = {
     deleteGroup: 'Delete group',
     noAssets: 'No items',
     kindLabel: 'Type',
+    pointCount: (n: number) => `${n} points`,
     addressPlaceholder: 'Search by name or address',
     noPlaceResults: 'Not found. Tap the map to set the location.',
     search: 'Search',
@@ -343,9 +346,25 @@ export function InformalCardsTab({
     setOpenGroupMenu(null)
   }
 
+  /**
+   * ⚠ **상위 장소만** 목록에 올린다.
+   * 구역 안에 넣은 포인트(거점·대화장소 …)는 그 구역의 자식이라 여기서
+   * 따로 보이면 안 된다. 그것들은 구역의 지도 화면에서 본다.
+   * 이걸 안 걸렀더니 '경희대(홈플러스)' 안에 넣은 점들이 전부 최상위
+   * 카드처럼 목록에 떴다.
+   */
+  const topLevelAssets = informalAssets.filter((asset) => !asset.parentId)
+
+  /** 상위 장소별 자식 수 — 줄에 '포인트 3' 처럼 보여 준다 */
+  const childCountByParent = new Map<number, number>()
+  for (const asset of informalAssets) {
+    if (!asset.parentId) continue
+    childCountByParent.set(asset.parentId, (childCountByParent.get(asset.parentId) ?? 0) + 1)
+  }
+
   // 그룹별 자료 그룹화
   const assetsByGroup = new Map<number | null, InformalAsset[]>()
-  for (const asset of informalAssets) {
+  for (const asset of topLevelAssets) {
     const key = asset.groupId ?? null
     const list = assetsByGroup.get(key) ?? []
     list.push(asset)
@@ -356,7 +375,7 @@ export function InformalCardsTab({
     a.position - b.position || a.createdAt.localeCompare(b.createdAt),
   )
   const unassignedAssets = assetsByGroup.get(null) ?? []
-  const totalAssets = informalAssets.length
+  const totalAssets = topLevelAssets.length
 
   // ── 업로드 큐 ────────────────────────────────────────
   const makeId = () =>
@@ -669,7 +688,13 @@ export function InformalCardsTab({
                         fontSize: 12, color: 'var(--muted)',
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}>
-                        {[copy.kindName[asset.kind], asset.memo?.trim() || null].filter(Boolean).join(' · ')}
+                        {[
+                          copy.kindName[asset.kind],
+                          childCountByParent.get(asset.id)
+                            ? copy.pointCount(childCountByParent.get(asset.id) ?? 0)
+                            : null,
+                          asset.memo?.trim() || null,
+                        ].filter(Boolean).join(' · ')}
                       </div>
                     </div>
                     {isSelectionMode && (
