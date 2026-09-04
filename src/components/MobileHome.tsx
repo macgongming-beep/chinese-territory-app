@@ -683,6 +683,7 @@ export function MobileHome({
             translatePlaceNames={translatePlaceNames}
             informalAssets={informalAssets}
             focusedInformalId={focusedInformalId}
+            onCreateInformalPlace={role === 'admin' || role === 'developer' ? onCreateInformalPlace : undefined}
             buildings={mapBuildings}
             cardBoundaries={mapCardBoundaries}
             cards={mapCards}

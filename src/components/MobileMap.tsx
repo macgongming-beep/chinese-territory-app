@@ -18,6 +18,9 @@ import { findActivePeriod } from '../utils/specialPeriod'
 import { AppHeaderActionButtons } from './AppHeader'
 import { MobileBulkUnitSheet } from './MobileBulkUnitSheet'
 import { msg } from '../lib/msg'
+import { INFORMAL_KINDS, type InformalKind } from '../types'
+import { INFORMAL_KIND_STYLE } from '../utils/informalKind'
+import { InformalKindIcon } from './InformalKindIcon'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
@@ -25,6 +28,13 @@ type BuildingTypeFilter = '전체' | Building['type']
 
 function shortenAddress(addr: string): string {
   return addr.replace(/^경기도\s*용인시\s*/, '')
+}
+
+/** 종류의 화면 이름. 값(kind)과 라벨을 섞지 않는다 */
+function informalKindLabel(kind: InformalKind): string {
+  return kind === '비공식구역' ? msg('비공식 구역')
+    : kind === '거점' ? msg('거점')
+      : msg('대화하기 좋은 장소')
 }
 
 export function MobileMap({
@@ -40,6 +50,7 @@ export function MobileMap({
   focusedCardId,
   informalAssets = [],
   focusedInformalId,
+  onCreateInformalPlace,
   focusedCardIds = [],
   focusedBuildingId,
   regularVisitScope = false,
@@ -80,6 +91,19 @@ export function MobileMap({
   informalAssets?: InformalAsset[]
   /** 비공식 화면에서 '지도에서 보기' 로 들어왔을 때 그 장소로 옮긴다 */
   focusedInformalId?: number | null
+  /**
+   * 구역 안의 포인트를 만든다. 최상위 비공식 장소는 비공식 카드 탭에서만
+   * 만들고, 여기서 만드는 것은 언제나 지금 보고 있는 구역의 자식이다.
+   */
+  onCreateInformalPlace?: (input: {
+    name: string
+    createdBy: string
+    lat: number
+    lng: number
+    memo?: string
+    kind?: InformalKind
+    parentId?: number | null
+  }) => Promise<boolean>
   focusedCardIds?: number[]
   focusedBuildingId?: number | null
   regularVisitScope?: boolean
@@ -178,6 +202,14 @@ export function MobileMap({
       .map((a) => ({ id: a.id, name: a.name, kind: a.kind, lat: a.lat as number, lng: a.lng as number })),
     [informalAssets, showInformal],
   )
+  /** 추가 중인 비공식 포인트의 종류. null 이면 추가 모드가 아니다 */
+  const [addingChildKind, setAddingChildKind] = useState<InformalKind | null>(null)
+  const [childDraft, setChildDraft] = useState<
+    { lat: number; lng: number; name: string; kind: InformalKind } | null
+  >(null)
+  const [savingChild, setSavingChild] = useState(false)
+  const [focusedChildId, setFocusedChildId] = useState<number | null>(null)
+
   const selectedInformal = useMemo(
     () => (focusedInformalId ? informalAssets.find((a) => a.id === focusedInformalId) ?? null : null),
     [focusedInformalId, informalAssets],
@@ -187,10 +219,88 @@ export function MobileMap({
     () => (selectedInformal ? { boundary: selectedInformal.boundary, route: selectedInformal.route } : null),
     [selectedInformal],
   )
+
+
+  /** 지금 보고 있는 구역에 속한 점들 */
+  const informalChildren = useMemo(
+    () => (selectedInformal
+      ? informalAssets.filter((a) => a.parentId === selectedInformal.id)
+      : []),
+    [informalAssets, selectedInformal],
+  )
   const informalFocusPoint = useMemo(() => {
+    // 목록에서 고른 점이 있으면 그쪽이 우선이다
+    const child = focusedChildId
+      ? informalChildren.find((item) => item.id === focusedChildId)
+      : null
+    if (child && typeof child.lat === 'number' && typeof child.lng === 'number') {
+      return { lat: child.lat, lng: child.lng, zoom: 18 }
+    }
     if (!selectedInformal || typeof selectedInformal.lat !== 'number' || typeof selectedInformal.lng !== 'number') return null
     return { lat: selectedInformal.lat, lng: selectedInformal.lng, zoom: selectedInformal.zoom ?? null }
-  }, [selectedInformal])
+  }, [focusedChildId, informalChildren, selectedInformal])
+
+  useEffect(() => {
+    // 다른 구역으로 옮겨 가면 골라 둔 점은 뜻이 없다
+    setFocusedChildId(null)
+  }, [focusedInformalId])
+
+  /** 구역 안에 찍은 점의 이름을 정하는 창 */
+  const childDraftModal = (childDraft && selectedInformal) ? (
+    <div className="mobile-sheet-backdrop" onClick={() => setChildDraft(null)}>
+      <div className="mobile-sheet" onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <InformalKindIcon kind={childDraft.kind} size={18} />
+          <strong style={{ fontSize: 16 }}>
+            {msg('{v1} 추가', { v1: informalKindLabel(childDraft.kind) })}
+          </strong>
+        </div>
+        <div className="mobile-form-field">
+          <label>{msg('이름')}</label>
+          <input
+            className="cal-input"
+            autoFocus
+            placeholder={msg('예: 롯데백화점 앞')}
+            value={childDraft.name}
+            onChange={(e) => setChildDraft({ ...childDraft, name: e.target.value })}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <button
+            className="cal-cancel-btn"
+            style={{ flex: 1 }}
+            onClick={() => setChildDraft(null)}
+            type="button"
+          >
+            {msg('취소')}
+          </button>
+          <button
+            className="cal-save-btn"
+            style={{ flex: 1 }}
+            disabled={savingChild || !childDraft.name.trim()}
+            onClick={async () => {
+              if (!onCreateInformalPlace) return
+              setSavingChild(true)
+              const ok = await onCreateInformalPlace({
+                name: childDraft.name,
+                createdBy: currentVisitor,
+                lat: childDraft.lat,
+                lng: childDraft.lng,
+                kind: childDraft.kind,
+                // ⚠ 언제나 지금 보고 있는 구역의 자식이다
+                parentId: selectedInformal.id,
+              })
+              setSavingChild(false)
+              if (ok) setChildDraft(null)
+            }}
+            type="button"
+          >
+            {savingChild ? msg('저장 중…') : msg('저장')}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
 
   const liveFullScreenUnit = useMemo(() => {
     if (!fullScreenUnit) return null
@@ -804,6 +914,7 @@ export function MobileMap({
       className={`mobile-map-shell${navLevel === 'map' ? ' mobile-map-shell--map' : ''}`}
       style={hasAreaChips && navLevel === 'map' ? { '--map-chips-push': '53px' } as React.CSSProperties : undefined}
     >
+      {childDraftModal}
       {/* 통합 헤더 — map 레벨에서는 floating + blur (디자인 23) */}
       <header className={`mobile-map-header${navLevel === 'map' ? ' mobile-map-header--floating' : ''}`}>
         <button onClick={handleBack} type="button" className="mm-back-btn" aria-label="Back">‹</button>
@@ -1138,8 +1249,14 @@ export function MobileMap({
               }}
               onSelectCardBoundary={(cardId) => setSelectedCardId(cardId)}
               selectedBuildingId={selectedBuildingId ?? 0}
+              pickingPoint={addingChildKind !== null}
               onMapClick={(lat, lng) => {
-                if (addingBuildingMode) {
+                if (addingChildKind !== null) {
+                  // 한 번 찍으면 모드를 끈다 — 계속 켜져 있으면 지도를 누를
+                  // 때마다 창이 떠서 다른 일을 못 한다
+                  setChildDraft({ lat, lng, name: '', kind: addingChildKind })
+                  setAddingChildKind(null)
+                } else if (addingBuildingMode) {
                   handleAddBuildingAt(lat, lng)
                 } else if (editingPinMode) {
                   return
@@ -1176,6 +1293,25 @@ export function MobileMap({
               drawingBoundary={drawingBoundaryMode}
               onToggleDrawingBoundary={setDrawingBoundaryMode}
             />
+            {selectedInformal && (
+              <div className="mobile-map-legend-card">
+                {INFORMAL_KINDS.map((kind) => (
+                  <div
+                    key={kind}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 7,
+                      padding: '3px 2px', fontSize: 12, color: 'var(--gray-600)',
+                    }}
+                  >
+                    <InformalKindIcon kind={kind} size={13} />
+                    <span style={{ flex: 1 }}>{informalKindLabel(kind)}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>
+                      {informalChildren.filter((child) => child.kind === kind).length}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             {!selectedInformal && (
             <div className="mobile-map-legend-card" aria-label={t(language, 'map.status')}>
               {([
@@ -1206,10 +1342,33 @@ export function MobileMap({
             )}
             {showMapActionMenu && (
               <div className="mobile-map-action-popover">
+                {/* 비공식 장소를 보고 있으면 건물 작업 대신 그 구역에 넣을 포인트를 고른다 */}
+                {selectedInformal && onCreateInformalPlace ? (
+                  INFORMAL_KINDS.map((kind) => {
+                    const on = addingChildKind === kind
+                    return (
+                      <button
+                        key={kind}
+                        onClick={() => {
+                          setAddingChildKind(on ? null : kind)
+                          setShowMapActionMenu(false)
+                        }}
+                        style={on ? { color: INFORMAL_KIND_STYLE[kind].color, fontWeight: 700 } : undefined}
+                        type="button"
+                      >
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <InformalKindIcon kind={kind} size={13} />
+                          {on ? msg('그만 추가') : `+ ${informalKindLabel(kind)}`}
+                        </span>
+                      </button>
+                    )
+                  })
+                ) : (<>
                 <button onClick={openAddBuildingMode} type="button">{t(language, 'map.addBuilding')}</button>
                 <button onClick={toggleEditPinMode} type="button">
                   {editingPinMode ? t(language, 'map.finishEditPin') : t(language, 'map.editPin')}
                 </button>
+                </>)}
               </div>
             )}
           </div>
@@ -1297,6 +1456,44 @@ export function MobileMap({
                     <p style={{ margin: 0, fontSize: 13.5, color: 'var(--muted)' }}>
                       {msg('메모가 없습니다. PC 에서 이 장소를 열어 적을 수 있습니다.')}
                     </p>
+                  )}
+                  {/* 이 구역에 속한 점들. 누르면 그 자리로 지도가 간다 (핀을 누른 것과 같다). */}
+                  {informalChildren.length > 0 && (
+                    <div style={{ marginTop: 14 }}>
+                      {INFORMAL_KINDS.map((kind) => {
+                        const rows = informalChildren.filter((child) => child.kind === kind)
+                        if (rows.length === 0) return null
+                        return (
+                          <div key={kind} style={{ marginBottom: 10 }}>
+                            <div style={{
+                              fontSize: 12.5, fontWeight: 700, color: 'var(--muted)', marginBottom: 4,
+                            }}>{informalKindLabel(kind)} {rows.length}</div>
+                            {rows.map((child) => (
+                              <button
+                                key={child.id}
+                                type="button"
+                                onClick={() => setFocusedChildId(child.id)}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                                  textAlign: 'left', padding: '9px 10px', marginBottom: 6,
+                                  height: 'auto', minHeight: 0, lineHeight: 1.45,
+                                  borderRadius: 10, cursor: 'pointer',
+                                  border: focusedChildId === child.id
+                                    ? '1px solid var(--ink)' : '1px solid var(--line)',
+                                  background: 'var(--surface)',
+                                }}
+                              >
+                                <InformalKindIcon kind={child.kind} size={15} />
+                                <span style={{
+                                  flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--ink)',
+                                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                }}>{child.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )
+                      })}
+                    </div>
                   )}
                 </div>
               ) : (

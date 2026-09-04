@@ -1354,7 +1354,7 @@ export function InformalCardsTab({
                 ) : (
                   <div style={{
                     display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8,
-                    maxHeight: 168, overflowY: 'auto',
+                    maxHeight: 230, overflowY: 'auto',
                   }}>
                     {placeResults.map((place, index) => (
                       <button
@@ -1363,17 +1363,20 @@ export function InformalCardsTab({
                         onClick={() => pickPlaceCandidate(place)}
                         style={{
                           display: 'block', width: '100%', textAlign: 'left',
-                          padding: '8px 10px', minHeight: 0, borderRadius: 8,
+                          padding: '8px 10px', borderRadius: 8,
                           border: '1px solid var(--line)', background: 'var(--surface)',
                           cursor: 'pointer',
+                          // ⚠ 앱의 공통 button 규칙이 높이를 고정해서 둘째 줄이
+                          //   잘려 보였다. 내용에 맞춰 늘어나게 풀어 준다.
+                          height: 'auto', minHeight: 0, lineHeight: 1.45,
                         }}
                       >
                         <div style={{
-                          fontSize: 13.5, fontWeight: 600, color: 'var(--ink)',
+                          fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.45,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>{place.name}</div>
                         <div style={{
-                          fontSize: 12, color: 'var(--muted)',
+                          fontSize: 12, color: 'var(--muted)', lineHeight: 1.45,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>{[place.address, place.category].filter(Boolean).join(' · ')}</div>
                       </button>
