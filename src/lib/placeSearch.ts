@@ -24,7 +24,7 @@ export type PlaceSearchResult =
    * ⚠ 실패를 빈 결과로 뭉뚱그리지 않는다. 그러면 "검색 결과 없음" 과
    *   "검색이 고장남" 이 화면에서 같아 보여 원인을 못 찾는다.
    */
-  | { ok: false; reason: 'no_session' | 'unavailable' }
+  | { ok: false; reason: 'no_session' | 'rejected' | 'unavailable' }
 
 export async function searchPlaces(query: string): Promise<PlaceSearchResult> {
   const q = query.trim()
@@ -38,7 +38,9 @@ export async function searchPlaces(query: string): Promise<PlaceSearchResult> {
   })
   if (error) {
     console.warn('[searchPlaces] search-place 호출 실패', error)
-    return { ok: false, reason: 'unavailable' }
+    // 401 은 '세션이 거부됨' 이다. 연결 문제와 같은 문구로 묶으면 원인을 못 찾는다.
+    const status = (error as { context?: { status?: number } })?.context?.status
+    return { ok: false, reason: status === 401 ? 'rejected' : 'unavailable' }
   }
   const body = data as { places?: unknown; error?: unknown }
   if (body?.error) {

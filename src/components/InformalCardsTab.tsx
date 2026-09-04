@@ -291,8 +291,8 @@ export function InformalCardsTab({
     if (!found.ok) {
       // ⚠ '결과 없음' 과 다른 문구여야 한다. 같으면 고장인지 없는 건지 모른다.
       setSearchingAddress(false)
-      showToast(found.reason === 'no_session'
-        ? msg('로그인 세션을 확인할 수 없습니다. 다시 로그인해 주세요.')
+      showToast(found.reason === 'no_session' || found.reason === 'rejected'
+        ? msg('로그인 세션을 확인할 수 없습니다. 앱에서 다시 로그인해 주세요.')
         : msg('장소 검색을 쓸 수 없습니다. 잠시 뒤 다시 시도해 주세요.'), 'error')
       return
     }

@@ -27,7 +27,12 @@ const MAX_RESULTS = 5
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, content-type, x-session-token, apikey',
+  // ⚠ supabase-js 는 x-client-info 를 자동으로 붙인다. 허용 목록에 없으면
+  //   브라우저 예비요청(preflight)에서 막혀 호출 자체가 실패한다.
+  //   curl 은 예비요청을 안 보내므로 이 문제를 못 잡는다 — 실제로 그렇게 놓쳤다.
+  'Access-Control-Allow-Headers':
+    'authorization, content-type, x-session-token, x-client-info, apikey, accept-profile',
+  'Access-Control-Max-Age': '86400',
 }
 
 const json = (body: unknown, status = 200) =>
