@@ -553,6 +553,8 @@ export const messagesEn: Record<string, string> = {
   "이 장소에서 기억할 내용을 적어 주세요.": "Add anything worth remembering about this place.",
   "{v1} 수정": "Edit {v1}",
   "수정": "Edit",
+  "구역 보기": "View territory",
+  "자료 보기": "View item",
   "위로": "Move up",
   "아래로": "Move down",
   "구역선": "Boundary",

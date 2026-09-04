@@ -2,6 +2,7 @@ import { t } from '../i18n'
 import type { AppLanguage } from '../i18n'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Building, CalendarEvent, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot } from '../types'
+import { getAssignmentTeamMembers } from '../utils/assignmentTeamMembers'
 import { getUserReturnVisits } from '../utils/returnVisits'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
@@ -110,12 +111,7 @@ export function DesktopMyService({
         const assignedCards = assignmentCardIds(assignment)
           .map((id) => cards.find((card) => card.id === id))
           .filter(Boolean) as TerritoryCard[]
-        const assignedCardIds = new Set(assignedCards.map((card) => card.id))
-        // 같은 카드를 맡은 팀원 목록 — 본인도 포함해서 팀 전체가 보이게 (본인 먼저)
-        const teammates = event.cardAssignments
-          .filter((item) => assignedCardIds.size === 0 || assignmentCardIds(item).some((id) => assignedCardIds.has(id)))
-          .map((item) => item.userName)
-          .sort((a, b) => (a === currentVisitor ? -1 : b === currentVisitor ? 1 : 0))
+        const teammates = getAssignmentTeamMembers(event, currentVisitor)
 
         return { event, cards: assignedCards, teammates }
       })

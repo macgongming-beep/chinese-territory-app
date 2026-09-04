@@ -960,6 +960,7 @@ export function MobileHome({
                   returnVisits={returnVisits}
                   returnVisitLogs={returnVisitLogs}
                   onOpenMap={(cardId) => navigate(`/map?cardId=${cardId}`)}
+                  onOpenInformalMap={(assetId) => navigate(`/map?informalId=${assetId}`)}
                   onOpenRegularVisitMap={(returnVisitId) => {
                     const params = new URLSearchParams()
                     params.set('scope', 'regularVisits')

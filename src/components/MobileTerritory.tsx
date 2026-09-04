@@ -7,6 +7,7 @@ import { getTerritoryCardOperationalState, sortTerritoryCardsByOperationalPriori
 import { getUserReturnVisits, normalizeVisitorName } from '../utils/returnVisits'
 import { RestaurantServiceSheet } from './RestaurantServiceSheet'
 import { msg } from '../lib/msg'
+import { getAssignmentTeamMembers } from '../utils/assignmentTeamMembers'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
   if (!assignment) return []
@@ -55,6 +56,7 @@ export function MobileTerritory({
   returnVisits = [],
   returnVisitLogs = [],
   onOpenMap,
+  onOpenInformalMap,
   onOpenRegularVisitMap,
   onEndServiceSession: _onEndServiceSession,  // 종료 버튼 제거 — auto_close가 처리. prop 시그니처는 후방호환 유지.
   onCreateManualReturnVisit,
@@ -94,6 +96,7 @@ export function MobileTerritory({
   onUpdateRestaurantRequestMemo?: (requestId: number, memo: string) => Promise<void>
   restaurantRequests?: import('../types').RestaurantRequest[]
   onOpenMap: (cardId: number) => void
+  onOpenInformalMap?: (assetId: number) => void
   onOpenRegularVisitMap?: (returnVisitId?: number) => void
   onEndServiceSession: (sessionId: number) => void
   onCreateManualReturnVisit?: (input: { displayName: string; address: string; memo: string; unitId?: number | null; buildingId?: number | null }) => Promise<void>
@@ -292,12 +295,7 @@ export function MobileTerritory({
     const assignedCards = cardIds
       .map((id) => cards.find((c) => c.id === id))
       .filter(Boolean) as TerritoryCard[]
-    const cardIdSet = new Set(assignedCards.map((card) => card.id))
-    // 같은 카드를 맡은 팀원 목록 — 본인도 포함해서 팀 전체가 보이게 (본인 먼저)
-    const teammates = event.cardAssignments
-      .filter((item) => cardIdSet.size === 0 || assignmentCardIds(item).some((id) => cardIdSet.has(id)))
-      .map((item) => item.userName)
-      .sort((a, b) => (a === currentVisitor ? -1 : b === currentVisitor ? 1 : 0))
+    const teammates = getAssignmentTeamMembers(event, currentVisitor)
     return { event, cards: assignedCards, teammates }
   }
 
@@ -661,15 +659,11 @@ export function MobileTerritory({
                                     <span className="mobile-today-card-dot" aria-hidden="true" style={{ background: '#8e6acb' }} />
                                     <strong>{asset?.name ?? msg('비공식 자료')}</strong>
                                     <em style={{ color: '#8e6acb' }}>{msg('비공식')}</em>
-                                    {asset?.imageUrl && (
-                                      <a href={asset.imageUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
-                                        <img
-                                          src={asset.imageUrl}
-                                          alt={asset.name}
-                                          style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', border: '1px solid #e2e8f0' }}
-                                        />
-                                      </a>
-                                    )}
+                                    {asset && onOpenInformalMap ? (
+                                      <button onClick={() => onOpenInformalMap(asset.id)} type="button">{msg('구역 보기')}</button>
+                                    ) : asset?.imageUrl ? (
+                                      <button onClick={() => window.open(asset.imageUrl, '_blank', 'noopener,noreferrer')} type="button">{msg('자료 보기')}</button>
+                                    ) : null}
                                   </div>
                                 )
                               })}
