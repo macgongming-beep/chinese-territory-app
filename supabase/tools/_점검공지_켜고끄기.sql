@@ -6,7 +6,7 @@
 
 -- ═══ 켜기 ═══
 insert into public.app_settings (key, value) values
-  ('maintenance_notice_id', 'lockdown-2026-08-29'),   -- 바꾸면 확인했던 사람에게도 다시 뜬다
+  ('maintenance_notice_id', 'informal-assignment-2026-09-04'), -- 바꾸면 확인했던 사람에게도 다시 뜬다
 
   -- ⚠ 짧게 쓴다. 설명이 길면 안 읽는다.
   ('maintenance_notice', E'업데이트가 있습니다.\n앱을 완전히 종료한 뒤 다시 실행해 주세요.'),
