@@ -488,7 +488,15 @@ export function ChatRoom({
                 disabled={muteBusy}
                 type="button"
               >
-                {isMuted ? '🔕' : '🔔'}
+                {/* 이모지(종 그림)는 폰마다 다르게 그려져 앱의 다른 아이콘과 따로 논다.
+                    헤더의 다른 아이콘과 같은 선(stroke) svg 로 그린다. */}
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+                     aria-hidden>
+                  <path d="M18 8a6 6 0 0 0-12 0c0 6-2.5 7-2.5 7h17S18 14 18 8z" />
+                  <path d="M13.7 19a2 2 0 0 1-3.4 0" />
+                  {isMuted && <line x1="3.5" y1="3.5" x2="20.5" y2="20.5" />}
+                </svg>
               </button>
             )}
             {selectableMessages.length > 0 && (

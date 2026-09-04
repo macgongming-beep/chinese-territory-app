@@ -4,7 +4,10 @@ import { MapCanvas } from './MapCanvas'
 import { useRef, useState } from 'react'
 import { INFORMAL_KINDS, type InformalAsset, type InformalGroup, type InformalKind, type Role } from '../types'
 import { INFORMAL_KIND_STYLE } from '../utils/informalKind'
+import { InformalKindIcon } from './InformalKindIcon'
+import { geocodeQuery } from '../lib/naverGeocode'
 import { showToast } from '../lib/toast'
+import { msg } from '../lib/msg'
 import { compressImage } from '../lib/imageCompress'
 import type { AppLanguage } from '../i18n'
 
@@ -48,6 +51,11 @@ const informalCopy = {
     deleteGroup: '그룹 삭제',
     noAssets: '자료 없음',
     kindLabel: '종류',
+    addressPlaceholder: '주소로 찾기 (예: 용인시 기흥구 …)',
+    search: '찾기',
+    searching: '찾는 중…',
+    pickOnMap: '지도에서 장소를 눌러 위치를 정하세요.',
+    moveOnMap: '위치를 다시 누르면 옮길 수 있습니다.',
     kindName: { 비공식구역: '비공식 구역', 거점: '거점', 대화장소: '대화하기 좋은 장소' } as Record<InformalKind, string>,
     countLine: (assets: number, groups: number) => `전체 ${assets}개 · 그룹 ${groups}`,
     addAsset: '+ 자료 추가',
@@ -97,6 +105,11 @@ const informalCopy = {
     deleteGroup: '删除分组',
     noAssets: '没有资料',
     kindLabel: '类型',
+    addressPlaceholder: '按地址搜索',
+    search: '搜索',
+    searching: '搜索中…',
+    pickOnMap: '请在地图上点击以设定位置。',
+    moveOnMap: '再次点击可移动位置。',
     kindName: { 비공식구역: '非正式区域', 거점: '据点', 대화장소: '适合交谈的地方' } as Record<InformalKind, string>,
     countLine: (assets: number, groups: number) => `共 ${assets} 个 · 分组 ${groups}`,
     addAsset: '+ 添加资料',
@@ -146,6 +159,11 @@ const informalCopy = {
     deleteGroup: 'Delete group',
     noAssets: 'No items',
     kindLabel: 'Type',
+    addressPlaceholder: 'Search by address',
+    search: 'Search',
+    searching: 'Searching…',
+    pickOnMap: 'Tap the map to set the location.',
+    moveOnMap: 'Tap again to move it.',
     kindName: { 비공식구역: 'Informal zone', 거점: 'Base', 대화장소: 'Good to talk' } as Record<InformalKind, string>,
     countLine: (assets: number, groups: number) => `${assets} total · ${groups} groups`,
     addAsset: '+ Add item',
@@ -243,6 +261,23 @@ export function InformalCardsTab({
     { groupId: number | null; lat: number | null; lng: number | null; name: string; memo: string; kind: InformalKind } | null
   >(null)
   const [savingPlace, setSavingPlace] = useState(false)
+  const [addressQuery, setAddressQuery] = useState('')
+  const [searchingAddress, setSearchingAddress] = useState(false)
+
+  /** 주소 → 좌표. 찾으면 미리보기 핀을 그 자리로 옮긴다 */
+  const runAddressSearch = async () => {
+    const query = addressQuery.trim()
+    if (!query || searchingAddress) return
+    setSearchingAddress(true)
+    const found = await geocodeQuery(query)
+    setSearchingAddress(false)
+    if (!found) {
+      showToast(msg('주소를 찾지 못했습니다. 지도를 눌러 위치를 정해 주세요.'), 'error')
+      return
+    }
+    // ⚠ setPlaceDraft 는 최신 값을 받아 쓴다 — 검색하는 동안 이름·메모를 고쳤을 수 있다
+    setPlaceDraft((prev) => (prev ? { ...prev, lat: found.lat, lng: found.lng } : prev))
+  }
   // ⋮ 메뉴 / 선택 모드
   const [openGroupMenu, setOpenGroupMenu] = useState<number | 'null' | null>(null)
   const [selectionGroup, setSelectionGroup] = useState<number | 'null' | null>(null)
@@ -1263,10 +1298,31 @@ export function InformalCardsTab({
               <button className="cal-modal-close" onClick={() => setPlaceDraft(null)} type="button">×</button>
             </div>
             <div className="cal-modal-body">
+              {/* 주소로 먼저 찾고, 세밀한 위치는 지도를 눌러 잡는다.
+                  지도만 있으면 모르는 동네에서 장소를 찾기가 어렵다. */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <input
+                  className="cal-input"
+                  style={{ flex: 1 }}
+                  placeholder={copy.addressPlaceholder}
+                  value={addressQuery}
+                  onChange={(e) => setAddressQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void runAddressSearch() } }}
+                />
+                <button
+                  className="cal-cancel-btn"
+                  style={{ minWidth: 72 }}
+                  disabled={searchingAddress || !addressQuery.trim()}
+                  onClick={() => { void runAddressSearch() }}
+                  type="button"
+                >
+                  {searchingAddress ? copy.searching : copy.search}
+                </button>
+              </div>
               <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--muted)' }}>
                 {placeDraft.lat == null
-                  ? '지도에서 장소를 눌러 위치를 정하세요.'
-                  : '위치를 다시 누르면 옮길 수 있습니다.'}
+                  ? copy.pickOnMap
+                  : copy.moveOnMap}
               </p>
               <div style={{ height: 280, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
                 {/* 위치를 고르기만 하는 지도 — 건물·구역을 안 넘기므로 선택 상태는 뜻이 없다 */}
@@ -1306,7 +1362,7 @@ export function InformalCardsTab({
                           fontSize: 13, fontWeight: on ? 700 : 500,
                         }}
                       >
-                        <span aria-hidden style={{ color: style.color }}>{style.glyph}</span>
+                        <InformalKindIcon kind={kind} color={on ? style.color : 'var(--muted-2)'} />
                         {copy.kindName[kind]}
                       </button>
                     )

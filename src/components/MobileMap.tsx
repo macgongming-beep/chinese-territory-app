@@ -1089,7 +1089,7 @@ export function MobileMap({
               }}
               buildings={mapAggregateMarkers.length > 0 ? [] : mapBuildings}
               aggregateMarkers={mapAggregateMarkers}
-              cardBoundaries={mapAggregateMarkers.length > 0 ? [] : mapBoundaries}
+              cardBoundaries={mapAggregateMarkers.length > 0 || selectedInformal ? [] : mapBoundaries}
               cards={cards}
               selectedCardId={mapSelectedCardId}
               highlightedCardIds={mapAggregateMarkers.length > 0 ? emptyHighlightedCardIds : scopedCardIds}

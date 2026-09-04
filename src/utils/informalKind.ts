@@ -10,14 +10,10 @@ import type { InformalKind } from '../types'
  * ⚠ 색만으로 나누지 않는다. 지도 핀은 26px 쯤이라 실제 크기에서는
  *   **형태가 색보다 먼저** 눈에 들어온다 (핀 개편 때 배웠다).
  */
-export const INFORMAL_KIND_STYLE: Record<InformalKind, {
-  color: string
-  /** 목록·범례에 쓰는 글자 아이콘. 지도 핀은 아래 svg 를 쓴다 */
-  glyph: string
-}> = {
-  비공식구역: { color: '#7A5C8A', glyph: '★' },
-  거점:       { color: '#C44536', glyph: '♥' },
-  대화장소:   { color: '#5B6B7C', glyph: '💬' },
+export const INFORMAL_KIND_STYLE: Record<InformalKind, { color: string }> = {
+  비공식구역: { color: '#7A5C8A' },
+  거점:       { color: '#C44536' },
+  대화장소:   { color: '#5B6B7C' },
 }
 
 /** 지도 핀 안에 넣는 도형. 26px 안에서 구분되도록 단순하게 그린다 */
@@ -27,7 +23,7 @@ export function informalKindSvgPath(kind: InformalKind): string {
       // 하트
       return 'M12 20s-6.5-4.6-6.5-9.2A3.9 3.9 0 0 1 12 8.4a3.9 3.9 0 0 1 6.5 2.4C18.5 15.4 12 20 12 20z'
     case '대화장소':
-      // 말풍선
+      // 말풍선 — 이모지(💬)를 쓰면 폰마다 그림이 달라 앱의 다른 아이콘과 따로 논다
       return 'M5 6h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-6l-4 3v-3H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z'
     case '비공식구역':
     default:

@@ -407,6 +407,12 @@ export function DesktopMap({
     [focusedInformalId, informalAssets],
   )
 
+  /**
+   * 비공식 장소를 보고 있을 때는 **구역 카드 구역선을 감춘다.**
+   * 둘이 겹쳐 그려지면 비공식 구역선을 새로 그릴 때 어디가 내 선인지 알 수 없다.
+   */
+  const informalOnlyBoundaries = Boolean(selectedInformal) || Boolean(informalShapeTarget)
+
   // 그리는 중에는 원본 대신 지금 찍고 있는 점을 보여 준다
   const informalShape = useMemo(() => {
     if (!selectedInformal || !showInformal) return null
@@ -1796,7 +1802,7 @@ export function DesktopMap({
               buildings={aggregateMapBuildings}
               aggregateMarkers={mapAggregateMarkers}
               onSelectAggregate={handleSelectAggregateMarker}
-              cardBoundaries={cardBoundaries}
+              cardBoundaries={informalOnlyBoundaries ? [] : cardBoundaries}
               highlightedCardIds={highlightedCardIds}
               selectedCardIds={boundaryMultiSelectMode ? selectedBoundaryCardIds : undefined}
               cards={cards}
