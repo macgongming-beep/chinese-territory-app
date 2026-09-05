@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import type { MouseEvent } from 'react'
 import type { Building, BuildingStatus, CardBoundary, GeoPoint, TerritoryCard } from '../types'
-import { clusterByGrid, getClusterThresholdKm } from '../utils/mapClustering'
+import { clusterByGrid, getClusterThresholdKm, shouldRebuildMapMarkersOnIdle } from '../utils/mapClustering'
 import { getBuildingStatus, getCardName, getMockPosition, isValidMapCoordinate } from '../utils/mapUtils'
 import { getBuildingPin, BUILDING_STATUS_COLORS, TONE_COLORS } from '../utils/buildingPin'
 import { INFORMAL_KIND_STYLE, informalKindSvgPath } from '../utils/informalKind'
@@ -11,6 +11,7 @@ import { TERRITORY_BOUNDARY } from '../data/territoryBoundary'
 import { showToast } from '../lib/toast'
 import { msg } from '../lib/msg'
 import { stripRegionPrefix } from '../lib/regions'
+import { removeStaleKeyedEntries, upsertKeyedEntry, type KeyedEntry } from '../utils/keyedReconciliation'
 
 const STATUS_COLORS: Record<BuildingStatus, string> = BUILDING_STATUS_COLORS
 
@@ -540,7 +541,8 @@ function NaverMapCanvas({
 }) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<any>(null)
-  const markersRef = useRef<any[]>([])
+  const markersRef = useRef<Map<string, KeyedEntry<any>>>(new Map())
+  const viewportMarkersDirtyRef = useRef(false)
   const boundaryRef = useRef<any>(null)
   const cardPolygonsRef = useRef<Map<number, any>>(new Map())
   const cardLabelsRef = useRef<Map<number, any>>(new Map())  // 구역선 중앙 카드 라벨
@@ -601,6 +603,8 @@ function NaverMapCanvas({
   isMobileRef.current = isMobile
   const onSelectBuildingRef = useRef(onSelectBuilding)
   onSelectBuildingRef.current = onSelectBuilding
+  const onMoveBuildingRef = useRef(onMoveBuilding)
+  onMoveBuildingRef.current = onMoveBuilding
   const onSelectAggregateRef = useRef(onSelectAggregate)
   onSelectAggregateRef.current = onSelectAggregate
   const onZoomChangeRef = useRef(onZoomChange)
@@ -663,42 +667,75 @@ function NaverMapCanvas({
   }
 
   const doRebuildMarkers = () => {
+    // 데이터/표현 전환으로 즉시 최신 마커를 만들었다면 대기 중인 idle 작업은 중복이다.
+    if (rebuildTimerRef.current !== null) {
+      window.clearTimeout(rebuildTimerRef.current)
+      rebuildTimerRef.current = null
+    }
     const naver = (window as any).naver
     if (!naver?.maps || !mapInstanceRef.current) return
 
+    viewportMarkersDirtyRef.current = false
+
     ;(window as any).__ctaMarkerClick = onSelectBuildingRef.current
 
-    markersRef.current.forEach((m) => m.setMap(null))
-    markersRef.current = []
+    const nextMarkerKeys = new Set<string>()
+    const upsertMarker = (key: string, signature: string, create: () => any) => {
+      nextMarkerKeys.add(key)
+      upsertKeyedEntry(markersRef.current, key, signature, create, (marker) => marker.setMap(null))
+    }
+    const removeUnusedMarkers = () => {
+      removeStaleKeyedEntries(markersRef.current, nextMarkerKeys, (marker) => marker.setMap(null))
+    }
 
     if (aggregateMarkersRef.current.length > 0) {
       aggregateMarkersRef.current.forEach((aggregate) => {
         if (!isValidMapCoordinate(Number(aggregate.lat), Number(aggregate.lng))) return
-        const marker = new naver.maps.Marker({
-          map: mapInstanceRef.current,
-          position: new naver.maps.LatLng(aggregate.lat, aggregate.lng),
-          icon: {
-            content: aggregateMarkerHtml(aggregate),
-            anchor: new naver.maps.Point(54, 21),
-          },
-          zIndex: 8,
+        const signature = [aggregate.lat, aggregate.lng, aggregate.label, aggregate.count, aggregate.unitCount, aggregate.houseCount, aggregate.shopCount].join(':')
+        upsertMarker(`aggregate:${aggregate.id}`, signature, () => {
+          const marker = new naver.maps.Marker({
+            map: mapInstanceRef.current,
+            position: new naver.maps.LatLng(aggregate.lat, aggregate.lng),
+            icon: {
+              content: aggregateMarkerHtml(aggregate),
+              anchor: new naver.maps.Point(54, 21),
+            },
+            zIndex: 8,
+          })
+          naver.maps.Event.addListener(marker, 'click', () => {
+            if (addingBuildingRef.current) return
+            onSelectAggregateRef.current?.(aggregate.id)
+          })
+          return marker
         })
-        naver.maps.Event.addListener(marker, 'click', () => {
-          if (addingBuildingRef.current) return
-          onSelectAggregateRef.current?.(aggregate.id)
-        })
-        markersRef.current.push(marker)
       })
+      removeUnusedMarkers()
       return
     }
 
     // 배정 색칠 모드: 건물 핀 숨기고 폴리곤만
-    if (hideBuildingMarkersRef.current) return
+    if (hideBuildingMarkersRef.current) {
+      removeUnusedMarkers()
+      return
+    }
 
     const zoom = mapInstanceRef.current.getZoom()
     // 가까이 확대했을 때 화면 밖 1,000여 건물까지 DOM 마커로 만들면 지도 이동이
     // 다시 무거워진다. 네이버 지도 권장 방식대로 현재 viewport 안의 건물만 그린다.
-    const bounds = zoom >= 15 ? mapInstanceRef.current.getBounds() : null
+    const rawBounds = zoom >= 15 ? mapInstanceRef.current.getBounds() : null
+    // 화면보다 조금 넓게 준비해 작은 팬마다 가장자리 핀이 생겼다 사라지지 않게 한다.
+    const bounds = rawBounds?.getSW && rawBounds?.getNE
+      ? (() => {
+          const sw = rawBounds.getSW()
+          const ne = rawBounds.getNE()
+          const latPad = Math.abs(ne.lat() - sw.lat()) * 0.2
+          const lngPad = Math.abs(ne.lng() - sw.lng()) * 0.2
+          return new naver.maps.LatLngBounds(
+            new naver.maps.LatLng(sw.lat() - latPad, sw.lng() - lngPad),
+            new naver.maps.LatLng(ne.lat() + latPad, ne.lng() + lngPad),
+          )
+        })()
+      : rawBounds
     const visibleBuildings = bounds?.hasLatLng
       ? buildingsRef.current.filter((building) => {
           if (!isValidMapCoordinate(Number(building.lat), Number(building.lng))) return false
@@ -715,57 +752,67 @@ function NaverMapCanvas({
           selectedCardIdRef.current !== null &&
           selectedCardIdRef.current !== '전체' &&
           building.cardId !== selectedCardIdRef.current
-        // 성능: 일반 핀은 SVG 이미지(GPU 합성, 안드로이드 드래그 부드러움),
-        // 선택된 핀(최대 1개)만 HTML 유지 (선택 링/확대 표현 동일 재현)
-        const marker = new naver.maps.Marker({
-          map: mapInstanceRef.current,
-          position: new naver.maps.LatLng(building.lat, building.lng),
-          title: markerTitle(building, cardsRef.current),
-          icon: isSelected
-            ? {
-                content: markerHtml(building, cardsRef.current, isSelected, isDimmed),
-                anchor: new naver.maps.Point(20, 30),
-              }
-            : {
-                url: (({ fill, ring, ringWidth }) => markerIconUrl(fill, isDimmed, ring, ringWidth))(pinColors(building)),
-                size: new naver.maps.Size(40, 40),
-                scaledSize: new naver.maps.Size(40, 40),
-                anchor: new naver.maps.Point(20, 30),
-              },
-          zIndex: isSelected ? 10 : isDimmed ? 0 : 1,
-          draggable: !!editingBuildingLocationRef.current,
-        })
-        if (editingBuildingLocationRef.current) {
-          naver.maps.Event.addListener(marker, 'dragend', (e: any) => {
-            onMoveBuilding?.(building.id, e.coord.lat(), e.coord.lng())
+        const colors = pinColors(building)
+        const title = markerTitle(building, cardsRef.current)
+        const signature = [building.lat, building.lng, title, isSelected, isDimmed, !!editingBuildingLocationRef.current, colors.fill, colors.ring, colors.ringWidth].join(':')
+        upsertMarker(`building:${building.id}`, signature, () => {
+          // 일반 핀은 SVG 이미지, 선택된 핀(최대 1개)만 HTML을 쓴다.
+          const marker = new naver.maps.Marker({
+            map: mapInstanceRef.current,
+            position: new naver.maps.LatLng(building.lat, building.lng),
+            title,
+            icon: isSelected
+              ? {
+                  content: markerHtml(building, cardsRef.current, isSelected, isDimmed),
+                  anchor: new naver.maps.Point(20, 30),
+                }
+              : {
+                  url: markerIconUrl(colors.fill, isDimmed, colors.ring, colors.ringWidth),
+                  size: new naver.maps.Size(40, 40),
+                  scaledSize: new naver.maps.Size(40, 40),
+                  anchor: new naver.maps.Point(20, 30),
+                },
+            zIndex: isSelected ? 10 : isDimmed ? 0 : 1,
+            draggable: !!editingBuildingLocationRef.current,
           })
-        }
-        naver.maps.Event.addListener(marker, 'click', () => {
-          if (addingBuildingRef.current) return
-          onSelectBuildingRef.current?.(building.id)
+          if (editingBuildingLocationRef.current) {
+            naver.maps.Event.addListener(marker, 'dragend', (e: any) => {
+              onMoveBuildingRef.current?.(building.id, e.coord.lat(), e.coord.lng())
+            })
+          }
+          naver.maps.Event.addListener(marker, 'click', () => {
+            if (addingBuildingRef.current) return
+            onSelectBuildingRef.current?.(building.id)
+          })
+          return marker
         })
-        markersRef.current.push(marker)
       } else {
         const count = cluster.buildings.length
         const size = count >= 50 ? 52 : count >= 10 ? 44 : 36
-        const marker = new naver.maps.Marker({
-          map: mapInstanceRef.current,
-          position: new naver.maps.LatLng(cluster.lat, cluster.lng),
-          icon: {
-            content: clusterMarkerHtml(count),
-            anchor: new naver.maps.Point(size / 2, size / 2),
-          },
-          zIndex: 5,
+        const clusterIds = cluster.buildings.map((building) => building.id).sort((a, b) => a - b).join(',')
+        const signature = [cluster.lat, cluster.lng, count, size].join(':')
+        upsertMarker(`cluster:${clusterIds}`, signature, () => {
+          const marker = new naver.maps.Marker({
+            map: mapInstanceRef.current,
+            position: new naver.maps.LatLng(cluster.lat, cluster.lng),
+            icon: {
+              content: clusterMarkerHtml(count),
+              anchor: new naver.maps.Point(size / 2, size / 2),
+            },
+            zIndex: 5,
+          })
+          naver.maps.Event.addListener(marker, 'click', () => {
+            if (addingBuildingRef.current) return
+            const curZoom = mapInstanceRef.current.getZoom()
+            mapInstanceRef.current.setCenter(new naver.maps.LatLng(cluster.lat, cluster.lng))
+            mapInstanceRef.current.setZoom(Math.min(curZoom + 3, 20))
+          })
+          return marker
         })
-        naver.maps.Event.addListener(marker, 'click', () => {
-          if (addingBuildingRef.current) return
-          const curZoom = mapInstanceRef.current.getZoom()
-          mapInstanceRef.current.setCenter(new naver.maps.LatLng(cluster.lat, cluster.lng))
-          mapInstanceRef.current.setZoom(Math.min(curZoom + 3, 20))
-        })
-        markersRef.current.push(marker)
       }
     })
+
+    removeUnusedMarkers()
 
     // Preview pin for building add mode
     if (previewMarkerRef.current) {
@@ -1496,8 +1543,12 @@ function NaverMapCanvas({
 
       // Re-cluster when zoom changes
       naver.maps.Event.addListener(mapInstanceRef.current, 'zoom_changed', () => {
+        if (rebuildTimerRef.current !== null) {
+          window.clearTimeout(rebuildTimerRef.current)
+          rebuildTimerRef.current = null
+        }
+        viewportMarkersDirtyRef.current = true
         onZoomChangeRef.current?.(mapInstanceRef.current.getZoom())
-        scheduleRebuildMarkersRef.current()
         updateCardLabelVisibilityRef.current()
       })
       onZoomChangeRef.current?.(mapInstanceRef.current.getZoom())
@@ -1505,12 +1556,21 @@ function NaverMapCanvas({
       // 성능: 드래그 중엔 카드 라벨 숨김 → 멈추면(idle) 다시 표시.
       // (안드로이드에서 라벨 오버레이 리페인트가 드래그를 느리게 하는 것 방지)
       naver.maps.Event.addListener(mapInstanceRef.current, 'dragstart', () => {
+        if (rebuildTimerRef.current !== null) {
+          window.clearTimeout(rebuildTimerRef.current)
+          rebuildTimerRef.current = null
+        }
+        viewportMarkersDirtyRef.current = true
         cardLabelsRef.current.forEach((label) => { if (label.getMap()) label.setMap(null) })
       })
       naver.maps.Event.addListener(mapInstanceRef.current, 'idle', () => {
         updateCardLabelVisibilityRef.current()
         // 드래그하는 동안에는 기존 핀을 유지하고, 손을 뗀 뒤 새 화면의 핀만 한 번 갱신한다.
-        if (mapInstanceRef.current.getZoom() >= 15 && aggregateMarkersRef.current.length === 0) {
+        if (shouldRebuildMapMarkersOnIdle({
+          dirty: viewportMarkersDirtyRef.current,
+          zoom: mapInstanceRef.current.getZoom(),
+          hasAggregates: aggregateMarkersRef.current.length > 0,
+        })) {
           scheduleRebuildMarkersRef.current()
         }
       })

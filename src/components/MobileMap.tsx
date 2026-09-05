@@ -23,7 +23,7 @@ import { INFORMAL_KIND_STYLE } from '../utils/informalKind'
 import { InformalKindIcon } from './InformalKindIcon'
 import { placeDeletionCopy } from '../utils/placeDeletion'
 import { PlaceChangeRequestDialog } from './PlaceChangeRequestDialog'
-import { getMobileMapDetailLevel, type MobileMapDetailLevel } from '../utils/mapClustering'
+import { getNextMobileMapDetailLevel, type MobileMapDetailLevel } from '../utils/mapClustering'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
@@ -1360,8 +1360,7 @@ export function MobileMap({
               highlightedCardIds={scopedCardIds}
               onSelectAggregate={handleSelectAggregateMarker}
               onZoomChange={(zoom) => {
-                const next = getMobileMapDetailLevel(zoom)
-                setAutomaticMapDetail((current) => current === next ? current : next)
+                setAutomaticMapDetail((current) => getNextMobileMapDetailLevel(current, zoom))
               }}
               onLocationPermissionBlocked={() => {
                 showToast(

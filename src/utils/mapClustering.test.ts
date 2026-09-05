@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { clusterByGrid, getClusterThresholdKm, getMobileMapDetailLevel } from './mapClustering'
+import { clusterByGrid, getClusterThresholdKm, getMobileMapDetailLevel, getNextMobileMapDetailLevel, shouldRebuildMapMarkersOnIdle } from './mapClustering'
 
 const YONGIN = { lat: 37.2411, lng: 127.1776 }
 
@@ -26,6 +26,14 @@ describe('getMobileMapDetailLevel', () => {
     expect(getMobileMapDetailLevel(13)).toBe('area')
     expect(getMobileMapDetailLevel(15)).toBe('area')
     expect(getMobileMapDetailLevel(16)).toBe('building')
+  })
+
+  it('경계에서 한 단계 완충해 표시가 반복 전환되지 않는다', () => {
+    expect(getNextMobileMapDetailLevel('area', 16)).toBe('building')
+    expect(getNextMobileMapDetailLevel('building', 15)).toBe('building')
+    expect(getNextMobileMapDetailLevel('building', 14)).toBe('area')
+    expect(getNextMobileMapDetailLevel('area', 12)).toBe('area')
+    expect(getNextMobileMapDetailLevel('area', 11)).toBe('region')
   })
 })
 
@@ -82,5 +90,14 @@ describe('clusterByGrid', () => {
     const total = clusters.reduce((sum, c) => sum + c.items.length, 0)
     expect(total).toBe(1000)
     expect(new Set(clusters.flatMap((c) => c.items.map((i) => i.id))).size).toBe(1000)
+  })
+})
+
+describe('shouldRebuildMapMarkersOnIdle', () => {
+  it('가까운 건물 단계에서 카메라가 실제로 움직였을 때만 갱신한다', () => {
+    expect(shouldRebuildMapMarkersOnIdle({ dirty: true, zoom: 16, hasAggregates: false })).toBe(true)
+    expect(shouldRebuildMapMarkersOnIdle({ dirty: false, zoom: 16, hasAggregates: false })).toBe(false)
+    expect(shouldRebuildMapMarkersOnIdle({ dirty: true, zoom: 14, hasAggregates: false })).toBe(false)
+    expect(shouldRebuildMapMarkersOnIdle({ dirty: true, zoom: 16, hasAggregates: true })).toBe(false)
   })
 })

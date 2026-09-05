@@ -31,6 +31,28 @@ export function getMobileMapDetailLevel(zoom: number): MobileMapDetailLevel {
   return 'region'
 }
 
+/** 핀치 확대가 임계값 근처를 오갈 때 표시 단계가 연달아 뒤집히지 않게 한다. */
+export function getNextMobileMapDetailLevel(
+  current: MobileMapDetailLevel,
+  zoom: number,
+): MobileMapDetailLevel {
+  if (current === 'building' && zoom >= 15) return 'building'
+  if (current === 'area' && zoom >= 12 && zoom < 16) return 'area'
+  return getMobileMapDetailLevel(zoom)
+}
+
+export function shouldRebuildMapMarkersOnIdle({
+  dirty,
+  zoom,
+  hasAggregates,
+}: {
+  dirty: boolean
+  zoom: number
+  hasAggregates: boolean
+}): boolean {
+  return dirty && zoom >= 15 && !hasAggregates
+}
+
 export function clusterByGrid<T extends ClusterInput>(items: T[], thresholdKm: number): Cluster<T>[] {
   if (thresholdKm <= 0) {
     return items.map((item) => ({ items: [item], lat: item.lat, lng: item.lng }))
