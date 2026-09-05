@@ -118,10 +118,10 @@ describe('모바일 세대 상세', () => {
     expect(screen.getByText(/못 만난 시간 · 주말 오후/)).toBeVisible()
     expect(screen.getByRole('button', { name: /203호/ }).closest('.unit-grid-row')).toHaveClass('is-detail-selected')
 
-    fireEvent.click(screen.getByRole('button', { name: '메모 쓰기' }))
+    fireEvent.click(screen.getByRole('button', { name: '메모' }))
     expect(screen.getByPlaceholderText(/메모를 입력하세요/)).toBeVisible()
-    expect(screen.getByRole('button', { name: '메모 닫기' })).toHaveAttribute('aria-expanded', 'true')
-    fireEvent.click(screen.getByRole('button', { name: '메모 닫기' }))
+    expect(screen.getByRole('button', { name: '메모' })).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(screen.getByRole('button', { name: '메모' }))
     expect(screen.queryByPlaceholderText(/메모를 입력하세요/)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /204호/ }))
@@ -129,8 +129,9 @@ describe('모바일 세대 상세', () => {
     expect(screen.getByRole('button', { name: /204호/ }).closest('.unit-grid-row')).toHaveClass('is-detail-selected')
 
     const navigatorHeight = sheet.style.height
-    fireEvent.click(screen.getByRole('button', { name: /세대 메모/ }))
-    expect(screen.getByLabelText('세대 메모')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: /세대 정보/ }))
+    expect(screen.getByLabelText('세대 정보')).toBeVisible()
+    expect(screen.getByText('이름·연락처 등 개인정보는 적지 마세요.')).toBeVisible()
     expect(sheet.style.height).toBe('65px')
     fireEvent.click(screen.getByRole('button', { name: '취소' }))
     expect(sheet.style.height).toBe(navigatorHeight)

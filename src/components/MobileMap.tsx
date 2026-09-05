@@ -2763,7 +2763,7 @@ function UnitDetailScreen({
                                 fontSize: 10.5, fontWeight: 600, padding: '3px 6px',
                               }}
                               type="button"
-                            >{isMemoOpen ? msg('메모 닫기') : msg('메모 쓰기')}</button>
+                            >{t(language, 'map.memo')}</button>
                           )}
                           {canRecordVisits && (
                             <button onClick={() => setEditingHistoryId(h.id)}
@@ -2835,6 +2835,7 @@ function UnitDetailScreen({
                 aria-label={t(language, 'map.unitMemoLabel')}
                 value={memoDraft ?? ''}
                 onChange={e => setMemoDraft(e.target.value)}
+                placeholder={t(language, 'map.unitInfoPlaceholder')}
                 onFocus={(event) => {
                   const target = event.currentTarget
                   window.setTimeout(() => target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 120)
@@ -2847,6 +2848,9 @@ function UnitDetailScreen({
                   resize: 'none', boxSizing: 'border-box',
                 }}
               />
+              <p style={{ margin: '6px 0 0', fontSize: 10.5, lineHeight: 1.4, color: 'var(--muted)' }}>
+                {t(language, 'map.unitInfoPrivacy')}
+              </p>
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 <button
                   onClick={() => {
@@ -2886,7 +2890,7 @@ function UnitDetailScreen({
             >
               <strong style={{ fontSize: 14, color: 'var(--ink)' }}>{t(language, 'map.unitMemoLabel')}</strong>
               <span style={{ overflow: 'hidden', fontSize: 12.5, lineHeight: 1.4, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {memo || t(language, 'map.addMemo')}
+                {memo || t(language, 'map.addUnitInfo')}
               </span>
               <span aria-hidden="true" style={{ fontSize: 16 }}>›</span>
             </button>

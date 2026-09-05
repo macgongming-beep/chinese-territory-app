@@ -2455,13 +2455,16 @@ export function DesktopMap({
                                   <>
                                     <textarea
                                       className="ugd-memo-textarea"
-                                      placeholder={t(language, 'map.addMemo') + '...'}
+                                      placeholder={t(language, 'map.unitInfoPlaceholder')}
                                       rows={3}
                                       autoFocus
                                       value={unitMemoEdits[unit.id] ?? ''}
                                       onChange={(e) => setUnitMemoEdits((prev) => ({ ...prev, [unit.id]: e.target.value }))}
                                       style={{ resize: 'none' }}
                                     />
+                                    <p style={{ margin: '4px 0 0', fontSize: 10.5, color: '#94a3b8' }}>
+                                      {t(language, 'map.unitInfoPrivacy')}
+                                    </p>
                                     <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                                       <button
                                         onClick={() => {
@@ -2493,7 +2496,7 @@ export function DesktopMap({
                                       cursor: canRecordVisits ? 'pointer' : 'default', whiteSpace: 'pre-wrap', lineHeight: 1.5,
                                     }}
                                     type="button"
-                                  >{(unitMemos[unit.id] ?? unit.memo) || t(language, 'map.addMemo') + '...'}</button>
+                                  >{(unitMemos[unit.id] ?? unit.memo) || t(language, 'map.addUnitInfo')}</button>
                                 )}
                               </div>
                             </div>
