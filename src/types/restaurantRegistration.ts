@@ -8,6 +8,8 @@ export type RestaurantRegistration = {
   name: string
   address: string
   existingBuildingId: number | null
+  lat?: number | null
+  lng?: number | null
   isChinese: boolean
   initialState: RestaurantInitialState
   regularVisitor: string | null

@@ -1,7 +1,7 @@
 // 식당 탭 — design_handoff 06 화면
 // 식당 표시된 상가 목록 (지역별 그룹) + 추가 모달 + 식당봉사 신청 승인
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Building, Unit, RestaurantRequest, Role, TerritoryCard, VisitHistory } from '../types'
+import type { Building, CardBoundary, Unit, RestaurantRequest, Role, TerritoryCard, VisitHistory } from '../types'
 import { RestaurantRegistrationModal } from './RestaurantRegistrationModal'
 import type { RegisterRestaurant } from '../types/restaurantRegistration'
 import { confirmDialog } from '../lib/confirm'
@@ -578,6 +578,7 @@ function PendingRequestCard({
 type Props = {
   role: Role
   buildings: Building[]
+  cardBoundaries?: CardBoundary[]
   cards: TerritoryCard[]
   currentVisitor?: string
   restaurantRequests?: RestaurantRequest[]
@@ -598,7 +599,7 @@ type Props = {
 }
 
 export function RestaurantsTab({
-  role, buildings, cards, currentVisitor = '', restaurantRequests = [],
+  role, buildings, cardBoundaries = [], cards, currentVisitor = '', restaurantRequests = [],
   onRegisterRestaurant, onToggleRestaurantFlag, onRemoveRestaurantUnit, onBulkSetRestaurant, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap, onOpenBuildingMap,
   visitHistories = [], onUpdateUnitFlags,
   language = 'ko',
@@ -613,6 +614,7 @@ export function RestaurantsTab({
   const [excludeReleaseTarget, setExcludeReleaseTarget] = useState<{ unit: Unit; name: string } | null>(null)
   const [releaseReason, setReleaseReason] = useState('')
   const [expandedRegions, setExpandedRegions] = useState<Set<string>>(new Set())
+  const [removingKey, setRemovingKey] = useState<string | null>(null)
 
   // 세대별 최근 방문일
   const lastVisitByUnit = useMemo(() => {
@@ -1100,17 +1102,21 @@ export function RestaurantsTab({
                                   onClick={async () => {
                                     setOpenMenuId(null)
                                     if (!(await confirmDialog({ message: copy.confirmRemove(placeLabel(restaurantName)), danger: true, confirmLabel: copy.remove }))) return
-                                    if (rowUnit && onRemoveRestaurantUnit) {
-                                      const u = rowUnit
-                                      // 세대 단위 해제 (마지막이면 건물도 자동 해제)
-                                      await onRemoveRestaurantUnit(u.id, b.id)
-                                    } else if (onToggleRestaurantFlag) {
-                                      // 세대 없는 fallback → 건물 전체 해제
-                                      await onToggleRestaurantFlag(b.id, false)
-                                    }
+                                    setRemovingKey(key)
+                                    try {
+                                      if (rowUnit && onRemoveRestaurantUnit) {
+                                        const u = rowUnit
+                                        // 세대 단위 해제 (마지막이면 건물도 자동 해제)
+                                        await onRemoveRestaurantUnit(u.id, b.id)
+                                      } else if (onToggleRestaurantFlag) {
+                                        // 세대 없는 fallback → 건물 전체 해제
+                                        await onToggleRestaurantFlag(b.id, false)
+                                      }
+                                    } finally { setRemovingKey(null) }
                                   }}
+                                  disabled={removingKey === key}
                                   style={{ width: '100%', textAlign: 'left', padding: '8px 10px', minHeight: 0, background: 'transparent', border: 'none', fontSize: 13, color: 'var(--status-danger)', cursor: 'pointer', borderRadius: 6 }}>
-                                  {copy.removeFromList}
+                                  {removingKey === key ? copy.processing : copy.removeFromList}
                                 </button>
                                 {isExcluded && rowUnit && onUpdateUnitFlags && (
                                   <button type="button"
@@ -1147,6 +1153,7 @@ export function RestaurantsTab({
       {canManage && addOpen && onRegisterRestaurant && (
         <RestaurantRegistrationModal
           buildings={buildings}
+          cardBoundaries={cardBoundaries}
           onRegister={onRegisterRestaurant}
           onClose={() => setAddOpen(false)}
         />

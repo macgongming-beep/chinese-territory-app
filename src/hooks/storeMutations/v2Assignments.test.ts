@@ -255,4 +255,29 @@ describe('비공식 그룹 쓰기 결과 계약', () => {
     await expect(mutations.deleteInformalAsset(7)).resolves.toBe(true)
     expect(fetchAll).toHaveBeenCalledOnce()
   })
+
+  test('식당 해제는 변경 행을 확인하고 목록 재조회 전에 성공을 알린다', async () => {
+    state.result = { data: [{ id: 17 }], error: null }
+    const order: string[] = []
+    state.toast.mockImplementation(() => order.push('toast'))
+    const fetchAll = vi.fn().mockImplementation(async () => { order.push('fetch') })
+    const mutations = makeV2AssignmentMutations({ fetchAll })
+
+    await mutations.removeRestaurantUnit(17, 3)
+
+    expect(state.select).toHaveBeenCalledWith('id')
+    expect(order).toEqual(['toast', 'fetch'])
+    expect(state.toast).toHaveBeenCalledWith('식당 목록에서 제거됐습니다.')
+  })
+
+  test('식당 해제가 0행이면 성공 알림이나 재조회를 하지 않는다', async () => {
+    const fetchAll = vi.fn()
+    const mutations = makeV2AssignmentMutations({ fetchAll })
+
+    await mutations.removeRestaurantUnit(17, 3)
+
+    expect(fetchAll).not.toHaveBeenCalled()
+    expect(state.toast).not.toHaveBeenCalledWith('식당 목록에서 제거됐습니다.')
+    expect(state.toast).toHaveBeenCalledWith(expect.stringContaining('권한이 없습니다.'), 'error')
+  })
 })

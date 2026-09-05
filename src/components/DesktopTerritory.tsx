@@ -1347,6 +1347,7 @@ export function DesktopTerritory({
             <RestaurantsTab
               role={role}
               buildings={buildings}
+              cardBoundaries={cardBoundaries}
               cards={cards}
               currentVisitor={currentVisitor}
               restaurantRequests={restaurantRequests}

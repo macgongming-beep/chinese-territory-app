@@ -15,7 +15,7 @@ import type { AppLanguage } from '../../i18n'
 
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import type { Building, InformalAsset, InformalGroup, InformalKind, Role, TerritoryCard, VisitHistory } from '../../types'
+import type { Building, CardBoundary, InformalAsset, InformalGroup, InformalKind, Role, TerritoryCard, VisitHistory } from '../../types'
 import { compareTerritoryCardsByOperationalPriority, getTerritoryCardOperationalState } from '../../utils/cardSearch'
 import { getBuildingStatus } from '../../utils/mapUtils'
 import { InformalCardsTab } from '../InformalCardsTab'
@@ -42,6 +42,7 @@ type Props = {
   translatePlaceNames?: boolean
   cards: TerritoryCard[]
   buildings: Building[]
+  cardBoundaries?: CardBoundary[]
   visitHistories?: VisitHistory[]
   /** 식당 탭: 세대 해제 / 대상외 해제 (PC 와 같은 기능) */
   onRemoveRestaurantUnit?: (unitId: number, buildingId: number) => Promise<void>
@@ -127,6 +128,7 @@ export function AdminMobileZone({
   translatePlaceNames = false,
   cards,
   buildings,
+  cardBoundaries = [],
   visitHistories = [],
   onRemoveRestaurantUnit,
   onUpdateUnitFlags,
@@ -456,6 +458,7 @@ export function AdminMobileZone({
         <RestaurantsTab
           role={role}
           buildings={buildings}
+          cardBoundaries={cardBoundaries}
           cards={cards}
           currentVisitor={currentVisitor}
           restaurantRequests={restaurantRequests}

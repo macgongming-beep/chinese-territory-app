@@ -1034,6 +1034,7 @@ export function MobileHome({
                 translatePlaceNames={translatePlaceNames}
                 cards={cards}
                 buildings={buildings}
+                cardBoundaries={cardBoundaries}
                 visitHistories={visitHistories}
                 onUpdateUnitFlags={onUpdateUnitFlags}
                 onRemoveRestaurantUnit={onRemoveRestaurantUnit}

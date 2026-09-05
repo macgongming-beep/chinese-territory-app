@@ -403,27 +403,34 @@ export function makeV2AssignmentMutations(deps: { fetchAll: () => Promise<void> 
   //   통째로 사라졌다. 이제 식당 표시(is_restaurant)만 끈다.
   //   중국어를 쓰지 않는 식당은 방문 결과를 '대상외' 로 찍으면 된다.
   const removeRestaurantUnit = async (unitId: number, buildingId: number) => {
-    const { error: unitError } = await supabase
+    const unitResult = await supabase
       .from('units')
       .update({ is_restaurant: false })
       .eq('id', unitId)
-    if (unitError) {
-      showToast(msg('세대 해제 실패: {message}', { message: unitError.message }), 'error')
+      .select('id')
+    if (unitResult.error) {
+      showToast(msg('세대 해제 실패: {message}', { message: unitResult.error.message }), 'error')
       return
     }
+    if (!ensureAffectedRows(unitResult.data, msg('식당 목록에서 제거하지 못했습니다.'))) return
     // 건물의 식당 표시는 DB 트리거가 세대에 맞춰 자동으로 맞춘다
     void buildingId
+    showToast(msg('식당 목록에서 제거됐습니다.'))
     await fetchAll()
   }
 
   // ── 식당 마킹 (buildings.is_restaurant) ────────────
   const toggleBuildingRestaurant = async (buildingId: number, isRestaurant: boolean) => {
-    const { error } = await supabase
+    const result = await supabase
       .from('buildings')
       .update({ is_restaurant: isRestaurant })
       .eq('id', buildingId)
-    if (error) showToast(msg('식당 표시 변경 실패: {message}', { message: error.message }), 'error')
-    else await fetchAll()
+      .select('id')
+    if (result.error) showToast(msg('식당 표시 변경 실패: {message}', { message: result.error.message }), 'error')
+    else if (ensureAffectedRows(result.data, msg('식당 표시를 변경하지 못했습니다.'))) {
+      showToast(msg(isRestaurant ? '식당 목록에 추가됐습니다.' : '식당 목록에서 제거됐습니다.'))
+      await fetchAll()
+    }
   }
 
   // ── CSV 일괄 식당 마킹 + 이름 업데이트 ──────────────────────────

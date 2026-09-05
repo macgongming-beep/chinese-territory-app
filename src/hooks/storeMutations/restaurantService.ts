@@ -31,7 +31,10 @@ export function makeRestaurantServiceMutations(deps: {
     try {
       const token = getAuthToken()
       if (!token) throw new Error(msg('다시 로그인해 주세요.'))
-      const coords = input.existingBuildingId ? null : await geocodeRestaurantAddress(input.address)
+      const selectedCoords = Number.isFinite(input.lat) && Number.isFinite(input.lng)
+        ? { lat: input.lat as number, lng: input.lng as number }
+        : null
+      const coords = input.existingBuildingId ? null : selectedCoords ?? await geocodeRestaurantAddress(input.address)
       const cardId = coords ? findCardForCoordinates(coords.lat, coords.lng, cardBoundaries) : null
       const result = await supabase.rpc('register_restaurant_v2_tx', {
         p_token: token,

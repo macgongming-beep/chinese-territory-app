@@ -3,6 +3,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { RestaurantRegistrationModal } from './RestaurantRegistrationModal'
 import type { Building } from '../types'
 
+const searchPlacesForCongregation = vi.hoisted(() => vi.fn())
+vi.mock('../lib/placeSearch', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../lib/placeSearch')>(),
+  searchPlacesForCongregation,
+}))
+
 const buildings = [{
   id: 7, cardId: 1, name: '우정원', address: '용인시 우정원길 1', type: '상가',
   lat: 0, lng: 0, warning: false, isRestaurant: false,
@@ -10,6 +16,7 @@ const buildings = [{
 }] as Building[]
 
 describe('RestaurantRegistrationModal', () => {
+  beforeEach(() => searchPlacesForCongregation.mockReset())
   it('새 상가와 식당 이름을 함께 넘긴다', async () => {
     const onRegister = vi.fn().mockResolvedValue(true)
     const onClose = vi.fn()
@@ -69,5 +76,24 @@ describe('RestaurantRegistrationModal', () => {
     fireEvent.change(screen.getByLabelText('주소'), { target: { value: '우정원길 1' } })
     fireEvent.click(screen.getByRole('button', { name: /우정원/ }))
     expect((screen.getByLabelText('기존 건물', { selector: 'select' }) as HTMLSelectElement).value).toBe('7')
+  })
+
+  it('네이버 후보에서 등록 여부를 보여주고 고른 좌표를 등록에 사용한다', async () => {
+    searchPlacesForCongregation.mockResolvedValue({ ok: true, places: [
+      { name: '기존식당', address: '용인시 우정원길 1', category: '중식', lat: 37.2, lng: 127.2 },
+      { name: '새 식당', address: '용인시 새길 8', category: '중식', lat: 37.3, lng: 127.3 },
+    ] })
+    const onRegister = vi.fn().mockResolvedValue(true)
+    render(<RestaurantRegistrationModal buildings={buildings} onRegister={onRegister} onClose={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText('식당 이름'), { target: { value: '식당' } })
+    fireEvent.click(screen.getByRole('button', { name: '네이버 검색' }))
+    expect(await screen.findByText('이미 등록됨')).toBeTruthy()
+    expect((screen.getByRole('button', { name: /기존식당/ }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: /새 식당/ }))
+    expect(screen.getByText('네이버에서 위치를 확인했습니다.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '등록' }))
+    await waitFor(() => expect(onRegister).toHaveBeenCalledWith(expect.objectContaining({
+      name: '새 식당', address: '용인시 새길 8', lat: 37.3, lng: 127.3,
+    })))
   })
 })

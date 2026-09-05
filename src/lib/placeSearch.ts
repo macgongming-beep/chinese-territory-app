@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { getAuthToken } from './authToken'
+import { getRegions } from './regions'
 
 export type PlaceCandidate = {
   name: string
@@ -57,4 +58,29 @@ export async function searchPlaces(query: string): Promise<PlaceSearchResult> {
         && typeof p.lat === 'number' && typeof p.lng === 'number'
     }),
   }
+}
+
+/**
+ * 회중이 담당하는 시 이름을 검색어에 붙여 전국 동명 식당보다 가까운 후보를 먼저 찾는다.
+ * 구역선은 실제 담당 범위보다 작을 수 있어 검색 결과를 숨기는 용도로는 쓰지 않는다.
+ */
+export async function searchPlacesForCongregation(query: string): Promise<PlaceSearchResult> {
+  const q = query.trim()
+  if (!q) return { ok: true, places: [] }
+  const scopes = [...new Set(getRegions().map((region) => region.city || region.name).filter(Boolean))]
+  if (scopes.length === 0) return searchPlaces(q)
+
+  const results = await Promise.all(scopes.map((scope) => searchPlaces(`${scope} ${q}`)))
+  const successful = results.filter((result): result is Extract<PlaceSearchResult, { ok: true }> => result.ok)
+  if (successful.length === 0) return results[0]
+
+  const seen = new Set<string>()
+  const places = successful.flatMap((result) => result.places).filter((place) => {
+    const key = `${place.name}|${place.address}|${place.lat.toFixed(6)}|${place.lng.toFixed(6)}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  if (places.length > 0) return { ok: true, places }
+  return searchPlaces(q)
 }
