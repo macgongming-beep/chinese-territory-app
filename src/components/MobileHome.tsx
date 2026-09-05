@@ -1039,6 +1039,10 @@ export function MobileHome({
                 onUpdateUnitFlags={onUpdateUnitFlags}
                 onRemoveRestaurantUnit={onRemoveRestaurantUnit}
                 currentVisitor={currentVisitor}
+                visitorNames={allUsers
+                  .filter((user) => user.approvalStatus === 'approved' && user.isActive !== false)
+                  .map((user) => user.name)
+                  .sort((a, b) => a.localeCompare(b, 'ko'))}
                 role={role}
                 informalAssets={informalAssets}
                 informalGroups={informalGroups}

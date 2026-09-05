@@ -581,6 +581,7 @@ type Props = {
   cardBoundaries?: CardBoundary[]
   cards: TerritoryCard[]
   currentVisitor?: string
+  visitorNames?: string[]
   restaurantRequests?: RestaurantRequest[]
   onRegisterRestaurant?: RegisterRestaurant
   onToggleRestaurantFlag?: (buildingId: number, isRestaurant: boolean) => Promise<void>
@@ -599,7 +600,7 @@ type Props = {
 }
 
 export function RestaurantsTab({
-  role, buildings, cardBoundaries = [], cards, currentVisitor = '', restaurantRequests = [],
+  role, buildings, cardBoundaries = [], cards, currentVisitor = '', visitorNames = [], restaurantRequests = [],
   onRegisterRestaurant, onToggleRestaurantFlag, onRemoveRestaurantUnit, onBulkSetRestaurant, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap, onOpenBuildingMap,
   visitHistories = [], onUpdateUnitFlags,
   language = 'ko',
@@ -1154,6 +1155,7 @@ export function RestaurantsTab({
         <RestaurantRegistrationModal
           buildings={buildings}
           cardBoundaries={cardBoundaries}
+          visitorNames={visitorNames}
           onRegister={onRegisterRestaurant}
           onClose={() => setAddOpen(false)}
         />

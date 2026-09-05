@@ -48,6 +48,7 @@ type Props = {
   onRemoveRestaurantUnit?: (unitId: number, buildingId: number) => Promise<void>
   onUpdateUnitFlags?: (unitId: number, flags: Partial<import('../../types').Unit>) => void
   currentVisitor: string
+  visitorNames?: string[]
   role: Role
   informalAssets?: InformalAsset[]
   informalGroups?: InformalGroup[]
@@ -133,6 +134,7 @@ export function AdminMobileZone({
   onRemoveRestaurantUnit,
   onUpdateUnitFlags,
   currentVisitor,
+  visitorNames = [],
   role,
   informalAssets = [],
   informalGroups = [],
@@ -461,6 +463,7 @@ export function AdminMobileZone({
           cardBoundaries={cardBoundaries}
           cards={cards}
           currentVisitor={currentVisitor}
+          visitorNames={visitorNames}
           restaurantRequests={restaurantRequests}
           onToggleRestaurantFlag={onToggleBuildingRestaurant}
           onRemoveRestaurantUnit={onRemoveRestaurantUnit}

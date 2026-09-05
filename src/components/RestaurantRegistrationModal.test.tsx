@@ -75,7 +75,8 @@ describe('RestaurantRegistrationModal', () => {
     render(<RestaurantRegistrationModal buildings={buildings} onRegister={vi.fn()} onClose={vi.fn()} />)
     fireEvent.change(screen.getByLabelText('주소'), { target: { value: '우정원길 1' } })
     fireEvent.click(screen.getByRole('button', { name: /우정원/ }))
-    expect((screen.getByLabelText('기존 건물', { selector: 'select' }) as HTMLSelectElement).value).toBe('7')
+    expect(screen.getByText('기존 건물을 자동으로 찾았습니다.')).toBeTruthy()
+    expect(screen.getByText('우정원 · 용인시 우정원길 1')).toBeTruthy()
   })
 
   it('네이버 후보에서 등록 여부를 보여주고 고른 좌표를 등록에 사용한다', async () => {
@@ -90,10 +91,20 @@ describe('RestaurantRegistrationModal', () => {
     expect(await screen.findByText('이미 등록됨')).toBeTruthy()
     expect((screen.getByRole('button', { name: /기존식당/ }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: /새 식당/ }))
-    expect(screen.getByText('네이버에서 위치를 확인했습니다.')).toBeTruthy()
+    expect(screen.getByText('새 건물로 등록합니다.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '등록' }))
     await waitFor(() => expect(onRegister).toHaveBeenCalledWith(expect.objectContaining({
       name: '새 식당', address: '용인시 새길 8', lat: 37.3, lng: 127.3,
     })))
+  })
+
+  it('정기방문 담당자는 승인된 사용자 목록에서 대신 지정할 수 있다', () => {
+    localStorage.setItem('currentVisitor', '현재 사용자')
+    render(<RestaurantRegistrationModal buildings={[]} visitorNames={['현재 사용자', '다른 방문자']} onRegister={vi.fn()} onClose={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText('현재 상태'), { target: { value: '정기방문' } })
+    const select = screen.getByLabelText('정기방문 담당자') as HTMLSelectElement
+    expect(select.value).toBe('현재 사용자')
+    fireEvent.change(select, { target: { value: '다른 방문자' } })
+    expect(select.value).toBe('다른 방문자')
   })
 })

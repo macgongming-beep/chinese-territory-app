@@ -8,9 +8,10 @@ import { classifyRestaurantPlaces, type ClassifiedRestaurantPlace } from '../uti
 import { showToast } from '../lib/toast'
 import './RestaurantRegistrationModal.css'
 
-export function RestaurantRegistrationModal({ buildings, cardBoundaries = [], onRegister, onClose }: {
+export function RestaurantRegistrationModal({ buildings, cardBoundaries = [], visitorNames = [], onRegister, onClose }: {
   buildings: Building[]
   cardBoundaries?: CardBoundary[]
+  visitorNames?: string[]
   onRegister: RegisterRestaurant
   onClose: () => void
 }) {
@@ -40,6 +41,7 @@ export function RestaurantRegistrationModal({ buildings, cardBoundaries = [], on
   const addressMatches = addressQuery.length >= 3
     ? buildings.filter(b => b.type === '상가' && normalizeCardSearch(`${b.name} ${b.address}`).includes(addressQuery)).slice(0, 8)
     : []
+  const regularVisitorOptions = [...new Set([regularVisitor, ...visitorNames].map((value) => value.trim()).filter(Boolean))]
 
   async function runPlaceSearch(query: string) {
     const value = query.trim()
@@ -119,11 +121,19 @@ export function RestaurantRegistrationModal({ buildings, cardBoundaries = [], on
               ))}
             </div>
           )}
-          <div className="restaurant-registration-modes">
-            <label><input type="radio" name="restaurant-building-mode" checked={!existing} onChange={() => setExisting(false)} />{msg('새 건물')}</label>
-            <label><input type="radio" name="restaurant-building-mode" checked={existing} onChange={() => setExisting(true)} />{msg('기존 건물')}</label>
-          </div>
-          {existing ? <>
+          {verifiedAddress ? (
+            <div className="restaurant-registration-auto-choice">
+              <span>{existing && selected ? msg('기존 건물을 자동으로 찾았습니다.') : msg('새 건물로 등록합니다.')}</span>
+              <strong>{existing && selected ? `${selected.name} · ${selected.address}` : address}</strong>
+              <button type="button" onClick={() => setVerifiedAddress(false)}>{msg('직접 변경')}</button>
+            </div>
+          ) : (
+            <div className="restaurant-registration-modes">
+              <label><input type="radio" name="restaurant-building-mode" checked={!existing} onChange={() => setExisting(false)} />{msg('새 건물')}</label>
+              <label><input type="radio" name="restaurant-building-mode" checked={existing} onChange={() => setExisting(true)} />{msg('기존 건물')}</label>
+            </div>
+          )}
+          {!verifiedAddress && (existing ? <>
             <label>{msg('건물 검색')}<input value={search} onChange={e => setSearch(e.target.value)} /></label>
             <label>{msg('기존 건물')}<select required value={buildingId ?? ''} onChange={e => setBuildingId(e.target.value ? Number(e.target.value) : null)}>
               <option value="">{msg('건물 선택')}</option>
@@ -145,12 +155,17 @@ export function RestaurantRegistrationModal({ buildings, cardBoundaries = [], on
                 ))}
               </div>
             )}
-          </>}
+          </>)}
           <label>{msg('현재 상태')}<select aria-label={msg('현재 상태')} value={initialState} onChange={e => setInitialState(e.target.value as RestaurantInitialState)}>
             {RESTAURANT_INITIAL_STATES.map(state => <option key={state} value={state}>{msg(state)}</option>)}
           </select></label>
           {initialState === '정기방문' && (
-            <label>{msg('정기방문 담당자')}<input required value={regularVisitor} onChange={e => setRegularVisitor(e.target.value)} /></label>
+            <label>{msg('정기방문 담당자')}{regularVisitorOptions.length > 0 ? (
+              <select required value={regularVisitor} onChange={e => setRegularVisitor(e.target.value)}>
+                <option value="">{msg('담당자 선택')}</option>
+                {regularVisitorOptions.map(visitor => <option key={visitor} value={visitor}>{visitor}</option>)}
+              </select>
+            ) : <input required value={regularVisitor} onChange={e => setRegularVisitor(e.target.value)} />}</label>
           )}
           <label className="restaurant-registration-check"><input type="checkbox" checked={isChinese} onChange={e => setIsChinese(e.target.checked)} />{msg('중국어를 사용하는 식당')}</label>
           {failed && <p role="alert">{msg('식당을 등록하지 못했습니다.')}</p>}

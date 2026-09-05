@@ -1350,6 +1350,7 @@ export function DesktopTerritory({
               cardBoundaries={cardBoundaries}
               cards={cards}
               currentVisitor={currentVisitor}
+              visitorNames={visitorNameOptions}
               restaurantRequests={restaurantRequests}
               onToggleRestaurantFlag={onToggleBuildingRestaurant}
               onRemoveRestaurantUnit={onRemoveRestaurantUnit}
