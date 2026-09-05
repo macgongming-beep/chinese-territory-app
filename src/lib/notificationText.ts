@@ -23,6 +23,11 @@ const PATTERNS: Array<{ re: RegExp; zh: (m: RegExpMatchArray) => string; en: (m:
     zh: (m) => `今日传道安排 ${m[1]} 项`,
     en: (m) => `${m[1]} service arrangements today`,
   },
+  {
+    re: /^(.+)님의 가입 신청을 확인해 주세요\.$/,
+    zh: (m) => `请查看 ${m[1]} 的注册申请。`,
+    en: (m) => `Please review ${m[1]}'s signup request.`,
+  },
 ]
 
 export function translateNotificationText(text: string | null | undefined, lang: AppLanguage): string {

@@ -11,8 +11,18 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { messagesEn } from './messages.en'
+import { messagesZh } from './messages.zh'
 
 const COMPONENTS = 'src/components'
+const TRANSLATION_AUDIT_FILES = [
+  'src/components/EndReturnVisitDialog.tsx',
+  'src/components/PlaceChangeRequestDialog.tsx',
+  'src/components/PlaceChangeRequests.tsx',
+  'src/components/RegularVisitManagement.tsx',
+  'src/hooks/storeMutations/placeChangeRequests.ts',
+  'src/utils/placeDeletion.ts',
+]
 
 // 화면에 보이지만 번역하면 안 되는 값 (DB 저장값·타입 식별자)
 const VALUE_WORDS = new Set([
@@ -37,7 +47,15 @@ function mobileFiles(): string[] {
         entry.name.startsWith('Mobile') ||
         entry.name.startsWith('AdminMobile') ||
         dir.endsWith('assignment') ||
-        ['ChatRoom.tsx', 'NotificationCenter.tsx', 'CommentSection.tsx'].includes(entry.name)
+        [
+          'ChatRoom.tsx',
+          'NotificationCenter.tsx',
+          'CommentSection.tsx',
+          'EndReturnVisitDialog.tsx',
+          'PlaceChangeRequestDialog.tsx',
+          'PlaceChangeRequests.tsx',
+          'RegularVisitManagement.tsx',
+        ].includes(entry.name)
       if (isMobile) out.push(path)
     }
   }
@@ -79,5 +97,20 @@ describe('모바일 화면에 번역 안 된 한국어', () => {
     expect(findUntranslated('<span>{msg(\'저장했습니다\')}</span>')).toEqual([])
     expect(findUntranslated('<span>만남</span>')).toEqual([])          // 값은 통과
     expect(findUntranslated('useState<Region>(\'전체\')')).toEqual([])  // 제네릭 오인 없음
+  })
+
+  it('별도 화면과 토스트에서 쓰는 한국어 열쇠가 영문·중문 사전에 모두 있다', () => {
+    const missing: string[] = []
+    for (const file of TRANSLATION_AUDIT_FILES) {
+      const source = readFileSync(file, 'utf8')
+      const keys = new Set<string>()
+      for (const match of source.matchAll(/msg\(\s*'([^']*[가-힣][^']*)'/g)) keys.add(match[1])
+      for (const match of source.matchAll(/label:\s*'([^']*[가-힣][^']*)'/g)) keys.add(match[1])
+      for (const key of keys) {
+        if (!(key in messagesEn)) missing.push(`${file} (en): ${key}`)
+        if (!(key in messagesZh)) missing.push(`${file} (zh): ${key}`)
+      }
+    }
+    expect(missing).toEqual([])
   })
 })

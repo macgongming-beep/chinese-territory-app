@@ -1500,7 +1500,7 @@ export function MobileHome({
                           <small>{t(language, 'settings.signupDesc')}</small>
                         </span>
                         {adminAttention.signupRequests > 0 && (
-                          <span className="mobile-settings-badge" aria-label={`승인 대기 ${adminAttention.signupRequests}명`}>
+                          <span className="mobile-settings-badge" aria-label={msg('승인 대기 {count}명', { count: adminAttention.signupRequests })}>
                             {adminAttention.signupRequests}
                           </span>
                         )}
@@ -1516,7 +1516,7 @@ export function MobileHome({
                           <small>{msg('담당자 끊긴 정기방문 점검·재배정')}</small>
                         </span>
                         {adminAttention.regularVisits > 0 && (
-                          <span className="mobile-settings-badge" aria-label={`재지정 필요 ${adminAttention.regularVisits}건`}>
+                          <span className="mobile-settings-badge" aria-label={msg('재지정 필요 {count}건', { count: adminAttention.regularVisits })}>
                             {adminAttention.regularVisits}
                           </span>
                         )}
@@ -1531,7 +1531,7 @@ export function MobileHome({
                           <small>{msg('건물·세대·주소 신고 확인')}</small>
                         </span>
                         {adminAttention.placeRequests > 0 && (
-                          <span className="mobile-settings-badge" aria-label={`처리 대기 ${adminAttention.placeRequests}건`}>
+                          <span className="mobile-settings-badge" aria-label={msg('처리 대기 {count}건', { count: adminAttention.placeRequests })}>
                             {adminAttention.placeRequests}
                           </span>
                         )}

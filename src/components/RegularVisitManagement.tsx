@@ -11,6 +11,7 @@ import type { AppLanguage } from '../i18n'
 import { formatRelativeVisitDate } from '../utils/returnVisits'
 import { matchesName } from '../utils/koreanSearch'
 import { getActiveApprovedUserNames, isReturnVisitAssigneeBroken } from '../utils/adminAttention'
+import { msg } from '../lib/msg'
 
 const STALE_DAYS = 90
 
@@ -84,10 +85,10 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
       {isDeveloper && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
           {[
-            { label: '전체', value: stats.total, color: 'var(--ink)' },
-            { label: '끊긴 담당', value: stats.broken, color: 'var(--status-danger)' },
-            { label: '90일+ 방치', value: stats.stale, color: '#ea580c' },
-            { label: '담당 없음', value: stats.noOwner, color: 'var(--muted)' },
+            { label: msg('전체'), value: stats.total, color: 'var(--ink)' },
+            { label: msg('끊긴 담당'), value: stats.broken, color: 'var(--status-danger)' },
+            { label: msg('90일+ 방치'), value: stats.stale, color: '#ea580c' },
+            { label: msg('담당 없음'), value: stats.noOwner, color: 'var(--muted)' },
           ].map((s) => (
             <div key={s.label} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px' }}>
               <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>{s.label}</div>
@@ -99,21 +100,21 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
 
       {stats.broken > 0 && (
         <div style={{ border: '1px solid rgba(220,38,38,0.28)', borderLeft: '4px solid var(--status-danger)', borderRadius: 8, background: 'rgba(220,38,38,0.05)', padding: '11px 12px' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--status-danger)' }}>담당자 재지정 필요 {stats.broken}건</div>
-          <div style={{ marginTop: 3, fontSize: 12.5, lineHeight: 1.45, color: 'var(--muted)' }}>전출하거나 삭제된 계정의 방문 장소입니다. 기존 기록은 보존하고 새 담당자만 지정할 수 있어요.</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--status-danger)' }}>{msg('담당자 재지정 필요 {count}건', { count: stats.broken })}</div>
+          <div style={{ marginTop: 3, fontSize: 12.5, lineHeight: 1.45, color: 'var(--muted)' }}>{msg('전출하거나 삭제된 계정의 방문 장소입니다. 기존 기록은 보존하고 새 담당자만 지정할 수 있어요.')}</div>
         </div>
       )}
 
       {/* 끊긴 것만 보기 토글 */}
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink)', cursor: 'pointer' }}>
         <input type="checkbox" checked={onlyBroken} onChange={(e) => setOnlyBroken(e.target.checked)} style={{ width: 16, height: 16, accentColor: 'var(--status-danger)' }} />
-        담당자가 끊긴 정기방문만 보기 {stats.broken > 0 && <span style={{ color: 'var(--status-danger)', fontWeight: 700 }}>({stats.broken})</span>}
+        {msg('담당자가 끊긴 정기방문만 보기')} {stats.broken > 0 && <span style={{ color: 'var(--status-danger)', fontWeight: 700 }}>({stats.broken})</span>}
       </label>
 
       {/* 목록 */}
       {list.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontSize: 13 }}>
-          {onlyBroken ? '끊긴 정기방문이 없어요 👍' : '정기방문이 없습니다'}
+          {onlyBroken ? msg('끊긴 정기방문이 없어요') : msg('정기방문이 없습니다')}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -135,22 +136,22 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
                         color: broken ? 'var(--status-danger)' : 'var(--muted)',
                       }}>
                         <span style={{ width: 6, height: 6, borderRadius: 99, background: broken ? 'var(--status-danger)' : 'var(--status-ok, #16a34a)' }} />
-                        {broken ? '재지정 필요' : rv.assignedUserName.trim()}
+                        {broken ? msg('재지정 필요') : rv.assignedUserName.trim()}
                       </span>
                       {broken && (rv.assignedUserName.trim() || rv.createdBy.trim()) && (
                         <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                          기존 기록 이름: {rv.assignedUserName.trim() || rv.createdBy.trim()}
+                          {msg('기존 기록 이름:')} {rv.assignedUserName.trim() || rv.createdBy.trim()}
                         </span>
                       )}
                       {broken && (
                         <span style={{ fontSize: 12, fontWeight: 600, color: rv.lastResult === '만남' ? 'var(--status-ok, #16a34a)' : 'var(--muted)' }}>
-                          최근 결과: {rv.lastResult ?? '기록 없음'}
+                          {msg('최근 결과:')} {rv.lastResult ? msg(rv.lastResult) : msg('기록 없음')}
                         </span>
                       )}
                       {/* 마지막 방문 — 개발자만 (관리자는 방문기록 비공개) */}
                       {isDeveloper && (
                         <span style={{ fontSize: 12, color: stale ? '#ea580c' : 'var(--muted)' }}>
-                          {rv.lastVisitedAt ? formatRelativeVisitDate(rv.lastVisitedAt, language) : '방문 기록 없음'}
+                          {rv.lastVisitedAt ? formatRelativeVisitDate(rv.lastVisitedAt, language) : msg('방문 기록 없음')}
                         </span>
                       )}
                     </div>
@@ -161,7 +162,7 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
                   <button type="button" onClick={() => { setReassignTarget(rv); setPickerQuery('') }}
                     style={{ flex: 1, minHeight: 0, padding: '8px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600,
                       border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', cursor: 'pointer' }}>
-                    담당자 재배정
+                    {msg('담당자 재배정')}
                   </button>
                 </div>
               </div>
@@ -177,17 +178,17 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'flex-end' }}
         >
           <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxHeight: 'calc(70vh / var(--app-zoom, 1))', display: 'flex', flexDirection: 'column', background: 'var(--bg)', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: '16px 16px max(20px, env(safe-area-inset-bottom))' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>담당자 재배정</div>
-            <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12 }}>"{reassignTarget.nickname || reassignTarget.displayName}" 을(를) 맡을 봉사자 선택</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>{msg('담당자 재배정')}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12 }}>{msg('"{name}"을(를) 맡을 봉사자 선택', { name: reassignTarget.nickname || reassignTarget.displayName })}</div>
             <input
               value={pickerQuery}
               onChange={(e) => setPickerQuery(e.target.value)}
-              placeholder="이름 검색 (초성 가능)"
+              placeholder={msg('이름 검색 (초성 가능)')}
               style={{ minHeight: 0, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 10, fontSize: 14, marginBottom: 10, background: 'var(--surface)', color: 'var(--ink)' }}
             />
             <div style={{ overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, alignContent: 'start' }}>
               {reassignCandidates.length === 0 ? (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>해당하는 사용자가 없어요</div>
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>{msg('해당하는 사용자가 없어요')}</div>
               ) : reassignCandidates.map((u) => (
                 <button key={u.name} type="button" onClick={() => doReassign(u.name)}
                   style={{

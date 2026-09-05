@@ -4,6 +4,8 @@ import { executePlaceDeletionRequest, fetchPlaceChangeRequests, reviewPlaceChang
 import { confirmDialog } from '../lib/confirm'
 import type { PlaceChangeRequest, PlaceDeletionSignal, PlaceIssueType } from '../types'
 import { notifyAdminAttentionChanged } from '../lib/adminAttentionEvents'
+import { msg } from '../lib/msg'
+import { currentLang } from '../i18n'
 
 const issueLabels: Record<PlaceIssueType, string> = {
   building_missing: '건물이 없어졌습니다',
@@ -44,11 +46,11 @@ export function PlaceChangeRequests({ onPlaceDeleted }: { onPlaceDeleted?: (sign
 
   const executeDeletion = async (request: PlaceChangeRequest) => {
     const impact = impactItems(request)
-    const detail = impact.length > 0 ? `\n${impact.map((item) => `${item.label} ${item.count}건`).join(' · ')}` : ''
+    const detail = impact.length > 0 ? `\n${impact.map((item) => msg('{label} {count}건', { label: msg(item.label), count: item.count })).join(' · ')}` : ''
     const confirmed = await confirmDialog({
-      message: `${request.buildingName || request.address || '이 장소'}를 영구 삭제할까요?${detail}\n\n삭제하면 자동으로 되돌릴 수 없습니다.`,
+      message: msg('{place}를 영구 삭제할까요?', { place: request.buildingName || request.address || msg('이 장소') }) + `${detail}\n\n${msg('삭제하면 자동으로 되돌릴 수 없습니다.')}`,
       danger: true,
-      confirmLabel: '영구 삭제',
+      confirmLabel: msg('영구 삭제'),
     })
     if (!confirmed) return
     setSavingId(request.id)
@@ -80,32 +82,32 @@ export function PlaceChangeRequests({ onPlaceDeleted }: { onPlaceDeleted?: (sign
     <section className="place-requests-page">
       <header>
         <div>
-          <h2>자료 수정 요청</h2>
-          <p>장소를 확인하고 실제 수정·병합·삭제를 마친 뒤 처리 완료로 표시하세요.</p>
+          <h2>{msg('자료 수정 요청')}</h2>
+          <p>{msg('장소를 확인하고 실제 수정·병합·삭제를 마친 뒤 처리 완료로 표시하세요.')}</p>
         </div>
-        <label><input type="checkbox" checked={showClosed} onChange={(event) => setShowClosed(event.target.checked)} /> 처리한 요청 보기</label>
+        <label><input type="checkbox" checked={showClosed} onChange={(event) => setShowClosed(event.target.checked)} /> {msg('처리한 요청 보기')}</label>
       </header>
 
       {loading ? (
-        <p className="place-requests-empty">불러오는 중…</p>
+        <p className="place-requests-empty">{msg('불러오는 중…')}</p>
       ) : requests.length === 0 ? (
-        <p className="place-requests-empty">{showClosed ? '요청이 없습니다.' : '처리할 요청이 없습니다.'}</p>
+        <p className="place-requests-empty">{showClosed ? msg('요청이 없습니다.') : msg('처리할 요청이 없습니다.')}</p>
       ) : (
         <div className="place-request-list">
           {requests.map((request) => {
             const expanded = expandedIds.has(request.id)
             const impact = impactItems(request)
-            const placeName = `${request.buildingName || request.address || '장소 정보 없음'}${request.unitNumber ? ` ${request.unitNumber}` : ''}`
+            const placeName = `${request.buildingName || request.address || msg('장소 정보 없음')}${request.unitNumber ? ` ${request.unitNumber}` : ''}`
             return (
               <article className={`place-request-card${expanded ? ' expanded' : ''}`} key={request.id}>
                 <button className="place-request-summary" type="button" onClick={() => toggleExpanded(request.id)} aria-expanded={expanded}>
                   <span className="place-request-chevron" aria-hidden="true">{expanded ? '⌄' : '›'}</span>
                   <span className="place-request-summary-copy">
-                    <span className="place-request-title"><strong>{issueLabels[request.requestType]}</strong></span>
+                    <span className="place-request-title"><strong>{msg(issueLabels[request.requestType])}</strong></span>
                     <span className="place-request-place">{placeName}</span>
-                    <small>{request.requestedByName} · {new Date(request.createdAt).toLocaleDateString('ko-KR')}</small>
+                    <small>{request.requestedByName} · {new Date(request.createdAt).toLocaleDateString(currentLang() === 'zh' ? 'zh-CN' : currentLang() === 'en' ? 'en-US' : 'ko-KR')}</small>
                   </span>
-                  <span className={`place-request-status ${request.status}`}>{request.status === 'pending' ? '대기' : request.status === 'completed' ? '완료' : '반려'}</span>
+                  <span className={`place-request-status ${request.status}`}>{msg(request.status === 'pending' ? '대기' : request.status === 'completed' ? '완료' : '반려')}</span>
                 </button>
                 {expanded && (
                   <div className="place-request-details">
@@ -113,13 +115,13 @@ export function PlaceChangeRequests({ onPlaceDeleted }: { onPlaceDeleted?: (sign
                     {request.note && <blockquote>{request.note}</blockquote>}
                     {request.requestType === 'remove_place' && (
                       <div className="place-request-impact">
-                        <strong>연결된 자료</strong>
+                        <strong>{msg('연결된 자료')}</strong>
                         {impact.length > 0
-                          ? <ul>{impact.map((item) => <li key={item.label}><span>{item.label}</span><b>{item.count}</b></li>)}</ul>
-                          : <p>연결 기록이 없습니다.</p>}
+                          ? <ul>{impact.map((item) => <li key={item.label}><span>{msg(item.label)}</span><b>{item.count}</b></li>)}</ul>
+                          : <p>{msg('연결 기록이 없습니다.')}</p>}
                       </div>
                     )}
-                    {request.reviewedByName && <small>{request.reviewedByName} · {request.status === 'rejected' ? '반려' : '처리'}</small>}
+                    {request.reviewedByName && <small>{request.reviewedByName} · {msg(request.status === 'rejected' ? '반려' : '처리')}</small>}
                     {request.status === 'pending' && (
                       <div className="place-request-actions">
                         {request.buildingId && (
@@ -127,12 +129,12 @@ export function PlaceChangeRequests({ onPlaceDeleted }: { onPlaceDeleted?: (sign
                             const params = new URLSearchParams({ buildingId: String(request.buildingId) })
                             if (request.unitId) params.set('unitId', String(request.unitId))
                             navigate(`/map?${params.toString()}`)
-                          }}>장소 열기</button>
+                          }}>{msg('장소 열기')}</button>
                         )}
-                        <button type="button" disabled={savingId === request.id} onClick={() => review(request.id, 'rejected')}>반려</button>
+                        <button type="button" disabled={savingId === request.id} onClick={() => review(request.id, 'rejected')}>{msg('반려')}</button>
                         {request.requestType === 'remove_place'
-                          ? <button className="danger" type="button" disabled={savingId === request.id} onClick={() => executeDeletion(request)}>영구 삭제</button>
-                          : <button className="primary" type="button" disabled={savingId === request.id} onClick={() => review(request.id, 'completed')}>처리 완료</button>}
+                          ? <button className="danger" type="button" disabled={savingId === request.id} onClick={() => executeDeletion(request)}>{msg('영구 삭제')}</button>
+                          : <button className="primary" type="button" disabled={savingId === request.id} onClick={() => review(request.id, 'completed')}>{msg('처리 완료')}</button>}
                       </div>
                     )}
                   </div>
