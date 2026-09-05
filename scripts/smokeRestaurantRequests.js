@@ -92,13 +92,14 @@ try {
   }, user.token)
   check('남의 이름으로는 신청하지 못한다', !impersonate.ok, `HTTP ${impersonate.status}`)
 
-  const submitted = await rest('restaurant_requests?select=id,status,memo,requested_by', {
+  const submitted = await rest('restaurant_requests?select=id,status,memo,requested_by,is_chinese,initial_status,regular_visitor', {
     method: 'POST',
-    body: JSON.stringify({ ...base, requested_by: user.name, memo: '처음 메모' }),
+    body: JSON.stringify({ ...base, requested_by: user.name, memo: '처음 메모', is_chinese: false, initial_status: '정기방문', regular_visitor: user.name }),
   }, user.token)
   const created = (await rows(submitted))[0]
   requestId = created?.id ?? null
   check('봉사자는 본인 이름으로 신청한다', submitted.ok && Boolean(requestId), `HTTP ${submitted.status}`)
+  check('신청한 중국어 여부와 상태를 보존한다', created?.is_chinese === false && created?.initial_status === '정기방문' && created?.regular_visitor === user.name)
   if (!requestId) throw new Error('신청 fixture를 만들지 못했습니다')
 
   const publicRead = await rest(`restaurant_requests?id=eq.${requestId}&select=id`)
@@ -127,6 +128,11 @@ try {
     method: 'PATCH', body: JSON.stringify({ requested_by: leader.name }),
   }, user.token)
   check('신청자는 신청자 이름을 바꾸지 못한다', !selfRename.ok, `HTTP ${selfRename.status}`)
+
+  const selfState = await rest(`restaurant_requests?id=eq.${requestId}&select=id`, {
+    method: 'PATCH', body: JSON.stringify({ initial_status: '미방문' }),
+  }, user.token)
+  check('신청자는 신청한 방문 상태를 바꾸지 못한다', !selfState.ok, `HTTP ${selfState.status}`)
 
   // ── 남의 신청 ─────────────────────────────────────
   const otherMemo = await rest(`restaurant_requests?id=eq.${requestId}&select=id`, {

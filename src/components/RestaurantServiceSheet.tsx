@@ -11,6 +11,7 @@ import type { Building, RestaurantRequest, TerritoryCard, Unit, VisitHistory } f
 import { normalizeCardSearch } from '../utils/cardSearch'
 import { t, translateKoreanAddress, type AppLanguage } from '../i18n'
 import { getRestaurantUnits } from '../utils/restaurants'
+import { RESTAURANT_INITIAL_STATES, type RestaurantInitialState, type SubmitRestaurantRequest } from '../types/restaurantRegistration'
 
 // ── 아이콘 ────────────────────────────────────────────────────
 function ForkIcon() {
@@ -94,7 +95,7 @@ type Props = {
   currentVisitor: string
   restaurantRequests?: RestaurantRequest[]
   onStartSession: (session: { kind: 'building'; buildingId: number; unitId: number; name: string; address: string } | { kind: 'request'; requestId: number; name: string; address: string }) => void
-  onSubmitRequest: (name: string, address: string, memo: string) => Promise<void>
+  onSubmitRequest: SubmitRestaurantRequest
   onClose: () => void
   language: AppLanguage
   translatePlaceNames?: boolean
@@ -124,6 +125,9 @@ export function RestaurantServiceSheet({
   // 추가 신청 폼
   const [reqName, setReqName] = useState('')
   const [reqAddress, setReqAddress] = useState('')
+  const [reqIsChinese, setReqIsChinese] = useState(true)
+  const [reqInitialState, setReqInitialState] = useState<RestaurantInitialState>('미방문')
+  const [reqRegularVisitor, setReqRegularVisitor] = useState(currentVisitor)
 
   // 지역별 collapse 상태 (기본: 모두 접힘)
   const [openDistricts, setOpenDistricts] = useState<Set<string>>(new Set())
@@ -235,12 +239,24 @@ export function RestaurantServiceSheet({
   }
 
   const handleSubmitRequest = async () => {
-    if (!reqName.trim() || !reqAddress.trim()) return
+    if (!reqName.trim() || !reqAddress.trim() || (reqInitialState === '정기방문' && !reqRegularVisitor.trim())) return
     setSaving(true)
-    await onSubmitRequest(reqName, reqAddress, '')
-    setSaving(false)
-    setReqName(''); setReqAddress('')
-    setView('search')
+    try {
+      const saved = await onSubmitRequest({
+        name: reqName.trim(),
+        address: reqAddress.trim(),
+        memo: '',
+        isChinese: reqIsChinese,
+        initialState: reqInitialState,
+        regularVisitor: reqInitialState === '정기방문' ? reqRegularVisitor.trim() : null,
+      })
+      if (!saved) return
+      setReqName(''); setReqAddress('')
+      setReqIsChinese(true); setReqInitialState('미방문'); setReqRegularVisitor(currentVisitor)
+      setView('search')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleOpenAddRequest = () => {
@@ -537,11 +553,28 @@ export function RestaurantServiceSheet({
             />
           </div>
 
+          <div className="mobile-form-field">
+            <label htmlFor="restaurant-request-state">현재 상태</label>
+            <select id="restaurant-request-state" value={reqInitialState} onChange={(e) => setReqInitialState(e.target.value as RestaurantInitialState)}>
+              {RESTAURANT_INITIAL_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
+            </select>
+          </div>
+          {reqInitialState === '정기방문' && (
+            <div className="mobile-form-field">
+              <label htmlFor="restaurant-request-regular-visitor">정기방문 담당자 <span aria-hidden>*</span></label>
+              <input id="restaurant-request-regular-visitor" value={reqRegularVisitor} onChange={(e) => setReqRegularVisitor(e.target.value)} />
+            </div>
+          )}
+          <label className="restaurant-request-check">
+            <input type="checkbox" checked={reqIsChinese} onChange={(e) => setReqIsChinese(e.target.checked)} />
+            <span>중국어를 사용하는 식당</span>
+          </label>
+
           <button
             type="button"
             className="restaurant-save-btn"
             onClick={handleSubmitRequest}
-            disabled={saving || !reqName.trim() || !reqAddress.trim()}
+            disabled={saving || !reqName.trim() || !reqAddress.trim() || (reqInitialState === '정기방문' && !reqRegularVisitor.trim())}
           >
             {saving ? '신청 중...' : '추가 신청'}
           </button>

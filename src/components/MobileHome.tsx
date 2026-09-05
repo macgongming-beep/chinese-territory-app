@@ -424,7 +424,7 @@ export function MobileHome({
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
   onAddRestaurantVisit?: (unitId: number, memo: string) => Promise<void>
-  onSubmitRestaurantRequest?: (name: string, address: string, memo: string) => Promise<void>
+  onSubmitRestaurantRequest?: import('../types/restaurantRegistration').SubmitRestaurantRequest
   onUpdateRestaurantRequestMemo?: (requestId: number, memo: string) => Promise<void>
   restaurantRequests?: import('../types').RestaurantRequest[]
   onRegisterRestaurant?: import('../types/restaurantRegistration').RegisterRestaurant

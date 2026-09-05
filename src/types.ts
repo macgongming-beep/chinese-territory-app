@@ -1,3 +1,5 @@
+import type { RestaurantInitialState } from './types/restaurantRegistration'
+
 export type Role = 'user' | 'leader' | 'admin' | 'developer'
 export type ScheduleType = '비공식' | '상가' | '주택' | '정기방문' | '혼합'
 export type DesktopPage = '홈' | '공지' | '캘린더' | '구역' | '활동' | '지도' | '배정' | '사용자' | '통계' | '설정'
@@ -218,6 +220,9 @@ export type RestaurantRequest = {
   reviewer: string | null
   reviewedAt: string | null
   buildingId: number | null
+  isChinese: boolean
+  initialStatus: RestaurantInitialState
+  regularVisitor: string | null
 }
 
 export type ServiceSession = {

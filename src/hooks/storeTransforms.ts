@@ -189,6 +189,9 @@ export type RawRestaurantRequest = {
   reviewer: string | null
   reviewed_at: string | null
   building_id: number | null
+  is_chinese?: boolean | null
+  initial_status?: import('../types/restaurantRegistration').RestaurantInitialState | null
+  regular_visitor?: string | null
 }
 
 export type RawServiceSession = {
@@ -519,6 +522,9 @@ export function toRestaurantRequest(raw: RawRestaurantRequest): import('../types
     reviewer: raw.reviewer,
     reviewedAt: raw.reviewed_at,
     buildingId: raw.building_id,
+    isChinese: raw.is_chinese ?? true,
+    initialStatus: raw.initial_status ?? '미방문',
+    regularVisitor: raw.regular_visitor ?? null,
   }
 }
 

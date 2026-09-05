@@ -96,7 +96,7 @@ export function MobileTerritory({
   eventRestaurantAssignments?: EventRestaurantAssignment[]
   visitHistories?: VisitHistory[]
   onAddRestaurantVisit?: (unitId: number, memo: string) => Promise<void>
-  onSubmitRestaurantRequest?: (name: string, address: string, memo: string) => Promise<void>
+  onSubmitRestaurantRequest?: import('../types/restaurantRegistration').SubmitRestaurantRequest
   onUpdateRestaurantRequestMemo?: (requestId: number, memo: string) => Promise<void>
   restaurantRequests?: import('../types').RestaurantRequest[]
   onOpenMap: (cardId: number) => void

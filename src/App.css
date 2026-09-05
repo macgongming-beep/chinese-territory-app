@@ -29149,6 +29149,8 @@ button:focus-visible {
   background: var(--tint);
   border-radius: 10px;
 }
+.restaurant-request-check { display: flex; align-items: center; gap: 10px; min-height: 44px; color: var(--ink); font-size: 14px; font-weight: 600; }
+.restaurant-request-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ink); }
 
 /* 대기 중 신청 섹션 */
 .restaurant-pending-section {

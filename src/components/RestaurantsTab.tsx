@@ -434,6 +434,15 @@ function PendingRequestCard({
         {copy.requestBy}: {req.requestedBy}
         {req.memo && <> · <em style={{ fontStyle: 'normal', color: 'var(--ink-light, #666)' }}>"{req.memo}"</em></>}
       </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        <span style={{ padding: '3px 7px', borderRadius: 5, background: 'var(--tint)', color: 'var(--ink)', fontSize: 11, fontWeight: 700 }}>{req.initialStatus}</span>
+        <span style={{ padding: '3px 7px', borderRadius: 5, background: 'var(--tint)', color: 'var(--muted)', fontSize: 11, fontWeight: 600 }}>
+          {req.isChinese ? '중국어 사용' : '중국어 미사용'}
+        </span>
+        {req.initialStatus === '정기방문' && req.regularVisitor && (
+          <span style={{ padding: '3px 7px', borderRadius: 5, background: 'var(--tint)', color: 'var(--muted)', fontSize: 11, fontWeight: 600 }}>담당 {req.regularVisitor}</span>
+        )}
+      </div>
 
       {/* 주소 검증 결과 */}
       {verifyStatus === 'loading' && (
