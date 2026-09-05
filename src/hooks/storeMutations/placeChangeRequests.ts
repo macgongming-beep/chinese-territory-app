@@ -72,3 +72,30 @@ export async function reviewPlaceChangeRequest(
   showToast(status === 'completed' ? '처리 완료로 표시했습니다.' : '요청을 반려했습니다.')
   return true
 }
+
+export async function submitPlaceChangeRequest(input: {
+  requestType: PlaceIssueType
+  buildingId: number
+  unitId?: number | null
+  note?: string
+}): Promise<boolean> {
+  const token = getAuthToken()
+  if (!token) {
+    showToast('다시 로그인해 주세요.', 'error')
+    return false
+  }
+  const result = await supabase.rpc('submit_place_change_request_tx', {
+    p_token: token,
+    p_request_type: input.requestType,
+    p_building_id: input.buildingId,
+    p_unit_id: input.unitId ?? null,
+    p_return_visit_id: null,
+    p_note: input.note?.trim() ?? '',
+  })
+  if (result.error || result.data?.ok !== true) {
+    reportMutationError('자료 수정 요청을 보내지 못했습니다.', result.error ?? new Error('Missing request result'))
+    return false
+  }
+  showToast('관리자에게 자료 수정 요청을 보냈습니다')
+  return true
+}

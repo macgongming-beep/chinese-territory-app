@@ -21,6 +21,8 @@ import { msg } from '../lib/msg'
 import { INFORMAL_KINDS, type InformalKind } from '../types'
 import { INFORMAL_KIND_STYLE } from '../utils/informalKind'
 import { InformalKindIcon } from './InformalKindIcon'
+import { placeDeletionCopy } from '../utils/placeDeletion'
+import { PlaceChangeRequestDialog } from './PlaceChangeRequestDialog'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
@@ -420,6 +422,7 @@ export function MobileMap({
   // 건물 수정
   const [editingBuildingId, setEditingBuildingId] = useState<number | null>(null)
   const [buildingMenuId, setBuildingMenuId] = useState<number | null>(null)
+  const [placeRequestTarget, setPlaceRequestTarget] = useState<{ building: Building; unit?: Unit } | null>(null)
   const [editName, setEditName] = useState('')
   const [editAddress, setEditAddress] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -1756,6 +1759,13 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                   type="button"
                                   onClick={() => {
                                     setBuildingMenuId(null)
+                                    setPlaceRequestTarget({ building })
+                                  }}
+                                >{msg('자료 수정 요청')}</button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBuildingMenuId(null)
                                     const dname = encodeURIComponent(building.name || building.address)
                                     const sname = encodeURIComponent(t(language, 'map.myLocation'))
                                     const openUrl = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
@@ -1812,7 +1822,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                         <div className="edit-action-group">
                           <button className="edit-save-btn" onClick={() => { onUpdateBuilding(building.id, editName.trim(), editAddress.trim()); setEditingBuildingId(null) }}>{t(language, 'common.save')}</button>
                           <button className="edit-cancel-btn" onClick={() => setEditingBuildingId(null)}>{t(language, 'common.cancel')}</button>
-                          <button className="edit-delete-btn" onClick={() => setShowDeleteConfirm(true)}>{t(language, 'common.delete')}</button>
+                          <button className="edit-delete-btn" onClick={() => setShowDeleteConfirm(true)}>{placeDeletionCopy(actualRole, 'building').actionLabel}</button>
                         </div>
                       </div>
                     )}
@@ -2042,18 +2052,18 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-                      <button onClick={() => setShowDeleteConfirm(true)} style={{ padding: '12px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--danger-100)', color: 'var(--danger-600)', fontWeight: 700, cursor: 'pointer', fontSize: '14px' }}>{t(language, 'common.delete')}</button>
+                      <button onClick={() => setShowDeleteConfirm(true)} style={{ padding: '12px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--danger-100)', color: 'var(--danger-600)', fontWeight: 700, cursor: 'pointer', fontSize: '14px' }}>{placeDeletionCopy(actualRole, 'building').actionLabel}</button>
                       <button onClick={() => { setEditingBuildingId(null); setShowDeleteConfirm(false) }} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'common.cancel')}</button>
                       <button onClick={() => { onUpdateBuilding(editingBuilding.id, editName.trim(), editAddress.trim()); setEditingBuildingId(null) }} style={{ flex: 2, padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--accent-700)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'common.save')}</button>
                     </div>
                   </>
                 ) : (
                   <>
-                    <h3 style={{ margin: '0 0 12px', fontSize: '18px', fontWeight: 700, color: 'var(--danger-600)' }}>{t(language, 'map.deleteBuilding')}</h3>
-                    <p style={{ margin: '0 0 20px', fontSize: '15px', color: '#4b5563', lineHeight: 1.5 }}>{t(language, 'map.deleteBuildingDesc')}</p>
+                    <h3 style={{ margin: '0 0 12px', fontSize: '18px', fontWeight: 700, color: 'var(--danger-600)' }}>{placeDeletionCopy(actualRole, 'building').title}</h3>
+                    <p style={{ margin: '0 0 20px', fontSize: '15px', color: '#4b5563', lineHeight: 1.5 }}>{placeDeletionCopy(actualRole, 'building').description}</p>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'common.cancel')}</button>
-                      <button onClick={() => { onDeleteBuilding(editingBuilding.id); setEditingBuildingId(null); setShowDeleteConfirm(false) }} style={{ flex: 2, padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--danger-600)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'map.deleteNow')}</button>
+                      <button onClick={() => { onDeleteBuilding(editingBuilding.id); setEditingBuildingId(null); setShowDeleteConfirm(false) }} style={{ flex: 2, padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--danger-600)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{placeDeletionCopy(actualRole, 'building').confirmLabel}</button>
                     </div>
                   </>
                 )}
@@ -2244,15 +2254,24 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                     >{t(language, 'map.editUnit')}</button>
                     <button
                       type="button"
+                      onClick={() => {
+                        setShowUnitHeaderMenu(false)
+                        setPlaceRequestTarget({ building: liveFullScreenUnit.building, unit: liveFullScreenUnit.unit })
+                      }}
+                      style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--line)', cursor: 'pointer', fontSize: 13, color: 'var(--ink)', textAlign: 'left' }}
+                    >{msg('자료 수정 요청')}</button>
+                    <button
+                      type="button"
                       onClick={async () => {
                         setShowUnitHeaderMenu(false)
-                        if (await confirmDialog({ message: msg('"{number}" 세대를 삭제할까요?', { number: liveFullScreenUnit.unit.number }), danger: true, confirmLabel: msg('삭제') })) {
+                        const copy = placeDeletionCopy(actualRole, 'unit')
+                        if (await confirmDialog({ message: `${liveFullScreenUnit.unit.number}: ${copy.description}`, danger: true, confirmLabel: copy.confirmLabel })) {
                           onDeleteUnit(liveFullScreenUnit.building.id, liveFullScreenUnit.unit.id)
                           setFullScreenUnit(null)
                         }
                       }}
                       style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#dc2626', textAlign: 'left' }}
-                    >{t(language, 'map.deleteUnit')}</button>
+                    >{placeDeletionCopy(actualRole, 'unit').actionLabel}</button>
                   </div>
                 </>
               )}
@@ -2327,6 +2346,13 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
           />
         )
       })()}
+      {placeRequestTarget && (
+        <PlaceChangeRequestDialog
+          building={placeRequestTarget.building}
+          unit={placeRequestTarget.unit}
+          onClose={() => setPlaceRequestTarget(null)}
+        />
+      )}
     </main>
   )
 }

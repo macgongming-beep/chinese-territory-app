@@ -304,7 +304,7 @@ export type ReturnVisit = {
 }
 
 export type ReturnVisitEndReason = 'no_longer_assigned' | 'needs_reassignment' | 'no_longer_target'
-export type PlaceIssueType = 'building_missing' | 'unit_missing' | 'details_wrong' | 'duplicate_place' | 'other'
+export type PlaceIssueType = 'building_missing' | 'unit_missing' | 'details_wrong' | 'duplicate_place' | 'remove_place' | 'other'
 
 export type EndReturnVisitInput = {
   reason: ReturnVisitEndReason

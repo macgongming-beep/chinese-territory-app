@@ -36,6 +36,7 @@ import { getCurrentTimeSlot } from '../utils/timeUtils'
 import { mergeCardBoundaryPoints } from '../utils/boundaryMerge'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 import { msg } from '../lib/msg'
+import { placeDeletionCopy } from '../utils/placeDeletion'
 
 type VisitResultFilter = '전체' | '부재' | '만남'
 type HistoryEditor = {
@@ -2209,7 +2210,7 @@ export function DesktopMap({
                     <div className="edit-action-group">
                       <button className="edit-save-btn" onClick={() => { onUpdateBuilding(building.id, editName.trim(), editAddress.trim(), undefined, undefined, editType); setEditingBuildingId(null) }}>{t(language, 'map.save')}</button>
                       <button className="edit-cancel-btn" onClick={() => setEditingBuildingId(null)}>{t(language, 'map.cancel')}</button>
-                      <button className="edit-delete-btn" onClick={() => { setPendingDeleteBuildingId(building.id); setShowDeleteBuildingConfirmModal(true) }}>{t(language, 'common.delete')}</button>
+                      <button className="edit-delete-btn" onClick={() => { setPendingDeleteBuildingId(building.id); setShowDeleteBuildingConfirmModal(true) }}>{placeDeletionCopy(actualRole, 'building').actionLabel}</button>
                     </div>
                   </div>
                 )}
@@ -2430,14 +2431,15 @@ export function DesktopMap({
                                       <button
                                         onClick={async () => {
                                           setUnitDeleteMenuId(null)
-                                          if (await confirmDialog({ message: t(language, 'map.deleteUnitConfirm'), danger: true, confirmLabel: '삭제' })) {
+                                          const copy = placeDeletionCopy(actualRole, 'unit')
+                                          if (await confirmDialog({ message: copy.description, danger: true, confirmLabel: copy.confirmLabel })) {
                                             onDeleteUnit(building.id, unit.id)
                                             setExpandedUnitId(null)
                                           }
                                         }}
                                         style={{ display: 'block', width: '100%', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--danger-600)', textAlign: 'left' }}
                                         type="button"
-                                      >{t(language, 'map.deleteUnit')}</button>
+                                      >{placeDeletionCopy(actualRole, 'unit').actionLabel}</button>
                                     </div>
                                   )}
                                 </div>
@@ -2787,9 +2789,9 @@ export function DesktopMap({
             width: '320px',
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
           }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700, color: 'var(--danger-600)' }}>{t(language, 'map.deleteBuilding')}</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700, color: 'var(--danger-600)' }}>{placeDeletionCopy(actualRole, 'building').title}</h3>
             <p style={{ margin: '0 0 20px', fontSize: '15px', color: '#4b5563', lineHeight: '1.5' }}>
-              {t(currentLang(), 'modal.confirmDeleteBuilding')}
+              {placeDeletionCopy(actualRole, 'building').description}
             </p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button
@@ -2814,7 +2816,7 @@ export function DesktopMap({
                   cursor: 'pointer'
                 }}
               >
-                건물 삭제
+                {placeDeletionCopy(actualRole, 'building').confirmLabel}
               </button>
             </div>
           </div>

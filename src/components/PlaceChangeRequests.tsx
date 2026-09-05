@@ -8,6 +8,7 @@ const issueLabels: Record<PlaceIssueType, string> = {
   unit_missing: '이 세대가 없어졌습니다',
   details_wrong: '주소·이름·호수가 다릅니다',
   duplicate_place: '같은 장소가 두 번 보여요',
+  remove_place: '장소 삭제 요청',
   other: '기타',
 }
 

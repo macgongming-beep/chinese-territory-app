@@ -190,10 +190,38 @@ export function makeBuildingMutations(deps: {
     return newIds
   }
 
+  const deletePlace = async (
+    targetType: 'building' | 'unit',
+    targetId: number,
+  ): Promise<{ action: 'deleted' | 'requested' } | null> => {
+    const token = getAuthToken()
+    if (!token) {
+      showToast(msg('다시 로그인해 주세요.'), 'error')
+      return null
+    }
+    const result = await supabase.rpc('delete_place_or_request_tx', {
+      p_token: token,
+      p_target_type: targetType,
+      p_target_id: targetId,
+      p_request_type: 'remove_place',
+      p_note: '',
+    })
+    const action = result.data?.action
+    if (result.error || (action !== 'deleted' && action !== 'requested')) {
+      reportMutationError(
+        targetType === 'building' ? msg('건물을 삭제하지 못했습니다.') : msg('호수를 삭제하지 못했습니다.'),
+        result.error ?? new Error('Missing delete result'),
+      )
+      return null
+    }
+    return { action }
+  }
+
   const deleteUnitFromBuilding = async (_buildingId: number, unitId: number) => {
-    const result = await supabase.from('units').delete().eq('id', unitId)
-    if (result.error) {
-      reportMutationError(msg('호수를 삭제하지 못했습니다.'), result.error)
+    const result = await deletePlace('unit', unitId)
+    if (!result) return
+    if (result.action === 'requested') {
+      showToast(msg('연결된 자료가 있어 관리자에게 삭제 요청을 보냈습니다'))
       return
     }
     removeUnit(unitId)
@@ -201,9 +229,10 @@ export function makeBuildingMutations(deps: {
   }
 
   const deleteBuilding = async (buildingId: number) => {
-    const result = await supabase.from('buildings').delete().eq('id', buildingId)
-    if (result.error) {
-      reportMutationError(msg('건물을 삭제하지 못했습니다.'), result.error)
+    const result = await deletePlace('building', buildingId)
+    if (!result) return
+    if (result.action === 'requested') {
+      showToast(msg('연결된 자료가 있어 관리자에게 삭제 요청을 보냈습니다'))
       return
     }
     await fetchAll()
@@ -216,13 +245,17 @@ export function makeBuildingMutations(deps: {
       showToast(msg('삭제할 건물이 없습니다.'), 'info')
       return
     }
-    const result = await supabase.from('buildings').delete().in('id', ids)
-    if (result.error) {
-      reportMutationError(msg('건물을 삭제하지 못했습니다.'), result.error)
-      return
+    const results = await Promise.all(ids.map((id) => deletePlace('building', id)))
+    const deleted = results.filter((result) => result?.action === 'deleted').length
+    const requested = results.filter((result) => result?.action === 'requested').length
+    if (deleted > 0) await fetchAll()
+    if (deleted > 0 && requested > 0) {
+      showToast(msg('건물 {deleted}개 삭제 · {requested}개 관리자 요청', { deleted, requested }))
+    } else if (deleted > 0) {
+      showToast(msg('건물 {length}개가 삭제됐습니다', { length: deleted }))
+    } else if (requested > 0) {
+      showToast(msg('건물 {length}개의 삭제 요청을 보냈습니다', { length: requested }))
     }
-    await fetchAll()
-    showToast(msg('건물 {length}개가 삭제됐습니다', { length: ids.length }))
   }
 
   /**

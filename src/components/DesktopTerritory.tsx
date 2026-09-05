@@ -40,6 +40,7 @@ import { PointVisitEditor, type VisitDraft } from './PointVisitEditor'
 import type { MergeResult } from '../utils/duplicateBuildingMerge'
 import { msg } from '../lib/msg'
 import { getRestaurantUnits } from '../utils/restaurants'
+import { placeDeletionCopy } from '../utils/placeDeletion'
 import { compareBuildingsForTable, comparePointRowsForTable, type BuildingSortKey, type PointSortKey } from '../utils/territoryTableSort'
 
 // 상대 날짜 표시: "오늘", "어제", "N일 전", "N주 전", "N개월 전", "YYYY-MM-DD"
@@ -1088,7 +1089,8 @@ export function DesktopTerritory({
   const handleDeleteCheckedBuildings = async () => {
     const ids = visibleCheckedBuildingIds
     if (ids.length === 0) return
-    const confirmed = await confirmDialog({ message: msg('선택한 건물 {length}개를 삭제할까요?\n건물에 속한 호수와 방문 정보도 함께 정리될 수 있습니다.', { length: ids.length }), danger: true, confirmLabel: '삭제' })
+    const copy = placeDeletionCopy(role, 'building', ids.length)
+    const confirmed = await confirmDialog({ message: copy.description, danger: true, confirmLabel: copy.confirmLabel })
     if (!confirmed) return
     onDeleteBuildings(ids)
     setCheckedBuildingIds(new Set())
@@ -2103,10 +2105,11 @@ export function DesktopTerritory({
                                     >수정</button>
                                     <button
                                       onClick={async () => {
-                                        if (await confirmDialog({ message: msg('{number}{v1}를 삭제할까요?', { number: unit.number, v1: /^\d+$/.test(unit.number) ? '호' : '' }), danger: true, confirmLabel: '삭제' })) onDeleteUnit(building.id, unit.id)
+                                        const copy = placeDeletionCopy(role, 'unit')
+                                        if (await confirmDialog({ message: `${unit.number}: ${copy.description}`, danger: true, confirmLabel: copy.confirmLabel })) onDeleteUnit(building.id, unit.id)
                                       }}
                                       type="button"
-                                    >삭제</button>
+                                    >{placeDeletionCopy(role, 'unit').actionLabel}</button>
                                   </span>
                                 </>
                               )}

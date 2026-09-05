@@ -12,6 +12,7 @@ const issues: { value: PlaceIssueType; label: string }[] = [
   { value: 'unit_missing', label: '이 세대가 없어졌습니다' },
   { value: 'details_wrong', label: '주소·이름·호수가 다릅니다' },
   { value: 'duplicate_place', label: '같은 장소가 두 번 보여요' },
+  { value: 'remove_place', label: '장소 삭제가 필요합니다' },
   { value: 'other', label: '기타' },
 ]
 
