@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { getBuildingPin, getPinGroup } from './buildingPin'
+import { getBuildingPin, getPinGroup, isForbiddenBuilding } from './buildingPin'
 import type { Building, Unit } from '../types'
 
 const unit = (over: Partial<Unit> = {}): Unit =>
@@ -12,6 +12,32 @@ describe('핀 — 색(성격)과 채움(가야 하나)을 나눈다', () => {
   test('방문금지는 채운 검정 — 더 갈 일이 없다', () => {
     expect(getBuildingPin(bld({ warning: true, units: [unit()] })))
       .toEqual({ tone: '방문금지', filled: true, ring: null })
+  })
+
+  test('⚠ 거절 세대가 있어도 **갈 곳이 남으면 방문금지가 아니다**', () => {
+    // 세대 하나가 거절이라고 건물을 검정으로 칠하면, 같은 건물의 미방문
+    // 세대를 아무도 안 간다. 정기방문에서 겪은 실수와 같은 모양이다.
+    const b = bld({ units: [unit({ id: 1, status: '거절' }), unit({ id: 2, status: '미방문' })] })
+    expect(isForbiddenBuilding(b)).toBe(false)
+    expect(getBuildingPin(b)).toEqual({ tone: '보통', filled: false, ring: null })
+    expect(getPinGroup(b)).toBe('방문필요')
+  })
+
+  test('부재도 갈 곳이다 — 다시 가 봐야 한다', () => {
+    const b = bld({ units: [unit({ id: 1, status: '거절' }), unit({ id: 2, status: '부재' })] })
+    expect(getPinGroup(b)).toBe('방문필요')
+  })
+
+  test('갈 곳이 하나도 안 남으면 그때 방문금지다', () => {
+    const b = bld({ units: [unit({ id: 1, status: '거절' }), unit({ id: 2, status: '만남' })] })
+    expect(isForbiddenBuilding(b)).toBe(true)
+    expect(getPinGroup(b)).toBe('방문금지')
+  })
+
+  test('건물 통째 금지(warning)는 갈 곳이 남아도 금지 — 들어갈 수가 없다', () => {
+    const b = bld({ warning: true, units: [unit({ status: '미방문' })] })
+    expect(isForbiddenBuilding(b)).toBe(true)
+    expect(getPinGroup(b)).toBe('방문금지')
   })
 
   test('⚠ 정기방문 세대가 있어도 **갈 곳이 남으면 테두리**', () => {

@@ -57,9 +57,28 @@ export function hasUnvisitedUnit(building: Building): boolean {
   return building.units.some((u) => u.status === '미방문' || u.status === '부재')
 }
 
+/**
+ * 이 건물을 '갈 곳 없는 금지 건물' 로 볼 것인가.
+ *
+ * ⚠ **세대 하나가 거절이라고 건물 전체를 금지로 보면 안 된다.** 그러면 같은
+ *   건물의 미방문 세대를 아무도 안 간다. 정기방문에서 이미 겪은 실수와
+ *   똑같은 모양이다 (아래 getPinGroup 의 주석) — 성격 하나가 진행을 가렸다.
+ *
+ * ⚠ 건물 통째 금지(`warning`)는 다르다. 들어갈 수가 없으니 남은 세대가
+ *   있어도 금지다. 관리인이 막은 건물이 여기 해당한다.
+ *
+ * ⚠ 이 판정은 **여기 한 곳에만 둔다.** utils/mapUtils 의 getBuildingStatus 도
+ *   이걸 부른다 — 예전에 지도 핀과 목록이 각자 판정해서 어긋난 적이 있다.
+ */
+export function isForbiddenBuilding(building: Building): boolean {
+  if (building.warning) return true
+  const hasForbiddenUnit = building.units.some((u) => u.status === '거절' || u.isForbidden)
+  return hasForbiddenUnit && !hasUnvisitedUnit(building)
+}
+
 export function getBuildingPin(building: Building): BuildingPin {
   // 방문금지는 '갈 곳' 이 아니다. 채워서 그린다 — 더 갈 일이 없다는 뜻이다.
-  if (building.warning || building.units.some((u) => u.status === '거절' || u.isForbidden)) {
+  if (isForbiddenBuilding(building)) {
     return { tone: '방문금지', filled: true, ring: null }
   }
 

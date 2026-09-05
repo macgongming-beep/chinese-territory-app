@@ -1,7 +1,9 @@
 import type { Building, BuildingStatus, CardBoundary, GeoPoint, TerritoryCard, TerritoryRegion } from '../types'
+import { isForbiddenBuilding } from './buildingPin'
 
 export function getBuildingStatus(building: Building): BuildingStatus {
-  if (building.warning || building.units.some(u => u.status === '거절' || u.isForbidden)) return '방문금지'
+  // ⚠ 판정은 utils/buildingPin 한 곳에 있다. 여기서 따로 보면 지도 핀과 목록이 어긋난다.
+  if (isForbiddenBuilding(building)) return '방문금지'
   if (building.units.some(u => u.isRegularVisit)) return '정기방문'
   if (building.units.length > 0 && building.units.every(u => u.status !== '미방문' && u.status !== '부재')) return '방문완료'
   return '방문필요'
