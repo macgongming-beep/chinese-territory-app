@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { ActiveRestaurantSession, Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ManualReturnVisitInput, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
+import type { ActiveRestaurantSession, Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ManualReturnVisitInput, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t, translateKoreanAddress, weekdayShortLabels } from '../i18n'
 import { getTerritoryCardOperationalState, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
@@ -9,6 +9,8 @@ import { RestaurantServiceSheet } from './RestaurantServiceSheet'
 import { msg } from '../lib/msg'
 import { showToast } from '../lib/toast'
 import { getAssignmentTeamMembers } from '../utils/assignmentTeamMembers'
+import { chooseCardForBuilding } from '../utils/chooseCardForBuilding'
+import { shortAddress } from '../utils/shortAddress'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
   if (!assignment) return []
@@ -48,11 +50,21 @@ function fmtDate(dateStr: string, language: AppLanguage): string {
 /** 주소 검색 후보. 좌표는 SDK 가 안 줄 수도 있어 null 을 허용한다 */
 type AddressCandidate = { address: string; lat: number | null; lng: number | null }
 
+function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const rad = Math.PI / 180
+  const dLat = (b.lat - a.lat) * rad
+  const dLng = (b.lng - a.lng) * rad
+  const h = Math.sin(dLat / 2) ** 2
+    + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2
+  return 6371000 * 2 * Math.asin(Math.sqrt(h))
+}
+
 export function MobileTerritory({
   language,
   translatePlaceNames = false,
   buildings,
   cards,
+  cardBoundaries = [],
   calendarEvents = [],
   currentVisitor,
   role,
@@ -85,6 +97,7 @@ export function MobileTerritory({
   translatePlaceNames?: boolean
   buildings: Building[]
   cards: TerritoryCard[]
+  cardBoundaries?: CardBoundary[]
   calendarEvents?: CalendarEvent[]
   currentVisitor: string
   role: Role
@@ -212,6 +225,10 @@ export function MobileTerritory({
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null)
   const [addAddressGeocoding, setAddAddressGeocoding] = useState(false)
   const [addAddressCandidates, setAddAddressCandidates] = useState<AddressCandidate[]>([])
+  const [addSelectedCandidate, setAddSelectedCandidate] = useState<AddressCandidate | null>(null)
+  const [addNewUnitBuilding, setAddNewUnitBuilding] = useState<number | 'new' | null>(null)
+  const [addBuildingName, setAddBuildingName] = useState('')
+  const [addUnitNumber, setAddUnitNumber] = useState('')
   const [addrEditGeocoding, setAddrEditGeocoding] = useState(false)
   const [addrEditCandidates, setAddrEditCandidates] = useState<AddressCandidate[]>([])
   const [logActionId, setLogActionId] = useState<number | null>(null) // 팝업 대상 로그 id
@@ -219,6 +236,7 @@ export function MobileTerritory({
   const [logEditResult, setLogEditResult] = useState<'만남' | '부재' | null>(null)
   const [logEditMemo, setLogEditMemo] = useState('')
   const [logEditSaving, setLogEditSaving] = useState(false)
+  const canCreateReturnVisitLocation = role === 'leader' || role === 'admin' || role === 'developer'
   const timeSlotLabel = (slot: TimeSlot) => {
     if (slot === '오전') return t(language, 'map.morning')
     if (slot === '오후') return t(language, 'map.afternoon')
@@ -595,10 +613,20 @@ export function MobileTerritory({
   const addressMatches = useMemo(() => {
     if (addAddress.length < 2 || addLinked) return []
     const q = addAddress.toLowerCase()
+    const addressKey = shortAddress(addAddress).replace(/\s/g, '').toLowerCase()
+    const hasSelectedCoordinates = addSelectedCandidate?.lat != null && addSelectedCandidate?.lng != null
     return buildings
-      .filter((b) => b.address.toLowerCase().includes(q) || b.name.toLowerCase().includes(q))
+      .filter((b) => {
+        if (b.address.toLowerCase().includes(q) || b.name.toLowerCase().includes(q)) return true
+        const buildingKey = shortAddress(b.address).replace(/\s/g, '').toLowerCase()
+        if (!hasSelectedCoordinates || buildingKey !== addressKey || !b.lat || !b.lng) return false
+        return distanceMeters(
+          { lat: addSelectedCandidate.lat as number, lng: addSelectedCandidate.lng as number },
+          { lat: b.lat, lng: b.lng },
+        ) <= 200
+      })
       .slice(0, 3)
-  }, [addAddress, buildings, addLinked])
+  }, [addAddress, addSelectedCandidate, buildings, addLinked])
 
   const activeCard = cards.find((card) => card.id === activeSession?.primaryCardId)
   const fallbackCard = myCards[0]
@@ -929,6 +957,10 @@ export function MobileTerritory({
                         setAddFirstResult(null)
                         setAddLinked(null)
                         setAddUnitPickBuilding(null)
+                        setAddSelectedCandidate(null)
+                        setAddNewUnitBuilding(null)
+                        setAddBuildingName('')
+                        setAddUnitNumber('')
                       }}
                       type="button"
                     >{t(language, 'territory.regularVisit')} {t(language, 'common.add')}</button>
@@ -1329,7 +1361,11 @@ export function MobileTerritory({
                       <b>{addLinked.building.name} {addLinked.unit.number}호</b>
                       <em>{addLinked.building.address}</em>
                     </span>
-                    <button className="rv-add-unlink" type="button" onClick={() => { setAddLinked(null); setAddAddress('') }}>{t(language, 'territory.unlink')}</button>
+                    <button className="rv-add-unlink" type="button" onClick={() => {
+                      setAddLinked(null)
+                      setAddAddress('')
+                      setAddSelectedCandidate(null)
+                    }}>{t(language, 'territory.unlink')}</button>
                   </div>
                 ) : (
                   <>
@@ -1343,6 +1379,8 @@ export function MobileTerritory({
                           setAddAddress(e.target.value)
                           setAddUnitPickBuilding(null)
                           setAddAddressCandidates([])
+                          setAddSelectedCandidate(null)
+                          setAddNewUnitBuilding(null)
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && addAddress.trim()) {
@@ -1367,7 +1405,12 @@ export function MobileTerritory({
                             key={c.address}
                             className="rv-addr-candidate"
                             type="button"
-                            onClick={() => { setAddAddress(c.address); setAddAddressCandidates([]) }}
+                            onClick={() => {
+                              setAddAddress(c.address)
+                              setAddAddressCandidates([])
+                              setAddSelectedCandidate(c)
+                              setAddNewUnitBuilding(null)
+                            }}
                           >
                             <span>{c.address}</span>
                             {isFarFromService(c) && <em className="rv-addr-far">{msg('봉사 범위 밖')}</em>}
@@ -1389,6 +1432,7 @@ export function MobileTerritory({
                               className="rv-add-connect-btn"
                               type="button"
                               onClick={() => {
+                                setAddNewUnitBuilding(null)
                                 if (b.units.length === 1) {
                                   setAddLinked({ building: b, unit: b.units[0] })
                                   setAddUnitPickBuilding(null)
@@ -1397,6 +1441,19 @@ export function MobileTerritory({
                                 }
                               }}
                             >{t(language, 'territory.connect')}</button>
+                            {canCreateReturnVisitLocation && (
+                              <button
+                                className="rv-add-connect-btn rv-add-connect-secondary"
+                                type="button"
+                                onClick={() => {
+                                  setAddLinked(null)
+                                  setAddUnitPickBuilding(null)
+                                  setAddNewUnitBuilding(b.id)
+                                  setAddBuildingName(b.name)
+                                  setAddUnitNumber('')
+                                }}
+                              >{msg('새 세대')}</button>
+                            )}
                           </div>
                         ))}
                         {/* 세대 선택 */}
@@ -1408,16 +1465,59 @@ export function MobileTerritory({
                                 key={u.id}
                                 className="rv-add-unit-btn"
                                 type="button"
-                                onClick={() => { setAddLinked({ building: addUnitPickBuilding, unit: u }); setAddUnitPickBuilding(null) }}
+                                onClick={() => {
+                                  setAddLinked({ building: addUnitPickBuilding, unit: u })
+                                  setAddUnitPickBuilding(null)
+                                  setAddNewUnitBuilding(null)
+                                }}
                               >{u.number}호</button>
                             ))}
                           </div>
                         )}
                       </div>
                     )}
+                    {canCreateReturnVisitLocation && addSelectedCandidate && addressMatches.length === 0 && addNewUnitBuilding === null && (
+                      <button
+                        className="rv-add-new-location"
+                        type="button"
+                        disabled={addSelectedCandidate.lat === null || addSelectedCandidate.lng === null}
+                        onClick={() => {
+                          setAddLinked(null)
+                          setAddNewUnitBuilding('new')
+                          setAddBuildingName(shortAddress(addAddress))
+                          setAddUnitNumber('')
+                        }}
+                      >{msg('새 건물과 세대 만들기')}</button>
+                    )}
                   </>
                 )}
               </div>
+
+              {addNewUnitBuilding !== null && (
+                <div className="rv-add-location-fields">
+                  <strong>{addNewUnitBuilding === 'new' ? msg('새 건물과 세대') : msg('선택한 건물에 새 세대')}</strong>
+                  {addNewUnitBuilding === 'new' && (
+                    <label className="rv-add-field">
+                      <span className="rv-add-label">{msg('건물 이름')}</span>
+                      <input
+                        className="rv-add-input"
+                        value={addBuildingName}
+                        onChange={(e) => setAddBuildingName(e.target.value)}
+                      />
+                    </label>
+                  )}
+                  <label className="rv-add-field">
+                    <span className="rv-add-label">{msg('세대 또는 호수')} <span className="rv-add-required">{t(language, 'territory.required')}</span></span>
+                    <input
+                      className="rv-add-input"
+                      value={addUnitNumber}
+                      onChange={(e) => setAddUnitNumber(e.target.value)}
+                      placeholder={msg('예: 201호 또는 김씨 댁')}
+                    />
+                  </label>
+                  <button className="rv-add-unlink" type="button" onClick={() => setAddNewUnitBuilding(null)}>{t(language, 'common.cancel')}</button>
+                </div>
+              )}
 
               {/* 첫 방문 결과 */}
               <div className="rv-add-field">
@@ -1459,7 +1559,7 @@ export function MobileTerritory({
                 <button className="rv-log-cancel" type="button" onClick={() => setShowAddSheet(false)}>{t(language, 'common.cancel')}</button>
                 <button
                   className="rv-log-save"
-                  disabled={!addNickname.trim() || addSaving}
+                  disabled={!addNickname.trim() || addSaving || (addNewUnitBuilding !== null && !addUnitNumber.trim())}
                   type="button"
                   onClick={async () => {
                     if (!addNickname.trim() || !onCreateManualReturnVisit) return
@@ -1467,6 +1567,18 @@ export function MobileTerritory({
                     // ⚠ **성공했을 때만 닫는다.** 예전에는 실패해도 닫아서, 오류
                     //   토스트는 뜨는데 별명·주소·연결한 세대가 통째로 날아갔다.
                     try {
+                      const selectedCard = addNewUnitBuilding === 'new'
+                        ? chooseCardForBuilding({
+                            chosen: 'auto',
+                            latLng: addSelectedCandidate?.lat != null && addSelectedCandidate?.lng != null
+                              ? { lat: addSelectedCandidate.lat, lng: addSelectedCandidate.lng }
+                              : null,
+                            address: addAddress,
+                            cards,
+                            cardBoundaries,
+                            unassignedCardId: cards.find((card) => card.name === '미배정 건물')?.id ?? null,
+                          }).cardId
+                        : null
                       const ok = await onCreateManualReturnVisit({
                         displayName: addNickname.trim(),
                         address: addLinked ? addLinked.building.address : addAddress,
@@ -1474,6 +1586,14 @@ export function MobileTerritory({
                         firstResult: addFirstResult,
                         unitId: addLinked?.unit.id ?? null,
                         buildingId: addLinked?.building.id ?? null,
+                        newLocation: addNewUnitBuilding === null ? null : {
+                          existingBuildingId: addNewUnitBuilding === 'new' ? null : addNewUnitBuilding,
+                          buildingName: addBuildingName,
+                          unitNumber: addUnitNumber,
+                          cardId: selectedCard,
+                          lat: addSelectedCandidate?.lat ?? null,
+                          lng: addSelectedCandidate?.lng ?? null,
+                        },
                       })
                       if (ok) setShowAddSheet(false)
                     } catch (error) {

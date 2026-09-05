@@ -316,6 +316,14 @@ export type ManualReturnVisitInput = {
   firstResult: '만남' | '부재' | null
   unitId?: number | null
   buildingId?: number | null
+  newLocation?: {
+    existingBuildingId: number | null
+    buildingName: string
+    unitNumber: string
+    cardId: number | null
+    lat: number | null
+    lng: number | null
+  } | null
 }
 
 /** 식당봉사 활성 세션 (localStorage에 저장) */

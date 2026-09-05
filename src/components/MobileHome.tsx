@@ -957,6 +957,7 @@ export function MobileHome({
                   translatePlaceNames={translatePlaceNames}
                   buildings={buildings}
                   cards={cards}
+                  cardBoundaries={cardBoundaries}
                   calendarEvents={calendarEvents}
                   currentVisitor={currentVisitor}
                   role={role}

@@ -8976,6 +8976,44 @@ button:focus-visible {
   border-radius: 4px;
   flex-shrink: 0;
 }
+
+.rv-add-connect-secondary {
+  background: var(--surface);
+  color: var(--ink-700);
+}
+
+.rv-add-new-location {
+  width: 100%;
+  min-height: 40px;
+  border: 1px dashed var(--ink-300);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink-700);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rv-add-new-location:disabled {
+  color: var(--ink-300);
+  cursor: default;
+}
+
+.rv-add-location-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--tint);
+}
+
+.rv-add-location-fields > strong {
+  font-size: 13px;
+  color: var(--ink-900);
+}
 .rv-add-unlink:hover { background: #f1f5f9; }
 
 /* 주소 매칭 */

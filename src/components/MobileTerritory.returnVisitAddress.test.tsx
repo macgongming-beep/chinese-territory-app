@@ -63,6 +63,75 @@ describe('정기방문 주소 입력', () => {
     fireEvent.click(screen.getByText('경기도 용인시 처인구 명지로 116'))
     await waitFor(() => expect((addr as HTMLInputElement).value).toBe('경기도 용인시 처인구 명지로 116'))
   })
+
+  test('인도자는 검색 후보에서 새 건물과 세대 생성을 선택할 수 있다', async () => {
+    geocode.mockImplementation((_q: unknown, cb: (s: string, r: unknown) => void) => {
+      cb('OK', { v2: { addresses: [
+        { roadAddress: '경기도 용인시 처인구 명지로 116', x: '127.18', y: '37.22' },
+      ] } })
+    })
+    const create = vi.fn().mockResolvedValue(true)
+    renderIt({ role: 'leader', onCreateManualReturnVisit: create })
+    openAddSheet()
+    fireEvent.change(screen.getByPlaceholderText('예: 고림동 할머니'), { target: { value: '김씨' } })
+    const addr = screen.getByPlaceholderText('예: 언동로 213')
+    fireEvent.change(addr, { target: { value: '명지로 116' } })
+    fireEvent.click(screen.getByRole('button', { name: '검색' }))
+    await waitFor(() => expect(screen.getByText('경기도 용인시 처인구 명지로 116')).toBeVisible())
+    fireEvent.click(screen.getByText('경기도 용인시 처인구 명지로 116'))
+    fireEvent.click(screen.getByRole('button', { name: '새 건물과 세대 만들기' }))
+    fireEvent.change(screen.getByLabelText(/세대 또는 호수/), { target: { value: '201' } })
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      newLocation: expect.objectContaining({
+        existingBuildingId: null,
+        buildingName: '명지로 116',
+        unitNumber: '201',
+        lat: 37.22,
+        lng: 127.18,
+      }),
+    })))
+  })
+
+  test('일반 사용자에게는 새 건물·세대 생성 버튼을 보여주지 않는다', async () => {
+    geocode.mockImplementation((_q: unknown, cb: (s: string, r: unknown) => void) => {
+      cb('OK', { v2: { addresses: [
+        { roadAddress: '경기도 용인시 처인구 명지로 116', x: '127.18', y: '37.22' },
+      ] } })
+    })
+    renderIt({ role: 'user' })
+    openAddSheet()
+    const addr = screen.getByPlaceholderText('예: 언동로 213')
+    fireEvent.change(addr, { target: { value: '명지로 116' } })
+    fireEvent.click(screen.getByRole('button', { name: '검색' }))
+    await waitFor(() => expect(screen.getByText('경기도 용인시 처인구 명지로 116')).toBeVisible())
+    fireEvent.click(screen.getByText('경기도 용인시 처인구 명지로 116'))
+    expect(screen.queryByRole('button', { name: '새 건물과 세대 만들기' })).not.toBeInTheDocument()
+  })
+
+  test('긴 검색 주소와 짧은 저장 주소가 같은 좌표면 기존 건물을 보여준다', async () => {
+    geocode.mockImplementation((_q: unknown, cb: (s: string, r: unknown) => void) => {
+      cb('OK', { v2: { addresses: [
+        { roadAddress: '경기도 용인시 처인구 명지로 116', x: '127.18', y: '37.22' },
+      ] } })
+    })
+    const building = {
+      id: 10, cardId: 1, name: '명지로 116', address: '명지로 116', type: '주택',
+      lat: 37.2201, lng: 127.1801, units: [],
+    }
+    renderIt({ role: 'leader', buildings: [building] })
+    openAddSheet()
+    const addr = screen.getByPlaceholderText('예: 언동로 213')
+    fireEvent.change(addr, { target: { value: '명지로 116' } })
+    fireEvent.click(screen.getByRole('button', { name: '검색' }))
+    await waitFor(() => expect(screen.getByText('경기도 용인시 처인구 명지로 116')).toBeVisible())
+    fireEvent.click(screen.getByText('경기도 용인시 처인구 명지로 116'))
+
+    expect(screen.getByText('명지로 116', { selector: 'strong' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '새 세대' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: '새 건물과 세대 만들기' })).not.toBeInTheDocument()
+  })
 })
 
 describe('정기방문 저장', () => {

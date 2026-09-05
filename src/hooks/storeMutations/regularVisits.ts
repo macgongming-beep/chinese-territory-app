@@ -166,14 +166,27 @@ export function makeRegularVisitMutations(deps: {
       return false
     }
 
-    const res = await supabase.rpc('create_return_visit_tx', {
+    const common = {
       p_token: token,
       p_display_name: input.displayName.trim(),
       p_address: input.address.trim(),
       p_memo: input.memo.trim(),
       p_first_result: input.firstResult,
-      p_unit_id: input.unitId ?? null,
-    })
+    }
+    const res = input.newLocation
+      ? await supabase.rpc('create_return_visit_location_tx', {
+          ...common,
+          p_existing_building_id: input.newLocation.existingBuildingId,
+          p_building_name: input.newLocation.buildingName.trim(),
+          p_unit_number: input.newLocation.unitNumber.trim(),
+          p_card_id: input.newLocation.cardId,
+          p_lat: input.newLocation.lat,
+          p_lng: input.newLocation.lng,
+        })
+      : await supabase.rpc('create_return_visit_tx', {
+          ...common,
+          p_unit_id: input.unitId ?? null,
+        })
     if (res.error || !res.data?.id) {
       reportMutationError(msg('정기방문을 추가하지 못했습니다.'), res.error ?? new Error('Missing return visit result'))
       return false

@@ -11,6 +11,7 @@ const db = createClient(env.url, env.anonKey)
 const marker = `_smoke_return_visit_${Date.now()}`
 const madeUsers = []
 let madeBuilding = null
+const madeBuildings = new Set()
 let madeLooseVisit = null
 let failures = 0
 
@@ -44,6 +45,19 @@ try {
   madeUsers.push(madeUser.data.id)
   const userToken = await login(userLogin, '4321')
   const user = client(userToken)
+  const leaderLogin = `${marker}_leader`
+  const leaderName = `${marker}_인도자`
+  const madeLeader = await admin.from('app_users').insert({
+    login_id: leaderLogin,
+    name: leaderName,
+    pin: '4321',
+    role: 'leader',
+    approval_status: 'approved',
+    is_active: true,
+  }).select('id').single()
+  if (madeLeader.error) throw madeLeader.error
+  madeUsers.push(madeLeader.data.id)
+  const leaderToken = await login(leaderLogin, '4321')
 
   const card = await db.from('cards').select('id').limit(1).single()
   if (card.error || !card.data) throw card.error ?? new Error('test card missing')
@@ -57,6 +71,7 @@ try {
   }).select('id').single()
   if (building.error) throw building.error
   madeBuilding = building.data.id
+  madeBuildings.add(madeBuilding)
   const units = await admin.from('units').insert([
     { building_id: madeBuilding, number: '101', status: '미방문' },
     { building_id: madeBuilding, number: '102', status: '미방문' },
@@ -138,6 +153,83 @@ try {
   const looseAddress = await user.from('return_visits')
     .update({ address: `${marker} 고친 주소` }).eq('id', madeLooseVisit).select('address')
   check(looseAddress.data?.[0]?.address === `${marker} 고친 주소`, '미연결 항목은 주소를 고칠 수 있다')
+
+  const existingBuildingLocation = await db.rpc('create_return_visit_location_tx', {
+    p_token: leaderToken,
+    p_display_name: `${marker}_기존건물새세대`,
+    p_address: `${marker} 주소`,
+    p_memo: '',
+    p_first_result: null,
+    p_existing_building_id: madeBuilding,
+    p_building_name: '',
+    p_unit_number: '103',
+    p_card_id: null,
+    p_lat: null,
+    p_lng: null,
+  })
+  const existingBuildingUnits = await db.from('units').select('id').eq('building_id', madeBuilding)
+  check(!existingBuildingLocation.error && existingBuildingLocation.data?.building_id === madeBuilding
+    && existingBuildingUnits.data?.length === 3,
+  '인도자는 선택한 기존 건물에 새 세대만 추가한다')
+
+  const locationParams = {
+    p_token: leaderToken,
+    p_display_name: `${marker}_새장소`,
+    p_address: `경기도 용인시 처인구 코덱스검증로${String(Date.now()).slice(-5)}번길 11`,
+    p_memo: '새 장소 첫 메모',
+    p_first_result: '부재',
+    p_existing_building_id: null,
+    p_building_name: `${marker}_새건물`,
+    p_unit_number: '201',
+    p_card_id: card.data.id,
+    p_lat: 37.235,
+    p_lng: 127.205,
+  }
+  const forbiddenLocation = await db.rpc('create_return_visit_location_tx', {
+    ...locationParams,
+    p_token: userToken,
+  })
+  check(Boolean(forbiddenLocation.error), '일반 사용자는 새 건물과 세대를 만들지 못한다')
+
+  const madeLocation = await db.rpc('create_return_visit_location_tx', locationParams)
+  const locationBuildingId = madeLocation.data?.building_id
+  if (locationBuildingId) madeBuildings.add(locationBuildingId)
+  const locationRows = await db.from('buildings')
+    .select('id,name,address,units(id,number,is_chinese,regular_visits(visitor_name),return_visits(id,last_result,return_visit_logs(result,memo)))')
+    .eq('id', locationBuildingId).single()
+  const locationUnit = locationRows.data?.units?.[0]
+  check(!madeLocation.error && locationRows.data?.name === `${marker}_새건물` && locationUnit?.number === '201',
+    '인도자는 검색 후보로 새 건물과 세대를 만든다', madeLocation.error?.message)
+  const locationRegular = Array.isArray(locationUnit?.regular_visits)
+    ? locationUnit.regular_visits[0]
+    : locationUnit?.regular_visits
+  check(locationUnit?.is_chinese === true && locationRegular?.visitor_name === leaderName,
+    '새 세대는 중국어 대상이고 인도자 본인이 담당한다', JSON.stringify(locationUnit))
+  check(locationUnit?.return_visits?.[0]?.last_result === '부재'
+    && locationUnit?.return_visits?.[0]?.return_visit_logs?.[0]?.memo === '새 장소 첫 메모',
+  '새 장소와 첫 기록이 한 요청에서 저장된다')
+
+  const retriedLocation = await db.rpc('create_return_visit_location_tx', {
+    ...locationParams,
+    p_address: locationParams.p_address.replace('경기도 용인시 처인구 ', ''),
+    p_lat: locationParams.p_lat + 0.0001,
+    p_lng: locationParams.p_lng + 0.0001,
+  })
+  const nearbyBuildings = await db.from('buildings').select('id').eq('name', `${marker}_새건물`)
+  check(!retriedLocation.error && retriedLocation.data?.building_id === locationBuildingId
+    && nearbyBuildings.data?.length === 1,
+  '주소 접두사와 좌표가 조금 달라도 200m 이내면 같은 건물을 재사용한다')
+
+  const farLocation = await db.rpc('create_return_visit_location_tx', {
+    ...locationParams,
+    p_display_name: `${marker}_먼장소`,
+    p_unit_number: '301',
+    p_lat: locationParams.p_lat + 0.05,
+    p_lng: locationParams.p_lng + 0.05,
+  })
+  if (farLocation.data?.building_id) madeBuildings.add(farLocation.data.building_id)
+  check(!farLocation.error && farLocation.data?.building_id !== locationBuildingId,
+    '같은 도로명 키라도 200m 밖이면 다른 건물로 만든다')
 } catch (error) {
   console.error(`❌ smoke 중단 — ${error?.message ?? error}`)
   failures += 1
@@ -146,7 +238,7 @@ try {
   if (adminToken) {
     const admin = client(adminToken)
     if (madeLooseVisit) await admin.from('return_visits').delete().eq('id', madeLooseVisit)
-    if (madeBuilding) await admin.from('buildings').delete().eq('id', madeBuilding)
+    if (madeBuildings.size) await admin.from('buildings').delete().in('id', [...madeBuildings])
     if (madeUsers.length) await admin.from('app_users').delete().in('id', madeUsers)
   }
 }
