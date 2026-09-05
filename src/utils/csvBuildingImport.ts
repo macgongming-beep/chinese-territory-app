@@ -114,6 +114,13 @@ export function normalizeUnitStatus(value: string): UnitStatus {
   if (text.includes('초대장') || text.includes('초대')) return '만남'   // 초대장 → 만남 (invitation_left는 별도)
   if (text.includes('부재')) return '부재'
   if (text.includes('대상외') || text.includes('한국')) return '대상외'
+  // ⚠ '거절' 과 '확인필요' 가 빠져 있었다. 그냥 미방문으로 떨어지면
+  //   (1) 세대의 방문금지 표시가 조용히 사라지고
+  //   (2) 방문결과가 '미방문' 이 되는데 visit_histories 는 그 값을 CHECK 로
+  //       막는다 → **건물 하나가 통째로 안 올라간다.**
+  //   2026-09-05 원룸 자료 올릴 때 명지베스트빌(세대 112)이 이걸로 실패했다.
+  if (text.includes('거절')) return '거절'
+  if (text.includes('확인필요') || text.includes('확인 필요')) return '확인필요'
   // 정기방문은 result값 아님 → 만남으로 처리 (regular_visits로 별도 등록)
   if (text.includes('정기') || text.includes('재방')) return '만남'
   return '미방문'
@@ -446,10 +453,14 @@ export async function parseBuildingCsv(
 
       // 방문기록 파싱
       const visitedAt = visitDateValue ? parseCsvDate(visitDateValue) : null
-      const visitHistory: CsvVisitHistory | null = visitedAt
+      // ⚠ visit_histories.result 는 '미방문' 을 CHECK 로 막는다 (안 간 것은 기록이
+      //   아니니까). 알 수 없는 결과가 '미방문' 으로 떨어지면 그 건물이 통째로
+      //   거부되므로, 방문기록 자체를 만들지 않는다.
+      const visitResult = normalizeUnitStatus(visitResultValue || statusValue)
+      const visitHistory: CsvVisitHistory | null = visitedAt && visitResult !== '미방문'
         ? {
           visitedAt,
-          result: normalizeUnitStatus(visitResultValue || statusValue) as string,
+          result: visitResult as string,
           visitor: visitVisitorValue,
           timeSlot: normalizeTimeSlot(visitTimeSlotValue),
           memo: visitMemoValue || undefined,
