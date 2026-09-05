@@ -1,6 +1,8 @@
 // 모바일 PWA용 풀-투-리프레시
 // 화면 최상단에서 아래로 당기면 새로고침
 import { useEffect, useRef, useState } from 'react'
+import { msg } from '../lib/msg'
+import './PullToRefresh.css'
 
 const THRESHOLD = 70 // px
 const DEBOUNCE_MS = 5000 // 마지막 새로고침 후 5초 내 재호출 차단
@@ -80,25 +82,24 @@ export function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<void> | 
 
   return (
     <div
+      className="pull-refresh"
       style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 9999,
         display: visible ? 'flex' : 'none',
-        alignItems: 'center',
-        justifyContent: 'center',
         height: refreshing ? 50 : Math.min(pullY, THRESHOLD + 20),
-        background: '#f8fafc',
-        borderBottom: '1px solid #e2e8f0',
         transition: refreshing ? 'height 0.2s' : 'none',
-        pointerEvents: 'none',
       }}
+      role="status"
       aria-hidden={!visible}
     >
-      <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>
-        {refreshing ? '🔄 새로고침 중...' : ready ? '↑ 놓으면 새로고침' : '↓ 당겨서 새로고침'}
+      {refreshing ? (
+        <span className="pull-refresh-spinner" aria-hidden="true" />
+      ) : (
+        <svg className={`pull-refresh-arrow${ready ? ' is-ready' : ''}`} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 4v16m-6-6 6 6 6-6" />
+        </svg>
+      )}
+      <span>
+        {refreshing ? msg('새로고침 중...') : ready ? msg('놓으면 새로고침') : msg('당겨서 새로고침')}
       </span>
     </div>
   )

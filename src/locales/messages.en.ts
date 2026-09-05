@@ -4,6 +4,9 @@
 // 여기에 없는 문장은 한국어로 표시되므로, 새 문구를 추가하면 여기에도 넣어 준다.
 
 export const messagesEn: Record<string, string> = {
+  '당겨서 새로고침': 'Pull to refresh',
+  '놓으면 새로고침': 'Release to refresh',
+  '새로고침 중...': 'Refreshing...',
   '나중에': 'Later',
   '오류가 발생했습니다': 'Something went wrong',
   '업데이트를 적용하지 못했습니다. 잠시 후 다시 눌러 주세요.': 'The update could not be applied. Please try again shortly.',
