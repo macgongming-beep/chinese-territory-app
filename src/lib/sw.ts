@@ -28,8 +28,7 @@ async function readLanguage(): Promise<AppLanguage> {
 
 declare const self: ServiceWorkerGlobalScope
 
-// 새 배포가 준비되면 오래된 PWA 화면을 붙잡지 않고 즉시 새 버전이 제어하게 한다.
-self.skipWaiting()
+// 새 버전은 기다린다. 사용자가 SKIP_WAITING을 보낸 뒤에만 열린 창을 인계한다.
 clientsClaim()
 
 // ─── Precache (자동 생성된 매니페스트) ─────────────────────
@@ -184,22 +183,4 @@ self.addEventListener('message', (event) => {
       activeChatByClient.delete(clientId)
     }
   }
-})
-
-// 새 서비스워커가 활성화되면 이미 열려 있는 화면도 새 번들로 다시 읽게 한다.
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    (async () => {
-      const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-      await Promise.all(
-        clientsList.map(async (client) => {
-          try {
-            await client.navigate(client.url)
-          } catch {
-            // 일부 브라우저/PWA 환경에서는 navigate가 막힐 수 있다.
-          }
-        })
-      )
-    })()
-  )
 })

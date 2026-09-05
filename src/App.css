@@ -30140,3 +30140,32 @@ button > svg {
     display: none;
   }
 }
+.app-loading-recovery {
+  max-width: 360px;
+  padding: 0 20px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.app-update-notice {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 32px));
+  box-sizing: border-box;
+  padding: 16px;
+  z-index: 3500;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--ink);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 14%);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+.app-update-notice p { margin: 8px 0 12px; }
+.app-update-notice > div { display: flex; justify-content: flex-end; gap: 8px; }
+.app-update-notice button { min-height: 44px; white-space: normal; }

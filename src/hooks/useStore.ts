@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { trackFetch } from '../lib/perfTracker'
+import { withLoadDeadline } from '../lib/loadDeadline'
+import { msg } from '../lib/msg'
+import { showToast } from '../lib/toast'
 import { findActivePeriodId } from '../utils/specialPeriod'
 import { setRegions } from '../lib/regions'
 import type {
@@ -130,6 +133,7 @@ export function useStore(enabled: boolean = true) {
    * 데이터로 한 번 그려진다.
    */
   const fetchStartedRef = useRef(false)
+  const loadedOnceRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [, setMissingCardLeaderAssignmentsTable] = useState(false)
   // 마지막 auto_close 호출 시각 (5분 디바운스)
@@ -198,8 +202,7 @@ export function useStore(enabled: boolean = true) {
             .range(from, from + pageSize - 1)
 
           if (buildingsRes.error) {
-            setError('건물 데이터를 불러오지 못했습니다.')
-            return 0
+            throw new Error('Building data load failed', { cause: buildingsRes.error })
           }
           const page = (buildingsRes.data ?? []) as RawBuilding[]
           buildingRows.push(...page)
@@ -257,8 +260,7 @@ export function useStore(enabled: boolean = true) {
 
         const cardsRes = await cardsQueryPromise
         if (cardsRes.error) {
-          setError('카드 데이터를 불러오지 못했습니다.')
-          return 0
+          throw new Error('Card data load failed', { cause: cardsRes.error })
         }
         measure(cardsRes.data)
         // cards transform은 buildings 의존 — buildingsRef로 항상 최신 buildings 사용
@@ -302,8 +304,7 @@ export function useStore(enabled: boolean = true) {
         ])
 
         if (visitsRes.error) {
-          setError('방문 기록을 불러오지 못했습니다.')
-          return 0
+          throw new Error('Visit data load failed', { cause: visitsRes.error })
         }
 
         measure(visitsRes.data)
@@ -330,8 +331,7 @@ export function useStore(enabled: boolean = true) {
         ])
 
         if (eventsRes.error) {
-          setError('일정을 불러오지 못했습니다.')
-          return 0
+          throw new Error('Calendar data load failed', { cause: eventsRes.error })
         }
 
         measure(eventsRes.data)
@@ -501,9 +501,21 @@ export function useStore(enabled: boolean = true) {
         }
       })
     }
-    await fetchSlices(ALL_SLICES, { triggeredBy: 'fetchAll' })
+    // Clear previous failure before reading, never erase a failure reported by a slice.
     setError(null)
-    setLoading(false)
+    try {
+      await withLoadDeadline(fetchSlices(ALL_SLICES, { triggeredBy: 'fetchAll' }))
+      loadedOnceRef.current = true
+    } catch (error) {
+      console.error('[fetchAll] failed:', error)
+      const message = msg('자료를 불러오지 못했습니다. 연결을 확인하고 다시 시도해 주세요.')
+      // A background refresh failure must not unmount an editor with unsaved work.
+      if (loadedOnceRef.current) showToast(message, 'error')
+      else setError(message)
+      throw error
+    } finally {
+      setLoading(false)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchSlices])
 
@@ -512,6 +524,7 @@ export function useStore(enabled: boolean = true) {
       // 로그인 전에는 받지 않는다. 다만 loading 을 반드시 내려야 한다 —
       // 안 그러면 로그인 화면이 '데이터 불러오는 중' 에서 멈춘다 (App.tsx)
       fetchStartedRef.current = false
+      loadedOnceRef.current = false
       setLoading(false)
       return
     }
@@ -524,7 +537,7 @@ export function useStore(enabled: boolean = true) {
         .select('id')
         .eq('name', '미배정 건물')
         .limit(1)
-      if (!existing || existing.length === 0) {
+      if (existing?.length === 0) {
         await supabase.from('cards').insert({
           name: '미배정 건물',
           area: '미배정',
@@ -534,6 +547,8 @@ export function useStore(enabled: boolean = true) {
         })
         await fetchAll()
       }
+    }).catch((error: unknown) => {
+      console.error('[initial load] failed:', error)
     })
   }, [fetchAll, enabled])
 
@@ -553,7 +568,7 @@ export function useStore(enabled: boolean = true) {
       if (document.hidden) return
       if (Date.now() - lastFetchAt < VISIBILITY_DEBOUNCE_MS) return
       lastFetchAt = Date.now()
-      void fetchAll()
+      void fetchAll().catch(() => { /* fetchAll exposes the failure on screen */ })
     }
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('focus', onVisible)

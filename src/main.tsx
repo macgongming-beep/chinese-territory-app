@@ -7,6 +7,8 @@ import { Analytics } from '@vercel/analytics/react'
 import { preloadNaverMapSDK } from './lib/preloadMap'
 import { initSentry } from './lib/sentry'
 import './lib/pwa' // Service Worker 등록 (사이드 이펙트만)
+import { applyUpdate } from './lib/pwa'
+import { msg } from './lib/msg'
 
 // Sentry 가장 먼저 (이후 발생하는 모든 에러 캐치)
 initSentry()
@@ -35,25 +37,17 @@ import { Sentry } from './lib/sentry'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Sentry.ErrorBoundary
-      fallback={({ resetError, error }) => {
+      fallback={({ error }) => {
         // PWA 캐시 깨짐 (배포 후 옛 bundle hash 가 존재 안 함) 의심 신호
         const errMessage = String((error as Error)?.message ?? '')
         const isChunkError = /Failed to fetch dynamically imported module|ChunkLoadError|Loading chunk/.test(errMessage)
 
         const hardReload = async () => {
           try {
-            if ('caches' in window) {
-              const keys = await caches.keys()
-              await Promise.all(keys.map((k) => caches.delete(k)))
-            }
-            if ('serviceWorker' in navigator) {
-              const regs = await navigator.serviceWorker.getRegistrations()
-              await Promise.all(regs.map((r) => r.unregister()))
-            }
-          } catch { /* ignore */ }
-          resetError()
-          // 캐시 우회 새로고침
-          window.location.href = `${window.location.pathname}?_r=${Date.now()}`
+            await applyUpdate()
+          } catch {
+            window.alert(msg('업데이트를 적용하지 못했습니다. 잠시 후 다시 눌러 주세요.'))
+          }
         }
 
         return (
@@ -74,7 +68,7 @@ createRoot(document.getElementById('root')!).render(
               margin: '0 0 8px', fontSize: 20, fontWeight: 700,
               color: 'var(--ink, #1A1A18)', letterSpacing: '-0.01em',
             }}>
-              {isChunkError ? '새 버전이 배포되었어요' : '오류가 발생했습니다'}
+              {isChunkError ? msg('새 버전이 준비됐습니다.') : msg('오류가 발생했습니다')}
             </h2>
             <p style={{
               margin: '0 0 24px', fontSize: 14, fontWeight: 400,
@@ -82,11 +76,11 @@ createRoot(document.getElementById('root')!).render(
               maxWidth: 320,
             }}>
               {isChunkError
-                ? '아래 버튼으로 앱을 새로고침 해주세요. 잠시면 끝납니다.'
-                : '화면을 다시 불러와 주세요. 문제가 계속되면 관리자에게 문의해주세요.'}
+                ? msg('입력한 내용을 저장한 뒤 업데이트해 주세요. 다른 앱 창도 새로고침됩니다.')
+                : msg('자료를 불러오지 못했습니다. 연결을 확인하고 다시 시도해 주세요.')}
             </p>
             <button
-              onClick={isChunkError ? hardReload : () => { resetError(); window.location.reload() }}
+              onClick={() => void hardReload()}
               style={{
                 height: 44, minHeight: 44, padding: '0 22px',
                 background: 'var(--ink, #1A1A18)', color: '#fff',
@@ -95,7 +89,7 @@ createRoot(document.getElementById('root')!).render(
                 cursor: 'pointer', letterSpacing: '-0.005em',
               }}
             >
-              {isChunkError ? '앱 새로고침' : '새로고침'}
+              {msg('앱 다시 불러오기')}
             </button>
           </div>
         )

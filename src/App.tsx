@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Toast } from './components/Toast'
+import { AppLoading } from './components/AppLoading'
+import { AppUpdateNotice } from './components/AppUpdateNotice'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { MaintenanceNotice } from './components/MaintenanceNotice'
 import { applyFontScale, loadFontScale } from './lib/fontScale'
@@ -266,10 +268,7 @@ function App() {
         <ConfirmDialog />
         <Suspense
           fallback={
-            <div className="app-loading">
-              <div className="app-loading-spinner" />
-              <p>로그인 화면 불러오는 중...</p>
-            </div>
+            <AppLoading kind="login" />
           }
         >
           <Login
@@ -285,19 +284,14 @@ function App() {
 
   if (screen === 'loading') {
     return (
-      <div className="app-loading">
-        <div className="app-loading-spinner" />
-        <p>데이터 불러오는 중...</p>
-      </div>
+      <AppLoading />
     )
   }
 
 
   if (error) {
     return (
-      <div style={{ display: 'grid', placeItems: 'center', height: 'calc(100svh / var(--app-zoom, 1))', fontWeight: 700, color: 'var(--danger-600)' }}>
-        {error}
-      </div>
+      <AppLoading failed />
     )
   }
 
@@ -308,6 +302,7 @@ function App() {
     <>
       <Toast />
       <ConfirmDialog />
+      <AppUpdateNotice />
       {/* 점검 공지 — 관리자가 app_settings 로 켜고 끈다 (배포 없이).
           ⚠ 이 팝업이 보인다는 것 자체가 '헤더를 보내는 새 버전' 이라는 뜻이다. */}
       <MaintenanceNotice userId={user.id} language={language} />
@@ -316,10 +311,7 @@ function App() {
       {location.pathname !== '/map' && <PullToRefresh onRefresh={refetchAll} />}
       <Suspense
         fallback={
-          <div className="app-loading">
-            <div className="app-loading-spinner" />
-            <p>화면 구성 불러오는 중...</p>
-          </div>
+          <AppLoading kind="screen" />
         }
       >
         {isDesktop ? (

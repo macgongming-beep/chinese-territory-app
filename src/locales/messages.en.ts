@@ -4,6 +4,19 @@
 // 여기에 없는 문장은 한국어로 표시되므로, 새 문구를 추가하면 여기에도 넣어 준다.
 
 export const messagesEn: Record<string, string> = {
+  '나중에': 'Later',
+  '오류가 발생했습니다': 'Something went wrong',
+  '업데이트를 적용하지 못했습니다. 잠시 후 다시 눌러 주세요.': 'The update could not be applied. Please try again shortly.',
+  '자료를 불러오지 못했습니다. 연결을 확인하고 다시 시도해 주세요.': 'Could not load the data. Check your connection and try again.',
+  '데이터 불러오는 중...': 'Loading data...',
+  '로그인 화면 불러오는 중...': 'Loading sign-in...',
+  '화면 구성 불러오는 중...': 'Loading the screen...',
+  '평소보다 오래 걸리고 있습니다. 연결 상태를 확인해 주세요.': 'This is taking longer than usual. Please check your connection.',
+  '다시 불러오는 중...': 'Reloading...',
+  '앱 다시 불러오기': 'Reload app',
+  '새 버전이 준비됐습니다.': 'An update is ready.',
+  '입력한 내용을 저장한 뒤 업데이트해 주세요. 다른 앱 창도 새로고침됩니다.': 'Save your work before updating. Other app windows will also reload.',
+  '지금 업데이트': 'Update now',
   "\"{autoName}\" 건물이 추가됐습니다": "Building \"{autoName}\" added",
   "\"{label}\" → {name} 배정 해제": "Unassigned \"{label}\" from {name}",
   "\"{label}\" → {name}({v1}) 배정": "Assigned \"{label}\" to {name} ({v1})",
