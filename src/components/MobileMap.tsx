@@ -500,11 +500,38 @@ export function MobileMap({
   // cardIds 로 진입한 경우(드릴 컨텍스트 지도) 는 바텀 시트 최소화로 시작 — 경계선 전체 보기
   const enteredWithFocusedCardIds = focusedCardIds.length > 0
   const [sheetHeight, setSheetHeight] = useState(enteredWithFocusedCardIds ? MIN_HEIGHT : HALF_HEIGHT)
+  const sheetHeightBeforeUnitRef = useRef<number | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const dragStartY = useRef<number>(0)
   const dragStartHeight = useRef<number>(0)
   const dragMoved = useRef(false)
   const lastSheetTapAt = useRef(0)
+
+  const closeUnitDetail = () => {
+    setFullScreenUnit(null)
+    if (sheetHeightBeforeUnitRef.current !== null) {
+      setSheetHeight(sheetHeightBeforeUnitRef.current)
+      sheetHeightBeforeUnitRef.current = null
+    }
+  }
+
+  const openUnitDetail = (unit: Unit, building: Building, unitHistories: VisitHistory[]) => {
+    if (fullScreenUnit?.unit.id === unit.id) {
+      closeUnitDetail()
+      return
+    }
+    if (sheetHeightBeforeUnitRef.current === null) {
+      sheetHeightBeforeUnitRef.current = sheetHeight
+    }
+    setFullScreenUnit({ unit, building, unitHistories })
+    // 상세와 호수 목록이 서로 덮지 않도록 목록은 3~4줄이 보이는 탐색 높이로 둔다.
+    setSheetHeight(Math.max(210, Math.min(280, window.innerHeight * 0.3)))
+    moveMobileMapToBuilding(building)
+  }
+
+  useEffect(() => {
+    if (!fullScreenUnit) sheetHeightBeforeUnitRef.current = null
+  }, [fullScreenUnit])
 
   useEffect(() => {
     document.body.classList.add('mobile-map-scroll-lock')
@@ -1511,7 +1538,12 @@ export function MobileMap({
               onPointerCancel={handlePointerEnd}
               onClick={handleSheetHandleClick}
             >
-              {selectedInformal ? (
+              {liveFullScreenUnit ? (
+                <>
+                  <span>{placeLabel(liveFullScreenUnit.building.name || liveFullScreenUnit.building.address)}</span>
+                  <em>{liveFullScreenUnit.unit.number} · {msg('다른 호수를 눌러 이동')}</em>
+                </>
+              ) : selectedInformal ? (
                 /* 비공식 장소 화면 — 구역 진척률은 이 장소와 상관없다 */
                 <>
                   <span>{msg('비공식 봉사 장소')}</span>
@@ -1853,9 +1885,9 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                           const latestHistory = unitHistories[0]
 
                           return (
-                            <div className={`unit-grid-row${unit.isRegularVisit ? ' ugr-regular' : ''}`} key={unit.id}>
+                            <div className={`unit-grid-row${unit.isRegularVisit ? ' ugr-regular' : ''}${fullScreenUnit?.unit.id === unit.id ? ' is-detail-selected' : ''}`} key={unit.id}>
                               <div className={`unit-grid-main${activeInvitation ? ' with-invitation' : ''}`}>
-                                <button className="unit-name-btn" onClick={() => { const opening = !(fullScreenUnit?.unit.id === unit.id); setFullScreenUnit(prev => prev?.unit.id === unit.id ? null : { unit, building, unitHistories }); if (opening) moveMobileMapToBuilding(building) }} type="button">
+                                <button className="unit-name-btn" onClick={() => openUnitDetail(unit, building, unitHistories)} type="button">
                                   <span className="unit-chevron">›</span>
                                   <span className="unit-number-text">{unit.number}</span>
                                   {unit.isChinese && <span className="unit-chinese-badge">中</span>}
@@ -2204,10 +2236,11 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
       {/* ── 세대 상세 풀스크린 오버레이 ── */}
       {liveFullScreenUnit && (
         <div style={{
-          position: 'fixed', inset: 0, zIndex: 600,
+          position: 'fixed', top: 0, right: 0, bottom: sheetHeight, left: 0, zIndex: 600,
           background: 'var(--bg, #f5f6f8)',
           display: 'flex', flexDirection: 'column',
           overflowY: 'auto',
+          transition: isDragging ? 'none' : 'bottom 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
         }}>
           {/* 헤더 — 지도 헤더(.mobile-map-header) 스타일 일치 */}
           <div style={{
@@ -2218,7 +2251,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
             display: 'flex', alignItems: 'flex-start', gap: 10,
           }}>
             <button
-              onClick={() => setFullScreenUnit(null)}
+              onClick={closeUnitDetail}
               type="button"
               style={{ width: 36, height: 36, padding: 0, border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--text)', cursor: 'pointer', fontSize: 22, lineHeight: 1, marginLeft: -4, flexShrink: 0 }}
               aria-label={msg('닫기')}
@@ -2277,7 +2310,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                         const copy = placeDeletionCopy(actualRole, 'unit')
                         if (await confirmDialog({ message: `${liveFullScreenUnit.unit.number}: ${copy.description}`, danger: true, confirmLabel: copy.confirmLabel })) {
                           onDeleteUnit(liveFullScreenUnit.building.id, liveFullScreenUnit.unit.id)
-                          setFullScreenUnit(null)
+                          closeUnitDetail()
                         }
                       }}
                       style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#dc2626', textAlign: 'left' }}
@@ -2316,7 +2349,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
 
           {/* 본문 */}
           <div style={{ flex: 1 }}>
-            <UnitDetailScreen language={language}
+            <UnitDetailScreen key={liveFullScreenUnit.unit.id} language={language}
               unit={liveFullScreenUnit.unit}
               building={liveFullScreenUnit.building}
               unitHistories={liveFullScreenUnit.unitHistories}
@@ -2420,6 +2453,7 @@ function UnitDetailScreen({
   const [showRegularPopup, setShowRegularPopup] = useState(false)
   const [regularNameDraft, setRegularNameDraft] = useState('')
   const [regularDateDraft, setRegularDateDraft] = useState('')
+  const [historyGridOpen, setHistoryGridOpen] = useState(false)
 
   const TIME_SLOTS = ['오전', '오후', '저녁'] as const
   type RowKey = '평일' | '주말'
@@ -2438,12 +2472,22 @@ function UnitDetailScreen({
     if (!visitGrid[row][slot].lastResult) visitGrid[row][slot].lastResult = h.result
   }
 
+  const historyBuckets = (['평일', '주말'] as RowKey[]).flatMap((row) =>
+    TIME_SLOTS.flatMap((slot) => visitGrid[row][slot].total > 0
+      ? [`${row === '평일' ? t(language, 'map.weekday') : t(language, 'map.weekend')} ${slot === '오전' ? t(language, 'map.morning') : slot === '오후' ? t(language, 'map.afternoon') : t(language, 'map.evening')}${visitGrid[row][slot].total > 1 ? ` ${visitGrid[row][slot].total}` : ''}`]
+      : []),
+  )
+  const latestResult = unitHistories[0]?.result
+  const historySummary = unitHistories.length === 0
+    ? msg('기록 없음')
+    : `${historyBuckets.slice(0, 2).join(' · ')}${latestResult ? ` · ${latestResult}` : ''}`
+
   const resultColor = (r: string) => r === '만남' ? '#4F7A4B' : r === '부재' ? '#C44536' : '#94a3b8'
 
   const memo = unitMemos[unit.id] ?? unit.memo ?? ''
 
-  const sectionStyle: React.CSSProperties = { padding: '16px', marginBottom: 8, background: 'var(--surface)', borderRadius: 12 }
-  const sectionTitleStyle: React.CSSProperties = { margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }
+  const sectionStyle: React.CSSProperties = { padding: '12px', marginBottom: 6, background: 'var(--surface)', borderRadius: 10 }
+  const sectionTitleStyle: React.CSSProperties = { margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: 'var(--ink)' }
 
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100%', paddingBottom: 40 }}>
@@ -2552,11 +2596,25 @@ function UnitDetailScreen({
 
         {/* 방문 이력 표 */}
         <div style={sectionStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <h3 style={sectionTitleStyle}>{t(language, 'map.visitHistoryLabel')}</h3>
-            <span style={{ fontSize: 11, color: 'var(--muted)' }}>{t(language, 'map.total')} {unitHistories.length}{t(language, 'map.cases')}</span>
-          </div>
-          <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
+          <button
+            type="button"
+            aria-expanded={historyGridOpen}
+            onClick={() => setHistoryGridOpen((open) => !open)}
+            style={{
+              width: '100%', minHeight: 40, padding: 0, border: 0, background: 'none',
+              display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+              alignItems: 'center', gap: 8, textAlign: 'left', cursor: 'pointer',
+            }}
+          >
+            <strong style={{ fontSize: 14, color: 'var(--ink)' }}>{t(language, 'map.visitHistoryLabel')}</strong>
+            <span style={{ overflow: 'hidden', color: 'var(--muted)', fontSize: 11.5, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {historySummary}
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--muted)', fontSize: 11.5 }}>
+              {unitHistories.length}{t(language, 'map.cases')} {historyGridOpen ? '⌃' : '⌄'}
+            </span>
+          </button>
+          {historyGridOpen && <div style={{ marginTop: 8, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--line)' }}>
             {/* Header */}
             <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(3, 1fr)', background: 'var(--bg)' }}>
               <div />
@@ -2592,7 +2650,7 @@ function UnitDetailScreen({
                 })}
               </div>
             ))}
-          </div>
+          </div>}
         </div>
 
         {/* 기록 */}
@@ -2699,12 +2757,9 @@ function UnitDetailScreen({
 
         {/* 메모 */}
         <div style={sectionStyle}>
-          <h3 style={{ ...sectionTitleStyle, marginBottom: 2 }}>{t(language, 'map.unitMemoLabel')}</h3>
-          <p style={{ margin: '0 0 10px', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.4 }}>
-            {t(language, 'map.unitMemoHint')}
-          </p>
           {memoEditing ? (
             <div>
+              <h3 style={sectionTitleStyle}>{t(language, 'map.unitMemoLabel')}</h3>
               <textarea
                 autoFocus
                 value={memoDraft ?? ''}
@@ -2740,14 +2795,20 @@ function UnitDetailScreen({
             <button
               onClick={() => { if (!requireRecordAccess()) return; setMemoDraft(memo); setMemoEditing(true) }}
               style={{
-                width: '100%', textAlign: 'left', background: 'var(--bg)',
-                border: '1px solid var(--line)', borderRadius: 8,
-                padding: '8px 10px', fontSize: 13, color: memo ? 'var(--ink)' : 'var(--muted)',
+                width: '100%', minHeight: 40, textAlign: 'left', background: 'transparent',
+                border: 0, padding: 0, color: memo ? 'var(--ink)' : 'var(--muted)',
                 cursor: canRecordVisits ? 'pointer' : 'default',
-                whiteSpace: 'pre-wrap', lineHeight: 1.5, fontFamily: 'inherit',
+                display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+                alignItems: 'center', gap: 10, fontFamily: 'inherit',
               }}
               type="button"
-            >{memo || t(language, 'map.addMemo') + '...'}</button>
+            >
+              <strong style={{ fontSize: 14, color: 'var(--ink)' }}>{t(language, 'map.unitMemoLabel')}</strong>
+              <span style={{ overflow: 'hidden', fontSize: 12.5, lineHeight: 1.4, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {memo || t(language, 'map.addMemo')}
+              </span>
+              <span aria-hidden="true" style={{ fontSize: 16 }}>›</span>
+            </button>
           )}
         </div>
 

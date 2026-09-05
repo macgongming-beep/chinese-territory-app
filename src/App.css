@@ -22808,6 +22808,15 @@ button:focus-visible {
   background: #fff;
 }
 
+.unit-grid-row.is-detail-selected {
+  background: #eef4ff;
+  box-shadow: inset 3px 0 0 var(--brand-600);
+}
+
+.unit-grid-row.is-detail-selected .unit-grid-main {
+  background: transparent;
+}
+
 .unit-grid-main {
   display: grid;
   grid-template-columns: 1fr 32px 32px 32px;

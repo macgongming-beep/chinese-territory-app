@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, test, vi } from 'vitest'
 import type { InformalAsset } from '../types'
+import { testBuilding, testCard, testUnit, territoryProps } from '../test/territoryFixture'
 import { MobileMap } from './MobileMap'
 
 const parent: InformalAsset = {
@@ -69,5 +70,50 @@ describe('모바일 비공식 포인트', () => {
       name: '정자',
       memo: '저녁에는 조용합니다.',
     }))
+  })
+})
+
+describe('모바일 세대 상세', () => {
+  test('하단 호수 목록을 유지한 채 다른 세대로 이동하고 닫으면 시트 높이를 복원한다', async () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    const units = [
+      testUnit(203, '203호', { isChinese: true }),
+      testUnit(204, '204호', { isChinese: true }),
+      testUnit(205, '205호', { isChinese: true }),
+    ]
+    const building = testBuilding(9, 1, '우일빌라G동', units)
+    const props = territoryProps({
+      actualRole: 'leader',
+      currentVisitor: '인도자',
+      cards: [testCard(1, '처인구 고림동 9')],
+      buildings: [building],
+      focusedCardId: 1,
+      focusedBuildingId: 9,
+      focusedCardIds: [],
+      serviceSessions: [],
+      specialPeriods: [],
+      eventRestaurantAssignments: [],
+      calendarEvents: [],
+      onBack: vi.fn(),
+    })
+
+    const { container } = render(<MemoryRouter><MobileMap {...(props as never)} /></MemoryRouter>)
+    const sheet = container.querySelector('.mobile-bottom-sheet') as HTMLElement
+    await waitFor(() => expect(screen.getByRole('button', { name: /203호/ })).toBeVisible())
+    const originalHeight = sheet.style.height
+
+    fireEvent.click(screen.getByRole('button', { name: /203호/ }))
+    expect(await screen.findByText('우일빌라G동 203호')).toBeVisible()
+    expect(screen.getByText(/다른 호수를 눌러 이동/)).toBeVisible()
+    expect(screen.getByRole('button', { name: /방문 이력/ })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('button', { name: /203호/ }).closest('.unit-grid-row')).toHaveClass('is-detail-selected')
+
+    fireEvent.click(screen.getByRole('button', { name: /204호/ }))
+    expect(await screen.findByText('우일빌라G동 204호')).toBeVisible()
+    expect(screen.getByRole('button', { name: /204호/ }).closest('.unit-grid-row')).toHaveClass('is-detail-selected')
+
+    fireEvent.click(screen.getByRole('button', { name: '닫기' }))
+    await waitFor(() => expect(screen.queryByText('우일빌라G동 204호')).not.toBeInTheDocument())
+    expect(sheet.style.height).toBe(originalHeight)
   })
 })
