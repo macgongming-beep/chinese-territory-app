@@ -309,6 +309,15 @@ export type ReturnVisitLog = {
   createdBy: string
 }
 
+export type ManualReturnVisitInput = {
+  displayName: string
+  address: string
+  memo: string
+  firstResult: '만남' | '부재' | null
+  unitId?: number | null
+  buildingId?: number | null
+}
+
 /** 식당봉사 활성 세션 (localStorage에 저장) */
 export type ActiveRestaurantSession =
   | { kind: 'building'; buildingId: number; unitId: number; name: string; address: string; startedAt: string }

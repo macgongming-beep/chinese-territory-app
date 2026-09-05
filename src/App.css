@@ -9484,6 +9484,12 @@ button:focus-visible {
   color: #fff;
 }
 
+.rv-chip-selected {
+  border-color: var(--ink-400);
+  background: var(--tint);
+  color: var(--ink-700);
+}
+
 /* 메모 */
 .rv-log-memo {
   width: 100%;

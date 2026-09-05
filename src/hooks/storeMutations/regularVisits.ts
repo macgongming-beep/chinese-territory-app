@@ -1,6 +1,7 @@
-import type { Building, ReturnVisit, TerritoryCard } from '../../types'
-import { supabase, showToast, reportMutationError, requireVisitor, ensureAffectedRows } from './shared'
+import type { Building, ManualReturnVisitInput, ReturnVisit, TerritoryCard } from '../../types'
+import { supabase, showToast, reportMutationError, requireVisitor } from './shared'
 import { msg } from '../../lib/msg'
+import { getAuthToken } from '../../lib/authToken'
 
 export function makeRegularVisitMutations(deps: {
   fetchAll: () => Promise<void>
@@ -158,44 +159,33 @@ export function makeRegularVisitMutations(deps: {
    *   그냥 버렸다. 첫 기록(return_visit_logs)으로 남긴다 — 기록 화면이 이미
    *   그걸 보여 주므로 새 칸을 만들 이유가 없다.
    */
-  const createManualReturnVisit = async (input: {
-    displayName: string
-    address: string
-    memo: string
-    unitId?: number | null
-    buildingId?: number | null
-  }): Promise<boolean> => {
-    const visitor = requireVisitor()
-    if (!visitor) return false
-    const res = await supabase.from('return_visits').insert({
-      unit_id: input.unitId ?? null,
-      building_id: input.buildingId ?? null,
-      display_name: input.displayName,
-      nickname: input.displayName,
-      address: input.address,
-      unit_number: '',
-      assigned_user_name: visitor,
-      created_by: visitor,
-    }).select('id')
-    if (res.error) { reportMutationError(msg('정기방문을 추가하지 못했습니다.'), res.error); return false }
-    if (!ensureAffectedRows(res.data, msg('정기방문을 추가하지 못했습니다.'))) return false
-
-    // 메모가 있으면 첫 기록으로. 빈 기록은 만들지 않는다.
-    const memo = input.memo.trim()
-    const createdId = (res.data as Array<{ id: number }> | null)?.[0]?.id
-    if (memo && createdId) {
-      const logRes = await supabase.from('return_visit_logs').insert({
-        return_visit_id: createdId,
-        result: null,
-        memo,
-        created_by: visitor,
-        visited_at: new Date().toISOString(),
-      })
-      // 정기방문 자체는 이미 만들어졌다. 메모만 실패한 것을 숨기지 않는다.
-      if (logRes.error) showToast(msg('정기방문은 추가됐지만 메모를 남기지 못했습니다.'), 'error')
+  const createManualReturnVisit = async (input: ManualReturnVisitInput): Promise<boolean> => {
+    const token = getAuthToken()
+    if (!token) {
+      showToast(msg('다시 로그인해 주세요.'), 'error')
+      return false
     }
 
-    await fetchAll()
+    const res = await supabase.rpc('create_return_visit_tx', {
+      p_token: token,
+      p_display_name: input.displayName.trim(),
+      p_address: input.address.trim(),
+      p_memo: input.memo.trim(),
+      p_first_result: input.firstResult,
+      p_unit_id: input.unitId ?? null,
+    })
+    if (res.error || !res.data?.id) {
+      reportMutationError(msg('정기방문을 추가하지 못했습니다.'), res.error ?? new Error('Missing return visit result'))
+      return false
+    }
+
+    // 커밋 뒤 새로고침 실패는 중복 등록을 유도하면 더 위험하다.
+    try {
+      await fetchAll()
+    } catch (error) {
+      reportMutationError(msg('등록은 완료됐지만 목록을 새로 불러오지 못했습니다.'), error)
+      return true
+    }
     showToast(msg('정기방문이 추가됐습니다'))
     return true
   }

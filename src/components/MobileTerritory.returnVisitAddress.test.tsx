@@ -84,4 +84,67 @@ describe('정기방문 저장', () => {
     fireEvent.click(screen.getByRole('button', { name: '저장' }))
     await waitFor(() => expect(screen.queryByPlaceholderText('예: 고림동 할머니')).not.toBeInTheDocument())
   })
+
+  test('첫 결과와 메모를 같은 저장 요청에 넘긴다', async () => {
+    const create = vi.fn().mockResolvedValue(true)
+    renderIt({ onCreateManualReturnVisit: create })
+    openAddSheet()
+    fireEvent.change(screen.getByPlaceholderText('예: 고림동 할머니'), { target: { value: '김씨' } })
+    fireEvent.click(screen.getByRole('button', { name: '만남' }))
+    fireEvent.change(screen.getByPlaceholderText('예: 매주 화요일 방문'), { target: { value: '다음 주 재방문' } })
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      displayName: '김씨',
+      memo: '다음 주 재방문',
+      firstResult: '만남',
+    })))
+  })
+
+  test('저장 함수가 예외를 던져도 입력을 유지하고 저장 중 상태를 푼다', async () => {
+    const create = vi.fn().mockRejectedValue(new Error('network'))
+    renderIt({ onCreateManualReturnVisit: create })
+    openAddSheet()
+    fireEvent.change(screen.getByPlaceholderText('예: 고림동 할머니'), { target: { value: '김씨' } })
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(create).toHaveBeenCalled())
+    expect(screen.getByPlaceholderText('예: 고림동 할머니')).toHaveValue('김씨')
+    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled()
+  })
+})
+
+describe('연결된 정기방문 주소 계약', () => {
+  const visit = (unitId: number | null) => ({
+    id: 77,
+    unitId,
+    buildingId: unitId === null ? null : 10,
+    displayName: '테스트 정기방문',
+    nickname: '테스트 정기방문',
+    address: '명지로 116',
+    unitNumber: unitId === null ? '' : '101',
+    assignedUserName: '홍길동',
+    createdBy: '홍길동',
+    lastVisitedAt: null,
+    lastResult: null,
+    createdAt: '2026-09-05T00:00:00Z',
+  })
+
+  const openVisitMenu = () => {
+    fireEvent.click(screen.getByRole('button', { name: /정기 방문 1/ }))
+    const moreButtons = screen.getAllByRole('button', { name: '더보기' })
+    fireEvent.click(moreButtons[moreButtons.length - 1])
+  }
+
+  test('세대에 연결됐으면 주소 수정 메뉴를 보여주지 않는다', () => {
+    renderIt({ returnVisits: [visit(101)] })
+    openVisitMenu()
+    expect(screen.queryByRole('button', { name: '주소 수정' })).not.toBeInTheDocument()
+  })
+
+  test('세대에 연결되지 않은 항목은 주소를 고칠 수 있다', () => {
+    renderIt({ returnVisits: [visit(null)] })
+    openVisitMenu()
+    expect(screen.getByRole('button', { name: '주소 수정' })).toBeVisible()
+  })
 })

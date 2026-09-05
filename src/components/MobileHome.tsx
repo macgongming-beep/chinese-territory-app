@@ -363,7 +363,7 @@ export function MobileHome({
   returnVisits?: ReturnVisit[]
   returnVisitLogs?: ReturnVisitLog[]
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
-  onCreateManualReturnVisit?: (input: { displayName: string; address: string; memo: string; unitId?: number | null; buildingId?: number | null }) => Promise<boolean>
+  onCreateManualReturnVisit?: (input: import('../types').ManualReturnVisitInput) => Promise<boolean>
   onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onUpdateReturnVisitLog?: (id: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onDeleteReturnVisitLog?: (id: number) => Promise<void>

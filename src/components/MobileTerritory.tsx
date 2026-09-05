@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { ActiveRestaurantSession, Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
+import type { ActiveRestaurantSession, Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ManualReturnVisitInput, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t, translateKoreanAddress, weekdayShortLabels } from '../i18n'
 import { getTerritoryCardOperationalState, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
@@ -103,7 +103,7 @@ export function MobileTerritory({
   onOpenInformalMap?: (assetId: number) => void
   onOpenRegularVisitMap?: (returnVisitId?: number) => void
   onEndServiceSession: (sessionId: number) => void
-  onCreateManualReturnVisit?: (input: { displayName: string; address: string; memo: string; unitId?: number | null; buildingId?: number | null }) => Promise<boolean>
+  onCreateManualReturnVisit?: (input: ManualReturnVisitInput) => Promise<boolean>
   onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onUpdateReturnVisitLog?: (id: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onDeleteReturnVisitLog?: (id: number) => Promise<void>
@@ -204,6 +204,7 @@ export function MobileTerritory({
   const [addNickname, setAddNickname] = useState('')
   const [addAddress, setAddAddress] = useState('')
   const [addMemo, setAddMemo] = useState('')
+  const [addFirstResult, setAddFirstResult] = useState<'만남' | '부재' | null>(null)
   const [addSaving, setAddSaving] = useState(false)
   const [addLinked, setAddLinked] = useState<{ building: Building; unit: Unit } | null>(null)
   const [addUnitPickBuilding, setAddUnitPickBuilding] = useState<Building | null>(null)
@@ -925,6 +926,7 @@ export function MobileTerritory({
                         setAddNickname('')
                         setAddAddress('')
                         setAddMemo('')
+                        setAddFirstResult(null)
                         setAddLinked(null)
                         setAddUnitPickBuilding(null)
                       }}
@@ -1039,11 +1041,13 @@ export function MobileTerritory({
                                   onClick={() => { setNicknameEditId(rv.id); setNicknameEditValue(rv.nickname || rv.displayName); setMenuOpenId(null) }}
                                   type="button"
                                 >{t(language, 'territory.editNickname')}</button>
-                                <button
-                                  className="rv-menu-item"
-                                  onClick={() => { setAddressEditId(rv.id); setAddressEditValue(rv.address); setMenuOpenId(null) }}
-                                  type="button"
-                                >{t(language, 'territory.editAddress')}</button>
+                                {rv.unitId === null && (
+                                  <button
+                                    className="rv-menu-item"
+                                    onClick={() => { setAddressEditId(rv.id); setAddressEditValue(rv.address); setMenuOpenId(null) }}
+                                    type="button"
+                                  >{t(language, 'territory.editAddress')}</button>
+                                )}
                                 <button
                                   className="rv-menu-item rv-menu-danger"
                                   disabled={deletingId === rv.id}
@@ -1415,6 +1419,31 @@ export function MobileTerritory({
                 )}
               </div>
 
+              {/* 첫 방문 결과 */}
+              <div className="rv-add-field">
+                <label className="rv-add-label">{msg('오늘 결과')} <span className="rv-add-optional">{t(language, 'territory.optional')}</span></label>
+                <div className="rv-log-result-chips" role="group" aria-label={msg('오늘 결과')}>
+                  <button
+                    className={`rv-chip${addFirstResult === null ? ' rv-chip-selected' : ''}`}
+                    type="button"
+                    aria-pressed={addFirstResult === null}
+                    onClick={() => setAddFirstResult(null)}
+                  >{msg('기록 안 함')}</button>
+                  <button
+                    className={`rv-chip${addFirstResult === '만남' ? ' rv-chip-meet' : ''}`}
+                    type="button"
+                    aria-pressed={addFirstResult === '만남'}
+                    onClick={() => setAddFirstResult('만남')}
+                  >{t(language, 'map.met')}</button>
+                  <button
+                    className={`rv-chip${addFirstResult === '부재' ? ' rv-chip-absent' : ''}`}
+                    type="button"
+                    aria-pressed={addFirstResult === '부재'}
+                    onClick={() => setAddFirstResult('부재')}
+                  >{t(language, 'map.absent')}</button>
+                </div>
+              </div>
+
               {/* 메모 */}
               <div className="rv-add-field">
                 <label className="rv-add-label">{t(language, 'map.memo')} <span className="rv-add-optional">{t(language, 'territory.optional')}</span></label>
@@ -1437,15 +1466,22 @@ export function MobileTerritory({
                     setAddSaving(true)
                     // ⚠ **성공했을 때만 닫는다.** 예전에는 실패해도 닫아서, 오류
                     //   토스트는 뜨는데 별명·주소·연결한 세대가 통째로 날아갔다.
-                    const ok = await onCreateManualReturnVisit({
-                      displayName: addNickname.trim(),
-                      address: addLinked ? addLinked.building.address : addAddress,
-                      memo: addMemo,
-                      unitId: addLinked?.unit.id ?? null,
-                      buildingId: addLinked?.building.id ?? null,
-                    })
-                    setAddSaving(false)
-                    if (ok) setShowAddSheet(false)
+                    try {
+                      const ok = await onCreateManualReturnVisit({
+                        displayName: addNickname.trim(),
+                        address: addLinked ? addLinked.building.address : addAddress,
+                        memo: addMemo,
+                        firstResult: addFirstResult,
+                        unitId: addLinked?.unit.id ?? null,
+                        buildingId: addLinked?.building.id ?? null,
+                      })
+                      if (ok) setShowAddSheet(false)
+                    } catch (error) {
+                      console.error('정기방문 저장 실패:', error)
+                      showToast(msg('정기방문을 추가하지 못했습니다.'), 'error')
+                    } finally {
+                      setAddSaving(false)
+                    }
                   }}
                 >{addSaving ? t(language, 'territory.saving') : t(language, 'common.save')}</button>
               </div>
