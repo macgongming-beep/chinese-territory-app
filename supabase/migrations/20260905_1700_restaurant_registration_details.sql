@@ -16,6 +16,23 @@ drop function if exists public.register_restaurant_v2_tx(uuid,text,text,integer,
 drop function if exists public.approve_restaurant_request_tx(uuid,integer,text,text,integer,integer,double precision,double precision);
 drop function if exists private.register_restaurant_core(text,text,text,integer,integer,double precision,double precision,boolean,text,text,timestamptz,text);
 
+-- 건물 표시명(shortAddress)과 동일한 도로명+건물번호 부분만 비교 키로 쓴다.
+-- 실제 동일성 판정에서는 좌표 근접도도 함께 확인해 다른 도시의 동명 도로를 합치지 않는다.
+create or replace function private.restaurant_address_key(p_value text)
+returns text
+language sql immutable
+set search_path = ''
+as $$
+  select coalesce(
+    lower(regexp_replace(
+      substring(btrim(coalesce(p_value, '')) from '([가-힣A-Za-z0-9]+(로|길)[0-9]*(번길)?[[:space:]]*[0-9]+(-[0-9]+)?)'),
+      '[[:space:]]', '', 'g'
+    )),
+    lower(regexp_replace(btrim(coalesce(p_value, '')), '[[:space:]]', '', 'g'))
+  )
+$$;
+revoke all on function private.restaurant_address_key(text) from public, anon, authenticated;
+
 create or replace function private.register_restaurant_core(
   p_actor_name text,
   p_name text,
@@ -33,7 +50,7 @@ create or replace function private.register_restaurant_core(
 )
 returns jsonb
 language plpgsql security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   v_building integer;
@@ -42,8 +59,12 @@ declare
   v_matches integer;
   v_name text := btrim(p_name);
   v_address text := btrim(p_address);
+  v_address_key text;
   v_unit_status text;
   v_visit_result text;
+  v_unit_existed boolean := false;
+  v_existing_status text;
+  v_existing_regular text;
 begin
   if coalesce(v_name, '') = '' or coalesce(v_address, '') = '' then
     raise exception '식당 이름과 주소를 입력하세요';
@@ -62,7 +83,8 @@ begin
     raise exception '좌표가 올바르지 않습니다';
   end if;
 
-  perform pg_advisory_xact_lock(hashtextextended(regexp_replace(v_address, '\s', '', 'g'), 9051700));
+  v_address_key := private.restaurant_address_key(v_address);
+  perform pg_advisory_xact_lock(hashtextextended(v_address_key, 9051700));
 
   if p_existing_building_id is not null then
     select id into v_building from public.buildings
@@ -71,7 +93,14 @@ begin
   else
     select count(*), min(id) into v_matches, v_building
     from public.buildings
-    where regexp_replace(address, '\s', '', 'g') = regexp_replace(v_address, '\s', '', 'g');
+    where lower(regexp_replace(btrim(address), '[[:space:]]', '', 'g'))
+            = lower(regexp_replace(v_address, '[[:space:]]', '', 'g'))
+       or (
+         private.restaurant_address_key(address) = v_address_key
+         and coalesce(p_lat, 0) <> 0 and coalesce(p_lng, 0) <> 0
+         and abs(coalesce(lat, 0) - p_lat) <= 0.002
+         and abs(coalesce(lng, 0) - p_lng) <= 0.002
+       );
     if v_matches > 1 then raise exception '같은 주소의 건물이 여러 개입니다. 기존 건물을 선택하세요'; end if;
     if v_building is not null and not exists (
       select 1 from public.buildings where id = v_building and type = '상가'
@@ -99,6 +128,12 @@ begin
   if v_matches > 1 then
     raise exception '같은 이름의 세대가 여러 개입니다. 세대 정보를 확인하세요';
   end if;
+  if v_unit is not null then
+    v_unit_existed := true;
+    select status into v_existing_status from public.units where id = v_unit for update;
+    select visitor_name into v_existing_regular
+    from public.regular_visits where unit_id = v_unit for update;
+  end if;
 
   v_unit_status := case when p_initial_state = '정기방문' then '만남' else p_initial_state end;
   if v_unit is null then
@@ -108,19 +143,36 @@ begin
   else
     update public.units
     set is_restaurant = true,
-        is_chinese = p_is_chinese,
-        status = v_unit_status
+        status = case
+          when status = '미방문'
+           and p_initial_state <> '미방문'
+           and not exists (
+             select 1 from public.visit_histories h
+             where h.unit_id = v_unit
+               and h.visited_at > coalesce(p_visited_at, now())
+           )
+          then v_unit_status
+          else status
+        end
     where id = v_unit;
   end if;
   update public.buildings set is_restaurant = true where id = v_building;
 
   if p_initial_state = '정기방문' then
-    insert into public.regular_visits (unit_id, visitor_name, registered_at)
-    values (v_unit, btrim(p_regular_visitor), coalesce(p_visited_at, now()))
-    on conflict (unit_id) do update set visitor_name = excluded.visitor_name;
+    if v_unit_existed and v_existing_status in ('대상외', '거절') then
+      raise exception '기존 세대 상태가 %입니다. 상태를 먼저 확인하세요', v_existing_status;
+    end if;
+    if v_existing_regular is not null
+       and lower(btrim(v_existing_regular)) <> lower(btrim(p_regular_visitor)) then
+      raise exception '이미 %님이 정기방문을 담당하고 있습니다', v_existing_regular;
+    end if;
+    if v_existing_regular is null then
+      insert into public.regular_visits (unit_id, visitor_name, registered_at)
+      values (v_unit, btrim(p_regular_visitor), coalesce(p_visited_at, now()))
+      on conflict (unit_id) do nothing;
+    end if;
     v_visit_result := '만남';
   else
-    delete from public.regular_visits where unit_id = v_unit;
     if p_initial_state <> '미방문' then v_visit_result := p_initial_state; end if;
   end if;
 
@@ -159,7 +211,7 @@ create or replace function public.register_restaurant_v2_tx(
 )
 returns jsonb
 language plpgsql security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   v_actor integer;
@@ -193,7 +245,7 @@ create or replace function public.approve_restaurant_request_tx(
 )
 returns jsonb
 language plpgsql security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   v_actor integer;
