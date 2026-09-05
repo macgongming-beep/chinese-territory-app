@@ -118,6 +118,12 @@ describe('모바일 세대 상세', () => {
     expect(screen.getByText(/못 만난 시간 · 주말 오후/)).toBeVisible()
     expect(screen.getByRole('button', { name: /203호/ }).closest('.unit-grid-row')).toHaveClass('is-detail-selected')
 
+    fireEvent.click(screen.getByRole('button', { name: '메모 쓰기' }))
+    expect(screen.getByPlaceholderText(/메모를 입력하세요/)).toBeVisible()
+    expect(screen.getByRole('button', { name: '메모 닫기' })).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(screen.getByRole('button', { name: '메모 닫기' }))
+    expect(screen.queryByPlaceholderText(/메모를 입력하세요/)).not.toBeInTheDocument()
+
     fireEvent.click(screen.getByRole('button', { name: /204호/ }))
     expect(await screen.findByText('우일빌라G동 204호')).toBeVisible()
     expect(screen.getByRole('button', { name: /204호/ }).closest('.unit-grid-row')).toHaveClass('is-detail-selected')

@@ -2529,7 +2529,14 @@ function UnitDetailScreen({
 
   const memo = unitMemos[unit.id] ?? unit.memo ?? ''
 
-  const sectionStyle: React.CSSProperties = { padding: '12px', marginBottom: 6, background: 'var(--surface)', borderRadius: 10 }
+  const sectionStyle: React.CSSProperties = {
+    padding: '12px',
+    marginBottom: 6,
+    background: 'var(--surface)',
+    border: '1px solid var(--line)',
+    borderRadius: 10,
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.035)',
+  }
   const sectionTitleStyle: React.CSSProperties = { margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: 'var(--ink)' }
 
   return (
@@ -2736,12 +2743,27 @@ function UnitDetailScreen({
                         </div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-                          {!h.memo && canRecordVisits && onUpdateVisitHistory && (
+                          {canRecordVisits && onUpdateVisitHistory && (
                             <button
-                              onClick={() => { setInlineMemoHistoryId(h.id); setInlineMemoDraft('') }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 10.5, padding: '2px 4px' }}
+                              aria-expanded={isMemoOpen}
+                              onClick={() => {
+                                if (isMemoOpen) {
+                                  setInlineMemoHistoryId(null)
+                                  setInlineMemoDraft('')
+                                  return
+                                }
+                                setInlineMemoHistoryId(h.id)
+                                setInlineMemoDraft(h.memo ?? '')
+                              }}
+                              style={{
+                                border: `1px solid ${isMemoOpen ? `${c}55` : 'var(--line)'}`,
+                                borderRadius: 6,
+                                background: isMemoOpen ? `${c}12` : 'var(--bg)',
+                                cursor: 'pointer', color: isMemoOpen ? c : 'var(--muted)',
+                                fontSize: 10.5, fontWeight: 600, padding: '3px 6px',
+                              }}
                               type="button"
-                            >{t(language, 'map.memo')}</button>
+                            >{isMemoOpen ? msg('메모 닫기') : msg('메모 쓰기')}</button>
                           )}
                           {canRecordVisits && (
                             <button onClick={() => setEditingHistoryId(h.id)}
