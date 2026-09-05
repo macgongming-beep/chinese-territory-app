@@ -4,6 +4,16 @@
 // 여기에 없는 문장은 한국어로 표시되므로, 새 문구를 추가하면 여기에도 넣어 준다.
 
 export const messagesEn: Record<string, string> = {
+  '식당 등록': 'Register restaurant',
+  '식당 이름': 'Restaurant name',
+  '새 건물': 'New building',
+  '기존 건물': 'Existing building',
+  '건물 검색': 'Search buildings',
+  '건물 선택': 'Select a building',
+  '등록 중...': 'Registering...',
+  '식당을 등록하지 못했습니다.': 'Could not register the restaurant.',
+  '등록은 완료됐지만 목록을 새로 불러오지 못했습니다.': 'The restaurant was registered, but the list could not be refreshed.',
+  '식당이 등록됐습니다.': 'Restaurant registered.',
   '당겨서 새로고침': 'Pull to refresh',
   '놓으면 새로고침': 'Release to refresh',
   '새로고침 중...': 'Refreshing...',

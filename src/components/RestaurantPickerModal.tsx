@@ -32,7 +32,7 @@ export function RestaurantPickerModal({
       .filter((b) => (restaurantOnly ? b.isRestaurant : true))
       .filter((b) => {
         if (!q) return true
-        return normalizeCardSearch(`${b.name}${b.address}`).includes(q)
+        return normalizeCardSearch(`${b.name} ${b.address} ${b.units.map(u => u.number).join(' ')}`).includes(q)
       })
       .slice(0, 100)
   }, [buildings, search, restaurantOnly])

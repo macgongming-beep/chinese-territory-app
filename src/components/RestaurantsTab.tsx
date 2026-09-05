@@ -2,7 +2,8 @@
 // 식당 표시된 상가 목록 (지역별 그룹) + 추가 모달 + 식당봉사 신청 승인
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Building, Unit, RestaurantRequest, Role, TerritoryCard, VisitHistory } from '../types'
-import { RestaurantPickerModal } from './RestaurantPickerModal'
+import { RestaurantRegistrationModal } from './RestaurantRegistrationModal'
+import type { RegisterRestaurant } from '../types/restaurantRegistration'
 import { confirmDialog } from '../lib/confirm'
 import { msg } from '../lib/msg'
 import { normalizeCardSearch } from '../utils/cardSearch'
@@ -571,6 +572,7 @@ type Props = {
   cards: TerritoryCard[]
   currentVisitor?: string
   restaurantRequests?: RestaurantRequest[]
+  onRegisterRestaurant?: RegisterRestaurant
   onToggleRestaurantFlag?: (buildingId: number, isRestaurant: boolean) => Promise<void>
   onRemoveRestaurantUnit?: (unitId: number, buildingId: number) => Promise<void>
   onBulkSetRestaurant?: (buildingIds: number[], nameUpdates?: { id: number; name: string }[]) => Promise<void>
@@ -588,7 +590,7 @@ type Props = {
 
 export function RestaurantsTab({
   role, buildings, cards, currentVisitor = '', restaurantRequests = [],
-  onToggleRestaurantFlag, onRemoveRestaurantUnit, onBulkSetRestaurant, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap, onOpenBuildingMap,
+  onRegisterRestaurant, onToggleRestaurantFlag, onRemoveRestaurantUnit, onBulkSetRestaurant, onApproveRestaurantRequest, onRejectRestaurantRequest, onOpenMap, onOpenBuildingMap,
   visitHistories = [], onUpdateUnitFlags,
   language = 'ko',
   translatePlaceNames = false,
@@ -840,7 +842,7 @@ export function RestaurantsTab({
                 <UploadIcon /> {copy.csvBulk}
               </button>
             )}
-            <button type="button" onClick={() => setAddOpen(true)}
+            <button type="button" onClick={() => setAddOpen(true)} disabled={!onRegisterRestaurant}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, minHeight: 32, padding: '0 12px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', letterSpacing: '-0.005em' }}>
               <PlusIcon /> {copy.addRestaurant}
             </button>
@@ -1124,7 +1126,7 @@ export function RestaurantsTab({
               )}
             </section>
           ))}
-          {canManage && (
+          {canManage && onRegisterRestaurant && (
             <button type="button" onClick={() => setAddOpen(true)}
               style={{ padding: '18px 14px', border: '1px dashed var(--line-2)', background: 'transparent', color: 'var(--muted)', borderRadius: 12, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', font: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', minHeight: 0 }}>
               <PlusIcon /> {copy.addNext}
@@ -1133,14 +1135,10 @@ export function RestaurantsTab({
         </div>
       )}
 
-      {canManage && (
-        <RestaurantPickerModal
-          open={addOpen}
-          role={role}
+      {canManage && addOpen && onRegisterRestaurant && (
+        <RestaurantRegistrationModal
           buildings={buildings}
-          alreadyAssignedIds={new Set()}
-          onSelect={() => setAddOpen(false)}
-          onToggleRestaurantFlag={onToggleRestaurantFlag}
+          onRegister={onRegisterRestaurant}
           onClose={() => setAddOpen(false)}
         />
       )}

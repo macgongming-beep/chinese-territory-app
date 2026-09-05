@@ -72,6 +72,7 @@ type Props = {
   ) => Promise<boolean>
   onToggleBuildingRestaurant?: (buildingId: number, isRestaurant: boolean) => Promise<void>
   restaurantRequests?: import('../../types').RestaurantRequest[]
+  onRegisterRestaurant?: import('../../types/restaurantRegistration').RegisterRestaurant
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
 }
@@ -149,6 +150,7 @@ export function AdminMobileZone({
   onUpdateInformalPlace,
   onOpenInformalOnMap,
   onToggleBuildingRestaurant,
+  onRegisterRestaurant,
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
 }: Props) {
@@ -459,6 +461,7 @@ export function AdminMobileZone({
           restaurantRequests={restaurantRequests}
           onToggleRestaurantFlag={onToggleBuildingRestaurant}
           onRemoveRestaurantUnit={onRemoveRestaurantUnit}
+          onRegisterRestaurant={onRegisterRestaurant}
           onApproveRestaurantRequest={onApproveRestaurantRequest}
           onRejectRestaurantRequest={onRejectRestaurantRequest}
           onOpenMap={(cardId) => onOpenMap(cardId)}

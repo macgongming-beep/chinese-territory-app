@@ -182,6 +182,7 @@ function App() {
     addRestaurantVisit,
     submitRestaurantRequest,
     updateRestaurantRequestMemo,
+    registerRestaurant,
     approveRestaurantRequest,
     rejectRestaurantRequest,
   } = useStore(Boolean(user))
@@ -423,6 +424,7 @@ function App() {
             restaurantRequests={restaurantRequests}
             globalSettings={globalSettings}
             onUpsertGlobalSetting={upsertGlobalSetting}
+            onRegisterRestaurant={registerRestaurant}
             onApproveRestaurantRequest={approveRestaurantRequest}
             onRejectRestaurantRequest={rejectRestaurantRequest}
           />
@@ -523,6 +525,7 @@ function App() {
               onAddRestaurantVisit={addRestaurantVisit}
               onSubmitRestaurantRequest={submitRestaurantRequest}
               onUpdateRestaurantRequestMemo={updateRestaurantRequestMemo}
+              onRegisterRestaurant={registerRestaurant}
               onApproveRestaurantRequest={approveRestaurantRequest}
               onRejectRestaurantRequest={rejectRestaurantRequest}
             />

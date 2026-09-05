@@ -5,6 +5,20 @@ import { getGeocodeCandidates } from '../../utils/geocodeCandidates'
 import { shortAddress } from '../../utils/shortAddress'
 import { ensureAffectedRows, reportMutationError, showToast, supabase } from './shared'
 import { msg } from '../../lib/msg'
+import { getAuthToken } from '../../lib/authToken'
+import type { RegisterRestaurant } from '../../types/restaurantRegistration'
+
+async function geocodeRestaurantAddress(address: string) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      geocodeFirstMatch(getGeocodeCandidates(address)),
+      new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), 5000) }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
 
 export function makeRestaurantServiceMutations(deps: {
   fetchAll: () => Promise<void>
@@ -12,6 +26,36 @@ export function makeRestaurantServiceMutations(deps: {
   cardBoundaries: CardBoundary[]
 }) {
   const { fetchAll, buildings, cardBoundaries } = deps
+
+  const registerRestaurant: RegisterRestaurant = async (input) => {
+    try {
+      const token = getAuthToken()
+      if (!token) throw new Error(msg('다시 로그인해 주세요.'))
+      const coords = input.existingBuildingId ? null : await geocodeRestaurantAddress(input.address)
+      const cardId = coords ? findCardForCoordinates(coords.lat, coords.lng, cardBoundaries) : null
+      const result = await supabase.rpc('register_restaurant_tx', {
+        p_token: token,
+        p_name: input.name.trim(),
+        p_address: input.address.trim(),
+        p_existing_building_id: input.existingBuildingId,
+        p_card_id: cardId ?? null,
+        p_lat: coords?.lat ?? 0,
+        p_lng: coords?.lng ?? 0,
+      })
+      if (result.error) throw result.error
+      if (!result.data?.unit_id || !result.data?.building_id) throw new Error('Missing restaurant result')
+    } catch (error) {
+      reportMutationError(msg('식당을 등록하지 못했습니다.'), error)
+      return false
+    }
+    // A refresh failure must not invite another insert after a committed write.
+    try { await fetchAll() } catch (error) {
+      reportMutationError(msg('등록은 완료됐지만 목록을 새로 불러오지 못했습니다.'), error)
+      return true
+    }
+    showToast(msg('식당이 등록됐습니다.'))
+    return true
+  }
 
 
 
@@ -270,6 +314,7 @@ export function makeRestaurantServiceMutations(deps: {
   }
 
   return {
+    registerRestaurant,
     addRestaurantVisit,
     submitRestaurantRequest,
     updateRestaurantRequestMemo,

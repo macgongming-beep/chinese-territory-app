@@ -783,6 +783,7 @@ export function useStore(enabled: boolean = true) {
 
   const {
     addRestaurantVisit,
+    registerRestaurant,
     submitRestaurantRequest,
     updateRestaurantRequestMemo,
     approveRestaurantRequest,
@@ -915,5 +916,6 @@ export function useStore(enabled: boolean = true) {
     updateRestaurantRequestMemo,
     approveRestaurantRequest,
     rejectRestaurantRequest,
+    registerRestaurant,
   }
 }

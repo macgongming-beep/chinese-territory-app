@@ -132,6 +132,7 @@ export function DesktopTerritory({
   onRemoveRestaurantUnit,
   onBulkSetRestaurant,
   restaurantRequests = [],
+  onRegisterRestaurant,
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
 }: {
@@ -211,6 +212,7 @@ export function DesktopTerritory({
   onRemoveRestaurantUnit?: (unitId: number, buildingId: number) => Promise<void>
   onBulkSetRestaurant?: (buildingIds: number[], nameUpdates?: { id: number; name: string }[]) => Promise<void>
   restaurantRequests?: import('../types').RestaurantRequest[]
+  onRegisterRestaurant?: import('../types/restaurantRegistration').RegisterRestaurant
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
 }) {
@@ -1351,6 +1353,7 @@ export function DesktopTerritory({
               onToggleRestaurantFlag={onToggleBuildingRestaurant}
               onRemoveRestaurantUnit={onRemoveRestaurantUnit}
               onBulkSetRestaurant={onBulkSetRestaurant}
+              onRegisterRestaurant={onRegisterRestaurant}
               onApproveRestaurantRequest={onApproveRestaurantRequest}
               onRejectRestaurantRequest={onRejectRestaurantRequest}
               onOpenMap={(cardId) => onOpenCardMap(cardId)}

@@ -307,6 +307,7 @@ export function MobileHome({
   onSubmitRestaurantRequest,
   onUpdateRestaurantRequestMemo,
   restaurantRequests = [],
+  onRegisterRestaurant,
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
   globalSettings = {},
@@ -426,6 +427,7 @@ export function MobileHome({
   onSubmitRestaurantRequest?: (name: string, address: string, memo: string) => Promise<void>
   onUpdateRestaurantRequestMemo?: (requestId: number, memo: string) => Promise<void>
   restaurantRequests?: import('../types').RestaurantRequest[]
+  onRegisterRestaurant?: import('../types/restaurantRegistration').RegisterRestaurant
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
   globalSettings?: Record<string, string>
@@ -1058,6 +1060,7 @@ export function MobileHome({
                 /* 식당 토글은 leader/admin 모두, user 는 제외 */
                 onToggleBuildingRestaurant={role === 'user' ? undefined : onToggleBuildingRestaurant}
                 restaurantRequests={restaurantRequests}
+                onRegisterRestaurant={onRegisterRestaurant}
                 onApproveRestaurantRequest={onApproveRestaurantRequest}
                 onRejectRestaurantRequest={onRejectRestaurantRequest}
               />

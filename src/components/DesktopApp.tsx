@@ -161,6 +161,7 @@ export function DesktopApp({
   onRemoveRestaurantUnit,
   onBulkSetRestaurant,
   restaurantRequests = [],
+  onRegisterRestaurant,
   onApproveRestaurantRequest,
   onRejectRestaurantRequest,
   language,
@@ -317,6 +318,7 @@ export function DesktopApp({
   onRemoveRestaurantUnit?: (unitId: number, buildingId: number) => Promise<void>
   onBulkSetRestaurant?: (buildingIds: number[], nameUpdates?: { id: number; name: string }[]) => Promise<void>
   restaurantRequests?: import('../types').RestaurantRequest[]
+  onRegisterRestaurant?: import('../types/restaurantRegistration').RegisterRestaurant
   onApproveRestaurantRequest?: (id: number, opts: { name: string; address: string; reviewer: string; existingBuildingId?: number | null; lat?: number; lng?: number }) => Promise<void>
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
   currentUser: AuthUser
@@ -652,6 +654,7 @@ export function DesktopApp({
               onRemoveRestaurantUnit={onRemoveRestaurantUnit}
               onBulkSetRestaurant={onBulkSetRestaurant}
               restaurantRequests={restaurantRequests}
+              onRegisterRestaurant={onRegisterRestaurant}
               onApproveRestaurantRequest={onApproveRestaurantRequest}
               onRejectRestaurantRequest={onRejectRestaurantRequest}
             />
@@ -768,6 +771,7 @@ export function DesktopApp({
                 onRemoveRestaurantUnit={onRemoveRestaurantUnit}
                 onBulkSetRestaurant={onBulkSetRestaurant}
                 restaurantRequests={restaurantRequests}
+                onRegisterRestaurant={onRegisterRestaurant}
                 onApproveRestaurantRequest={onApproveRestaurantRequest}
                 onRejectRestaurantRequest={onRejectRestaurantRequest}
               />
