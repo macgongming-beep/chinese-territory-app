@@ -718,7 +718,7 @@ export function MobileHome({
             serviceSessions={serviceSessions}
             focusedCardId={safeFocusedMapCardId}
             focusedCardIds={safeFocusedMapCardIds}
-            focusedBuildingId={focusedRegularVisitBuildingId}
+            focusedBuildingId={isRegularVisitMapScope ? focusedRegularVisitBuildingId : requestedRegularVisitBuildingId}
             regularVisitScope={isRegularVisitMapScope}
             focusedScopeLabel={focusedMapScopeLabel}
             onBack={() => navigate(-1)}

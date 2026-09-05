@@ -7,8 +7,8 @@ export function placeDeletionCopy(role: Role, target: 'building' | 'unit', count
     return {
       actionLabel: '삭제',
       title: `${noun} 삭제`,
-      confirmLabel: '삭제',
-      description: `${counted}를 삭제하면 연결된 방문 기록도 영구 삭제될 수 있습니다.`,
+      confirmLabel: '확인',
+      description: `연결된 기록이 없으면 ${counted}를 삭제합니다. 기록이 있으면 요청함에서 영향 범위를 확인한 뒤 영구 삭제할 수 있습니다.`,
     }
   }
   if (role === 'leader') {

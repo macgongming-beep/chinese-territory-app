@@ -1,4 +1,4 @@
-import type { PlaceChangeRequest, PlaceIssueType } from '../../types'
+import type { PlaceChangeRequest, PlaceImpactSnapshot, PlaceIssueType } from '../../types'
 import { getAuthToken } from '../../lib/authToken'
 import { reportMutationError, showToast, supabase } from './shared'
 
@@ -18,6 +18,22 @@ type RequestRow = {
   review_note: string | null
   created_at: string
   reviewed_at: string | null
+  impact_snapshot?: Record<string, unknown> | null
+}
+
+function impactNumber(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+
+function toImpact(value: RequestRow['impact_snapshot']): PlaceImpactSnapshot {
+  return {
+    unitCount: impactNumber(value?.unit_count),
+    visitHistoryCount: impactNumber(value?.visit_history_count),
+    regularVisitCount: impactNumber(value?.regular_visit_count),
+    returnVisitCount: impactNumber(value?.return_visit_count),
+    phoneSurveyCount: impactNumber(value?.phone_survey_count),
+    assignmentCount: impactNumber(value?.assignment_count),
+  }
 }
 
 function toRequest(row: RequestRow): PlaceChangeRequest {
@@ -37,10 +53,19 @@ function toRequest(row: RequestRow): PlaceChangeRequest {
     reviewNote: row.review_note ?? '',
     createdAt: row.created_at,
     reviewedAt: row.reviewed_at,
+    impact: toImpact(row.impact_snapshot),
   }
 }
 
 export async function fetchPlaceChangeRequests(showClosed: boolean): Promise<PlaceChangeRequest[] | null> {
+  const token = getAuthToken()
+  if (token) {
+    const refresh = await supabase.rpc('refresh_place_change_request_impacts_tx', { p_token: token })
+    if (refresh.error) {
+      reportMutationError('연결 자료를 확인하지 못했습니다.', refresh.error)
+      return null
+    }
+  }
   const query = supabase.from('place_change_requests').select('*').order('created_at', { ascending: false })
   const result = showClosed ? await query.limit(100) : await query.eq('status', 'pending').limit(100)
   if (result.error) {
@@ -70,6 +95,24 @@ export async function reviewPlaceChangeRequest(
     return false
   }
   showToast(status === 'completed' ? '처리 완료로 표시했습니다.' : '요청을 반려했습니다.')
+  return true
+}
+
+export async function executePlaceDeletionRequest(id: number): Promise<boolean> {
+  const token = getAuthToken()
+  if (!token) {
+    showToast('다시 로그인해 주세요.', 'error')
+    return false
+  }
+  const result = await supabase.rpc('execute_place_deletion_request_tx', {
+    p_token: token,
+    p_request_id: id,
+  })
+  if (result.error || result.data?.ok !== true || result.data?.action !== 'deleted') {
+    reportMutationError('장소를 삭제하지 못했습니다.', result.error ?? new Error('Missing deletion result'))
+    return false
+  }
+  showToast('장소와 연결 자료를 삭제했습니다')
   return true
 }
 

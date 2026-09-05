@@ -14,6 +14,7 @@ declare
   v_building_id integer;
   v_unit_id bigint;
   v_result jsonb;
+  v_request_id bigint;
   v_count integer;
 begin
   select id into v_admin_id from public.app_users
@@ -64,15 +65,53 @@ begin
     raise exception '인도자 요청 과정에서 세대 상태가 사라졌습니다';
   end if;
 
-  -- 관리자는 명시적인 삭제 요청으로 연결 자료까지 정리할 수 있다.
+  -- 관리자도 연결 자료가 있으면 요청함에서 영향 범위를 확인해야 한다.
   insert into public.visit_histories(unit_id,visitor_name,result,time_slot,visited_at)
   values(v_unit_id,v_marker||'_인도자','만남','오후',current_date);
   v_result := public.delete_place_or_request_tx(v_admin_token,'unit',v_unit_id,'unit_missing','');
+  if v_result->>'action' <> 'requested' or not exists(select 1 from public.units where id=v_unit_id) then
+    raise exception '관리자의 연결 자료 삭제가 요청으로 바뀌지 않았습니다: %',v_result;
+  end if;
+  v_request_id := (v_result->>'request_id')::bigint;
+  if (select (impact_snapshot->>'visit_history_count')::integer from public.place_change_requests where id=v_request_id) <> 1 then
+    raise exception '삭제 요청에 방문 기록 영향이 저장되지 않았습니다';
+  end if;
+
+  begin
+    perform public.review_place_change_request_tx(v_admin_token,v_request_id,'completed','');
+    raise exception '삭제하지 않은 요청이 처리 완료로 바뀌었습니다';
+  exception
+    when check_violation then null;
+  end;
+
+  -- 반려는 요청만 닫고 장소와 기록을 그대로 둔다.
+  perform public.review_place_change_request_tx(v_admin_token,v_request_id,'rejected','보존');
+  if not exists(select 1 from public.units where id=v_unit_id)
+     or not exists(select 1 from public.visit_histories where unit_id=v_unit_id) then
+    raise exception '삭제 요청 반려가 장소나 기록을 삭제했습니다';
+  end if;
+
+  -- 요청함의 영구 삭제만 장소와 연결 자료를 한 트랜잭션으로 정리한다.
+  v_result := public.delete_place_or_request_tx(v_admin_token,'unit',v_unit_id,null,'');
+  v_request_id := (v_result->>'request_id')::bigint;
+  begin
+    perform public.execute_place_deletion_request_tx(v_user_token,v_request_id);
+    raise exception '일반 사용자가 관리자 삭제 확정 RPC를 통과했습니다';
+  exception
+    when sqlstate '42501' then null;
+  end;
+  if not exists(select 1 from public.units where id=v_unit_id) then
+    raise exception '일반 사용자의 삭제 확정 시도가 장소를 삭제했습니다';
+  end if;
+  v_result := public.execute_place_deletion_request_tx(v_admin_token,v_request_id);
   if v_result->>'action' <> 'deleted' or exists(select 1 from public.units where id=v_unit_id) then
-    raise exception '관리자 삭제가 실행되지 않았습니다: %',v_result;
+    raise exception '요청함의 관리자 영구 삭제가 실행되지 않았습니다: %',v_result;
   end if;
   if exists(select 1 from public.visit_histories where unit_id=v_unit_id) then
     raise exception '관리자 삭제 뒤 FK 연결 자료가 남았습니다';
+  end if;
+  if not exists(select 1 from public.place_change_requests where id=v_request_id and status='completed') then
+    raise exception '영구 삭제와 요청 완료가 함께 저장되지 않았습니다';
   end if;
 
   select count(*) into v_count from pg_policies
@@ -86,6 +125,9 @@ begin
   if v_count <> 2 then raise exception '관리자 전용 직접 DELETE 정책이 정확히 두 개가 아닙니다'; end if;
   if not has_function_privilege('anon','public.delete_place_or_request_tx(uuid,text,bigint,text,text)','execute') then
     raise exception 'anon이 안전 삭제 RPC를 호출할 수 없습니다';
+  end if;
+  if not has_function_privilege('anon','public.execute_place_deletion_request_tx(uuid,bigint)','execute') then
+    raise exception 'anon이 관리자 삭제 확정 RPC를 호출할 수 없습니다';
   end if;
 end;
 $$;

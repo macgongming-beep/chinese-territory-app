@@ -151,6 +151,7 @@ export function MobileMap({
 }) {
   // URL 파라미터 (가상 핀용)
   const [searchParams] = useSearchParams()
+  const focusedUnitId = searchParams.get('unitId') ? Number(searchParams.get('unitId')) : null
   const addrParam = searchParams.get('addr')
   const pinLabelParam = searchParams.get('pinLabel') ?? addrParam ?? ''
   const [virtualPinLat, setVirtualPinLat] = useState<number | null>(null)
@@ -577,7 +578,12 @@ export function MobileMap({
     if (!building) return
     setSelectedBuildingId(focusedBuildingId)
     setExpandedBuildingIds(new Set([focusedBuildingId]))
-    setFullScreenUnit(null)
+    const focusedUnit = focusedUnitId == null ? null : building.units.find((unit) => unit.id === focusedUnitId)
+    setFullScreenUnit(focusedUnit ? {
+      unit: focusedUnit,
+      building,
+      unitHistories: visitHistories.filter((history) => history.unitId === focusedUnit.id),
+    } : null)
     setSheetHeight((height) => Math.max(height, HALF_HEIGHT))
     setCollapsedStatusGroups((prev) => {
       const next = new Set(prev)
@@ -590,7 +596,7 @@ export function MobileMap({
     }, 250)
   // moveMobileMapToBuilding intentionally reads the current map instance.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildings, focusedBuildingId])
+  }, [buildings, focusedBuildingId, focusedUnitId, visitHistories])
 
   useEffect(() => {
     if (!isUserMap || focusedCardId != null || !activeServiceSession?.primaryCardId) return
@@ -1755,13 +1761,15 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                     setShowDeleteConfirm(false)
                                   }}
                                 >{t(language, 'map.settings')}</button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setBuildingMenuId(null)
-                                    setPlaceRequestTarget({ building })
-                                  }}
-                                >{msg('자료 수정 요청')}</button>
+                                {actualRole === 'user' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setBuildingMenuId(null)
+                                      setPlaceRequestTarget({ building })
+                                    }}
+                                  >{msg('자료 수정 요청')}</button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -2252,14 +2260,16 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                       }}
                       style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--line)', cursor: 'pointer', fontSize: 13, color: 'var(--ink)', textAlign: 'left' }}
                     >{t(language, 'map.editUnit')}</button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowUnitHeaderMenu(false)
-                        setPlaceRequestTarget({ building: liveFullScreenUnit.building, unit: liveFullScreenUnit.unit })
-                      }}
-                      style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--line)', cursor: 'pointer', fontSize: 13, color: 'var(--ink)', textAlign: 'left' }}
-                    >{msg('자료 수정 요청')}</button>
+                    {actualRole === 'user' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowUnitHeaderMenu(false)
+                          setPlaceRequestTarget({ building: liveFullScreenUnit.building, unit: liveFullScreenUnit.unit })
+                        }}
+                        style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--line)', cursor: 'pointer', fontSize: 13, color: 'var(--ink)', textAlign: 'left' }}
+                      >{msg('자료 수정 요청')}</button>
+                    )}
                     <button
                       type="button"
                       onClick={async () => {

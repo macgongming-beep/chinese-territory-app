@@ -328,6 +328,16 @@ export type PlaceChangeRequest = {
   reviewNote: string
   createdAt: string
   reviewedAt: string | null
+  impact: PlaceImpactSnapshot
+}
+
+export type PlaceImpactSnapshot = {
+  unitCount: number
+  visitHistoryCount: number
+  regularVisitCount: number
+  returnVisitCount: number
+  phoneSurveyCount: number
+  assignmentCount: number
 }
 
 export type ReturnVisitLog = {
