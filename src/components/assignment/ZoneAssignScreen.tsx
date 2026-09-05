@@ -9,7 +9,7 @@ import { useMemo, useState } from 'react'
 import { getRegionNames, stripRegionPrefix } from '../../lib/regions'
 import type { Dispatch } from 'react'
 import type { Building, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, TerritoryCard, VisitHistory } from '../../types'
-import { matchesName } from '../../utils/koreanSearch'
+import { assignableInformalAssets } from '../../utils/informalAssets'
 import { getRestaurantUnits } from '../../utils/restaurants'
 import { t, currentLang } from '../../i18n'
 import { showToast } from '../../lib/toast'
@@ -274,8 +274,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
   // 비공식 — 그룹(미분류 + 그룹)별 묶음. 구역 비공식 화면과 동일한 구성.
   const informalGroupSections = useMemo(() => {
     const memberSet = new Set(teams.find((t) => t.id === activeTeamId)?.members ?? [])
-    const q = query.trim()
-    const visible = informalAssets.filter((a) => !a.archived && (!q || matchesName(a.name, q) || a.name.includes(q)))
+    const visible = assignableInformalAssets(informalAssets, query)
     const byGroup = new Map<number | 'null', SubItem[]>()
     visible.forEach((a) => {
       const assigns = informalAssigns.get(a.id) ?? []

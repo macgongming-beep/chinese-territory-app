@@ -1,8 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import type { InformalAsset } from '../types'
-import { countInformalCards } from './informalAssets'
+import { assignableInformalAssets, countInformalCards } from './informalAssets'
 
-const asset = (id: number, parentId: number | null = null): InformalAsset => ({
+const asset = (
+  id: number,
+  parentId: number | null = null,
+  extra: Partial<InformalAsset> = {},
+): InformalAsset => ({
   id,
   parentId,
   name: `place-${id}`,
@@ -13,6 +17,7 @@ const asset = (id: number, parentId: number | null = null): InformalAsset => ({
   createdAt: '2026-09-04T00:00:00Z',
   archived: false,
   groupId: null,
+  ...extra,
 })
 
 describe('비공식 구역 카드 수', () => {
@@ -24,5 +29,30 @@ describe('비공식 구역 카드 수', () => {
       asset(4, 1),
       asset(5, 2),
     ])).toBe(2)
+  })
+})
+
+describe('배정에 올릴 비공식 대상', () => {
+  test('자식 포인트는 배정 단위가 아니라 빠진다', () => {
+    const rows = assignableInformalAssets([asset(1), asset(2), asset(3, 1)])
+    expect(rows.map((row) => row.id)).toEqual([1, 2])
+  })
+
+  test('보관한 구역카드도 빠진다', () => {
+    const rows = assignableInformalAssets([asset(1), asset(2, null, { archived: true })])
+    expect(rows.map((row) => row.id)).toEqual([1])
+  })
+
+  test('검색어는 최상위 카드에만 걸린다 — 이름이 맞는 자식도 올라오지 않는다', () => {
+    const rows = assignableInformalAssets([
+      asset(1, null, { name: '경희대(홈플러스)' }),
+      asset(2, null, { name: '강남대' }),
+      asset(3, 1, { name: '경희대 정문' }),
+    ], '경희대')
+    expect(rows.map((row) => row.id)).toEqual([1])
+  })
+
+  test('검색어가 비면 모든 최상위 카드가 남는다', () => {
+    expect(assignableInformalAssets([asset(1), asset(2)], '   ')).toHaveLength(2)
   })
 })
