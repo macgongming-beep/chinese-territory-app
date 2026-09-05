@@ -1,5 +1,5 @@
 import type { Building, ReturnVisit, TerritoryCard } from '../../types'
-import { supabase, showToast, reportMutationError, requireVisitor } from './shared'
+import { supabase, showToast, reportMutationError, requireVisitor, ensureAffectedRows } from './shared'
 import { msg } from '../../lib/msg'
 
 export function makeRegularVisitMutations(deps: {
@@ -149,15 +149,24 @@ export function makeRegularVisitMutations(deps: {
     showToast(msg('기록이 저장됐습니다'))
   }
 
+  /**
+   * 수동 정기방문 추가.
+   *
+   * ⚠ **성공 여부를 돌려준다.** 예전에는 void 라서 화면이 실패해도 시트를 닫았고,
+   *   오류 토스트는 뜨는데 별명·주소·연결한 세대가 통째로 날아갔다.
+   * ⚠ 메모는 `return_visits` 에 넣을 칸이 **없다.** 예전에는 화면이 넘긴 메모를
+   *   그냥 버렸다. 첫 기록(return_visit_logs)으로 남긴다 — 기록 화면이 이미
+   *   그걸 보여 주므로 새 칸을 만들 이유가 없다.
+   */
   const createManualReturnVisit = async (input: {
     displayName: string
     address: string
     memo: string
     unitId?: number | null
     buildingId?: number | null
-  }) => {
+  }): Promise<boolean> => {
     const visitor = requireVisitor()
-    if (!visitor) return
+    if (!visitor) return false
     const res = await supabase.from('return_visits').insert({
       unit_id: input.unitId ?? null,
       building_id: input.buildingId ?? null,
@@ -167,10 +176,28 @@ export function makeRegularVisitMutations(deps: {
       unit_number: '',
       assigned_user_name: visitor,
       created_by: visitor,
-    })
-    if (res.error) { reportMutationError(msg('정기방문을 추가하지 못했습니다.'), res.error); return }
+    }).select('id')
+    if (res.error) { reportMutationError(msg('정기방문을 추가하지 못했습니다.'), res.error); return false }
+    if (!ensureAffectedRows(res.data, msg('정기방문을 추가하지 못했습니다.'))) return false
+
+    // 메모가 있으면 첫 기록으로. 빈 기록은 만들지 않는다.
+    const memo = input.memo.trim()
+    const createdId = (res.data as Array<{ id: number }> | null)?.[0]?.id
+    if (memo && createdId) {
+      const logRes = await supabase.from('return_visit_logs').insert({
+        return_visit_id: createdId,
+        result: null,
+        memo,
+        created_by: visitor,
+        visited_at: new Date().toISOString(),
+      })
+      // 정기방문 자체는 이미 만들어졌다. 메모만 실패한 것을 숨기지 않는다.
+      if (logRes.error) showToast(msg('정기방문은 추가됐지만 메모를 남기지 못했습니다.'), 'error')
+    }
+
     await fetchAll()
     showToast(msg('정기방문이 추가됐습니다'))
+    return true
   }
 
   const updateReturnVisitLog = async (id: number, result: '만남' | '부재' | null, memo: string) => {

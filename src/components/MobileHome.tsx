@@ -363,7 +363,7 @@ export function MobileHome({
   returnVisits?: ReturnVisit[]
   returnVisitLogs?: ReturnVisitLog[]
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
-  onCreateManualReturnVisit?: (input: { displayName: string; address: string; memo: string; unitId?: number | null; buildingId?: number | null }) => Promise<void>
+  onCreateManualReturnVisit?: (input: { displayName: string; address: string; memo: string; unitId?: number | null; buildingId?: number | null }) => Promise<boolean>
   onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onUpdateReturnVisitLog?: (id: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onDeleteReturnVisitLog?: (id: number) => Promise<void>
@@ -548,7 +548,9 @@ export function MobileHome({
   const regularVisitBuildingIds = useMemo(() => {
     const ids = new Set<number>()
     myRegularVisits.forEach((rv) => {
-      if (Number.isFinite(rv.buildingId)) ids.add(rv.buildingId)
+      // ⚠ Number.isFinite 는 타입을 좁혀 주지 않는다. buildingId 는 null 일 수 있다
+      //   (세대·건물에 안 이어진 정기방문). null 검사를 따로 한다.
+      if (rv.buildingId !== null && Number.isFinite(rv.buildingId)) ids.add(rv.buildingId)
     })
     legacyRegularVisitBuildingIds.forEach((id) => ids.add(id))
     return ids

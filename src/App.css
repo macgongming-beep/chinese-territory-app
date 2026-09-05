@@ -30169,3 +30169,25 @@ button > svg {
 .app-update-notice p { margin: 8px 0 12px; }
 .app-update-notice > div { display: flex; justify-content: flex-end; gap: 8px; }
 .app-update-notice button { min-height: 44px; white-space: normal; }
+
+/* 정기방문 주소 검색 — 자동 덮어쓰기를 없애고 후보를 고르게 바꿨다 (2026-09-05) */
+.rv-addr-search-btn {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  height: 28px; min-height: 28px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); color: var(--ink);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.rv-addr-search-btn:disabled { color: var(--muted); cursor: default; }
+.rv-addr-candidate {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  text-align: left; padding: 9px 10px; margin-bottom: 6px;
+  height: auto; min-height: 0; line-height: 1.45;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); color: var(--ink); font-size: 13.5px; cursor: pointer;
+}
+.rv-addr-candidate span { flex: 1; min-width: 0; }
+.rv-addr-far {
+  flex-shrink: 0; font-style: normal; font-size: 11px; font-weight: 700;
+  color: #b4621f; background: #fdf3e7; border-radius: 4px; padding: 2px 6px;
+}

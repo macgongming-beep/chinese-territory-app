@@ -280,8 +280,10 @@ export type Notice = {
 
 export type ReturnVisit = {
   id: number
-  unitId: number
-  buildingId: number
+  // ⚠ DB 는 둘 다 nullable 이다. 세대·건물에 안 이어진 정기방문이 실제로 있고
+  //   (운영 실측), 타입이 그걸 숨기면 화면이 없는 값을 있다고 믿는다.
+  unitId: number | null
+  buildingId: number | null
   displayName: string   // "고림동 102호"
   nickname: string      // 별칭 (편집 가능)
   address: string

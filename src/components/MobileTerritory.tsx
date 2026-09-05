@@ -7,6 +7,7 @@ import { getTerritoryCardOperationalState, sortTerritoryCardsByOperationalPriori
 import { getUserReturnVisits, normalizeVisitorName } from '../utils/returnVisits'
 import { RestaurantServiceSheet } from './RestaurantServiceSheet'
 import { msg } from '../lib/msg'
+import { showToast } from '../lib/toast'
 import { getAssignmentTeamMembers } from '../utils/assignmentTeamMembers'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
@@ -43,6 +44,9 @@ function fmtDate(dateStr: string, language: AppLanguage): string {
   if (diff < 30) return language === 'en' ? `${diff}d ago` : language === 'zh' ? `${diff}天前` : `${diff}일 전`
   return `${d.getMonth()+1}/${d.getDate()}`
 }
+
+/** 주소 검색 후보. 좌표는 SDK 가 안 줄 수도 있어 null 을 허용한다 */
+type AddressCandidate = { address: string; lat: number | null; lng: number | null }
 
 export function MobileTerritory({
   language,
@@ -99,7 +103,7 @@ export function MobileTerritory({
   onOpenInformalMap?: (assetId: number) => void
   onOpenRegularVisitMap?: (returnVisitId?: number) => void
   onEndServiceSession: (sessionId: number) => void
-  onCreateManualReturnVisit?: (input: { displayName: string; address: string; memo: string; unitId?: number | null; buildingId?: number | null }) => Promise<void>
+  onCreateManualReturnVisit?: (input: { displayName: string; address: string; memo: string; unitId?: number | null; buildingId?: number | null }) => Promise<boolean>
   onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onUpdateReturnVisitLog?: (id: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onDeleteReturnVisitLog?: (id: number) => Promise<void>
@@ -204,10 +208,11 @@ export function MobileTerritory({
   const [addLinked, setAddLinked] = useState<{ building: Building; unit: Unit } | null>(null)
   const [addUnitPickBuilding, setAddUnitPickBuilding] = useState<Building | null>(null)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const geocodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null)
   const [addAddressGeocoding, setAddAddressGeocoding] = useState(false)
+  const [addAddressCandidates, setAddAddressCandidates] = useState<AddressCandidate[]>([])
   const [addrEditGeocoding, setAddrEditGeocoding] = useState(false)
+  const [addrEditCandidates, setAddrEditCandidates] = useState<AddressCandidate[]>([])
   const [logActionId, setLogActionId] = useState<number | null>(null) // 팝업 대상 로그 id
   const [logEditMode, setLogEditMode] = useState(false)               // 팝업이 수정 모드인지
   const [logEditResult, setLogEditResult] = useState<'만남' | '부재' | null>(null)
@@ -518,20 +523,71 @@ export function MobileTerritory({
   )
 
   // 네이버 지도 Geocoding으로 짧은 주소 → 전체 주소 자동완성
-  const geocodeAndFill = (query: string, setter: (v: string) => void, setLoading: (v: boolean) => void) => {
+  /**
+   * 주소 후보를 찾아 온다. **입력칸을 건드리지 않는다.**
+   *
+   * ⚠ 예전에는 타이핑하다 800ms 멈추면 첫 번째 결과로 **칸을 덮어썼다.**
+   *   '명지로' 처럼 전국에 널린 도로명이면 엉뚱한 지방 주소가 들어왔고,
+   *   아직 다 안 쳤는데 칸이 바뀌어 그 뒤 입력이 엉켰다.
+   *   봉사자 여러 명이 같은 증상을 신고했다 (2026-09-05).
+   *   이제 사용자가 **검색을 누를 때만** 부르고, 후보를 보여 주고 고르게 한다.
+   */
+  const searchAddressCandidates = (
+    query: string,
+    setResults: (v: AddressCandidate[]) => void,
+    setLoading: (v: boolean) => void,
+  ) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
     const naver = (window as any).naver
-    if (!naver?.maps?.Service) return // 지도 SDK 미로드 시 skip
+    if (!naver?.maps?.Service) {
+      showToast(msg('지도를 아직 불러오는 중입니다. 잠시 후 다시 눌러 주세요.'), 'info')
+      return
+    }
     setLoading(true)
+    setResults([])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
     naver.maps.Service.geocode({ query }, (status: any, response: any) => {
       setLoading(false)
-      if (status === naver.maps.Service.Status.ERROR) return
-      const item = response?.v2?.addresses?.[0]
-      if (!item) return
-      const full = item.roadAddress || item.jibunAddress
-      if (full) setter(full)
+      if (status === naver.maps.Service.Status.ERROR) {
+        showToast(msg('주소를 찾지 못했습니다.'), 'error')
+        return
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
+      const items: any[] = response?.v2?.addresses ?? []
+      const out = items.slice(0, 5).map((item) => {
+        const lat = Number(item.y)
+        const lng = Number(item.x)
+        return {
+          address: String(item.roadAddress || item.jibunAddress || '').trim(),
+          lat: Number.isFinite(lat) ? lat : null,
+          lng: Number.isFinite(lng) ? lng : null,
+        }
+      }).filter((c) => c.address)
+      if (out.length === 0) showToast(msg('주소를 찾지 못했습니다.'), 'info')
+      setResults(out)
     })
+  }
+
+  /**
+   * 우리 봉사 범위 안인가. **막지 않고 표시만 한다.**
+   * ⚠ 구역선 밖이라고 후보를 숨기면 안 된다 — 구역선이 실제 담당 범위보다
+   *   작게 그려진 카드가 실제로 있다(화성시 송동 2). 정상 후보가 사라진다.
+   */
+  const serviceArea = useMemo(() => {
+    const pts = buildings.filter((b) => b.lat && b.lng)
+    if (pts.length === 0) return null
+    const lat = pts.map((b) => b.lat)
+    const lng = pts.map((b) => b.lng)
+    const pad = 0.05   // 약 5km
+    return {
+      minLat: Math.min(...lat) - pad, maxLat: Math.max(...lat) + pad,
+      minLng: Math.min(...lng) - pad, maxLng: Math.max(...lng) + pad,
+    }
+  }, [buildings])
+  const isFarFromService = (c: AddressCandidate) => {
+    if (!serviceArea || c.lat === null || c.lng === null) return false
+    return c.lat < serviceArea.minLat || c.lat > serviceArea.maxLat
+      || c.lng < serviceArea.minLng || c.lng > serviceArea.maxLng
   }
 
   // 주소 입력 시 구역 카드 건물 매칭
@@ -1063,21 +1119,40 @@ export function MobileTerritory({
                               className="rv-nickname-input"
                               value={addressEditValue}
                               onChange={(e) => {
-                                const val = e.target.value
-                                setAddressEditValue(val)
-                                if (geocodeTimerRef.current) clearTimeout(geocodeTimerRef.current)
-                                if (val.trim().length >= 4) {
-                                  geocodeTimerRef.current = setTimeout(() => {
-                                    geocodeAndFill(val.trim(), setAddressEditValue, setAddrEditGeocoding)
-                                  }, 800)
+                                // ⚠ 추가 시트와 같은 규칙 — 자동으로 덮어쓰지 않는다
+                                setAddressEditValue(e.target.value)
+                                setAddrEditCandidates([])
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && addressEditValue.trim()) {
+                                  e.preventDefault()
+                                  searchAddressCandidates(addressEditValue.trim(), setAddrEditCandidates, setAddrEditGeocoding)
                                 }
                               }}
                               placeholder={t(language, 'territory.addressPlaceholderShort')}
-                              style={{ paddingRight: addrEditGeocoding ? 28 : undefined, width: '100%', boxSizing: 'border-box' }}
+                              style={{ paddingRight: 62, width: '100%', boxSizing: 'border-box' }}
                               autoFocus
                             />
-                            {addrEditGeocoding && (
-                              <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#94a3b8' }}>{t(language, 'map.searchingAddress')}</span>
+                            <button
+                              className="rv-addr-search-btn"
+                              type="button"
+                              disabled={!addressEditValue.trim() || addrEditGeocoding}
+                              onClick={() => searchAddressCandidates(addressEditValue.trim(), setAddrEditCandidates, setAddrEditGeocoding)}
+                            >{addrEditGeocoding ? '…' : msg('검색')}</button>
+                            {addrEditCandidates.length > 0 && (
+                              <div className="rv-add-matches" style={{ marginTop: 6 }}>
+                                {addrEditCandidates.map((c) => (
+                                  <button
+                                    key={c.address}
+                                    className="rv-addr-candidate"
+                                    type="button"
+                                    onClick={() => { setAddressEditValue(c.address); setAddrEditCandidates([]) }}
+                                  >
+                                    <span>{c.address}</span>
+                                    {isFarFromService(c) && <em className="rv-addr-far">{msg('봉사 범위 밖')}</em>}
+                                  </button>
+                                ))}
+                              </div>
                             )}
                           </div>
                           <button
@@ -1260,23 +1335,42 @@ export function MobileTerritory({
                         placeholder={t(language, 'territory.addressPlaceholderShort')}
                         value={addAddress}
                         onChange={(e) => {
-                          const val = e.target.value
-                          setAddAddress(val)
+                          // ⚠ 여기서 지오코딩을 부르지 않는다. 사용자가 검색을 눌러야 한다.
+                          setAddAddress(e.target.value)
                           setAddUnitPickBuilding(null)
-                          // debounce geocoding (4자 이상)
-                          if (geocodeTimerRef.current) clearTimeout(geocodeTimerRef.current)
-                          if (val.trim().length >= 4) {
-                            geocodeTimerRef.current = setTimeout(() => {
-                              geocodeAndFill(val.trim(), setAddAddress, setAddAddressGeocoding)
-                            }, 800)
+                          setAddAddressCandidates([])
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && addAddress.trim()) {
+                            e.preventDefault()
+                            searchAddressCandidates(addAddress.trim(), setAddAddressCandidates, setAddAddressGeocoding)
                           }
                         }}
-                        style={{ paddingRight: addAddressGeocoding ? 28 : undefined }}
+                        style={{ paddingRight: 62 }}
                       />
-                      {addAddressGeocoding && (
-                        <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#94a3b8' }}>{t(language, 'map.searchingAddress')}</span>
-                      )}
+                      <button
+                        className="rv-addr-search-btn"
+                        type="button"
+                        disabled={!addAddress.trim() || addAddressGeocoding}
+                        onClick={() => searchAddressCandidates(addAddress.trim(), setAddAddressCandidates, setAddAddressGeocoding)}
+                      >{addAddressGeocoding ? '…' : msg('검색')}</button>
                     </div>
+                    {addAddressCandidates.length > 0 && (
+                      <div className="rv-add-matches">
+                        <p className="rv-add-matches-title">{msg('주소 후보')}</p>
+                        {addAddressCandidates.map((c) => (
+                          <button
+                            key={c.address}
+                            className="rv-addr-candidate"
+                            type="button"
+                            onClick={() => { setAddAddress(c.address); setAddAddressCandidates([]) }}
+                          >
+                            <span>{c.address}</span>
+                            {isFarFromService(c) && <em className="rv-addr-far">{msg('봉사 범위 밖')}</em>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {/* 주소 매칭 결과 */}
                     {addressMatches.length > 0 && (
                       <div className="rv-add-matches">
@@ -1341,7 +1435,9 @@ export function MobileTerritory({
                   onClick={async () => {
                     if (!addNickname.trim() || !onCreateManualReturnVisit) return
                     setAddSaving(true)
-                    await onCreateManualReturnVisit({
+                    // ⚠ **성공했을 때만 닫는다.** 예전에는 실패해도 닫아서, 오류
+                    //   토스트는 뜨는데 별명·주소·연결한 세대가 통째로 날아갔다.
+                    const ok = await onCreateManualReturnVisit({
                       displayName: addNickname.trim(),
                       address: addLinked ? addLinked.building.address : addAddress,
                       memo: addMemo,
@@ -1349,7 +1445,7 @@ export function MobileTerritory({
                       buildingId: addLinked?.building.id ?? null,
                     })
                     setAddSaving(false)
-                    setShowAddSheet(false)
+                    if (ok) setShowAddSheet(false)
                   }}
                 >{addSaving ? t(language, 'territory.saving') : t(language, 'common.save')}</button>
               </div>
