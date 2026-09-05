@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import type { MouseEvent } from 'react'
 import type { Building, BuildingStatus, CardBoundary, GeoPoint, TerritoryCard } from '../types'
-import { clusterByGrid, getClusterThresholdKm, shouldRebuildMapMarkersOnIdle } from '../utils/mapClustering'
+import { boundaryIntersectsBounds, clusterByGrid, getClusterThresholdKm, shouldRebuildMapMarkersOnIdle } from '../utils/mapClustering'
 import { getBuildingStatus, getCardName, getMockPosition, isValidMapCoordinate } from '../utils/mapUtils'
 import { getBuildingPin, BUILDING_STATUS_COLORS, TONE_COLORS } from '../utils/buildingPin'
 import { INFORMAL_KIND_STYLE, informalKindSvgPath } from '../utils/informalKind'
@@ -886,7 +886,7 @@ function NaverMapCanvas({
     rebuildTimerRef.current = window.setTimeout(() => {
       rebuildTimerRef.current = null
       rebuildMarkersCallbackRef.current()
-      rebuildInformalMarkersRef.current()
+      syncCardBoundariesRef.current()
     }, 120)
   }
   const scheduleRebuildMarkersRef = useRef(scheduleRebuildMarkers)
@@ -896,10 +896,9 @@ function NaverMapCanvas({
   }, [])
   // 카드 라벨 줌 토글용 stable ref (정의는 아래, 할당은 매 렌더)
   const updateCardLabelVisibilityRef = useRef<() => void>(() => {})
+  const syncCardBoundariesRef = useRef<() => void>(() => {})
 
   const rebuildMarkers = () => rebuildMarkersCallbackRef.current()
-  const rebuildInformalMarkersRef = useRef(rebuildInformalMarkers)
-  rebuildInformalMarkersRef.current = rebuildInformalMarkers
  
   const getFitMargin = () => {
     if (compact) return [24, 24, 24, 24]
@@ -1240,9 +1239,31 @@ function NaverMapCanvas({
     const naver = (window as any).naver
     if (!naver?.maps || !mapInstanceRef.current) return
 
+    const zoom = mapInstanceRef.current.getZoom()
+    const rawBounds = isMobileRef.current && zoom >= 15
+      ? mapInstanceRef.current.getBounds?.()
+      : null
+    const visibleBoundaries = rawBounds?.getSW && rawBounds?.getNE
+      ? (() => {
+          const sw = rawBounds.getSW()
+          const ne = rawBounds.getNE()
+          const latPad = Math.abs(ne.lat() - sw.lat()) * 0.25
+          const lngPad = Math.abs(ne.lng() - sw.lng()) * 0.25
+          const bounds = {
+            minLat: sw.lat() - latPad,
+            maxLat: ne.lat() + latPad,
+            minLng: sw.lng() - lngPad,
+            maxLng: ne.lng() + lngPad,
+          }
+          return cardBoundariesRef.current.filter((boundary) =>
+            boundaryIntersectsBounds(boundary.points, bounds),
+          )
+        })()
+      : cardBoundariesRef.current
+
     const currentMap = cardPolygonsRef.current
     const labelMap = cardLabelsRef.current
-    const boundaryIds = new Set(cardBoundaries.map((b) => b.cardId))
+    const boundaryIds = new Set(visibleBoundaries.map((b) => b.cardId))
 
     currentMap.forEach((polygon, cardId) => {
       if (!boundaryIds.has(cardId)) {
@@ -1259,7 +1280,7 @@ function NaverMapCanvas({
     })
 
     cancelBoundaryQueue()
-    const pending = cardBoundaries.filter((b) => !currentMap.has(b.cardId))
+    const pending = visibleBoundaries.filter((b) => !currentMap.has(b.cardId))
 
     // 지도 가운데에 가까운 것부터 — 보고 있는 곳이 먼저 채워진다
     const center = mapInstanceRef.current.getCenter?.()
@@ -1287,6 +1308,7 @@ function NaverMapCanvas({
       boundaryChunkTimerRef.current = window.requestAnimationFrame(() => drainBoundaryQueueRef.current())
     }
   }
+  syncCardBoundariesRef.current = syncCardBoundaries
 
   // 줌 레벨에 따라 카드 라벨 표시/숨김 (겹침 방지)
   const updateCardLabelVisibility = () => {

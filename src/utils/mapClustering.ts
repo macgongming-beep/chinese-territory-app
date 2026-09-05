@@ -10,6 +10,12 @@
 export type ClusterInput = { lat: number; lng: number }
 export type Cluster<T extends ClusterInput> = { items: T[]; lat: number; lng: number }
 export type MobileMapDetailLevel = 'region' | 'area' | 'building'
+export type CoordinateBounds = {
+  minLat: number
+  maxLat: number
+  minLng: number
+  maxLng: number
+}
 
 const KM_PER_LAT_DEGREE = 111.32
 
@@ -51,6 +57,33 @@ export function shouldRebuildMapMarkersOnIdle({
   hasAggregates: boolean
 }): boolean {
   return dirty && zoom >= 15 && !hasAggregates
+}
+
+/** 지도 화면과 구역선의 경계 상자가 겹치는지 확인한다. */
+export function boundaryIntersectsBounds(
+  points: ClusterInput[],
+  bounds: CoordinateBounds,
+): boolean {
+  if (points.length === 0) return false
+
+  let minLat = Number.POSITIVE_INFINITY
+  let maxLat = Number.NEGATIVE_INFINITY
+  let minLng = Number.POSITIVE_INFINITY
+  let maxLng = Number.NEGATIVE_INFINITY
+
+  for (const point of points) {
+    minLat = Math.min(minLat, point.lat)
+    maxLat = Math.max(maxLat, point.lat)
+    minLng = Math.min(minLng, point.lng)
+    maxLng = Math.max(maxLng, point.lng)
+  }
+
+  return !(
+    maxLat < bounds.minLat ||
+    minLat > bounds.maxLat ||
+    maxLng < bounds.minLng ||
+    minLng > bounds.maxLng
+  )
 }
 
 export function clusterByGrid<T extends ClusterInput>(items: T[], thresholdKm: number): Cluster<T>[] {

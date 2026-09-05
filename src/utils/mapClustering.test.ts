@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { clusterByGrid, getClusterThresholdKm, getMobileMapDetailLevel, getNextMobileMapDetailLevel, shouldRebuildMapMarkersOnIdle } from './mapClustering'
+import { boundaryIntersectsBounds, clusterByGrid, getClusterThresholdKm, getMobileMapDetailLevel, getNextMobileMapDetailLevel, shouldRebuildMapMarkersOnIdle } from './mapClustering'
 
 const YONGIN = { lat: 37.2411, lng: 127.1776 }
 
@@ -99,5 +99,34 @@ describe('shouldRebuildMapMarkersOnIdle', () => {
     expect(shouldRebuildMapMarkersOnIdle({ dirty: false, zoom: 16, hasAggregates: false })).toBe(false)
     expect(shouldRebuildMapMarkersOnIdle({ dirty: true, zoom: 14, hasAggregates: false })).toBe(false)
     expect(shouldRebuildMapMarkersOnIdle({ dirty: true, zoom: 16, hasAggregates: true })).toBe(false)
+  })
+})
+
+describe('boundaryIntersectsBounds', () => {
+  const viewport = { minLat: 37, maxLat: 38, minLng: 127, maxLng: 128 }
+
+  it('keeps a boundary that overlaps the viewport', () => {
+    expect(boundaryIntersectsBounds([
+      { lat: 37.2, lng: 126.9 },
+      { lat: 37.2, lng: 127.2 },
+      { lat: 37.4, lng: 127.2 },
+    ], viewport)).toBe(true)
+  })
+
+  it('keeps a large boundary surrounding the viewport even when no vertex is inside', () => {
+    expect(boundaryIntersectsBounds([
+      { lat: 36, lng: 126 },
+      { lat: 36, lng: 129 },
+      { lat: 39, lng: 129 },
+      { lat: 39, lng: 126 },
+    ], viewport)).toBe(true)
+  })
+
+  it('drops a boundary completely outside the viewport', () => {
+    expect(boundaryIntersectsBounds([
+      { lat: 38.2, lng: 127.2 },
+      { lat: 38.3, lng: 127.3 },
+      { lat: 38.4, lng: 127.2 },
+    ], viewport)).toBe(false)
   })
 })
