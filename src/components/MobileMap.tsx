@@ -857,7 +857,6 @@ export function MobileMap({
     setSelectedBuildingId(null)
     setExpandedBuildingIds(new Set())
     setFullScreenUnit(null)
-    setSheetHeight(HALF_HEIGHT)
     if (kind === 'region') {
       setSelectedArea(label)
       setSelectedRegion(null)
