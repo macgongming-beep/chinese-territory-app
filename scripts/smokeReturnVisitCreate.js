@@ -118,6 +118,36 @@ try {
     && retryCounts.every((result) => result.data?.length === 1),
   '같은 날 재시도해도 담당·항목·첫 기록이 중복되지 않는다')
 
+  // 계정 삭제 후의 실제 모양: 활동 항목은 남고 세대 담당 행은 제거된다.
+  const orphaned = await admin.from('return_visits')
+    .update({ assigned_user_name: '' }).eq('id', visitId).select('id')
+  const removedRegular = await admin.from('regular_visits').delete().eq('unit_id', ownUnit.id)
+  if (orphaned.error || removedRegular.error) throw orphaned.error ?? removedRegular.error
+
+  const forbiddenReassign = await user.rpc('reassign_return_visit_tx', {
+    p_token: userToken,
+    p_return_visit_id: visitId,
+    p_new_assignee: leaderName,
+  })
+  check(Boolean(forbiddenReassign.error), '일반 사용자는 끊긴 정기방문을 재배정하지 못한다')
+
+  const reassigned = await admin.rpc('reassign_return_visit_tx', {
+    p_token: adminToken,
+    p_return_visit_id: visitId,
+    p_new_assignee: leaderName,
+  })
+  const [reassignedVisit, reassignedRegular, preservedLogs] = await Promise.all([
+    db.from('return_visits').select('assigned_user_name,created_by').eq('id', visitId).single(),
+    db.from('regular_visits').select('visitor_name').eq('unit_id', ownUnit.id).single(),
+    db.from('return_visit_logs').select('id').eq('return_visit_id', visitId),
+  ])
+  check(!reassigned.error
+    && reassignedVisit.data?.assigned_user_name === leaderName
+    && reassignedRegular.data?.visitor_name === leaderName,
+  '관리자 재배정은 활동·세대 정기방문 담당자를 함께 복구한다', reassigned.error?.message)
+  check(reassignedVisit.data?.created_by === userName && preservedLogs.data?.length === 1,
+    '재배정해도 이전 등록자와 방문 기록은 보존한다')
+
   const linkedAddress = await user.from('return_visits')
     .update({ address: '바뀌면 안 되는 주소' }).eq('id', visitId).select('id')
   check(Boolean(linkedAddress.error), '세대에 연결된 주소는 따로 바꾸지 못한다')

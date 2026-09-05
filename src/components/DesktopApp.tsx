@@ -115,7 +115,7 @@ export function DesktopApp({
   onAddReturnVisitLog,
   onToggleRegularVisit,
   onSetRegularVisitor,
-  onDeleteReturnVisit,
+  onDeleteReturnVisit: _onDeleteReturnVisit,
   onReassignReturnVisit,
   onToggleChinese,
   onToggleUser: _onToggleUser,
@@ -253,14 +253,14 @@ export function DesktopApp({
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onRemoveParticipantFromEvent: (eventId: number, userName: string) => void
   onAddParticipantToEvent: (eventId: number, userName: string) => void
-  allUsers: Array<{ id: number; name: string; role: string }>
+  allUsers: Array<{ id: number; name: string; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked'; isActive?: boolean }>
   returnVisits?: ReturnVisit[]
   returnVisitLogs?: ReturnVisitLog[]
   onAddReturnVisitLog: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
   onDeleteReturnVisit?: (id: number) => Promise<void>
-  onReassignReturnVisit?: (id: number, newAssignee: string) => Promise<void> | void
+  onReassignReturnVisit?: (id: number, newAssignee: string) => Promise<boolean> | boolean
   onToggleChinese: (buildingId: number, unitId: number) => void
   onToggleUser: (cardId: number, userName: string) => void
   onUndoLatestVisit: (buildingId: number, unitId: number) => void
@@ -959,8 +959,7 @@ export function DesktopApp({
                     activeUsers={allUsers}
                     isDeveloper={actualRole === 'developer'}
                     language={language}
-                    onReassign={(id, name) => onReassignReturnVisit?.(id, name)}
-                    onDelete={(id) => onDeleteReturnVisit?.(id) ?? Promise.resolve()}
+                    onReassign={(id, name) => onReassignReturnVisit?.(id, name) ?? false}
                   />
                 </div></section>
               : <Navigate to="/settings/profile" replace />

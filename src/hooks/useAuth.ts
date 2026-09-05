@@ -33,6 +33,7 @@ export type AppUserRecord = {
   phone?: string | null
   role: Role
   approvalStatus?: 'pending' | 'approved' | 'blocked'
+  isActive?: boolean
   groupName?: string | null
   created_at: string
   lastLoginAt?: string | null
@@ -469,11 +470,11 @@ export function useAuth() {
     if (!user) return
     const { data, error } = await supabase
       .from('app_users')
-      .select('id, name, phone, login_id, role, approval_status, group_name, created_at, last_login_at')
+      .select('id, name, phone, login_id, role, approval_status, is_active, group_name, created_at, last_login_at')
       .order('created_at', { ascending: false })
 
     if (!error && data) {
-      const rows = data as Array<{ id: number; name: string; phone?: string | null; login_id: string | null; role: Role; approval_status?: AppUserRecord['approvalStatus'] | null; group_name?: string | null; created_at: string; last_login_at?: string | null }>
+      const rows = data as Array<{ id: number; name: string; phone?: string | null; login_id: string | null; role: Role; approval_status?: AppUserRecord['approvalStatus'] | null; is_active?: boolean | null; group_name?: string | null; created_at: string; last_login_at?: string | null }>
       setAllUsers(rows
         .filter((item) => user.role === 'developer' || !isDeveloperAccount(item))
         .map((item) => ({
@@ -483,6 +484,7 @@ export function useAuth() {
           phone: item.phone ?? null,
           role: isDeveloperAccount(item) ? 'developer' : item.role,
           approvalStatus: item.approval_status ?? 'approved',
+          isActive: item.is_active ?? true,
           groupName: item.group_name ?? null,
           created_at: item.created_at,
           lastLoginAt: item.last_login_at ?? null,
@@ -510,6 +512,7 @@ export function useAuth() {
             name: item.name,
             role: isDeveloperAccount(item) ? 'developer' : item.role,
             approvalStatus: 'approved',
+            isActive: true,
             created_at: item.created_at,
             lastLoginAt: item.last_login_at ?? null,
             phone: null,

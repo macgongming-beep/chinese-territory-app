@@ -331,7 +331,7 @@ export function MobileHome({
   onChangeLanguage: (language: AppLanguage) => void
   onSetCardLeaders: (cardId: number, leaderNames: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
   onAddUnit: (buildingId: number, unitNumber: string | string[]) => Promise<number[] | false>
-  allUsers?: Array<{ id: number; name: string; phone?: string | null; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked'; groupName?: string | null }>
+  allUsers?: Array<{ id: number; name: string; phone?: string | null; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked'; isActive?: boolean; groupName?: string | null }>
   onChangePin: (newPin: string) => Promise<boolean>
   onUpdateMyProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
   onFetchMyLoginLogs: (limit?: number) => Promise<LoginLogRecord[]>
@@ -368,7 +368,7 @@ export function MobileHome({
   onUpdateReturnVisitLog?: (id: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onDeleteReturnVisitLog?: (id: number) => Promise<void>
   onDeleteReturnVisit?: (id: number) => Promise<void>
-  onReassignReturnVisit?: (id: number, newAssignee: string) => Promise<void> | void
+  onReassignReturnVisit?: (id: number, newAssignee: string) => Promise<boolean> | boolean
   onUpdateReturnVisitNickname?: (id: number, nickname: string) => Promise<void>
   onUpdateReturnVisitAddress?: (id: number, address: string) => Promise<void>
   onToggleChinese: (buildingId: number, unitId: number) => void
@@ -1199,8 +1199,7 @@ export function MobileHome({
                       activeUsers={allUsers}
                       isDeveloper={actualRole === 'developer'}
                       language={language}
-                      onReassign={(id, name) => onReassignReturnVisit?.(id, name)}
-                      onDelete={(id) => onDeleteReturnVisit?.(id) ?? Promise.resolve()}
+                      onReassign={(id, name) => onReassignReturnVisit?.(id, name) ?? false}
                     />
                   </div>
                 </div>

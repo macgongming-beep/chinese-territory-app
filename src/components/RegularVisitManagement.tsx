@@ -1,28 +1,25 @@
-// 정기방문 관리 (방식 A) — 관리자: 목록 + 재배정/해제, 개발자: + 상단 진단 통계
+// 정기방문 관리 — 관리자: 목록 + 재배정, 개발자: + 상단 진단 통계
 //
 // 끊김 판정: 담당자(assignedUserName)가 비었거나 현재 활성 사용자 명단에 없음 (전출/계정삭제)
 // 방치(stale) 판정: 마지막 방문이 90일+ 전이거나 기록 없음
-// 데이터는 모두 클라이언트 계산 (새 SQL 없음). "해제" = return_visits 행 삭제(등록 해제), 건물·호수 안 건드림.
+// 목록 진단은 클라이언트에서 계산하고 재배정은 두 정기방문 표를 원자적으로 맞춘다.
 
 import { useMemo, useState } from 'react'
 import type { ReturnVisit } from '../types'
 import type { AppLanguage } from '../i18n'
-import { confirmDialog } from '../lib/confirm'
 import { formatRelativeVisitDate } from '../utils/returnVisits'
 import { matchesName } from '../utils/koreanSearch'
-import { msg } from '../lib/msg'
 
 const STALE_DAYS = 90
 
-type ActiveUser = { name: string; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked' }
+type ActiveUser = { name: string; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked'; isActive?: boolean }
 
 type Props = {
   returnVisits: ReturnVisit[]
   activeUsers: ActiveUser[]
   isDeveloper: boolean
   language?: AppLanguage
-  onReassign: (id: number, newAssignee: string) => Promise<void> | void
-  onDelete: (id: number) => Promise<void> | void
+  onReassign: (id: number, newAssignee: string) => Promise<boolean> | boolean
 }
 
 function isStale(rv: ReturnVisit): boolean {
@@ -31,14 +28,16 @@ function isStale(rv: ReturnVisit): boolean {
   return new Date(rv.lastVisitedAt).getTime() < cutoff
 }
 
-export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper, language = 'ko', onReassign, onDelete }: Props) {
+export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper, language = 'ko', onReassign }: Props) {
   const [onlyBroken, setOnlyBroken] = useState(false)
   const [reassignTarget, setReassignTarget] = useState<ReturnVisit | null>(null)
   const [pickerQuery, setPickerQuery] = useState('')
 
   // 활성(승인된) 사용자 이름 집합 — 끊김 판정 + 재배정 후보
   const activeNames = useMemo(
-    () => new Set(activeUsers.filter((u) => u.approvalStatus !== 'blocked').map((u) => u.name)),
+    () => new Set(activeUsers
+      .filter((u) => u.isActive !== false && (!u.approvalStatus || u.approvalStatus === 'approved'))
+      .map((u) => u.name)),
     [activeUsers],
   )
 
@@ -68,24 +67,16 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
 
   const reassignCandidates = useMemo(
     () => activeUsers
-      .filter((u) => u.approvalStatus !== 'blocked')
+      .filter((u) => u.isActive !== false && (!u.approvalStatus || u.approvalStatus === 'approved'))
       .filter((u) => matchesName(u.name, pickerQuery))
       .sort((a, b) => a.name.localeCompare(b.name, 'ko')),
     [activeUsers, pickerQuery],
   )
 
-  const handleDelete = async (rv: ReturnVisit) => {
-    const ok = await confirmDialog({
-      message: msg('"{v1}" 정기방문을 해제할까요?\n등록만 풀리고 호수·방문기록은 그대로 남습니다.', { v1: rv.nickname || rv.displayName }),
-      danger: true,
-      confirmLabel: '정기방문 해제',
-    })
-    if (ok) await onDelete(rv.id)
-  }
-
   const doReassign = async (name: string) => {
     if (!reassignTarget) return
-    await onReassign(reassignTarget.id, name)
+    const saved = await onReassign(reassignTarget.id, name)
+    if (!saved) return
     setReassignTarget(null)
     setPickerQuery('')
   }
@@ -106,6 +97,13 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
               <div style={{ fontSize: 22, fontWeight: 700, color: s.color, fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
             </div>
           ))}
+        </div>
+      )}
+
+      {stats.broken > 0 && (
+        <div style={{ border: '1px solid rgba(220,38,38,0.28)', borderLeft: '4px solid var(--status-danger)', borderRadius: 8, background: 'rgba(220,38,38,0.05)', padding: '11px 12px' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--status-danger)' }}>담당자 재지정 필요 {stats.broken}건</div>
+          <div style={{ marginTop: 3, fontSize: 12.5, lineHeight: 1.45, color: 'var(--muted)' }}>전출하거나 삭제된 계정의 방문 장소입니다. 기존 기록은 보존하고 새 담당자만 지정할 수 있어요.</div>
         </div>
       )}
 
@@ -140,8 +138,18 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
                         color: broken ? 'var(--status-danger)' : 'var(--muted)',
                       }}>
                         <span style={{ width: 6, height: 6, borderRadius: 99, background: broken ? 'var(--status-danger)' : 'var(--status-ok, #16a34a)' }} />
-                        {rv.assignedUserName.trim() || '담당 없음'}{broken && rv.assignedUserName.trim() ? ' · 전출/삭제' : ''}
+                        {broken ? '재지정 필요' : rv.assignedUserName.trim()}
                       </span>
+                      {broken && (rv.assignedUserName.trim() || rv.createdBy.trim()) && (
+                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+                          기존 기록 이름: {rv.assignedUserName.trim() || rv.createdBy.trim()}
+                        </span>
+                      )}
+                      {broken && (
+                        <span style={{ fontSize: 12, fontWeight: 600, color: rv.lastResult === '만남' ? 'var(--status-ok, #16a34a)' : 'var(--muted)' }}>
+                          최근 결과: {rv.lastResult ?? '기록 없음'}
+                        </span>
+                      )}
                       {/* 마지막 방문 — 개발자만 (관리자는 방문기록 비공개) */}
                       {isDeveloper && (
                         <span style={{ fontSize: 12, color: stale ? '#ea580c' : 'var(--muted)' }}>
@@ -152,16 +160,11 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
                   </div>
                 </div>
                 {/* 액션 */}
-                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <div style={{ display: 'flex', marginTop: 12 }}>
                   <button type="button" onClick={() => { setReassignTarget(rv); setPickerQuery('') }}
                     style={{ flex: 1, minHeight: 0, padding: '8px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600,
                       border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', cursor: 'pointer' }}>
                     담당자 재배정
-                  </button>
-                  <button type="button" onClick={() => handleDelete(rv)}
-                    style={{ flex: 1, minHeight: 0, padding: '8px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                      border: '1px solid var(--danger-100, rgba(220,38,38,0.25))', background: 'rgba(220,38,38,0.06)', color: 'var(--status-danger)', cursor: 'pointer' }}>
-                    정기방문 해제
                   </button>
                 </div>
               </div>

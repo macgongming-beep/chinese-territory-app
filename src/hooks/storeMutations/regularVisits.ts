@@ -245,11 +245,24 @@ export function makeRegularVisitMutations(deps: {
   }
 
   // 정기방문 담당자 재배정 (전출/삭제로 끊긴 정기방문을 다른 봉사자에게)
-  const reassignReturnVisit = async (id: number, newAssignee: string) => {
-    const res = await supabase.from('return_visits').update({ assigned_user_name: newAssignee.trim() }).eq('id', id)
-    if (res.error) { reportMutationError(msg('담당자를 변경하지 못했습니다.'), res.error); return }
+  const reassignReturnVisit = async (id: number, newAssignee: string): Promise<boolean> => {
+    const token = getAuthToken()
+    if (!token) {
+      showToast(msg('다시 로그인해 주세요.'), 'error')
+      return false
+    }
+    const res = await supabase.rpc('reassign_return_visit_tx', {
+      p_token: token,
+      p_return_visit_id: id,
+      p_new_assignee: newAssignee.trim(),
+    })
+    if (res.error || res.data?.ok !== true) {
+      reportMutationError(msg('담당자를 변경하지 못했습니다.'), res.error ?? new Error('Missing reassignment result'))
+      return false
+    }
     await fetchAll()
     showToast(msg('담당자가 {v1}님으로 변경됐습니다', { v1: newAssignee.trim() }))
+    return true
   }
 
   return {
