@@ -8945,6 +8945,12 @@ button:focus-visible {
 }
 .rv-add-input:focus { outline: none; border-color: var(--brand-700); }
 
+.rv-add-help {
+  color: var(--ink-400);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 /* 연결된 상태 */
 .rv-add-linked {
   display: flex;
@@ -30226,14 +30232,57 @@ button > svg {
 }
 .rv-addr-search-btn:disabled { color: var(--muted); cursor: default; }
 .rv-addr-candidate {
-  display: flex; align-items: center; gap: 6px; width: 100%;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; width: 100%;
   text-align: left; padding: 9px 10px; margin-bottom: 6px;
   height: auto; min-height: 0; line-height: 1.45;
   border: 1px solid var(--line); border-radius: 8px;
   background: var(--surface); color: var(--ink); font-size: 13.5px; cursor: pointer;
 }
-.rv-addr-candidate span { flex: 1; min-width: 0; }
+.rv-addr-candidate span { min-width: 0; overflow-wrap: anywhere; }
+.rv-addr-select-label {
+  align-self: center;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
 .rv-addr-far {
-  flex-shrink: 0; font-style: normal; font-size: 11px; font-weight: 700;
+  grid-column: 1 / -1; justify-self: start; font-style: normal; font-size: 11px; font-weight: 700;
   color: #b4621f; background: #fdf3e7; border-radius: 4px; padding: 2px 6px;
+}
+.rv-address-selected {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid #bdd8c6;
+  border-radius: 8px;
+  background: #f2f8f4;
+}
+.rv-address-selected > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: #32734a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+.rv-address-selected div { display: grid; min-width: 0; gap: 2px; }
+.rv-address-selected strong { color: var(--ink-900); font-size: 12px; }
+.rv-address-selected small { color: var(--ink-500); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.rv-address-resolution {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--tint);
+  color: var(--ink-600);
+  font-size: 11px;
+  line-height: 1.5;
 }

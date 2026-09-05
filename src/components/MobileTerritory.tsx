@@ -59,6 +59,26 @@ function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: 
   return 6371000 * 2 * Math.asin(Math.sqrt(h))
 }
 
+function matchingBuildingsForAddress(address: string, candidate: AddressCandidate | null, buildings: Building[]) {
+  if (address.length < 2) return []
+  const q = address.toLowerCase()
+  const addressKey = shortAddress(address).replace(/\s/g, '').toLowerCase()
+  const hasSelectedCoordinates = candidate?.lat != null && candidate?.lng != null
+  return buildings.filter((building) => {
+    if (building.address.toLowerCase().includes(q) || building.name.toLowerCase().includes(q)) return true
+    const buildingKey = shortAddress(building.address).replace(/\s/g, '').toLowerCase()
+    if (!hasSelectedCoordinates || buildingKey !== addressKey || !building.lat || !building.lng) return false
+    return distanceMeters(
+      { lat: candidate.lat as number, lng: candidate.lng as number },
+      { lat: building.lat, lng: building.lng },
+    ) <= 200
+  }).slice(0, 3)
+}
+
+function normalizeUnitNumberInput(value: string) {
+  return value.trim().replace(/^(\d+)\s*호$/, '$1')
+}
+
 export function MobileTerritory({
   language,
   translatePlaceNames = false,
@@ -611,21 +631,8 @@ export function MobileTerritory({
 
   // 주소 입력 시 구역 카드 건물 매칭
   const addressMatches = useMemo(() => {
-    if (addAddress.length < 2 || addLinked) return []
-    const q = addAddress.toLowerCase()
-    const addressKey = shortAddress(addAddress).replace(/\s/g, '').toLowerCase()
-    const hasSelectedCoordinates = addSelectedCandidate?.lat != null && addSelectedCandidate?.lng != null
-    return buildings
-      .filter((b) => {
-        if (b.address.toLowerCase().includes(q) || b.name.toLowerCase().includes(q)) return true
-        const buildingKey = shortAddress(b.address).replace(/\s/g, '').toLowerCase()
-        if (!hasSelectedCoordinates || buildingKey !== addressKey || !b.lat || !b.lng) return false
-        return distanceMeters(
-          { lat: addSelectedCandidate.lat as number, lng: addSelectedCandidate.lng as number },
-          { lat: b.lat, lng: b.lng },
-        ) <= 200
-      })
-      .slice(0, 3)
+    if (addLinked || !addSelectedCandidate) return []
+    return matchingBuildingsForAddress(addAddress, addSelectedCandidate, buildings)
   }, [addAddress, addSelectedCandidate, buildings, addLinked])
 
   const activeCard = cards.find((card) => card.id === activeSession?.primaryCardId)
@@ -1340,18 +1347,6 @@ export function MobileTerritory({
                 <strong>{t(language, 'territory.addRegularVisit')}</strong>
               </div>
 
-              {/* 별칭 */}
-              <div className="rv-add-field">
-                <label className="rv-add-label">{t(language, 'territory.nickname')} <span className="rv-add-required">{t(language, 'territory.required')}</span></label>
-                <input
-                  className="rv-add-input"
-                  placeholder={t(language, 'territory.nicknamePlaceholder')}
-                  value={addNickname}
-                  onChange={(e) => setAddNickname(e.target.value)}
-                  autoFocus
-                />
-              </div>
-
               {/* 주소 */}
               <div className="rv-add-field">
                 <label className="rv-add-label">{t(language, 'map.address')} <span className="rv-add-optional">{t(language, 'territory.optional')}</span></label>
@@ -1399,29 +1394,55 @@ export function MobileTerritory({
                     </div>
                     {addAddressCandidates.length > 0 && (
                       <div className="rv-add-matches">
-                        <p className="rv-add-matches-title">{msg('주소 후보')}</p>
+                        <p className="rv-add-matches-title">{msg('정확한 주소를 눌러 선택하세요')}</p>
                         {addAddressCandidates.map((c) => (
                           <button
                             key={c.address}
                             className="rv-addr-candidate"
                             type="button"
                             onClick={() => {
+                              const matches = matchingBuildingsForAddress(c.address, c, buildings)
                               setAddAddress(c.address)
                               setAddAddressCandidates([])
                               setAddSelectedCandidate(c)
-                              setAddNewUnitBuilding(null)
+                              if (matches.length > 0) {
+                                setAddNewUnitBuilding(null)
+                                setAddUnitPickBuilding(matches.length === 1 ? matches[0] : null)
+                              } else if (canCreateReturnVisitLocation && c.lat !== null && c.lng !== null) {
+                                setAddLinked(null)
+                                setAddUnitPickBuilding(null)
+                                setAddNewUnitBuilding('new')
+                                setAddBuildingName(shortAddress(c.address))
+                                setAddUnitNumber('')
+                              } else {
+                                setAddNewUnitBuilding(null)
+                              }
                             }}
                           >
                             <span>{c.address}</span>
+                            <b className="rv-addr-select-label">{msg('선택')}</b>
                             {isFarFromService(c) && <em className="rv-addr-far">{msg('봉사 범위 밖')}</em>}
                           </button>
                         ))}
                       </div>
                     )}
+                    {addSelectedCandidate && (
+                      <div className="rv-address-selected">
+                        <span aria-hidden="true">✓</span>
+                        <div><strong>{msg('주소를 선택했습니다')}</strong><small>{addAddress}</small></div>
+                      </div>
+                    )}
+                    {addSelectedCandidate && addressMatches.length === 0 && (
+                      <p className="rv-address-resolution">
+                        {canCreateReturnVisitLocation
+                          ? msg('아직 등록되지 않은 건물입니다. 건물과 세대를 함께 등록합니다.')
+                          : msg('아직 등록되지 않은 건물입니다. 주소는 저장되고 인도자가 나중에 건물과 연결할 수 있습니다.')}
+                      </p>
+                    )}
                     {/* 주소 매칭 결과 */}
                     {addressMatches.length > 0 && (
                       <div className="rv-add-matches">
-                        <p className="rv-add-matches-title">{t(language, 'territory.matchingBuildings')}</p>
+                        <p className="rv-add-matches-title">{msg('등록된 건물을 찾았습니다. 방문할 세대를 선택하세요.')}</p>
                         {addressMatches.map((b) => (
                           <div key={b.id} className="rv-add-match-item">
                             <div className="rv-add-match-info">
@@ -1476,19 +1497,6 @@ export function MobileTerritory({
                         )}
                       </div>
                     )}
-                    {canCreateReturnVisitLocation && addSelectedCandidate && addressMatches.length === 0 && addNewUnitBuilding === null && (
-                      <button
-                        className="rv-add-new-location"
-                        type="button"
-                        disabled={addSelectedCandidate.lat === null || addSelectedCandidate.lng === null}
-                        onClick={() => {
-                          setAddLinked(null)
-                          setAddNewUnitBuilding('new')
-                          setAddBuildingName(shortAddress(addAddress))
-                          setAddUnitNumber('')
-                        }}
-                      >{msg('새 건물과 세대 만들기')}</button>
-                    )}
                   </>
                 )}
               </div>
@@ -1507,17 +1515,30 @@ export function MobileTerritory({
                     </label>
                   )}
                   <label className="rv-add-field">
-                    <span className="rv-add-label">{msg('세대 또는 호수')} <span className="rv-add-required">{t(language, 'territory.required')}</span></span>
+                    <span className="rv-add-label">{msg('세대(호수)')} <span className="rv-add-required">{t(language, 'territory.required')}</span></span>
                     <input
                       className="rv-add-input"
                       value={addUnitNumber}
                       onChange={(e) => setAddUnitNumber(e.target.value)}
-                      placeholder={msg('예: 201호 또는 김씨 댁')}
+                      placeholder={msg('예: 201')}
                     />
+                    <small className="rv-add-help">{msg('건물 안의 정확한 위치만 적어 주세요. 별칭은 적지 않습니다.')}</small>
                   </label>
                   <button className="rv-add-unlink" type="button" onClick={() => setAddNewUnitBuilding(null)}>{t(language, 'common.cancel')}</button>
                 </div>
               )}
+
+              {/* 별칭은 건물의 세대/호수와 다른, 정기방문 목록용 이름이다. */}
+              <div className="rv-add-field">
+                <label className="rv-add-label">{t(language, 'territory.nickname')} <span className="rv-add-required">{t(language, 'territory.required')}</span></label>
+                <input
+                  className="rv-add-input"
+                  placeholder={msg('예: 공원 앞 댁')}
+                  value={addNickname}
+                  onChange={(e) => setAddNickname(e.target.value)}
+                />
+                <small className="rv-add-help">{msg('나중에 알아보기 쉬운 이름을 적어 주세요.')}</small>
+              </div>
 
               {/* 첫 방문 결과 */}
               <div className="rv-add-field">
@@ -1589,7 +1610,7 @@ export function MobileTerritory({
                         newLocation: addNewUnitBuilding === null ? null : {
                           existingBuildingId: addNewUnitBuilding === 'new' ? null : addNewUnitBuilding,
                           buildingName: addBuildingName,
-                          unitNumber: addUnitNumber,
+                          unitNumber: normalizeUnitNumberInput(addUnitNumber),
                           cardId: selectedCard,
                           lat: addSelectedCandidate?.lat ?? null,
                           lng: addSelectedCandidate?.lng ?? null,

@@ -57,11 +57,13 @@ describe('정기방문 주소 입력', () => {
     fireEvent.click(screen.getByRole('button', { name: '검색' }))
 
     await waitFor(() => expect(screen.getByText('경기도 용인시 처인구 명지로 116')).toBeVisible())
+    expect(screen.getByText('정확한 주소를 눌러 선택하세요')).toBeVisible()
     // 후보만 떴을 뿐 칸은 그대로다
     expect((addr as HTMLInputElement).value).toBe('명지로 116')
 
     fireEvent.click(screen.getByText('경기도 용인시 처인구 명지로 116'))
     await waitFor(() => expect((addr as HTMLInputElement).value).toBe('경기도 용인시 처인구 명지로 116'))
+    expect(screen.getByText('주소를 선택했습니다')).toBeVisible()
   })
 
   test('인도자는 검색 후보에서 새 건물과 세대 생성을 선택할 수 있다', async () => {
@@ -73,14 +75,14 @@ describe('정기방문 주소 입력', () => {
     const create = vi.fn().mockResolvedValue(true)
     renderIt({ role: 'leader', onCreateManualReturnVisit: create })
     openAddSheet()
-    fireEvent.change(screen.getByPlaceholderText('예: 고림동 할머니'), { target: { value: '김씨' } })
+    fireEvent.change(screen.getByPlaceholderText('예: 공원 앞 댁'), { target: { value: '김씨' } })
     const addr = screen.getByPlaceholderText('예: 언동로 213')
     fireEvent.change(addr, { target: { value: '명지로 116' } })
     fireEvent.click(screen.getByRole('button', { name: '검색' }))
     await waitFor(() => expect(screen.getByText('경기도 용인시 처인구 명지로 116')).toBeVisible())
     fireEvent.click(screen.getByText('경기도 용인시 처인구 명지로 116'))
-    fireEvent.click(screen.getByRole('button', { name: '새 건물과 세대 만들기' }))
-    fireEvent.change(screen.getByLabelText(/세대 또는 호수/), { target: { value: '201' } })
+    expect(screen.getByText('아직 등록되지 않은 건물입니다. 건물과 세대를 함께 등록합니다.')).toBeVisible()
+    fireEvent.change(screen.getByLabelText(/세대\(호수\)/), { target: { value: '201호' } })
     fireEvent.click(screen.getByRole('button', { name: '저장' }))
 
     await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
@@ -108,6 +110,8 @@ describe('정기방문 주소 입력', () => {
     await waitFor(() => expect(screen.getByText('경기도 용인시 처인구 명지로 116')).toBeVisible())
     fireEvent.click(screen.getByText('경기도 용인시 처인구 명지로 116'))
     expect(screen.queryByRole('button', { name: '새 건물과 세대 만들기' })).not.toBeInTheDocument()
+    expect(screen.getByText('아직 등록되지 않은 건물입니다. 주소는 저장되고 인도자가 나중에 건물과 연결할 수 있습니다.')).toBeVisible()
+    expect(screen.queryByLabelText(/세대\(호수\)/)).not.toBeInTheDocument()
   })
 
   test('긴 검색 주소와 짧은 저장 주소가 같은 좌표면 기존 건물을 보여준다', async () => {
@@ -139,26 +143,26 @@ describe('정기방문 저장', () => {
     const create = vi.fn().mockResolvedValue(false)
     renderIt({ onCreateManualReturnVisit: create })
     openAddSheet()
-    fireEvent.change(screen.getByPlaceholderText('예: 고림동 할머니'), { target: { value: '김씨' } })
+    fireEvent.change(screen.getByPlaceholderText('예: 공원 앞 댁'), { target: { value: '김씨' } })
     fireEvent.click(screen.getByRole('button', { name: '저장' }))
     await waitFor(() => expect(create).toHaveBeenCalled())
-    expect(screen.getByPlaceholderText('예: 고림동 할머니')).toBeVisible()
+    expect(screen.getByPlaceholderText('예: 공원 앞 댁')).toBeVisible()
   })
 
   test('성공하면 닫는다', async () => {
     const create = vi.fn().mockResolvedValue(true)
     renderIt({ onCreateManualReturnVisit: create })
     openAddSheet()
-    fireEvent.change(screen.getByPlaceholderText('예: 고림동 할머니'), { target: { value: '김씨' } })
+    fireEvent.change(screen.getByPlaceholderText('예: 공원 앞 댁'), { target: { value: '김씨' } })
     fireEvent.click(screen.getByRole('button', { name: '저장' }))
-    await waitFor(() => expect(screen.queryByPlaceholderText('예: 고림동 할머니')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByPlaceholderText('예: 공원 앞 댁')).not.toBeInTheDocument())
   })
 
   test('첫 결과와 메모를 같은 저장 요청에 넘긴다', async () => {
     const create = vi.fn().mockResolvedValue(true)
     renderIt({ onCreateManualReturnVisit: create })
     openAddSheet()
-    fireEvent.change(screen.getByPlaceholderText('예: 고림동 할머니'), { target: { value: '김씨' } })
+    fireEvent.change(screen.getByPlaceholderText('예: 공원 앞 댁'), { target: { value: '김씨' } })
     fireEvent.click(screen.getByRole('button', { name: '만남' }))
     fireEvent.change(screen.getByPlaceholderText('예: 매주 화요일 방문'), { target: { value: '다음 주 재방문' } })
     fireEvent.click(screen.getByRole('button', { name: '저장' }))
@@ -174,11 +178,11 @@ describe('정기방문 저장', () => {
     const create = vi.fn().mockRejectedValue(new Error('network'))
     renderIt({ onCreateManualReturnVisit: create })
     openAddSheet()
-    fireEvent.change(screen.getByPlaceholderText('예: 고림동 할머니'), { target: { value: '김씨' } })
+    fireEvent.change(screen.getByPlaceholderText('예: 공원 앞 댁'), { target: { value: '김씨' } })
     fireEvent.click(screen.getByRole('button', { name: '저장' }))
 
     await waitFor(() => expect(create).toHaveBeenCalled())
-    expect(screen.getByPlaceholderText('예: 고림동 할머니')).toHaveValue('김씨')
+    expect(screen.getByPlaceholderText('예: 공원 앞 댁')).toHaveValue('김씨')
     expect(screen.getByRole('button', { name: '저장' })).toBeEnabled()
   })
 })
