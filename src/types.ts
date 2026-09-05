@@ -340,6 +340,15 @@ export type PlaceImpactSnapshot = {
   assignmentCount: number
 }
 
+export type PlaceDeletionSignal = {
+  id?: number
+  targetType: 'building' | 'unit'
+  buildingId: number | null
+  unitId: number | null
+  unitIds: number[]
+  returnVisitIds: number[]
+}
+
 export type ReturnVisitLog = {
   id: number
   returnVisitId: number

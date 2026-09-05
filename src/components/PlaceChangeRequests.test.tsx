@@ -60,8 +60,8 @@ beforeEach(() => {
 describe('자료 수정 요청 목록', () => {
   it('작은 행을 펼쳐 삭제 영향과 영구 삭제를 확인한다', async () => {
     const user = userEvent.setup()
-    const refreshData = vi.fn().mockResolvedValue(undefined)
-    render(<MemoryRouter><PlaceChangeRequests onDataChanged={refreshData} /></MemoryRouter>)
+    const applyDeletion = vi.fn()
+    render(<MemoryRouter><PlaceChangeRequests onPlaceDeleted={applyDeletion} /></MemoryRouter>)
     await screen.findByText('고진로 45 아빌라301호')
     expect(screen.queryByText('방문 기록')).toBeNull()
 
@@ -71,7 +71,11 @@ describe('자료 수정 요청 목록', () => {
 
     await user.click(screen.getByRole('button', { name: '영구 삭제' }))
     await waitFor(() => expect(mocks.execute).toHaveBeenCalledWith(4))
-    await waitFor(() => expect(refreshData).toHaveBeenCalledOnce())
+    await waitFor(() => expect(applyDeletion).toHaveBeenCalledWith(expect.objectContaining({
+      targetType: 'unit',
+      buildingId: 1230,
+      unitId: 2194,
+    })))
     expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ confirmLabel: '영구 삭제' }))
   })
 

@@ -172,7 +172,7 @@ export function DesktopApp({
   onFetchMyLoginLogs,
   globalSettings = {},
   onUpsertGlobalSetting,
-  onDataChanged,
+  onPlaceDeleted,
 }: {
   language: AppLanguage
   buildings: Building[]
@@ -329,7 +329,7 @@ export function DesktopApp({
   onFetchMyLoginLogs: (limit?: number) => Promise<LoginLogRecord[]>
   globalSettings?: Record<string, string>
   onUpsertGlobalSetting?: (key: string, value: string) => Promise<boolean>
-  onDataChanged?: () => Promise<void>
+  onPlaceDeleted?: (signal: import('../types').PlaceDeletionSignal) => void
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -904,7 +904,7 @@ export function DesktopApp({
           } />
           <Route path="place-change-requests" element={
             (viewMode === 'admin' || viewMode === 'developer')
-              ? <PlaceChangeRequests onDataChanged={onDataChanged} />
+              ? <PlaceChangeRequests onPlaceDeleted={onPlaceDeleted} />
               : <Navigate to="/settings/profile" replace />
           } />
           <Route path="territory-regions" element={

@@ -50,6 +50,13 @@ begin
   if v_result->>'action' <> 'deleted' or exists(select 1 from public.buildings where id=v_building_id) then
     raise exception '인도자가 빈 건물을 정리하지 못했습니다: %',v_result;
   end if;
+  if not exists (
+    select 1 from public.place_change_signals
+    where action='deleted' and target_type='building' and building_id=v_building_id
+      and cardinality(unit_ids)=1
+  ) then
+    raise exception '빈 건물 삭제 신호에 건물과 하위 세대가 함께 담기지 않았습니다';
+  end if;
 
   -- 세대 자체에 방문 상태가 있으면 별도 기록이 없어도 요청으로 바뀐다.
   insert into public.buildings(card_id,name,address,type,lat,lng)
@@ -113,6 +120,13 @@ begin
   if not exists(select 1 from public.place_change_requests where id=v_request_id and status='completed') then
     raise exception '영구 삭제와 요청 완료가 함께 저장되지 않았습니다';
   end if;
+  if not exists (
+    select 1 from public.place_change_signals
+    where action='deleted' and target_type='unit' and unit_id=v_unit_id
+      and unit_ids=array[v_unit_id]::bigint[]
+  ) then
+    raise exception '요청함의 세대 삭제 신호가 남지 않았습니다';
+  end if;
 
   select count(*) into v_count from pg_policies
   where schemaname='public' and tablename in ('buildings','units')
@@ -128,6 +142,20 @@ begin
   end if;
   if not has_function_privilege('anon','public.execute_place_deletion_request_tx(uuid,bigint)','execute') then
     raise exception 'anon이 관리자 삭제 확정 RPC를 호출할 수 없습니다';
+  end if;
+  if has_table_privilege('anon','public.place_change_signals','INSERT,UPDATE,DELETE,TRUNCATE') then
+    raise exception 'anon이 장소 변경 신호를 직접 쓸 수 있습니다';
+  end if;
+  if exists (
+    select 1 from pg_publication_tables
+    where pubname='supabase_realtime' and schemaname='public'
+      and tablename in ('buildings','units')
+  ) or not exists (
+    select 1 from pg_publication_tables
+    where pubname='supabase_realtime' and schemaname='public'
+      and tablename='place_change_signals'
+  ) then
+    raise exception '장소 Realtime publication 구성이 신호 표 전용이 아닙니다';
   end if;
 end;
 $$;

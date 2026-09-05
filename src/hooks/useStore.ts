@@ -6,6 +6,7 @@ import { msg } from '../lib/msg'
 import { showToast } from '../lib/toast'
 import { findActivePeriodId } from '../utils/specialPeriod'
 import { setRegions } from '../lib/regions'
+import { isRestaurantAssignmentDeleted, resolvePlaceDeletionScope } from '../utils/placeDeletionSignal'
 import type {
   Building,
   CalendarEvent,
@@ -23,6 +24,7 @@ import type {
   TerritoryCard,
   Unit,
   VisitHistory,
+  PlaceDeletionSignal,
 } from '../types'
 import {
   toBuilding,
@@ -625,6 +627,28 @@ export function useStore(enabled: boolean = true) {
     )))
   }, [applyBuildingsChange])
 
+  // Realtime 삭제 신호는 전체 목록을 다시 받지 않고 관련 메모리만 걷어낸다.
+  // building 신호의 unitIds는 서버가 삭제 직전에 수집하므로 cascade 뒤에도 정확하다.
+  const applyPlaceDeletionSignal = useCallback((signal: PlaceDeletionSignal) => {
+    const { unitIds, returnVisitIds } = resolvePlaceDeletionScope(
+      buildingsRef.current,
+      returnVisits,
+      signal,
+    )
+
+    applyBuildingsChange((current) => signal.targetType === 'building'
+      ? current.filter((building) => building.id !== signal.buildingId)
+      : current.map((building) => building.units.some((unit) => unitIds.has(unit.id))
+          ? { ...building, units: building.units.filter((unit) => !unitIds.has(unit.id)) }
+          : building))
+    setVisitHistories((current) => current.filter((visit) => !unitIds.has(visit.unitId)))
+    setReturnVisits((current) => current.filter((visit) => !returnVisitIds.has(visit.id)))
+    setReturnVisitLogs((current) => current.filter((log) => !returnVisitIds.has(log.returnVisitId)))
+    setEventRestaurantAssignments((current) => current.filter(
+      (assignment) => !isRestaurantAssignmentDeleted(assignment, signal, unitIds),
+    ))
+  }, [applyBuildingsChange, returnVisits])
+
   // 방문 기록 등으로 세대 하나가 바뀐 경우
   const patchUnit = useCallback((unitId: number, patch: Partial<Unit>) => {
     applyBuildingsChange((prev) => prev.map((building) => (
@@ -808,6 +832,7 @@ export function useStore(enabled: boolean = true) {
   return {
     refetchAll: fetchAll,
     refetchSlices: fetchSlices,
+    applyPlaceDeletionSignal,
     cards,
     buildings,
     visitHistories,

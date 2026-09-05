@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { executePlaceDeletionRequest, fetchPlaceChangeRequests, reviewPlaceChangeRequest } from '../hooks/storeMutations/placeChangeRequests'
 import { confirmDialog } from '../lib/confirm'
-import type { PlaceChangeRequest, PlaceIssueType } from '../types'
+import type { PlaceChangeRequest, PlaceDeletionSignal, PlaceIssueType } from '../types'
 
 const issueLabels: Record<PlaceIssueType, string> = {
   building_missing: '건물이 없어졌습니다',
@@ -13,7 +13,7 @@ const issueLabels: Record<PlaceIssueType, string> = {
   other: '기타',
 }
 
-export function PlaceChangeRequests({ onDataChanged }: { onDataChanged?: () => Promise<void> }) {
+export function PlaceChangeRequests({ onPlaceDeleted }: { onPlaceDeleted?: (signal: PlaceDeletionSignal) => void }) {
   const navigate = useNavigate()
   const [requests, setRequests] = useState<PlaceChangeRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,7 +53,13 @@ export function PlaceChangeRequests({ onDataChanged }: { onDataChanged?: () => P
     const ok = await executePlaceDeletionRequest(request.id)
     setSavingId(null)
     if (!ok) return
-    await onDataChanged?.()
+    onPlaceDeleted?.({
+      targetType: request.unitId !== null ? 'unit' : 'building',
+      buildingId: request.buildingId,
+      unitId: request.unitId,
+      unitIds: request.unitId !== null ? [request.unitId] : [],
+      returnVisitIds: request.returnVisitId !== null ? [request.returnVisitId] : [],
+    })
     const rows = await fetchPlaceChangeRequests(showClosed)
     if (rows) setRequests(rows)
   }

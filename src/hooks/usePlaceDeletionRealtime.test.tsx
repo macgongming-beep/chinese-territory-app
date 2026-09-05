@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePlaceDeletionRealtime } from './usePlaceDeletionRealtime'
 
 const mocks = vi.hoisted(() => {
-  const handlers: Array<() => void> = []
+  const handlers: Array<(payload: { new: unknown }) => void> = []
   const channel = {
     topic: 'place-deletion-test',
-    on: vi.fn((_type, _filter, handler: () => void) => {
+    on: vi.fn((_type, _filter, handler: (payload: { new: unknown }) => void) => {
       handlers.push(handler)
       return channel
     }),
@@ -39,25 +39,32 @@ beforeEach(() => {
   mocks.subscribeWithRecovery.mockClear()
 })
 
-afterEach(() => {
-  vi.useRealTimers()
-})
+afterEach(() => vi.useRealTimers())
 
 describe('장소 삭제 Realtime 동기화', () => {
-  it('건물과 하위 세대 삭제 이벤트를 한 번의 백그라운드 동기화로 묶는다', () => {
+  it('신호 한 건을 재조회 없이 삭제 정보로 전달한다', () => {
     const onDelete = vi.fn()
-    renderHook(() => usePlaceDeletionRealtime(onDelete, { debounceMs: 500 }))
+    renderHook(() => usePlaceDeletionRealtime(onDelete))
 
-    expect(mocks.handlers).toHaveLength(2)
+    expect(mocks.handlers).toHaveLength(1)
     act(() => {
-      mocks.handlers[0]()
-      mocks.handlers[1]()
-      vi.advanceTimersByTime(499)
+      mocks.handlers[0]({ new: {
+        id: 7,
+        target_type: 'building',
+        building_id: 12,
+        unit_id: null,
+        unit_ids: [21, 22],
+        return_visit_ids: [31],
+      } })
     })
-    expect(onDelete).not.toHaveBeenCalled()
-
-    act(() => vi.advanceTimersByTime(1))
-    expect(onDelete).toHaveBeenCalledOnce()
+    expect(onDelete).toHaveBeenCalledWith({
+      id: 7,
+      targetType: 'building',
+      buildingId: 12,
+      unitId: null,
+      unitIds: [21, 22],
+      returnVisitIds: [31],
+    })
   })
 
   it('로그인 전에는 채널을 열지 않는다', () => {
@@ -65,14 +72,9 @@ describe('장소 삭제 Realtime 동기화', () => {
     expect(mocks.channel.on).not.toHaveBeenCalled()
   })
 
-  it('화면을 떠날 때 예약 동기화를 취소하고 채널을 닫는다', () => {
-    const onDelete = vi.fn()
-    const { unmount } = renderHook(() => usePlaceDeletionRealtime(onDelete, { debounceMs: 500 }))
-    act(() => mocks.handlers[0]())
+  it('화면을 떠날 때 채널을 닫는다', () => {
+    const { unmount } = renderHook(() => usePlaceDeletionRealtime(vi.fn()))
     unmount()
-    act(() => vi.advanceTimersByTime(500))
-
-    expect(onDelete).not.toHaveBeenCalled()
     expect(mocks.removeChannel).toHaveBeenCalledWith(mocks.channel)
   })
 })
