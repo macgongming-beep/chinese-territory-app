@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- 네이버 지도 SDK(window.naver)는 공식 TS 타입이 없어 any 사용이 불가피함 */
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { canEditVisitor, visitorOptionsFrom, visitorOptionsWithCurrent } from '../utils/visitorPicker'
 import { useSearchParams } from 'react-router-dom'
 import { MapCanvas } from './MapCanvas'
@@ -24,6 +25,8 @@ import { InformalKindIcon } from './InformalKindIcon'
 import { placeDeletionCopy } from '../utils/placeDeletion'
 import { PlaceChangeRequestDialog } from './PlaceChangeRequestDialog'
 import { getNextMobileMapDetailLevel, type MobileMapDetailLevel } from '../utils/mapClustering'
+import { getOverlayRoot } from '../lib/overlayRoot'
+import { getFloatingMenuPosition } from '../utils/floatingMenu'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
@@ -425,6 +428,30 @@ export function MobileMap({
   // 건물 수정
   const [editingBuildingId, setEditingBuildingId] = useState<number | null>(null)
   const [buildingMenuId, setBuildingMenuId] = useState<number | null>(null)
+  const [buildingMenuPosition, setBuildingMenuPosition] = useState<{
+    right: number
+    top?: number
+    bottom?: number
+  } | null>(null)
+
+  const closeBuildingMenu = () => {
+    setBuildingMenuId(null)
+    setBuildingMenuPosition(null)
+  }
+
+  const toggleBuildingMenu = (buildingId: number, button: HTMLButtonElement) => {
+    if (buildingMenuId === buildingId) {
+      closeBuildingMenu()
+      return
+    }
+    const rect = button.getBoundingClientRect()
+    setBuildingMenuPosition(getFloatingMenuPosition(
+      rect,
+      { width: window.innerWidth, height: window.innerHeight },
+      190,
+    ))
+    setBuildingMenuId(buildingId)
+  }
   const [placeRequestTarget, setPlaceRequestTarget] = useState<{ building: Building; unit?: Unit } | null>(null)
   const [editName, setEditName] = useState('')
   const [editAddress, setEditAddress] = useState('')
@@ -1816,21 +1843,21 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                         <div className="bld-menu-wrap">
                           <button
                             className="bld-edit-btn"
-                            onClick={() => setBuildingMenuId((prev) => prev === building.id ? null : building.id)}
+                            onClick={(event) => toggleBuildingMenu(building.id, event.currentTarget)}
                             type="button"
                             aria-label={msg('더보기')}
                           >⋯</button>
-                          {buildingMenuId === building.id && (
+                          {buildingMenuId === building.id && buildingMenuPosition && getOverlayRoot() && createPortal(
                             <>
                               <div
                                 className="bld-menu-backdrop"
-                                onClick={() => setBuildingMenuId(null)}
+                                onClick={closeBuildingMenu}
                               />
-                              <div className="bld-menu-popover" role="menu">
+                              <div className="bld-menu-popover" role="menu" style={buildingMenuPosition}>
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setBuildingMenuId(null)
+                                    closeBuildingMenu()
                                     setEditingBuildingId(building.id)
                                     setEditName(building.name || '')
                                     setEditAddress(building.address)
@@ -1841,7 +1868,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setBuildingMenuId(null)
+                                      closeBuildingMenu()
                                       setPlaceRequestTarget({ building })
                                     }}
                                   >{msg('자료 수정 요청')}</button>
@@ -1849,7 +1876,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setBuildingMenuId(null)
+                                    closeBuildingMenu()
                                     const dname = encodeURIComponent(building.name || building.address)
                                     const sname = encodeURIComponent(t(language, 'map.myLocation'))
                                     const openUrl = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
@@ -1887,13 +1914,14 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                     type="button"
                                     className={building.unitsSurveyed ? 'bld-menu-on' : undefined}
                                     onClick={() => {
-                                      setBuildingMenuId(null)
+                                      closeBuildingMenu()
                                       void onSetUnitsSurveyed(building.id, !building.unitsSurveyed)
                                     }}
                                   >{building.unitsSurveyed ? `✓ ${t(language, 'map.unitsSurveyed')}` : t(language, 'map.unitsSurveyed')}</button>
                                 )}
                               </div>
-                            </>
+                            </>,
+                            getOverlayRoot()!,
                           )}
                         </div>
                       </div>

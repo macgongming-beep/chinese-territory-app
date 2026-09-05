@@ -22642,15 +22642,13 @@ button:focus-visible {
 .bld-menu-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 3100;
   background: transparent;
 }
 
 .bld-menu-popover {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 101;
+  position: fixed;
+  z-index: 3101;
   display: flex;
   flex-direction: column;
   min-width: 120px;
