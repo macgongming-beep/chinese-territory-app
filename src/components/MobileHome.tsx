@@ -314,6 +314,7 @@ export function MobileHome({
   onRejectRestaurantRequest,
   globalSettings = {},
   onUpsertGlobalSetting,
+  onDataChanged,
 }: {
   leaderNames?: string[]
   buildings: Building[]
@@ -434,6 +435,7 @@ export function MobileHome({
   onRejectRestaurantRequest?: (id: number, reviewer: string) => Promise<void>
   globalSettings?: Record<string, string>
   onUpsertGlobalSetting?: (key: string, value: string) => Promise<boolean>
+  onDataChanged?: () => Promise<void>
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -1321,7 +1323,7 @@ export function MobileHome({
                     chatUsers={headerChatUsers}
                     onOpenMenu={() => navigate('/settings')}
                   />
-                  <PlaceChangeRequests />
+                  <PlaceChangeRequests onDataChanged={onDataChanged} />
                 </div>
               ) : <Navigate to="/settings" replace />
             } />

@@ -13,7 +13,7 @@ const issueLabels: Record<PlaceIssueType, string> = {
   other: '기타',
 }
 
-export function PlaceChangeRequests() {
+export function PlaceChangeRequests({ onDataChanged }: { onDataChanged?: () => Promise<void> }) {
   const navigate = useNavigate()
   const [requests, setRequests] = useState<PlaceChangeRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,6 +53,7 @@ export function PlaceChangeRequests() {
     const ok = await executePlaceDeletionRequest(request.id)
     setSavingId(null)
     if (!ok) return
+    await onDataChanged?.()
     const rows = await fetchPlaceChangeRequests(showClosed)
     if (rows) setRequests(rows)
   }

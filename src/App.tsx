@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Toast } from './components/Toast'
 import { AppLoading } from './components/AppLoading'
@@ -10,6 +10,7 @@ import { PwaInstallBanner } from './components/PwaInstall'
 import { PullToRefresh } from './components/PullToRefresh'
 import { useStore } from './hooks/useStore'
 import { useCalendarRealtime } from './hooks/useCalendarRealtime'
+import { usePlaceDeletionRealtime } from './hooks/usePlaceDeletionRealtime'
 import { useAuth } from './hooks/useAuth'
 import type { Role } from './types'
 import type { AppLanguage } from './i18n'
@@ -192,6 +193,18 @@ function App() {
   useCalendarRealtime(() => {
     void refetchSlices(['calendar'], { triggeredBy: 'realtime:calendar' })
   }, { enabled: Boolean(user) })   // 로그인 전에는 웹소켓을 열지 않는다
+
+  // 다른 사용자가 장소 삭제를 승인해도 전체 화면을 새로고침하지 않는다.
+  // 삭제로 함께 바뀌는 구역 자료만 백그라운드에서 다시 받아 현재 화면을 유지한다.
+  const syncDeletedPlaces = useCallback(() => refetchSlices(
+    ['buildings', 'cards', 'visits', 'returnVisits', 'resources'],
+    { triggeredBy: 'realtime:place-deletion' },
+  ), [refetchSlices])
+  usePlaceDeletionRealtime(() => {
+    void syncDeletedPlaces().catch((error) => {
+      console.warn('[place deletion realtime] sync failed:', error)
+    })
+  }, { enabled: Boolean(user) })
 
   // role이 leader 또는 admin인 유저만 인도자 목록으로
   const leaderNames = allUsers
@@ -424,6 +437,7 @@ function App() {
             restaurantRequests={restaurantRequests}
             globalSettings={globalSettings}
             onUpsertGlobalSetting={upsertGlobalSetting}
+            onDataChanged={syncDeletedPlaces}
             onRegisterRestaurant={registerRestaurant}
             onApproveRestaurantRequest={approveRestaurantRequest}
             onRejectRestaurantRequest={rejectRestaurantRequest}
@@ -520,8 +534,9 @@ function App() {
               onToggleBuildingRestaurant={toggleBuildingRestaurant}
               onSetRegularVisitor={setRegularVisitor}
               restaurantRequests={restaurantRequests}
-            globalSettings={globalSettings}
-            onUpsertGlobalSetting={upsertGlobalSetting}
+              globalSettings={globalSettings}
+              onUpsertGlobalSetting={upsertGlobalSetting}
+              onDataChanged={syncDeletedPlaces}
               onAddRestaurantVisit={addRestaurantVisit}
               onSubmitRestaurantRequest={submitRestaurantRequest}
               onUpdateRestaurantRequestMemo={updateRestaurantRequestMemo}
