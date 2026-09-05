@@ -6,10 +6,11 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { AppLanguage } from '../i18n'
 import { t } from '../i18n'
-import type { Building, ReturnVisit, ReturnVisitLog } from '../types'
+import type { Building, EndReturnVisitInput, ReturnVisit, ReturnVisitLog } from '../types'
 import { formatRelativeVisitDate } from '../utils/returnVisits'
 import { confirmDialog } from '../lib/confirm'
 import { msg } from '../lib/msg'
+import { EndReturnVisitDialog } from './EndReturnVisitDialog'
 
 type Props = {
   language: AppLanguage
@@ -20,7 +21,7 @@ type Props = {
   onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onUpdateReturnVisitLog?: (id: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onDeleteReturnVisitLog?: (id: number) => Promise<void>
-  onDeleteReturnVisit?: (id: number) => Promise<void>
+  onDeleteReturnVisit?: (id: number, input: EndReturnVisitInput) => Promise<boolean>
   onUpdateReturnVisitNickname?: (id: number, nickname: string) => Promise<void>
   onUpdateReturnVisitAddress?: (id: number, address: string) => Promise<void>
 }
@@ -68,6 +69,7 @@ export function MobileRegularVisitDetail({
   const [addressOpen, setAddressOpen] = useState(false)
   const [addressValue, setAddressValue] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [endOpen, setEndOpen] = useState(false)
 
   const myLogs = useMemo(() => {
     if (!rv) return []
@@ -151,11 +153,8 @@ export function MobileRegularVisitDetail({
     await onDeleteReturnVisitLog(logId)
   }
 
-  const handleDeleteRv = async () => {
-    if (!onDeleteReturnVisit) return
-    if (!(await confirmDialog({ message: t(language, 'territory.deleteRegularConfirm'), danger: true, confirmLabel: msg('삭제') }))) return
-    await onDeleteReturnVisit(rv.id)
-    navigate('/territory?section=regular')
+  const handleEndRv = () => {
+    if (onDeleteReturnVisit) setEndOpen(true)
   }
 
   const handleOpenMap = () => {
@@ -186,8 +185,8 @@ export function MobileRegularVisitDetail({
                 <button type="button" onClick={() => { setMenuOpen(false); setAddressOpen(true); setAddressValue(rv.address) }}>
                   {t(language, 'territory.editAddress')}
                 </button>
-                <button type="button" className="danger" onClick={() => { setMenuOpen(false); handleDeleteRv() }}>
-                  {t(language, 'common.delete')}
+                <button type="button" className="danger" onClick={() => { setMenuOpen(false); handleEndRv() }}>
+                  {msg('정기방문 종료')}
                 </button>
               </div>
             </>
@@ -437,6 +436,17 @@ export function MobileRegularVisitDetail({
           </div>
         )
       })()}
+      {endOpen && onDeleteReturnVisit && (
+        <EndReturnVisitDialog
+          visit={rv}
+          onClose={() => setEndOpen(false)}
+          onSubmit={async (input) => {
+            const ok = await onDeleteReturnVisit(rv.id, input)
+            if (ok) navigate('/territory?section=regular')
+            return ok
+          }}
+        />
+      )}
     </main>
   )
 }

@@ -903,6 +903,9 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           display_name: string
+          end_reason: string | null
+          ended_at: string | null
+          ended_by_name: string | null
           id: number
           last_result: string | null
           last_visited_at: string | null
@@ -917,6 +920,9 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           display_name: string
+          end_reason?: string | null
+          ended_at?: string | null
+          ended_by_name?: string | null
           id?: number
           last_result?: string | null
           last_visited_at?: string | null
@@ -931,6 +937,9 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           display_name?: string
+          end_reason?: string | null
+          ended_at?: string | null
+          ended_by_name?: string | null
           id?: number
           last_result?: string | null
           last_visited_at?: string | null

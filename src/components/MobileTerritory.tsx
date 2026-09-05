@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { ActiveRestaurantSession, Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ManualReturnVisitInput, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
+import type { ActiveRestaurantSession, Building, CalendarEvent, CardBoundary, EndReturnVisitInput, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ManualReturnVisitInput, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
 import type { AppLanguage } from '../i18n'
 import { t, translateKoreanAddress, weekdayShortLabels } from '../i18n'
 import { getTerritoryCardOperationalState, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
@@ -11,6 +11,7 @@ import { showToast } from '../lib/toast'
 import { getAssignmentTeamMembers } from '../utils/assignmentTeamMembers'
 import { chooseCardForBuilding } from '../utils/chooseCardForBuilding'
 import { shortAddress } from '../utils/shortAddress'
+import { EndReturnVisitDialog } from './EndReturnVisitDialog'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
   if (!assignment) return []
@@ -140,7 +141,7 @@ export function MobileTerritory({
   onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onUpdateReturnVisitLog?: (id: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onDeleteReturnVisitLog?: (id: number) => Promise<void>
-  onDeleteReturnVisit?: (id: number) => Promise<void>
+  onDeleteReturnVisit?: (id: number, input: EndReturnVisitInput) => Promise<boolean>
   onUpdateReturnVisitNickname?: (id: number, nickname: string) => Promise<void>
   onUpdateReturnVisitAddress?: (id: number, address: string) => Promise<void>
 }) {
@@ -231,6 +232,7 @@ export function MobileTerritory({
   const [logMemo, setLogMemo] = useState('')
   const [logSaving, setLogSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [endingVisit, setEndingVisit] = useState<ReturnVisit | null>(null)
   // 꾹 누르기 → 기록 액션 팝업
   // 수동 추가 시트
   const [showAddSheet, setShowAddSheet] = useState(false)
@@ -1093,17 +1095,10 @@ export function MobileTerritory({
                                   onClick={() => {
                                     if (!onDeleteReturnVisit) return
                                     setMenuOpenId(null)
-                                    setConfirmDialog({
-                                      message: t(language, 'territory.deleteRegularConfirm'),
-                                      onConfirm: async () => {
-                                        setDeletingId(rv.id)
-                                        await onDeleteReturnVisit(rv.id)
-                                        setDeletingId(null)
-                                      },
-                                    })
+                                    setEndingVisit(rv)
                                   }}
                                   type="button"
-                                >{t(language, 'common.delete')}</button>
+                                >{msg('정기방문 종료')}</button>
                               </div>
                             )}
                           </div>
@@ -1852,6 +1847,20 @@ export function MobileTerritory({
               </div>
             </div>
           </div>
+        )}
+        {endingVisit && onDeleteReturnVisit && (
+          <EndReturnVisitDialog
+            visit={endingVisit}
+            onClose={() => setEndingVisit(null)}
+            onSubmit={async (input) => {
+              setDeletingId(endingVisit.id)
+              try {
+                return await onDeleteReturnVisit(endingVisit.id, input)
+              } finally {
+                setDeletingId(null)
+              }
+            }}
+          />
         )}
         </>
       )}

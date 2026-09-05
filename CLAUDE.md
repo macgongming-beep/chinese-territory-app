@@ -16,6 +16,10 @@
 
 결정 이유·불변 계약·운영 사례: `docs/decisions/0001-preserve-orphaned-return-visits.md`
 
+정기방문 종료는 장소 삭제와 분리한다. 종료 시 건물·세대·방문 기록은 보존하고 현재
+`regular_visits`만 해제한다. 철거·중복·오기입은 `place_change_requests`로 관리자에게
+보낸다. 결정 이유와 불변 계약: `docs/decisions/0002-end-return-visits-and-report-place-changes.md`
+
 ### 보안 — anon 쓰기 차단 **완료** ✅ (2026-08-31 재잠금)
 
 **앱 주소만 알면 회중 자료를 고치고 지울 수 있던 문이 닫혔다.**

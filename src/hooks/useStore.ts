@@ -391,7 +391,7 @@ export function useStore(enabled: boolean = true) {
 
       case 'returnVisits': {
         const [returnVisitsRes, returnVisitLogsRes] = await Promise.all([
-          supabase.from('return_visits').select('*').order('created_at', { ascending: false }),
+          supabase.from('return_visits').select('*').is('ended_at', null).order('created_at', { ascending: false }),
           supabase.from('return_visit_logs').select('*').order('visited_at', { ascending: false }),
         ])
 
@@ -402,6 +402,7 @@ export function useStore(enabled: boolean = true) {
           id: number; unit_id: number; building_id: number; display_name: string;
           nickname: string | null; address: string; unit_number: string; assigned_user_name: string;
           created_by: string; last_visited_at: string | null; last_result: string | null; created_at: string;
+          ended_at: string | null; ended_by_name: string | null; end_reason: string | null;
         }[]).map((r) => ({
           id: r.id,
           unitId: r.unit_id,
@@ -415,6 +416,9 @@ export function useStore(enabled: boolean = true) {
           lastVisitedAt: r.last_visited_at ?? null,
           lastResult: (r.last_result as '만남' | '부재' | null) ?? null,
           createdAt: r.created_at,
+          endedAt: r.ended_at ?? null,
+          endedByName: r.ended_by_name ?? '',
+          endReason: (r.end_reason as import('../types').ReturnVisitEndReason | null) ?? null,
         })))
         setReturnVisitLogs(returnVisitLogsRes.error ? [] : (returnVisitLogsRes.data as {
           id: number; return_visit_id: number; visited_at: string;

@@ -23,8 +23,9 @@ import { DesktopNotificationSettings } from './DesktopNotificationSettings'
 import { LocationPermissionSettings } from './LocationPermissionSettings'
 import { ServiceLogPage } from './ServiceLogPage'
 import { RegularVisitManagement } from './RegularVisitManagement'
+import { PlaceChangeRequests } from './PlaceChangeRequests'
 import { AppHeaderActionButtons } from './AppHeader'
-import type { InformalKind, Building, CalendarEvent, CardBoundary, DesktopPage, EventInformalAssignment, EventRestaurantAssignment, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { InformalKind, Building, CalendarEvent, CardBoundary, DesktopPage, EndReturnVisitInput, EventInformalAssignment, EventRestaurantAssignment, GeoPoint, InformalAsset, InformalGroup, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 import type { CsvBuildingImport } from '../utils/csvBuildingImport'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
@@ -259,7 +260,7 @@ export function DesktopApp({
   onAddReturnVisitLog: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
-  onDeleteReturnVisit?: (id: number) => Promise<void>
+  onDeleteReturnVisit?: (id: number, input: EndReturnVisitInput) => Promise<boolean>
   onReassignReturnVisit?: (id: number, newAssignee: string) => Promise<boolean> | boolean
   onToggleChinese: (buildingId: number, unitId: number) => void
   onToggleUser: (cardId: number, userName: string) => void
@@ -897,6 +898,11 @@ export function DesktopApp({
           <Route path="data-management" element={
             (viewMode === 'admin' || viewMode === 'developer')
               ? <DesktopDataManagement />
+              : <Navigate to="/settings/profile" replace />
+          } />
+          <Route path="place-change-requests" element={
+            (viewMode === 'admin' || viewMode === 'developer')
+              ? <PlaceChangeRequests />
               : <Navigate to="/settings/profile" replace />
           } />
           <Route path="territory-regions" element={

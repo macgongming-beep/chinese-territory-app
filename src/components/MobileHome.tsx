@@ -14,10 +14,11 @@ import { MobileSignupRequests } from './MobileSignupRequests'
 import { AdminSuggestions } from './admin/AdminSuggestions'
 import { ServiceLogPage } from './ServiceLogPage'
 import { RegularVisitManagement } from './RegularVisitManagement'
+import { PlaceChangeRequests } from './PlaceChangeRequests'
 import { PrivacyPolicy } from './PrivacyPolicy'
 import { MobileProfileSettings } from './MobileProfileSettings'
 import { UserMobileHome } from './UserMobileHome'
-import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, InformalKind, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
+import type { Building, CalendarEvent, CardBoundary, EndReturnVisitInput, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, InformalKind, Notice, ReturnVisit, ReturnVisitLog, Role, ServiceSession, SpecialPeriod, TerritoryCard, TimeSlot, Unit, UnitStatus, VisitHistory } from '../types'
 // InformalCardsTab / RestaurantsTab 은 AdminMobileZone 내부에서 사용됨 (직접 import 불필요)
 import type { AuthUser, LoginLogRecord } from '../hooks/useAuth'
 import type { AppLanguage } from '../i18n'
@@ -57,6 +58,7 @@ const pathToTab: Record<string, MobileTab> = {
   '/assignment': '배정',
   '/users': '설정',
   '/settings': '설정',
+  '/place-change-requests': '설정',
 }
 
 type IconName = 'home' | 'calendar' | 'territory' | 'map' | 'assignment' | 'settings' | 'notice'
@@ -367,7 +369,7 @@ export function MobileHome({
   onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onUpdateReturnVisitLog?: (id: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
   onDeleteReturnVisitLog?: (id: number) => Promise<void>
-  onDeleteReturnVisit?: (id: number) => Promise<void>
+  onDeleteReturnVisit?: (id: number, input: EndReturnVisitInput) => Promise<boolean>
   onReassignReturnVisit?: (id: number, newAssignee: string) => Promise<boolean> | boolean
   onUpdateReturnVisitNickname?: (id: number, nickname: string) => Promise<void>
   onUpdateReturnVisitAddress?: (id: number, address: string) => Promise<void>
@@ -1305,6 +1307,26 @@ export function MobileHome({
             } />
 
             {/* 설정 */}
+            <Route path="/place-change-requests" element={
+              (role === 'admin' || role === 'developer') ? (
+                <div className="mobile-settings-page">
+                  <AppHeader
+                    pageTitle={msg('자료 수정 요청')}
+                    language={language}
+                    showBack
+                    onBack={() => navigate('/settings')}
+                    userId={currentUser.id}
+                    userName={currentVisitor}
+                    role={role}
+                    chatUsers={headerChatUsers}
+                    onOpenMenu={() => navigate('/settings')}
+                  />
+                  <PlaceChangeRequests />
+                </div>
+              ) : <Navigate to="/settings" replace />
+            } />
+
+            {/* 설정 */}
             <Route path="/settings" element={
               <div className="mobile-settings-page">
                 <AppHeader
@@ -1487,6 +1509,16 @@ export function MobileHome({
                         <span className="mobile-settings-row-text">
                           <strong>{msg('정기방문 관리')}</strong>
                           <small>{msg('담당자 끊긴 정기방문 점검·재배정')}</small>
+                        </span>
+                        <span className="mobile-settings-chevron" aria-hidden="true">›</span>
+                      </button>
+                      <button onClick={() => navigate('/place-change-requests')} type="button">
+                        <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        </span>
+                        <span className="mobile-settings-row-text">
+                          <strong>{msg('자료 수정 요청')}</strong>
+                          <small>{msg('건물·세대·주소 신고 확인')}</small>
                         </span>
                         <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                       </button>

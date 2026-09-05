@@ -30286,3 +30286,87 @@ button > svg {
   font-size: 11px;
   line-height: 1.5;
 }
+
+/* 정기방문 종료: 기록 보존과 장소 문제 신고를 한 화면에서 분리한다. */
+.rv-end-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3600;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgb(0 0 0 / 42%);
+}
+.rv-end-sheet {
+  width: min(480px, 100%);
+  max-height: calc(92svh / var(--app-zoom, 1));
+  overflow-y: auto;
+  padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+  border-radius: 8px 8px 0 0;
+  background: var(--surface);
+  color: var(--ink);
+}
+.rv-end-sheet header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.rv-end-sheet h2 { margin: 0; font-size: 20px; }
+.rv-end-sheet header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.rv-end-sheet header button { width: 40px; height: 40px; border: 0; background: transparent; color: var(--muted); font-size: 24px; }
+.rv-end-section { display: grid; gap: 9px; margin-top: 20px; }
+.rv-end-section > strong, .rv-end-label { font-size: 14px; font-weight: 750; }
+.rv-end-label small { color: var(--muted); font-size: 11px; font-weight: 500; }
+.rv-end-options { display: grid; gap: 7px; }
+.rv-end-options label {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 13px;
+}
+.rv-end-options input { width: 17px; height: 17px; accent-color: var(--ink); }
+.rv-end-section select, .rv-end-section textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.rv-end-section select { min-height: 44px; padding: 0 10px; }
+.rv-end-section textarea { resize: vertical; padding: 10px; line-height: 1.5; }
+.rv-end-preserve { margin: 16px 0 0; padding: 9px 10px; border-radius: 8px; background: var(--tint); color: var(--muted); font-size: 12px; line-height: 1.5; }
+.rv-end-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 18px; }
+.rv-end-actions button { min-height: 46px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-weight: 750; }
+.rv-end-actions .primary { border-color: var(--ink); background: var(--ink); color: var(--surface); }
+.rv-end-actions button:disabled { opacity: .55; }
+
+@media (min-width: 700px) {
+  .rv-end-backdrop { align-items: center; padding: 24px; }
+  .rv-end-sheet { border-radius: 8px; }
+}
+
+.place-requests-page { display: grid; gap: 16px; padding: 20px 16px 90px; }
+.place-requests-page > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.place-requests-page h2 { margin: 0; color: var(--ink); font-size: 20px; }
+.place-requests-page header p { margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.place-requests-page header label { display: flex; flex-shrink: 0; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.place-requests-empty { padding: 32px 0; color: var(--muted); text-align: center; }
+.place-request-list { display: grid; gap: 10px; }
+.place-request-card { padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.place-request-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.place-request-title strong { font-size: 13px; }
+.place-request-status { padding: 2px 7px; border-radius: 6px; background: var(--tint); color: var(--muted); font-size: 10px; font-weight: 750; }
+.place-request-status.pending { background: #fff5e8; color: #9a5b16; }
+.place-request-status.completed { background: #edf7f0; color: #32734a; }
+.place-request-card h3 { margin: 10px 0 2px; font-size: 16px; }
+.place-request-card p { margin: 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.place-request-card blockquote { margin: 10px 0; padding: 9px 10px; border-left: 3px solid var(--line-2); background: var(--tint); color: var(--ink-700); font-size: 12px; line-height: 1.5; }
+.place-request-card small { display: block; margin-top: 10px; color: var(--muted); font-size: 11px; }
+.place-request-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 12px; }
+.place-request-actions button { min-height: 38px; padding: 0 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); font-weight: 700; }
+.place-request-actions .primary { border-color: var(--ink); background: var(--ink); color: var(--surface); }

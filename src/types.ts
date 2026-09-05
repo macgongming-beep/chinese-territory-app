@@ -298,6 +298,36 @@ export type ReturnVisit = {
   lastVisitedAt: string | null
   lastResult: '만남' | '부재' | null
   createdAt: string
+  endedAt?: string | null
+  endedByName?: string
+  endReason?: ReturnVisitEndReason | null
+}
+
+export type ReturnVisitEndReason = 'no_longer_assigned' | 'needs_reassignment' | 'no_longer_target'
+export type PlaceIssueType = 'building_missing' | 'unit_missing' | 'details_wrong' | 'duplicate_place' | 'other'
+
+export type EndReturnVisitInput = {
+  reason: ReturnVisitEndReason
+  issueType?: PlaceIssueType | null
+  issueNote?: string
+}
+
+export type PlaceChangeRequest = {
+  id: number
+  requestType: PlaceIssueType
+  buildingId: number | null
+  unitId: number | null
+  returnVisitId: number | null
+  buildingName: string
+  address: string
+  unitNumber: string
+  note: string
+  requestedByName: string
+  status: 'pending' | 'completed' | 'rejected'
+  reviewedByName: string
+  reviewNote: string
+  createdAt: string
+  reviewedAt: string | null
 }
 
 export type ReturnVisitLog = {

@@ -1,4 +1,4 @@
-import type { Building, ManualReturnVisitInput, ReturnVisit, TerritoryCard } from '../../types'
+import type { Building, EndReturnVisitInput, ManualReturnVisitInput, ReturnVisit, TerritoryCard } from '../../types'
 import { supabase, showToast, reportMutationError, requireVisitor } from './shared'
 import { msg } from '../../lib/msg'
 import { getAuthToken } from '../../lib/authToken'
@@ -220,14 +220,26 @@ export function makeRegularVisitMutations(deps: {
     showToast(msg('기록이 삭제됐습니다'))
   }
 
-  const deleteReturnVisit = async (id: number) => {
-    const res = await supabase.from('return_visits').delete().eq('id', id)
-    if (res.error) {
-      reportMutationError(msg('정기방문을 삭제하지 못했습니다.'), res.error)
-      return
+  const deleteReturnVisit = async (id: number, input: EndReturnVisitInput): Promise<boolean> => {
+    const token = getAuthToken()
+    if (!token) {
+      showToast(msg('다시 로그인해 주세요.'), 'error')
+      return false
+    }
+    const res = await supabase.rpc('end_return_visit_tx', {
+      p_token: token,
+      p_return_visit_id: id,
+      p_reason: input.reason,
+      p_issue_type: input.issueType ?? null,
+      p_issue_note: input.issueNote?.trim() ?? '',
+    })
+    if (res.error || res.data?.ok !== true) {
+      reportMutationError(msg('정기방문을 종료하지 못했습니다.'), res.error ?? new Error('Missing end result'))
+      return false
     }
     await fetchAll()
-    showToast(msg('정기방문이 삭제됐습니다'))
+    showToast(input.issueType ? msg('정기방문을 종료하고 장소 수정 요청을 보냈습니다') : msg('정기방문을 종료했습니다'))
+    return true
   }
 
   const updateReturnVisitNickname = async (id: number, nickname: string) => {
