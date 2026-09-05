@@ -255,13 +255,7 @@ begin
 
     select count(*), min(id) into v_match_count, v_building_id
     from public.buildings
-    where private.restaurant_address_key(address) = v_address_key
-      and not (coalesce(lat, 0) = 0 and coalesce(lng, 0) = 0)
-      and 6371000 * 2 * asin(least(1, sqrt(
-        power(sin(radians((lat - p_lat) / 2)), 2)
-        + cos(radians(p_lat)) * cos(radians(lat))
-        * power(sin(radians((lng - p_lng) / 2)), 2)
-      ))) <= 200;
+    where private.same_building_location(address, lat, lng, v_address, p_lat, p_lng);
     if v_match_count > 1 then
       raise exception '가까운 같은 주소 건물이 여러 개입니다. 기존 건물을 선택하세요';
     end if;

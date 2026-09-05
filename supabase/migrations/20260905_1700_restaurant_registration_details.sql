@@ -33,6 +33,39 @@ as $$
 $$;
 revoke all on function private.restaurant_address_key(text) from public, anon, authenticated;
 
+-- 도로명+번지 키가 같고 실제 거리가 200m 이내면 같은 건물로 본다.
+-- 후보 좌표가 없으면 키가 유일한지는 호출부가 따로 확인한다. 기존 건물에만
+-- 좌표가 없을 때는 전체 주소까지 같은 경우에만 재사용한다.
+create or replace function private.same_building_location(
+  p_existing_address text,
+  p_existing_lat double precision,
+  p_existing_lng double precision,
+  p_candidate_address text,
+  p_candidate_lat double precision,
+  p_candidate_lng double precision
+)
+returns boolean
+language sql immutable
+set search_path = ''
+as $$
+  select private.restaurant_address_key(p_existing_address)
+      = private.restaurant_address_key(p_candidate_address)
+    and case
+      when coalesce(p_candidate_lat, 0) = 0 and coalesce(p_candidate_lng, 0) = 0
+        then true
+      when coalesce(p_existing_lat, 0) = 0 and coalesce(p_existing_lng, 0) = 0
+        then lower(regexp_replace(btrim(coalesce(p_existing_address, '')), '[[:space:]]', '', 'g'))
+          = lower(regexp_replace(btrim(coalesce(p_candidate_address, '')), '[[:space:]]', '', 'g'))
+      else 6371000 * 2 * asin(least(1, sqrt(
+        power(sin(radians((p_existing_lat - p_candidate_lat) / 2)), 2)
+        + cos(radians(p_candidate_lat)) * cos(radians(p_existing_lat))
+        * power(sin(radians((p_existing_lng - p_candidate_lng) / 2)), 2)
+      ))) <= 200
+    end
+$$;
+revoke all on function private.same_building_location(text,double precision,double precision,text,double precision,double precision)
+  from public, anon, authenticated;
+
 create or replace function private.register_restaurant_core(
   p_actor_name text,
   p_name text,
@@ -93,24 +126,7 @@ begin
   else
     select count(*), min(id) into v_matches, v_building
     from public.buildings
-    where lower(regexp_replace(btrim(address), '[[:space:]]', '', 'g'))
-            = lower(regexp_replace(v_address, '[[:space:]]', '', 'g'))
-       or (
-         private.restaurant_address_key(address) = v_address_key
-         and (
-           -- 지오코딩 실패 시에는 key 후보를 센다. 하나면 재사용하고,
-           -- 여러 개면 아래 예외로 보내 임의의 다른 도시 건물을 고르지 않는다.
-           (coalesce(p_lat, 0) = 0 and coalesce(p_lng, 0) = 0)
-           or (
-             not (coalesce(lat, 0) = 0 and coalesce(lng, 0) = 0)
-             and 6371000 * 2 * asin(least(1, sqrt(
-               power(sin(radians((lat - p_lat) / 2)), 2)
-               + cos(radians(p_lat)) * cos(radians(lat))
-               * power(sin(radians((lng - p_lng) / 2)), 2)
-             ))) <= 200
-           )
-         )
-       );
+    where private.same_building_location(address, lat, lng, v_address, p_lat, p_lng);
     if v_matches > 1 then raise exception '같은 주소의 건물이 여러 개입니다. 기존 건물을 선택하세요'; end if;
     if v_building is not null and not exists (
       select 1 from public.buildings where id = v_building and type = '상가'
