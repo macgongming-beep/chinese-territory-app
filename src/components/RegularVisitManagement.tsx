@@ -1,4 +1,5 @@
 // 정기방문 관리 — 관리자: 목록 + 재배정, 개발자: + 상단 진단 통계
+// 결정 배경: docs/decisions/0001-preserve-orphaned-return-visits.md
 //
 // 끊김 판정: 담당자(assignedUserName)가 비었거나 현재 활성 사용자 명단에 없음 (전출/계정삭제)
 // 방치(stale) 판정: 마지막 방문이 90일+ 전이거나 기록 없음

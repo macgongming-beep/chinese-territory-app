@@ -1,5 +1,6 @@
 -- 전출·계정 삭제로 담당자가 끊긴 활동 정기방문을 관리자가 안전하게 재배정한다.
 -- return_visits 와 세대의 regular_visits 를 한 트랜잭션에서 함께 맞춘다.
+-- 결정 배경: docs/decisions/0001-preserve-orphaned-return-visits.md
 
 create or replace function public.reassign_return_visit_tx(
   p_token uuid,
