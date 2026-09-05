@@ -92,9 +92,9 @@ export function DesktopMap({
   onSwitchToList,
   informalAssets = [],
   focusedInformalId,
-  onCreateInformalPlace,
-  onUpdateInformalPlace,
-  onSaveInformalShape,
+  onCreateInformalPlace: onCreateInformalPlaceProp,
+  onUpdateInformalPlace: onUpdateInformalPlaceProp,
+  onSaveInformalShape: onSaveInformalShapeProp,
 }: {
   language: AppLanguage;
   buildings: Building[]
@@ -281,6 +281,14 @@ export function DesktopMap({
     : undefined
   const canRecordVisits = actualRole !== 'user' || !!todayRecordableSession
   const isAdmin = actualRole === 'admin' || actualRole === 'developer'
+
+  // ⚠ 비공식 장소는 관리자·개발자만 만들고 고친다. DB 정책이 이미 그렇게 막지만
+  //   (role_admin_informal_assets_*), /map 은 누구나 들어오는 화면이라 여기서
+  //   안 막으면 인도자·전도인에게 버튼이 보이고 **눌러야 실패**한다.
+  //   모바일은 MobileHome 이 같은 방식으로 prop 을 끊는다.
+  const onCreateInformalPlace = isAdmin ? onCreateInformalPlaceProp : undefined
+  const onUpdateInformalPlace = isAdmin ? onUpdateInformalPlaceProp : undefined
+  const onSaveInformalShape = isAdmin ? onSaveInformalShapeProp : undefined
 
   const requireRecordAccess = () => {
     if (canRecordVisits) return true
@@ -2896,8 +2904,9 @@ export function DesktopMap({
 
       {/* 비공식 장소로 들어왔을 때 — 그 장소의 모양을 그리는 자리.
           그리는 중에는 아래쪽 구역선 도구(저장/취소)가 그대로 뜬다 */}
-      {selectedInformal && showInformal && !drawingBoundary && onSaveInformalShape
-        && (actualRole === 'admin' || actualRole === 'developer') && (
+      {/* 역할 검사는 위 onSaveInformalShape 한 곳에 있다 — 여기서 또 보면
+          두 판정이 갈라진다 (지도 핀에서 이미 그렇게 데었다) */}
+      {selectedInformal && showInformal && !drawingBoundary && onSaveInformalShape && (
         <div style={{
           position: 'absolute', left: 16, bottom: 16, zIndex: 30,
           background: 'var(--surface, #fff)', border: '1px solid var(--line)',
