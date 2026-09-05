@@ -16,6 +16,7 @@ vi.mock('./MapCanvas', () => ({
           지도 집계 {marker.label}
         </button>
       ))}
+      <output data-testid="highlighted-scope">{[...(props.highlightedCardIds ?? [])].sort((a, b) => a - b).join(',')}</output>
       {(props.aggregateMarkers ?? []).length === 0 && <output>건물 포인트 {props.buildings.length}개</output>}
     </div>
   ),
@@ -48,9 +49,11 @@ describe('모바일 지도 하단 시트', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'zoom middle' }))
     expect(await screen.findByRole('button', { name: '지도 집계 영덕동' })).toBeVisible()
+    expect(screen.getByTestId('highlighted-scope')).toHaveTextContent('1,2')
 
     fireEvent.click(screen.getByRole('button', { name: 'zoom close' }))
     expect(await screen.findByText('건물 포인트 2개')).toBeVisible()
+    expect(screen.getByTestId('highlighted-scope')).toHaveTextContent('1,2')
   })
 
   test('사용자가 내려둔 시트 높이를 구와 동 집계 핀 선택이 바꾸지 않는다', async () => {

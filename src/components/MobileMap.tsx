@@ -723,7 +723,6 @@ export function MobileMap({
     () => new Set(scopedCards.map((card) => card.id)),
     [scopedCards]
   )
-  const emptyHighlightedCardIds = useMemo(() => new Set<number>(), [])
 
   const cardMap = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards])
   const visitHistoriesByUnitId = useMemo(() => {
@@ -1358,7 +1357,7 @@ export function MobileMap({
               cardBoundaries={mapAggregateMarkers.length > 0 || selectedInformal ? [] : mapBoundaries}
               cards={cards}
               selectedCardId={mapSelectedCardId}
-              highlightedCardIds={mapAggregateMarkers.length > 0 ? emptyHighlightedCardIds : scopedCardIds}
+              highlightedCardIds={scopedCardIds}
               onSelectAggregate={handleSelectAggregateMarker}
               onZoomChange={(zoom) => {
                 const next = getMobileMapDetailLevel(zoom)
