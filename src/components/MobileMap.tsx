@@ -499,6 +499,7 @@ export function MobileMap({
   const HALF_HEIGHT = window.innerHeight * 0.46
   const FULL_HEIGHT = window.innerHeight * 0.92
   const UNIT_NAV_HEIGHT = Math.max(210, Math.min(280, window.innerHeight * 0.3))
+  const SHEET_TRANSITION_MS = 350
  
   // cardIds 로 진입한 경우(드릴 컨텍스트 지도) 는 바텀 시트 최소화로 시작 — 경계선 전체 보기
   const enteredWithFocusedCardIds = focusedCardIds.length > 0
@@ -510,6 +511,20 @@ export function MobileMap({
   const dragStartHeight = useRef<number>(0)
   const dragMoved = useRef(false)
   const lastSheetTapAt = useRef(0)
+  const buildingScrollTimerRef = useRef<number | null>(null)
+
+  const scrollBuildingAfterSheetTransition = (buildingId: number) => {
+    if (buildingScrollTimerRef.current !== null) {
+      window.clearTimeout(buildingScrollTimerRef.current)
+    }
+    buildingScrollTimerRef.current = window.setTimeout(() => {
+      buildingScrollTimerRef.current = null
+      document.getElementById(`building-card-${buildingId}`)?.scrollIntoView({
+        behavior: 'auto',
+        block: 'center',
+      })
+    }, SHEET_TRANSITION_MS + 30)
+  }
 
   const closeUnitDetail = () => {
     setFullScreenUnit(null)
@@ -559,6 +574,9 @@ export function MobileMap({
     document.body.classList.add('mobile-map-scroll-lock')
     return () => {
       document.body.classList.remove('mobile-map-scroll-lock')
+      if (buildingScrollTimerRef.current !== null) {
+        window.clearTimeout(buildingScrollTimerRef.current)
+      }
     }
   }, [])
  
@@ -639,10 +657,9 @@ export function MobileMap({
       next.delete(getPinGroup(building))
       return next
     })
-    setTimeout(() => {
-      moveMobileMapToBuilding(building)
-      document.getElementById(`building-card-${focusedBuildingId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }, 250)
+    moveMobileMapToBuilding(building)
+    // 시트 높이 애니메이션과 목록 스크롤을 동시에 돌리면 긴 목록에서 프레임이 끊긴다.
+    scrollBuildingAfterSheetTransition(focusedBuildingId)
   // moveMobileMapToBuilding intentionally reads the current map instance.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildings, focusedBuildingId, focusedUnitId, visitHistories])
@@ -1395,13 +1412,8 @@ export function MobileMap({
                     setSheetHeight(HALF_HEIGHT)
                   }
 
-                  // 해당 카드로 스크롤 (렌더링 후 실행을 위해 딜레이)
-                  setTimeout(() => {
-                    const el = document.getElementById(`building-card-${id}`)
-                    if (el) {
-                      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                    }
-                  }, 150)
+                  // 시트가 다 올라온 뒤 위치만 맞춘다. 두 애니메이션을 겹치지 않는다.
+                  scrollBuildingAfterSheetTransition(id)
                 }
               }}
               onSelectCardBoundary={(cardId) => setSelectedCardId(cardId)}

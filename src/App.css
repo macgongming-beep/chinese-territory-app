@@ -22500,6 +22500,12 @@ button:focus-visible {
   background: #fff;
 }
 
+/* 긴 건물 목록은 시트 높이 전환 중 화면 밖 행까지 다시 그릴 필요가 없다. */
+.mobile-bottom-sheet .bld-row:not(.bld-expanded) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 50px;
+}
+
 .bld-row.bld-expanded {
   background: #fafbfc;
 }
