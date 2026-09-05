@@ -118,10 +118,19 @@ export function makeRestaurantServiceMutations(deps: {
         return
       }
       resolvedBuildingId = existingBuilding.id
-      // 첫 번째 세대 사용
-      const firstUnit = existingBuilding.units[0]
-      if (!firstUnit) {
-        // 세대가 없으면 하나 생성
+      // ⚠ **가게 하나가 세대 하나다.** 예전에는 건물에 세대가 하나라도 있으면
+      //   units[0] 을 그대로 썼다. 그래서 이미 식당이 있는 건물에 새 식당을
+      //   승인하면 **세대가 안 생기고** 기존 가게에 얹혔다 — 신청은 '승인됨'
+      //   으로 바뀌는데 새 가게는 어디에도 안 보인다.
+      //   (2026-09-05 실측: 명지로40번길 8 에 두 건이 그렇게 사라졌다.
+      //    한 건물에 식당 세대가 셋인 곳도 이미 있다 — 재사용은 애초에 틀렸다.)
+      //   같은 이름이 이미 있으면 그건 같은 가게이므로 그대로 쓴다 (두 번 승인).
+      const sameNameUnit = existingBuilding.units.find(
+        (unit) => unit.number.trim() === opts.name.trim(),
+      )
+      if (sameNameUnit) {
+        resolvedUnitId = sameNameUnit.id
+      } else {
         const uRes = await supabase
           .from('units')
           .insert({ building_id: resolvedBuildingId, number: opts.name.trim(), status: '만남', is_chinese: true, is_restaurant: true })
@@ -132,8 +141,6 @@ export function makeRestaurantServiceMutations(deps: {
           return
         }
         resolvedUnitId = uRes.data.id
-      } else {
-        resolvedUnitId = firstUnit.id
       }
     } else {
       // 새 건물을 만든다.
