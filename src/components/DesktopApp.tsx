@@ -866,6 +866,8 @@ export function DesktopApp({
             currentUserId={currentUserId}
             actualRole={viewMode}
             onLogout={onLogout}
+            allUsers={allUsers}
+            returnVisits={returnVisits ?? []}
           />
         }>
           <Route index element={<Navigate to="profile" replace />} />
@@ -973,6 +975,7 @@ export function DesktopApp({
               : <Navigate to="/settings/profile" replace />
           } />
         </Route>
+        <Route path="/signup-requests" element={<Navigate to="/settings/signup-requests" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </div>

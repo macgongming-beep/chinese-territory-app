@@ -1,12 +1,14 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import type { Role } from '../types'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import type { ReturnVisit, Role } from '../types'
+import { useAdminAttentionCounts } from '../hooks/useAdminAttentionCounts'
+import type { AttentionUser } from '../utils/adminAttention'
 
 
 function isAdminLike(role: Role): boolean {
   return role === 'admin' || role === 'developer'
 }
 
-function SidebarLink({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
+function SidebarLink({ to, icon, label, count, countLabel }: { to: string; icon: React.ReactNode; label: string; count?: number; countLabel?: string }) {
   return (
     <NavLink
       to={to}
@@ -23,6 +25,11 @@ function SidebarLink({ to, icon, label }: { to: string; icon: React.ReactNode; l
         {icon}
       </span>
       <span style={{ fontSize: 14 }}>{label}</span>
+      {!!count && count > 0 && (
+        <span className="mobile-settings-badge" style={{ marginLeft: 'auto' }} aria-label={`${countLabel ?? label} ${count}건`}>
+          {count}
+        </span>
+      )}
     </NavLink>
   )
 }
@@ -30,11 +37,23 @@ function SidebarLink({ to, icon, label }: { to: string; icon: React.ReactNode; l
 export function DesktopSettings({
   actualRole,
   onLogout,
+  allUsers,
+  returnVisits,
 }: {
   currentUserId: number
   actualRole: Role
   onLogout: () => void
+  allUsers: AttentionUser[]
+  returnVisits: ReturnVisit[]
 }) {
+  const location = useLocation()
+  const adminAttention = useAdminAttentionCounts({
+    enabled: isAdminLike(actualRole),
+    users: allUsers,
+    returnVisits,
+    refreshKey: location.pathname,
+  })
+
   return (
     <div style={{ display: 'flex', width: '100%', maxWidth: 1200, height: 'calc(100vh / var(--app-zoom, 1))', padding: '24px 32px' }}>
       
@@ -89,6 +108,8 @@ export function DesktopSettings({
               to="/settings/signup-requests"
               icon={<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>}
               label="가입 신청 관리"
+              count={adminAttention.signupRequests}
+              countLabel="승인 대기"
             />
             {actualRole === 'developer' && (
               <SidebarLink
@@ -121,11 +142,15 @@ export function DesktopSettings({
               to="/settings/regular-visits"
               icon={<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>}
               label="정기방문 관리"
+              count={adminAttention.regularVisits}
+              countLabel="재지정 필요"
             />
             <SidebarLink
               to="/settings/place-change-requests"
               icon={<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>}
               label="자료 수정 요청"
+              count={adminAttention.placeRequests}
+              countLabel="처리 대기"
             />
           </div>
         )}

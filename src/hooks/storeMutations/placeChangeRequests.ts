@@ -75,6 +75,18 @@ export async function fetchPlaceChangeRequests(showClosed: boolean): Promise<Pla
   return ((result.data ?? []) as RequestRow[]).map(toRequest)
 }
 
+export async function fetchPendingPlaceChangeRequestCount(): Promise<number | null> {
+  const result = await supabase
+    .from('place_change_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending')
+  if (result.error) {
+    console.warn('자료 수정 요청 수를 확인하지 못했습니다.', result.error)
+    return null
+  }
+  return result.count ?? 0
+}
+
 export async function reviewPlaceChangeRequest(
   id: number,
   status: 'completed' | 'rejected',

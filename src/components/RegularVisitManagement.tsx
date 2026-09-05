@@ -10,6 +10,7 @@ import type { ReturnVisit } from '../types'
 import type { AppLanguage } from '../i18n'
 import { formatRelativeVisitDate } from '../utils/returnVisits'
 import { matchesName } from '../utils/koreanSearch'
+import { getActiveApprovedUserNames, isReturnVisitAssigneeBroken } from '../utils/adminAttention'
 
 const STALE_DAYS = 90
 
@@ -35,14 +36,9 @@ export function RegularVisitManagement({ returnVisits, activeUsers, isDeveloper,
   const [pickerQuery, setPickerQuery] = useState('')
 
   // 활성(승인된) 사용자 이름 집합 — 끊김 판정 + 재배정 후보
-  const activeNames = useMemo(
-    () => new Set(activeUsers
-      .filter((u) => u.isActive !== false && (!u.approvalStatus || u.approvalStatus === 'approved'))
-      .map((u) => u.name)),
-    [activeUsers],
-  )
+  const activeNames = useMemo(() => getActiveApprovedUserNames(activeUsers), [activeUsers])
 
-  const isBroken = (rv: ReturnVisit) => !rv.assignedUserName.trim() || !activeNames.has(rv.assignedUserName.trim())
+  const isBroken = (rv: ReturnVisit) => isReturnVisitAssigneeBroken(rv, activeNames)
 
   const stats = useMemo(() => {
     let broken = 0, stale = 0, noOwner = 0

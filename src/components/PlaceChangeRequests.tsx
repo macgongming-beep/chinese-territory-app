@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { executePlaceDeletionRequest, fetchPlaceChangeRequests, reviewPlaceChangeRequest } from '../hooks/storeMutations/placeChangeRequests'
 import { confirmDialog } from '../lib/confirm'
 import type { PlaceChangeRequest, PlaceDeletionSignal, PlaceIssueType } from '../types'
+import { notifyAdminAttentionChanged } from '../lib/adminAttentionEvents'
 
 const issueLabels: Record<PlaceIssueType, string> = {
   building_missing: '건물이 없어졌습니다',
@@ -36,6 +37,7 @@ export function PlaceChangeRequests({ onPlaceDeleted }: { onPlaceDeleted?: (sign
     const ok = await reviewPlaceChangeRequest(id, status)
     setSavingId(null)
     if (!ok) return
+    notifyAdminAttentionChanged()
     const rows = await fetchPlaceChangeRequests(showClosed)
     if (rows) setRequests(rows)
   }
@@ -53,6 +55,7 @@ export function PlaceChangeRequests({ onPlaceDeleted }: { onPlaceDeleted?: (sign
     const ok = await executePlaceDeletionRequest(request.id)
     setSavingId(null)
     if (!ok) return
+    notifyAdminAttentionChanged()
     onPlaceDeleted?.({
       targetType: request.unitId !== null ? 'unit' : 'building',
       buildingId: request.buildingId,

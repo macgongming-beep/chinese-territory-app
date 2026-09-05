@@ -61,6 +61,8 @@ describe('자료 수정 요청 목록', () => {
   it('작은 행을 펼쳐 삭제 영향과 영구 삭제를 확인한다', async () => {
     const user = userEvent.setup()
     const applyDeletion = vi.fn()
+    const attentionChanged = vi.fn()
+    window.addEventListener('admin-attention-changed', attentionChanged)
     render(<MemoryRouter><PlaceChangeRequests onPlaceDeleted={applyDeletion} /></MemoryRouter>)
     await screen.findByText('고진로 45 아빌라301호')
     expect(screen.queryByText('방문 기록')).toBeNull()
@@ -77,6 +79,8 @@ describe('자료 수정 요청 목록', () => {
       unitId: 2194,
     })))
     expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ confirmLabel: '영구 삭제' }))
+    expect(attentionChanged).toHaveBeenCalledTimes(1)
+    window.removeEventListener('admin-attention-changed', attentionChanged)
   })
 
   it('장소 열기는 건물과 세대를 URL에 함께 보낸다', async () => {

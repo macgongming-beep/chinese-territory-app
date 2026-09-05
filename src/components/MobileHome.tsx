@@ -32,6 +32,7 @@ import { AppUpdateCard } from './AppUpdateCard'
 import { AppHeader } from './AppHeader'
 import { formatRelativeVisitDate, getLatestReturnVisitDate, getUserReturnVisits, normalizeVisitorName } from '../utils/returnVisits'
 import { msg } from '../lib/msg'
+import { useAdminAttentionCounts } from '../hooks/useAdminAttentionCounts'
 
 type MobileTab = '홈' | '캘린더' | '활동' | '구역' | '지도' | '배정' | '설정'
 
@@ -655,10 +656,12 @@ export function MobileHome({
   const roleLabel = role === 'admin' ? t(language, 'role.admin') : role === 'leader' ? t(language, 'role.leader') : t(language, 'role.user')
   // 내 소속 집단 (사용자 관리에서 지정) — 설정 프로필 카드에 표시
   const myGroupName = allUsers.find((item) => item.id === currentUser.id)?.groupName ?? null
-  const pendingSignupCount = useMemo(
-    () => allUsers.filter((item) => item.approvalStatus === 'pending').length,
-    [allUsers],
-  )
+  const adminAttention = useAdminAttentionCounts({
+    enabled: role === 'admin' || role === 'developer',
+    users: allUsers,
+    returnVisits,
+    refreshKey: location.pathname,
+  })
   const tabLabel = (tab: MobileTab) => {
     if (tab === '홈') return t(language, 'nav.home')
     if (tab === '캘린더') return t(language, 'nav.calendar')
@@ -1496,9 +1499,9 @@ export function MobileHome({
                           <strong>{t(language, 'settings.signup')}</strong>
                           <small>{t(language, 'settings.signupDesc')}</small>
                         </span>
-                        {pendingSignupCount > 0 && (
-                          <span className="mobile-settings-badge" aria-label={`승인 대기 ${pendingSignupCount}명`}>
-                            {pendingSignupCount}
+                        {adminAttention.signupRequests > 0 && (
+                          <span className="mobile-settings-badge" aria-label={`승인 대기 ${adminAttention.signupRequests}명`}>
+                            {adminAttention.signupRequests}
                           </span>
                         )}
                         <span className="mobile-settings-chevron" aria-hidden="true">›</span>
@@ -1512,6 +1515,11 @@ export function MobileHome({
                           <strong>{msg('정기방문 관리')}</strong>
                           <small>{msg('담당자 끊긴 정기방문 점검·재배정')}</small>
                         </span>
+                        {adminAttention.regularVisits > 0 && (
+                          <span className="mobile-settings-badge" aria-label={`재지정 필요 ${adminAttention.regularVisits}건`}>
+                            {adminAttention.regularVisits}
+                          </span>
+                        )}
                         <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                       </button>
                       <button onClick={() => navigate('/place-change-requests')} type="button">
@@ -1522,6 +1530,11 @@ export function MobileHome({
                           <strong>{msg('자료 수정 요청')}</strong>
                           <small>{msg('건물·세대·주소 신고 확인')}</small>
                         </span>
+                        {adminAttention.placeRequests > 0 && (
+                          <span className="mobile-settings-badge" aria-label={`처리 대기 ${adminAttention.placeRequests}건`}>
+                            {adminAttention.placeRequests}
+                          </span>
+                        )}
                         <span className="mobile-settings-chevron" aria-hidden="true">›</span>
                       </button>
                       {/* 봉사 로그는 개발자 전용 (데스크톱과 동일) — 일반 관리자는 못 보므로 숨김 */}
