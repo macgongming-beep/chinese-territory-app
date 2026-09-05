@@ -97,9 +97,19 @@ begin
             = lower(regexp_replace(v_address, '[[:space:]]', '', 'g'))
        or (
          private.restaurant_address_key(address) = v_address_key
-         and coalesce(p_lat, 0) <> 0 and coalesce(p_lng, 0) <> 0
-         and abs(coalesce(lat, 0) - p_lat) <= 0.002
-         and abs(coalesce(lng, 0) - p_lng) <= 0.002
+         and (
+           -- 지오코딩 실패 시에는 key 후보를 센다. 하나면 재사용하고,
+           -- 여러 개면 아래 예외로 보내 임의의 다른 도시 건물을 고르지 않는다.
+           (coalesce(p_lat, 0) = 0 and coalesce(p_lng, 0) = 0)
+           or (
+             not (coalesce(lat, 0) = 0 and coalesce(lng, 0) = 0)
+             and 6371000 * 2 * asin(least(1, sqrt(
+               power(sin(radians((lat - p_lat) / 2)), 2)
+               + cos(radians(p_lat)) * cos(radians(lat))
+               * power(sin(radians((lng - p_lng) / 2)), 2)
+             ))) <= 200
+           )
+         )
        );
     if v_matches > 1 then raise exception '같은 주소의 건물이 여러 개입니다. 기존 건물을 선택하세요'; end if;
     if v_building is not null and not exists (
@@ -143,6 +153,8 @@ begin
   else
     update public.units
     set is_restaurant = true,
+        -- 신청자가 중국어 사용 식당임을 확인하면 켠다. 이미 켠 값은 끄지 않는다.
+        is_chinese = is_chinese or p_is_chinese,
         status = case
           when status = '미방문'
            and p_initial_state <> '미방문'

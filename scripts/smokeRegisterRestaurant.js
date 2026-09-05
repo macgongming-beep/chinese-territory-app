@@ -103,7 +103,7 @@ try {
   })
   check(!approved.error && approved.data?.unit_id === plainUnit.data.id, '승인은 같은 이름의 기존 세대를 재사용한다', approved.error?.message)
   const approvedUnit = await db.from('units').select('id,status,is_chinese,is_restaurant,visit_histories(result,visit_type)').eq('id', plainUnit.data.id).single()
-  check(approvedUnit.data?.is_restaurant === true && approvedUnit.data?.is_chinese === false && approvedUnit.data?.status === '대상외', '대상외 기존 세대는 상태·중국어 여부를 보존하고 식당 표시만 반영한다')
+  check(approvedUnit.data?.is_restaurant === true && approvedUnit.data?.is_chinese === true && approvedUnit.data?.status === '대상외', '대상외 상태는 보존하고 확인된 중국어 여부는 false에서 true로 켠다')
   check(approvedUnit.data?.visit_histories?.length === 0, '미방문 신청은 방문기록을 만들지 않는다')
   const approvedRequest = await db.from('restaurant_requests').select('status,building_id').eq('id', madeRequest).single()
   check(approvedRequest.data?.status === 'approved' && approvedRequest.data?.building_id === madeBuilding, '건물·세대 처리 후에 신청을 승인한다')
@@ -124,8 +124,8 @@ try {
     p_lat: 0, p_lng: 0, p_building_name: `${marker} 짧은주소`,
   })
   const freshVisitAfter = await db.from('units').select('status,is_chinese').eq('id', freshVisitUnit.data.id).single()
-  check(!freshVisitApproval.error && freshVisitAfter.data?.status === '부재' && freshVisitAfter.data?.is_chinese === false,
-    '미방문 기존 세대는 최신 방문 결과만 반영하고 중국어 여부는 보존한다')
+  check(!freshVisitApproval.error && freshVisitAfter.data?.status === '부재' && freshVisitAfter.data?.is_chinese === true,
+    '미방문 기존 세대는 최신 방문 결과와 확인된 중국어 여부를 반영한다')
   await client(adminToken).from('restaurant_requests').delete().eq('id', freshVisitRequest.data.id)
 
   // 동명 세대가 둘이면 임의로 고르지 않고, 신청도 pending 그대로여야 한다.
@@ -171,6 +171,49 @@ try {
   if (otherCity.data?.building_id) madeBuildings.add(otherCity.data.building_id)
   check(!otherCity.error && otherCity.data?.building_id !== shortResult.data?.building_id,
     '다른 도시의 같은 도로명·번지는 별도 건물로 남는다')
+
+  const diagonal = await db.rpc('register_restaurant_v2_tx', {
+    ...addressParams, p_name: `${marker}_대각선식당`, p_address: `경기도 수원시 팔달구 ${shortRoad}`,
+    p_lat: addressParams.p_lat + 0.0019, p_lng: addressParams.p_lng + 0.0019,
+  })
+  if (diagonal.data?.building_id) madeBuildings.add(diagonal.data.building_id)
+  check(!diagonal.error && diagonal.data?.building_id !== shortResult.data?.building_id,
+    '위·경도 차가 각각 0.002 이내여도 실거리 200m 밖이면 별도 건물로 남는다')
+
+  const noGeoRoad = `코덱스무좌표로${addressNumber}번길 7`
+  const noGeoBuilding = await client(adminToken).from('buildings').insert({
+    card_id: card.id, name: noGeoRoad, address: noGeoRoad, type: '상가',
+    lat: 0, lng: 0, is_restaurant: true,
+  }).select('id').single()
+  if (noGeoBuilding.error) throw noGeoBuilding.error
+  madeBuildings.add(noGeoBuilding.data.id)
+  const noGeo = await db.rpc('register_restaurant_v2_tx', {
+    ...params, p_token: leaderToken, p_name: `${marker}_무좌표식당`,
+    p_address: `경기도 용인시 처인구 ${noGeoRoad}`, p_lat: 0, p_lng: 0,
+  })
+  check(!noGeo.error && noGeo.data?.building_id === noGeoBuilding.data.id,
+    '지오코딩이 실패해도 긴 주소와 짧은 주소의 유일한 기존 건물을 재사용한다')
+
+  const noGeoDuplicate = await client(adminToken).from('buildings').insert({
+    card_id: card.id, name: `${noGeoRoad} 다른도시`, address: `경기도 화성시 ${noGeoRoad}`,
+    type: '상가', lat: 0, lng: 0, is_restaurant: true,
+  }).select('id').single()
+  if (noGeoDuplicate.error) throw noGeoDuplicate.error
+  madeBuildings.add(noGeoDuplicate.data.id)
+  const ambiguousNoGeo = await db.rpc('register_restaurant_v2_tx', {
+    ...params, p_token: leaderToken, p_name: `${marker}_모호한무좌표식당`,
+    p_address: `경기도 수원시 ${noGeoRoad}`, p_lat: 0, p_lng: 0,
+  })
+  check(Boolean(ambiguousNoGeo.error),
+    '지오코딩 없이 같은 주소 key가 여러 개면 임의로 고르거나 새로 만들지 않는다')
+
+  const keepChinese = await db.rpc('register_restaurant_v2_tx', {
+    ...params, p_token: leaderToken, p_name: `${marker}_식당2`,
+    p_existing_building_id: madeBuilding, p_is_chinese: false, p_initial_state: '미방문',
+  })
+  const chineseAfterFalse = await db.from('units').select('is_chinese').eq('id', second.data?.unit_id).single()
+  check(!keepChinese.error && chineseAfterFalse.data?.is_chinese === true,
+    '이미 켠 중국어 여부는 false 요청으로 끄지 않는다')
 } finally {
   const adminToken = await login('test-admin', '1234').catch(() => null)
   if (adminToken) {
