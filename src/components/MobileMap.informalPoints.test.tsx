@@ -92,6 +92,15 @@ describe('모바일 세대 상세', () => {
       focusedCardIds: [],
       serviceSessions: [],
       specialPeriods: [],
+      visitHistories: [{
+        id: 1,
+        buildingId: 9,
+        unitId: 203,
+        visitor: '인도자',
+        result: '부재',
+        visitedAt: '2026-09-05T06:00:00Z',
+        timeSlot: '오후',
+      }],
       eventRestaurantAssignments: [],
       calendarEvents: [],
       onBack: vi.fn(),
@@ -105,12 +114,20 @@ describe('모바일 세대 상세', () => {
     fireEvent.click(screen.getByRole('button', { name: /203호/ }))
     expect(await screen.findByText('우일빌라G동 203호')).toBeVisible()
     expect(screen.getByText(/다른 호수를 눌러 이동/)).toBeVisible()
-    expect(screen.getByRole('button', { name: /방문 이력/ })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('button', { name: /방문 시간/ })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByText(/못 만난 시간 · 주말 오후/)).toBeVisible()
     expect(screen.getByRole('button', { name: /203호/ }).closest('.unit-grid-row')).toHaveClass('is-detail-selected')
 
     fireEvent.click(screen.getByRole('button', { name: /204호/ }))
     expect(await screen.findByText('우일빌라G동 204호')).toBeVisible()
     expect(screen.getByRole('button', { name: /204호/ }).closest('.unit-grid-row')).toHaveClass('is-detail-selected')
+
+    const navigatorHeight = sheet.style.height
+    fireEvent.click(screen.getByRole('button', { name: /세대 메모/ }))
+    expect(screen.getByLabelText('세대 메모')).toBeVisible()
+    expect(sheet.style.height).toBe('65px')
+    fireEvent.click(screen.getByRole('button', { name: '취소' }))
+    expect(sheet.style.height).toBe(navigatorHeight)
 
     fireEvent.click(screen.getByRole('button', { name: '닫기' }))
     await waitFor(() => expect(screen.queryByText('우일빌라G동 204호')).not.toBeInTheDocument())

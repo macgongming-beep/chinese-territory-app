@@ -496,11 +496,13 @@ export function MobileMap({
   const MIN_HEIGHT = 65
   const HALF_HEIGHT = window.innerHeight * 0.46
   const FULL_HEIGHT = window.innerHeight * 0.92
+  const UNIT_NAV_HEIGHT = Math.max(210, Math.min(280, window.innerHeight * 0.3))
  
   // cardIds 로 진입한 경우(드릴 컨텍스트 지도) 는 바텀 시트 최소화로 시작 — 경계선 전체 보기
   const enteredWithFocusedCardIds = focusedCardIds.length > 0
   const [sheetHeight, setSheetHeight] = useState(enteredWithFocusedCardIds ? MIN_HEIGHT : HALF_HEIGHT)
   const sheetHeightBeforeUnitRef = useRef<number | null>(null)
+  const sheetHeightBeforeMemoRef = useRef<number | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const dragStartY = useRef<number>(0)
   const dragStartHeight = useRef<number>(0)
@@ -509,6 +511,7 @@ export function MobileMap({
 
   const closeUnitDetail = () => {
     setFullScreenUnit(null)
+    sheetHeightBeforeMemoRef.current = null
     if (sheetHeightBeforeUnitRef.current !== null) {
       setSheetHeight(sheetHeightBeforeUnitRef.current)
       sheetHeightBeforeUnitRef.current = null
@@ -523,10 +526,27 @@ export function MobileMap({
     if (sheetHeightBeforeUnitRef.current === null) {
       sheetHeightBeforeUnitRef.current = sheetHeight
     }
+    sheetHeightBeforeMemoRef.current = null
     setFullScreenUnit({ unit, building, unitHistories })
     // 상세와 호수 목록이 서로 덮지 않도록 목록은 3~4줄이 보이는 탐색 높이로 둔다.
-    setSheetHeight(Math.max(210, Math.min(280, window.innerHeight * 0.3)))
+    setSheetHeight(UNIT_NAV_HEIGHT)
     moveMobileMapToBuilding(building)
+    window.setTimeout(() => {
+      const row = document.querySelector<HTMLElement>(`[data-unit-id="${unit.id}"]`)
+      if (typeof row?.scrollIntoView === 'function') {
+        row.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }
+    }, 380)
+  }
+
+  const handleUnitMemoEditingChange = (editing: boolean) => {
+    if (editing) {
+      if (sheetHeightBeforeMemoRef.current === null) sheetHeightBeforeMemoRef.current = sheetHeight
+      setSheetHeight(MIN_HEIGHT)
+      return
+    }
+    setSheetHeight(sheetHeightBeforeMemoRef.current ?? UNIT_NAV_HEIGHT)
+    sheetHeightBeforeMemoRef.current = null
   }
 
   useEffect(() => {
@@ -1885,7 +1905,11 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                           const latestHistory = unitHistories[0]
 
                           return (
-                            <div className={`unit-grid-row${unit.isRegularVisit ? ' ugr-regular' : ''}${fullScreenUnit?.unit.id === unit.id ? ' is-detail-selected' : ''}`} key={unit.id}>
+                            <div
+                              className={`unit-grid-row${unit.isRegularVisit ? ' ugr-regular' : ''}${fullScreenUnit?.unit.id === unit.id ? ' is-detail-selected' : ''}`}
+                              data-unit-id={unit.id}
+                              key={unit.id}
+                            >
                               <div className={`unit-grid-main${activeInvitation ? ' with-invitation' : ''}`}>
                                 <button className="unit-name-btn" onClick={() => openUnitDetail(unit, building, unitHistories)} type="button">
                                   <span className="unit-chevron">›</span>
@@ -2368,6 +2392,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               currentVisitor={currentVisitor}
               allUsers={allUsers}
               onSetRegularVisitor={onSetRegularVisitor}
+              onMemoEditingChange={handleUnitMemoEditingChange}
               restaurantAssignments={eventRestaurantAssignments.filter((a) => a.unitId === liveFullScreenUnit.unit.id)}
               calendarEvents={calendarEvents}
             />
@@ -2421,6 +2446,7 @@ function UnitDetailScreen({
   currentVisitor,
   allUsers = [],
   onSetRegularVisitor,
+  onMemoEditingChange,
   restaurantAssignments = [],
   calendarEvents = [],
 }: {
@@ -2443,6 +2469,7 @@ function UnitDetailScreen({
   currentVisitor?: string
   allUsers?: { id: number; name: string }[]
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
+  onMemoEditingChange?: (editing: boolean) => void
   restaurantAssignments?: EventRestaurantAssignment[]
   calendarEvents?: CalendarEvent[]
 }) {
@@ -2472,15 +2499,31 @@ function UnitDetailScreen({
     if (!visitGrid[row][slot].lastResult) visitGrid[row][slot].lastResult = h.result
   }
 
-  const historyBuckets = (['평일', '주말'] as RowKey[]).flatMap((row) =>
-    TIME_SLOTS.flatMap((slot) => visitGrid[row][slot].total > 0
-      ? [`${row === '평일' ? t(language, 'map.weekday') : t(language, 'map.weekend')} ${slot === '오전' ? t(language, 'map.morning') : slot === '오후' ? t(language, 'map.afternoon') : t(language, 'map.evening')}${visitGrid[row][slot].total > 1 ? ` ${visitGrid[row][slot].total}` : ''}`]
-      : []),
-  )
+  const absenceCounts: Record<RowKey, Record<string, number>> = {
+    평일: Object.fromEntries(TIME_SLOTS.map((slot) => [slot, 0])),
+    주말: Object.fromEntries(TIME_SLOTS.map((slot) => [slot, 0])),
+  }
+  unitHistories.forEach((history) => {
+    if (history.result !== '부재') return
+    const day = new Date(history.visitedAt).getDay()
+    const row: RowKey = day === 0 || day === 6 ? '주말' : '평일'
+    if (history.timeSlot in absenceCounts[row]) absenceCounts[row][history.timeSlot] += 1
+  })
+  const absenceBuckets = (['평일', '주말'] as RowKey[]).flatMap((row) =>
+    TIME_SLOTS.flatMap((slot) => {
+      const count = absenceCounts[row][slot]
+      if (count === 0) return []
+      const rowLabel = row === '평일' ? t(language, 'map.weekday') : t(language, 'map.weekend')
+      const slotLabel = slot === '오전' ? t(language, 'map.morning') : slot === '오후' ? t(language, 'map.afternoon') : t(language, 'map.evening')
+      return [{ label: `${rowLabel} ${slotLabel}${count > 1 ? ` ${count}${t(language, 'map.cases')}` : ''}`, count }]
+    }),
+  ).sort((a, b) => b.count - a.count)
   const latestResult = unitHistories[0]?.result
   const historySummary = unitHistories.length === 0
     ? msg('기록 없음')
-    : `${historyBuckets.slice(0, 2).join(' · ')}${latestResult ? ` · ${latestResult}` : ''}`
+    : absenceBuckets.length > 0
+      ? `${msg('못 만난 시간')} · ${absenceBuckets.slice(0, 2).map((bucket) => bucket.label).join(' · ')}`
+      : `${msg('못 만난 기록 없음')}${latestResult ? ` · ${msg('최근')} ${latestResult}` : ''}`
 
   const resultColor = (r: string) => r === '만남' ? '#4F7A4B' : r === '부재' ? '#C44536' : '#94a3b8'
 
@@ -2606,7 +2649,7 @@ function UnitDetailScreen({
               alignItems: 'center', gap: 8, textAlign: 'left', cursor: 'pointer',
             }}
           >
-            <strong style={{ fontSize: 14, color: 'var(--ink)' }}>{t(language, 'map.visitHistoryLabel')}</strong>
+            <strong style={{ fontSize: 14, color: 'var(--ink)' }}>{msg('방문 시간')}</strong>
             <span style={{ overflow: 'hidden', color: 'var(--muted)', fontSize: 11.5, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {historySummary}
             </span>
@@ -2637,11 +2680,11 @@ function UnitDetailScreen({
                     <div key={slot} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 4px', background: '#fff' }}>
                       {cell.total > 0 ? (
                         <span style={{
-                          width: 26, height: 26, borderRadius: '50%',
+                          minWidth: 32, height: 24, padding: '0 5px', borderRadius: 5,
                           background: c + '22', color: c,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 12, fontWeight: 700,
-                        }}>{cell.total}</span>
+                          fontSize: 10, fontWeight: 700,
+                        }}>{cell.lastResult} {cell.total}</span>
                       ) : (
                         <span style={{ color: 'var(--line)', fontSize: 14 }}>—</span>
                       )}
@@ -2656,9 +2699,9 @@ function UnitDetailScreen({
         {/* 기록 */}
         {unitHistories.length > 0 && (
           <div style={sectionStyle}>
-            <h3 style={{ ...sectionTitleStyle, marginBottom: 8 }}>{t(language, 'map.records')} {unitHistories.length}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {unitHistories.map(h => {
+            <h3 style={{ ...sectionTitleStyle, marginBottom: 4 }}>{t(language, 'map.records')} {unitHistories.length}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {unitHistories.map((h, index) => {
                 const c = resultColor(h.result)
                 const isMenuOpen = editingHistoryId === h.id
                 const isMemoOpen = inlineMemoHistoryId === h.id
@@ -2667,9 +2710,8 @@ function UnitDetailScreen({
                 const dateStr = `${h.visitedAt.slice(5).replace('-', '/')}(${dow})`
                 return (
                   <div key={h.id} style={{
-                    background: 'var(--bg)', borderRadius: 8,
-                    border: '1px solid var(--line)', borderLeft: `3px solid ${c}`,
-                    padding: '6px 8px 6px 10px',
+                    borderTop: index === 0 ? 'none' : '1px solid var(--line)',
+                    padding: '6px 2px',
                     overflow: 'hidden',
                   }}>
                     {/* 메인 행 */}
@@ -2694,6 +2736,13 @@ function UnitDetailScreen({
                         </div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                          {!h.memo && canRecordVisits && onUpdateVisitHistory && (
+                            <button
+                              onClick={() => { setInlineMemoHistoryId(h.id); setInlineMemoDraft('') }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 10.5, padding: '2px 4px' }}
+                              type="button"
+                            >{t(language, 'map.memo')}</button>
+                          )}
                           {canRecordVisits && (
                             <button onClick={() => setEditingHistoryId(h.id)}
                               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 15, padding: '0 2px', lineHeight: 1 }}
@@ -2702,9 +2751,8 @@ function UnitDetailScreen({
                         </div>
                       )}
                     </div>
-                    {/* 메모 줄은 항상 보인다 — 아이콘만 두면 메모가 있는지조차 모른다.
-                        내용이 있으면 그대로, 없으면 msg('메모 추가...') 자리표시 (세대 메모와 같은 방식) */}
-                    {!isMemoOpen && (
+                    {/* 메모가 있는 기록만 둘째 줄을 쓴다. 빈 기록은 오른쪽의 작은 메모 버튼으로 연다. */}
+                    {!isMemoOpen && h.memo && (
                       canRecordVisits && onUpdateVisitHistory ? (
                         <button
                           onClick={() => { setInlineMemoHistoryId(h.id); setInlineMemoDraft(h.memo ?? '') }}
@@ -2712,14 +2760,14 @@ function UnitDetailScreen({
                             display: 'block', width: '100%', textAlign: 'left',
                             margin: '3px 0 0', padding: 0, border: 'none', background: 'none',
                             fontSize: 11, lineHeight: 1.4, fontFamily: 'inherit', cursor: 'pointer',
-                            color: h.memo ? 'var(--muted)' : 'var(--line)',
+                            color: 'var(--muted)',
                             whiteSpace: 'pre-wrap',
                           }}
                           type="button"
-                        >{h.memo || t(language, 'map.addMemo') + '...'}</button>
-                      ) : h.memo ? (
+                        >{h.memo}</button>
+                      ) : (
                         <p style={{ margin: '3px 0 0', fontSize: 11, color: 'var(--muted)', lineHeight: 1.4, paddingRight: 4 }}>{h.memo}</p>
-                      ) : null
+                      )
                     )}
                     {/* 인라인 메모 입력 */}
                     {isMemoOpen && (
@@ -2762,8 +2810,13 @@ function UnitDetailScreen({
               <h3 style={sectionTitleStyle}>{t(language, 'map.unitMemoLabel')}</h3>
               <textarea
                 autoFocus
+                aria-label={t(language, 'map.unitMemoLabel')}
                 value={memoDraft ?? ''}
                 onChange={e => setMemoDraft(e.target.value)}
+                onFocus={(event) => {
+                  const target = event.currentTarget
+                  window.setTimeout(() => target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 120)
+                }}
                 style={{
                   width: '100%', minHeight: 72, padding: '8px 10px',
                   border: '1px solid var(--line)', borderRadius: 8,
@@ -2780,12 +2833,13 @@ function UnitDetailScreen({
                     onUpdateUnitFlags(unit.id, { memo: next })
                     setUnitMemos(prev => ({ ...prev, [unit.id]: next }))
                     setMemoEditing(false)
+                    onMemoEditingChange?.(false)
                   }}
                   style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                   type="button"
                 >{t(language, 'map.save')}</button>
                 <button
-                  onClick={() => { setMemoEditing(false); setMemoDraft(null) }}
+                  onClick={() => { setMemoEditing(false); setMemoDraft(null); onMemoEditingChange?.(false) }}
                   style={{ flex: 1, padding: '8px', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                   type="button"
                 >{t(language, 'map.cancel')}</button>
@@ -2793,7 +2847,12 @@ function UnitDetailScreen({
             </div>
           ) : (
             <button
-              onClick={() => { if (!requireRecordAccess()) return; setMemoDraft(memo); setMemoEditing(true) }}
+              onClick={() => {
+                if (!requireRecordAccess()) return
+                setMemoDraft(memo)
+                setMemoEditing(true)
+                onMemoEditingChange?.(true)
+              }}
               style={{
                 width: '100%', minHeight: 40, textAlign: 'left', background: 'transparent',
                 border: 0, padding: 0, color: memo ? 'var(--ink)' : 'var(--muted)',
