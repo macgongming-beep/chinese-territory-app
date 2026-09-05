@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { clusterByGrid, getClusterThresholdKm } from './mapClustering'
+import { clusterByGrid, getClusterThresholdKm, getMobileMapDetailLevel } from './mapClustering'
 
 const YONGIN = { lat: 37.2411, lng: 127.1776 }
 
@@ -17,6 +17,15 @@ describe('getClusterThresholdKm', () => {
   it('줌이 낮을수록 더 넓게 묶는다', () => {
     expect(getClusterThresholdKm(16)).toBeLessThan(getClusterThresholdKm(14))
     expect(getClusterThresholdKm(14)).toBeLessThan(getClusterThresholdKm(11))
+  })
+})
+
+describe('getMobileMapDetailLevel', () => {
+  it('확대 수준에 따라 구, 동, 건물 순서로 상세화한다', () => {
+    expect(getMobileMapDetailLevel(12)).toBe('region')
+    expect(getMobileMapDetailLevel(13)).toBe('area')
+    expect(getMobileMapDetailLevel(15)).toBe('area')
+    expect(getMobileMapDetailLevel(16)).toBe('building')
   })
 })
 

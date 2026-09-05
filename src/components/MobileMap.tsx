@@ -23,6 +23,7 @@ import { INFORMAL_KIND_STYLE } from '../utils/informalKind'
 import { InformalKindIcon } from './InformalKindIcon'
 import { placeDeletionCopy } from '../utils/placeDeletion'
 import { PlaceChangeRequestDialog } from './PlaceChangeRequestDialog'
+import { getMobileMapDetailLevel, type MobileMapDetailLevel } from '../utils/mapClustering'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
@@ -189,6 +190,7 @@ export function MobileMap({
   const initialMapDong = searchParams.get('dong')
   const [selectedArea, setSelectedArea] = useState<string | null>(initialMapRegion || null)
   const [selectedRegion, setSelectedRegion] = useState<string | null>(initialMapDong || null)
+  const [automaticMapDetail, setAutomaticMapDetail] = useState<MobileMapDetailLevel>('region')
   const [selectedCardId, setSelectedCardId] = useState<number | null>(
     focusedCardId ?? null
   )
@@ -791,12 +793,18 @@ export function MobileMap({
     [filteredBuildings, hiddenMapStatuses],
   )
 
+  const mapDetailLevel: MobileMapDetailLevel = selectedRegion
+    ? 'building'
+    : selectedArea
+      ? automaticMapDetail === 'building' ? 'building' : 'area'
+      : automaticMapDetail
+
   const shouldUseAggregateMap =
     !isUserMap &&
     navLevel === 'map' &&
     !regularVisitScope &&
+    mapDetailLevel !== 'building' &&
     selectedCardId == null &&
-    !selectedRegion &&
     (focusedCardIdSet.size === 0 || !!selectedArea) &&
     !addingBuildingMode &&
     !editingPinMode &&
@@ -808,9 +816,11 @@ export function MobileMap({
     mapBuildings.forEach((building) => {
       const card = cardMap.get(building.cardId)
       if (!card) return
-      const rawLabel = selectedArea ? card.area : String(card.region)
+      const rawLabel = mapDetailLevel === 'area' ? card.area : String(card.region)
       if (!rawLabel) return
-      const id = `${selectedArea ? 'area' : 'region'}:${rawLabel}`
+      const id = mapDetailLevel === 'area'
+        ? `area:${card.region}:${rawLabel}`
+        : `region:${rawLabel}`
       const current = groups.get(id) ?? {
         id,
         label: placeLabel(rawLabel),
@@ -848,24 +858,25 @@ export function MobileMap({
         lng: group.lngSum / group.pointCount,
       }))
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'))
-  }, [cardMap, mapBuildings, selectedArea, shouldUseAggregateMap, placeLabel])
+  }, [cardMap, mapBuildings, mapDetailLevel, shouldUseAggregateMap, placeLabel])
 
-  const aggregateScopeLabel = selectedArea ? msg('동') : msg('구')
+  const aggregateScopeLabel = mapDetailLevel === 'area' ? msg('동') : msg('구')
 
   const handleSelectAggregateMarker = (id: string) => {
-    const [kind, label] = id.split(':')
+    const [kind, first, second] = id.split(':')
     setSelectedBuildingId(null)
     setExpandedBuildingIds(new Set())
     setFullScreenUnit(null)
     if (kind === 'region') {
-      setSelectedArea(label)
+      setSelectedArea(first)
       setSelectedRegion(null)
       setSelectedCardId(null)
       setNavLevel('map')
       return
     }
     if (kind === 'area') {
-      setSelectedRegion(label)
+      setSelectedArea(first)
+      setSelectedRegion(second)
       setSelectedCardId(null)
       setNavLevel('map')
     }
@@ -1349,6 +1360,10 @@ export function MobileMap({
               selectedCardId={mapSelectedCardId}
               highlightedCardIds={mapAggregateMarkers.length > 0 ? emptyHighlightedCardIds : scopedCardIds}
               onSelectAggregate={handleSelectAggregateMarker}
+              onZoomChange={(zoom) => {
+                const next = getMobileMapDetailLevel(zoom)
+                setAutomaticMapDetail((current) => current === next ? current : next)
+              }}
               onLocationPermissionBlocked={() => {
                 showToast(
                   t(language, 'map.locationPermissionOff'),

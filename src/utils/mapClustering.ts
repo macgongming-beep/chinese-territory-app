@@ -9,6 +9,7 @@
 
 export type ClusterInput = { lat: number; lng: number }
 export type Cluster<T extends ClusterInput> = { items: T[]; lat: number; lng: number }
+export type MobileMapDetailLevel = 'region' | 'area' | 'building'
 
 const KM_PER_LAT_DEGREE = 111.32
 
@@ -21,6 +22,13 @@ export function getClusterThresholdKm(zoom: number): number {
   if (zoom >= 13) return 0.4
   if (zoom >= 12) return 0.8
   return 1.5
+}
+
+/** 모바일 전체 지도에서 줌에 따라 구 → 동 → 건물로 자연스럽게 상세화한다. */
+export function getMobileMapDetailLevel(zoom: number): MobileMapDetailLevel {
+  if (zoom >= 16) return 'building'
+  if (zoom >= 13) return 'area'
+  return 'region'
 }
 
 export function clusterByGrid<T extends ClusterInput>(items: T[], thresholdKm: number): Cluster<T>[] {

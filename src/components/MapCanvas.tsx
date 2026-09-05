@@ -461,6 +461,7 @@ function NaverMapCanvas({
   onRemoveBoundaryPoint,
   onSelectBuilding,
   onSelectAggregate,
+  onZoomChange,
   onSelectCardBoundary,
   onUpdateBoundaryPoint,
   onMapRightClick,
@@ -510,6 +511,7 @@ function NaverMapCanvas({
   onRemoveBoundaryPoint?: (index: number) => void
   onSelectBuilding?: (id: number) => void
   onSelectAggregate?: (id: string) => void
+  onZoomChange?: (zoom: number) => void
   onSelectCardBoundary?: (cardId: number) => void
   onUpdateBoundaryPoint?: (index: number, point: GeoPoint) => void
   onMapRightClick?: (lat: number, lng: number) => void
@@ -601,6 +603,8 @@ function NaverMapCanvas({
   onSelectBuildingRef.current = onSelectBuilding
   const onSelectAggregateRef = useRef(onSelectAggregate)
   onSelectAggregateRef.current = onSelectAggregate
+  const onZoomChangeRef = useRef(onZoomChange)
+  onZoomChangeRef.current = onZoomChange
   const onSelectCardBoundaryRef = useRef(onSelectCardBoundary)
   onSelectCardBoundaryRef.current = onSelectCardBoundary
   const previewMarkerRef = useRef<any>(null)
@@ -692,7 +696,16 @@ function NaverMapCanvas({
     if (hideBuildingMarkersRef.current) return
 
     const zoom = mapInstanceRef.current.getZoom()
-    const clusters = clusterBuildings(buildingsRef.current, zoom)
+    // 가까이 확대했을 때 화면 밖 1,000여 건물까지 DOM 마커로 만들면 지도 이동이
+    // 다시 무거워진다. 네이버 지도 권장 방식대로 현재 viewport 안의 건물만 그린다.
+    const bounds = zoom >= 15 ? mapInstanceRef.current.getBounds() : null
+    const visibleBuildings = bounds?.hasLatLng
+      ? buildingsRef.current.filter((building) => {
+          if (!isValidMapCoordinate(Number(building.lat), Number(building.lng))) return false
+          return bounds.hasLatLng(new naver.maps.LatLng(Number(building.lat), Number(building.lng)))
+        })
+      : buildingsRef.current
+    const clusters = clusterBuildings(visibleBuildings, zoom)
 
     clusters.forEach((cluster) => {
       if (cluster.buildings.length === 1) {
@@ -1483,9 +1496,11 @@ function NaverMapCanvas({
 
       // Re-cluster when zoom changes
       naver.maps.Event.addListener(mapInstanceRef.current, 'zoom_changed', () => {
+        onZoomChangeRef.current?.(mapInstanceRef.current.getZoom())
         scheduleRebuildMarkersRef.current()
         updateCardLabelVisibilityRef.current()
       })
+      onZoomChangeRef.current?.(mapInstanceRef.current.getZoom())
 
       // 성능: 드래그 중엔 카드 라벨 숨김 → 멈추면(idle) 다시 표시.
       // (안드로이드에서 라벨 오버레이 리페인트가 드래그를 느리게 하는 것 방지)
@@ -1494,6 +1509,10 @@ function NaverMapCanvas({
       })
       naver.maps.Event.addListener(mapInstanceRef.current, 'idle', () => {
         updateCardLabelVisibilityRef.current()
+        // 드래그하는 동안에는 기존 핀을 유지하고, 손을 뗀 뒤 새 화면의 핀만 한 번 갱신한다.
+        if (mapInstanceRef.current.getZoom() >= 15 && aggregateMarkersRef.current.length === 0) {
+          scheduleRebuildMarkersRef.current()
+        }
       })
     }
 
@@ -1866,6 +1885,7 @@ export function MapCanvas({
   onRemoveBoundaryPoint,
   onSelectBuilding,
   onSelectAggregate,
+  onZoomChange,
   onSelectCardBoundary,
   onUpdateBoundaryPoint,
   onMapRightClick,
@@ -1916,6 +1936,7 @@ export function MapCanvas({
   onRemoveBoundaryPoint?: (index: number) => void
   onSelectBuilding: (buildingId: number) => void
   onSelectAggregate?: (id: string) => void
+  onZoomChange?: (zoom: number) => void
   onSelectCardBoundary?: (cardId: number) => void
   onUpdateBoundaryPoint?: (index: number, point: GeoPoint) => void
   onMapRightClick?: (lat: number, lng: number) => void
@@ -1980,6 +2001,7 @@ export function MapCanvas({
           onRemoveBoundaryPoint={onRemoveBoundaryPoint}
           onSelectBuilding={onSelectBuilding}
           onSelectAggregate={onSelectAggregate}
+          onZoomChange={onZoomChange}
           onSelectCardBoundary={onSelectCardBoundary}
           onUpdateBoundaryPoint={onUpdateBoundaryPoint}
           onMapRightClick={onMapRightClick}
