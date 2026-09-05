@@ -2432,57 +2432,85 @@ function UnitDetailScreen({
           </div>
         )}
 
-        {/* 메모 */}
+        {/* 플래그 */}
         <div style={sectionStyle}>
-          <h3 style={{ ...sectionTitleStyle, marginBottom: 2 }}>{t(language, 'map.unitMemoLabel')}</h3>
-          <p style={{ margin: '0 0 10px', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.4 }}>
-            {t(language, 'map.unitMemoHint')}
-          </p>
-          {memoEditing ? (
-            <div>
-              <textarea
-                autoFocus
-                value={memoDraft ?? ''}
-                onChange={e => setMemoDraft(e.target.value)}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {/* 방문금지 */}
+            {[
+              { label: t(language, 'map.forbidden'), active: unit.isForbidden ?? false, onToggle: () => onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden }) },
+              { label: t(language, 'map.chinese'), active: unit.isChinese ?? false, onToggle: () => onToggleChinese(building.id, unit.id) },
+            ].map(flag => (
+              <button
+                key={flag.label}
+                type="button"
+                onClick={() => { if (!requireRecordAccess()) return; flag.onToggle() }}
+                disabled={!canRecordVisits}
                 style={{
-                  width: '100%', minHeight: 72, padding: '8px 10px',
-                  border: '1px solid var(--line)', borderRadius: 8,
-                  background: 'var(--bg)', color: 'var(--ink)',
-                  fontSize: 13, lineHeight: 1.5, fontFamily: 'inherit',
-                  resize: 'none', boxSizing: 'border-box',
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
+                  padding: '5px 2px', borderRadius: 6,
+                  border: flag.active ? 'none' : '1px solid var(--line)',
+                  background: flag.active ? 'var(--ink)' : 'var(--surface)',
+                  color: flag.active ? '#fff' : 'var(--muted)',
+                  fontSize: 11, fontWeight: 600,
+                  cursor: canRecordVisits ? 'pointer' : 'default',
                 }}
-              />
-              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                <button
-                  onClick={() => {
-                    // ⚠ 예전에는 화면 상태만 바꿔 새로고침하면 메모가 사라졌다 — DB 에도 저장한다
-                    const next = memoDraft ?? ''
-                    onUpdateUnitFlags(unit.id, { memo: next })
-                    setUnitMemos(prev => ({ ...prev, [unit.id]: next }))
-                    setMemoEditing(false)
-                  }}
-                  style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-                  type="button"
-                >{t(language, 'map.save')}</button>
-                <button
-                  onClick={() => { setMemoEditing(false); setMemoDraft(null) }}
-                  style={{ flex: 1, padding: '8px', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                  type="button"
-                >{t(language, 'map.cancel')}</button>
-              </div>
-            </div>
-          ) : (
+              >
+                {flag.active && <span style={{ fontSize: 11 }}>✓</span>}
+                {flag.label}
+              </button>
+            ))}
+            {/* 정기방문 — 팝업으로 담당자 지정 */}
             <button
-              onClick={() => { if (!requireRecordAccess()) return; setMemoDraft(memo); setMemoEditing(true) }}
-              style={{
-                width: '100%', textAlign: 'left', background: 'var(--bg)',
-                border: '1px solid var(--line)', borderRadius: 8,
-                padding: '8px 10px', fontSize: 13, color: memo ? 'var(--ink)' : 'var(--muted)',
-                cursor: canRecordVisits ? 'pointer' : 'default',
-                whiteSpace: 'pre-wrap', lineHeight: 1.5, fontFamily: 'inherit',
-              }}
               type="button"
-            >{memo || t(language, 'map.addMemo') + '...'}</button>
+              disabled={!canRecordVisits}
+              onClick={() => {
+                if (!requireRecordAccess()) return
+                if (unit.isRegularVisit) {
+                  onToggleRegularVisit(building.id, unit.id)
+                } else {
+                  setRegularNameDraft(currentVisitor ?? '')
+                  setRegularDateDraft(getLocalDateString())
+                  setShowRegularPopup(true)
+                }
+              }}
+              style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                padding: '6px 4px', borderRadius: 7,
+                border: unit.isRegularVisit ? 'none' : '1px solid var(--line)',
+                background: unit.isRegularVisit ? '#B8862A' : 'var(--surface)',
+                color: unit.isRegularVisit ? '#fff' : 'var(--muted)',
+                fontSize: 11, fontWeight: 600,
+                cursor: canRecordVisits ? 'pointer' : 'default',
+              }}
+            >
+              {unit.isRegularVisit && <span style={{ fontSize: 11 }}>✓</span>}
+              {t(language, 'map.regularVisit')}
+            </button>
+          </div>
+          {unit.isRegularVisit && (
+            <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {unit.regularVisitor && (
+                <span style={{ fontSize: 11, color: '#B8862A', fontWeight: 600 }}>
+                  {t(currentLang(), 'app.manager', { defaultValue: msg('담당') })}: {unit.regularVisitor}
+                </span>
+              )}
+              {unit.regularVisitStart && (
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                  {t(currentLang(), 'app.start', { defaultValue: msg('시작') })}: {unit.regularVisitStart.slice(0, 10).replace(/-/g, '/')}
+                </span>
+              )}
+              {canRecordVisits && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRegularNameDraft(unit.regularVisitor ?? '')
+                    setRegularDateDraft(unit.regularVisitStart ? unit.regularVisitStart.slice(0, 10) : '')
+                    setShowRegularPopup(true)
+                  }}
+                  style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 11, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                >{t(language, 'map.change')}</button>
+              )}
+            </div>
           )}
         </div>
 
@@ -2633,85 +2661,57 @@ function UnitDetailScreen({
           </div>
         )}
 
-        {/* 플래그 */}
+        {/* 메모 */}
         <div style={sectionStyle}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {/* 방문금지 */}
-            {[
-              { label: t(language, 'map.forbidden'), active: unit.isForbidden ?? false, onToggle: () => onUpdateUnitFlags(unit.id, { isForbidden: !unit.isForbidden }) },
-              { label: t(language, 'map.chinese'), active: unit.isChinese ?? false, onToggle: () => onToggleChinese(building.id, unit.id) },
-            ].map(flag => (
-              <button
-                key={flag.label}
-                type="button"
-                onClick={() => { if (!requireRecordAccess()) return; flag.onToggle() }}
-                disabled={!canRecordVisits}
+          <h3 style={{ ...sectionTitleStyle, marginBottom: 2 }}>{t(language, 'map.unitMemoLabel')}</h3>
+          <p style={{ margin: '0 0 10px', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.4 }}>
+            {t(language, 'map.unitMemoHint')}
+          </p>
+          {memoEditing ? (
+            <div>
+              <textarea
+                autoFocus
+                value={memoDraft ?? ''}
+                onChange={e => setMemoDraft(e.target.value)}
                 style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
-                  padding: '5px 2px', borderRadius: 6,
-                  border: flag.active ? 'none' : '1px solid var(--line)',
-                  background: flag.active ? 'var(--ink)' : 'var(--surface)',
-                  color: flag.active ? '#fff' : 'var(--muted)',
-                  fontSize: 11, fontWeight: 600,
-                  cursor: canRecordVisits ? 'pointer' : 'default',
+                  width: '100%', minHeight: 72, padding: '8px 10px',
+                  border: '1px solid var(--line)', borderRadius: 8,
+                  background: 'var(--bg)', color: 'var(--ink)',
+                  fontSize: 13, lineHeight: 1.5, fontFamily: 'inherit',
+                  resize: 'none', boxSizing: 'border-box',
                 }}
-              >
-                {flag.active && <span style={{ fontSize: 11 }}>✓</span>}
-                {flag.label}
-              </button>
-            ))}
-            {/* 정기방문 — 팝업으로 담당자 지정 */}
-            <button
-              type="button"
-              disabled={!canRecordVisits}
-              onClick={() => {
-                if (!requireRecordAccess()) return
-                if (unit.isRegularVisit) {
-                  onToggleRegularVisit(building.id, unit.id)
-                } else {
-                  setRegularNameDraft(currentVisitor ?? '')
-                  setRegularDateDraft(getLocalDateString())
-                  setShowRegularPopup(true)
-                }
-              }}
-              style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                padding: '6px 4px', borderRadius: 7,
-                border: unit.isRegularVisit ? 'none' : '1px solid var(--line)',
-                background: unit.isRegularVisit ? '#B8862A' : 'var(--surface)',
-                color: unit.isRegularVisit ? '#fff' : 'var(--muted)',
-                fontSize: 11, fontWeight: 600,
-                cursor: canRecordVisits ? 'pointer' : 'default',
-              }}
-            >
-              {unit.isRegularVisit && <span style={{ fontSize: 11 }}>✓</span>}
-              {t(language, 'map.regularVisit')}
-            </button>
-          </div>
-          {unit.isRegularVisit && (
-            <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {unit.regularVisitor && (
-                <span style={{ fontSize: 11, color: '#B8862A', fontWeight: 600 }}>
-                  {t(currentLang(), 'app.manager', { defaultValue: msg('담당') })}: {unit.regularVisitor}
-                </span>
-              )}
-              {unit.regularVisitStart && (
-                <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-                  {t(currentLang(), 'app.start', { defaultValue: msg('시작') })}: {unit.regularVisitStart.slice(0, 10).replace(/-/g, '/')}
-                </span>
-              )}
-              {canRecordVisits && (
+              />
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 <button
-                  type="button"
                   onClick={() => {
-                    setRegularNameDraft(unit.regularVisitor ?? '')
-                    setRegularDateDraft(unit.regularVisitStart ? unit.regularVisitStart.slice(0, 10) : '')
-                    setShowRegularPopup(true)
+                    // ⚠ 예전에는 화면 상태만 바꿔 새로고침하면 메모가 사라졌다 — DB 에도 저장한다
+                    const next = memoDraft ?? ''
+                    onUpdateUnitFlags(unit.id, { memo: next })
+                    setUnitMemos(prev => ({ ...prev, [unit.id]: next }))
+                    setMemoEditing(false)
                   }}
-                  style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 11, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-                >{t(language, 'map.change')}</button>
-              )}
+                  style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 8, background: 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                  type="button"
+                >{t(language, 'map.save')}</button>
+                <button
+                  onClick={() => { setMemoEditing(false); setMemoDraft(null) }}
+                  style={{ flex: 1, padding: '8px', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                  type="button"
+                >{t(language, 'map.cancel')}</button>
+              </div>
             </div>
+          ) : (
+            <button
+              onClick={() => { if (!requireRecordAccess()) return; setMemoDraft(memo); setMemoEditing(true) }}
+              style={{
+                width: '100%', textAlign: 'left', background: 'var(--bg)',
+                border: '1px solid var(--line)', borderRadius: 8,
+                padding: '8px 10px', fontSize: 13, color: memo ? 'var(--ink)' : 'var(--muted)',
+                cursor: canRecordVisits ? 'pointer' : 'default',
+                whiteSpace: 'pre-wrap', lineHeight: 1.5, fontFamily: 'inherit',
+              }}
+              type="button"
+            >{memo || t(language, 'map.addMemo') + '...'}</button>
           )}
         </div>
 
