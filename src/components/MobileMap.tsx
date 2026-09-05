@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- 네이버 지도 SDK(window.naver)는 공식 TS 타입이 없어 any 사용이 불가피함 */
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import { canEditVisitor, visitorOptionsFrom, visitorOptionsWithCurrent } from '../utils/visitorPicker'
 import { useSearchParams } from 'react-router-dom'
 import { MapCanvas } from './MapCanvas'
@@ -10,7 +9,6 @@ import type { AppLanguage } from '../i18n'
 import { t, translateKoreanAddress, currentLang } from '../i18n'
 import { findCardForCoordinates } from '../utils/mapUtils'
 import { getPinGroup, type PinGroup } from '../utils/buildingPin'
-import { normalizeCardSearch, sortTerritoryCards } from '../utils/cardSearch'
 import { showToast } from '../lib/toast'
 import { confirmDialog } from '../lib/confirm'
 import { getLocalDateString } from '../utils/dateUtils'
@@ -25,8 +23,9 @@ import { InformalKindIcon } from './InformalKindIcon'
 import { placeDeletionCopy } from '../utils/placeDeletion'
 import { PlaceChangeRequestDialog } from './PlaceChangeRequestDialog'
 import { getNextMobileMapDetailLevel, type MobileMapDetailLevel } from '../utils/mapClustering'
-import { getOverlayRoot } from '../lib/overlayRoot'
 import { getFloatingMenuPosition } from '../utils/floatingMenu'
+import { isBareUnitSearch, searchMapData, type MapSearchResult } from '../utils/mapSearch'
+import { OverlayPortal } from './OverlayPortal'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
@@ -154,8 +153,9 @@ export function MobileMap({
   calendarEvents?: CalendarEvent[]
 }) {
   // URL 파라미터 (가상 핀용)
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const focusedUnitId = searchParams.get('unitId') ? Number(searchParams.get('unitId')) : null
+  const focusedInformalChildId = searchParams.get('informalChildId') ? Number(searchParams.get('informalChildId')) : null
   const addrParam = searchParams.get('addr')
   const pinLabelParam = searchParams.get('pinLabel') ?? addrParam ?? ''
   const [virtualPinLat, setVirtualPinLat] = useState<number | null>(null)
@@ -205,7 +205,7 @@ export function MobileMap({
 
   // 필터
   const [strategyFilter] = useState<StrategyFilter>('전체')
-  const [statusFilter] = useState<PinGroup | '전체'>('전체')
+  const [statusFilter, setStatusFilter] = useState<PinGroup | '전체'>('전체')
   const [buildingTypeFilter, setBuildingTypeFilter] = useState<BuildingTypeFilter>('전체')
 
   // 지도/패널 상태
@@ -231,7 +231,7 @@ export function MobileMap({
     { lat: number; lng: number; name: string; memo: string; kind: InformalKind } | null
   >(null)
   const [savingChild, setSavingChild] = useState(false)
-  const [focusedChildId, setFocusedChildId] = useState<number | null>(null)
+  const [focusedChildId, setFocusedChildId] = useState<number | null>(focusedInformalChildId)
   const [editInformalDraft, setEditInformalDraft] = useState<
     { id: number; name: string; memo: string } | null
   >(null)
@@ -269,8 +269,8 @@ export function MobileMap({
 
   useEffect(() => {
     // 다른 구역으로 옮겨 가면 골라 둔 점은 뜻이 없다
-    setFocusedChildId(null)
-  }, [focusedInformalId])
+    setFocusedChildId(focusedInformalChildId)
+  }, [focusedInformalChildId, focusedInformalId])
 
   /** 구역 안에 찍은 점의 이름을 정하는 창 */
   const childDraftModal = (childDraft && selectedInformal) ? (
@@ -507,13 +507,13 @@ export function MobileMap({
   const canRecordVisits =
     actualRole !== 'user' || !!todayRecordableSession || isUserDirectAssignment
   const isViewingActiveCard = !!activeSessionCard && selectedCardId === activeSessionCard.id
-  const filteredCardOptions = useMemo(() => {
-    const query = normalizeCardSearch(cardSearch)
-    if (!query) return []
-    return sortTerritoryCards(cards.filter((card) =>
-      normalizeCardSearch(`${card.name}${card.region}${card.area}`).includes(query)
-    ))
-  }, [cardSearch, cards])
+  const mapSearchResults = useMemo(() => searchMapData({
+    query: cardSearch,
+    cards,
+    buildings,
+    informalAssets,
+  }), [buildings, cardSearch, cards, informalAssets])
+  const bareUnitSearch = isBareUnitSearch(cardSearch)
 
   const requireRecordAccess = () => {
     if (canRecordVisits) return true
@@ -562,11 +562,7 @@ export function MobileMap({
     }
   }
 
-  const openUnitDetail = (unit: Unit, building: Building, unitHistories: VisitHistory[]) => {
-    if (fullScreenUnit?.unit.id === unit.id) {
-      closeUnitDetail()
-      return
-    }
+  const showUnitDetail = (unit: Unit, building: Building, unitHistories: VisitHistory[]) => {
     if (sheetHeightBeforeUnitRef.current === null) {
       sheetHeightBeforeUnitRef.current = sheetHeight
     }
@@ -581,6 +577,14 @@ export function MobileMap({
         row.scrollIntoView({ block: 'center', behavior: 'smooth' })
       }
     }, 380)
+  }
+
+  const openUnitDetail = (unit: Unit, building: Building, unitHistories: VisitHistory[]) => {
+    if (fullScreenUnit?.unit.id === unit.id) {
+      closeUnitDetail()
+      return
+    }
+    showUnitDetail(unit, building, unitHistories)
   }
 
   const handleUnitMemoEditingChange = (editing: boolean) => {
@@ -1105,6 +1109,74 @@ export function MobileMap({
       map.morph(latLng, 17)
     }
   }
+
+  const selectMapSearchResult = (result: MapSearchResult) => {
+    setShowCardFinder(false)
+    setCardSearch('')
+
+    if (result.kind === 'informal' && result.informalId != null) {
+      const next = new URLSearchParams()
+      const returnTarget = searchParams.get('return')
+      if (returnTarget) next.set('return', returnTarget)
+      next.set('informalId', String(result.informalId))
+      if (result.informalChildId != null) next.set('informalChildId', String(result.informalChildId))
+      setSearchParams(next)
+      return
+    }
+
+    const building = result.buildingId == null
+      ? null
+      : buildings.find((item) => item.id === result.buildingId) ?? null
+    const card = cards.find((item) => item.id === (result.cardId ?? building?.cardId)) ?? null
+    if (!card) return
+
+    // 검색 결과는 현재 지역·상태 필터 밖에 있어도 보여야 한다.
+    const next = new URLSearchParams()
+    const returnTarget = searchParams.get('return')
+    if (returnTarget) next.set('return', returnTarget)
+    setSearchParams(next, { replace: true })
+    setSelectedArea(null)
+    setSelectedRegion(null)
+    setStatusFilter('전체')
+    setBuildingTypeFilter('전체')
+    setSelectedCardId(card.id)
+
+    if (!building) {
+      setSelectedBuildingId(null)
+      setExpandedBuildingIds(new Set())
+      setFullScreenUnit(null)
+      setSheetHeight(MIN_HEIGHT)
+      return
+    }
+
+    // 카드 fit 효과가 먼저 끝난 다음 건물로 이동해야 구역 전체로 되돌아가지 않는다.
+    window.setTimeout(() => {
+      setSelectedBuildingId(building.id)
+      setExpandedBuildingIds(new Set([building.id]))
+      setCollapsedStatusGroups((previous) => {
+        const next = new Set(previous)
+        next.delete(getPinGroup(building))
+        return next
+      })
+      setHiddenMapStatuses((previous) => {
+        const next = new Set(previous)
+        next.delete(getPinGroup(building))
+        return next
+      })
+
+      const unit = result.unitId == null
+        ? null
+        : building.units.find((item) => item.id === result.unitId) ?? null
+      if (unit) {
+        showUnitDetail(unit, building, visitHistoriesByUnitId.get(unit.id) ?? [])
+      } else {
+        setFullScreenUnit(null)
+        setSheetHeight(HALF_HEIGHT)
+        moveMobileMapToBuilding(building)
+        scrollBuildingAfterSheetTransition(building.id)
+      }
+    }, 80)
+  }
   const hasAreaChips = !isUserMap && !enteredDirectly && areas.length > 1
   return (
     <main
@@ -1171,23 +1243,11 @@ export function MobileMap({
                   type="button"
                   className="mobile-map-header-action"
                   onClick={() => setShowCardFinder((open) => !open)}
-                  aria-label={msg('카드 / 주소 검색')}
+                  aria-label={t(language, 'map.searchAllLabel')}
                 >
                   <svg viewBox="0 0 24 24" aria-hidden>
                     <circle cx="11" cy="11" r="7" />
                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  className="mobile-map-header-action"
-                  onClick={() => setShowMapActionMenu((prev) => !prev)}
-                  aria-label={msg('더보기')}
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden>
-                    <circle cx="12" cy="5" r="1.5" />
-                    <circle cx="12" cy="12" r="1.5" />
-                    <circle cx="12" cy="19" r="1.5" />
                   </svg>
                 </button>
               </div>
@@ -1342,38 +1402,38 @@ export function MobileMap({
             </div>
           )}
 
-          {isUserMap && showCardFinder && (
+          {showCardFinder && (
             <div className="mobile-map-card-finder">
               <input
                 autoFocus
-                placeholder={t(language, 'map.searchPlaceholder')}
+                placeholder={t(language, 'map.searchAllPlaceholder')}
                 value={cardSearch}
                 onChange={(event) => setCardSearch(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && filteredCardOptions[0]) {
+                  if (event.key === 'Enter' && mapSearchResults[0]) {
                     event.preventDefault()
-                    setSelectedCardId(filteredCardOptions[0].id)
-                    setCardSearch(filteredCardOptions[0].name)
-                    setShowCardFinder(false)
+                    selectMapSearchResult(mapSearchResults[0])
                   }
                 }}
               />
               {cardSearch && (
                 <div className="mobile-map-card-results">
-                  {filteredCardOptions.length === 0 && <span>{t(language, 'map.noSearchResults')}</span>}
-                  {filteredCardOptions.length > 0 && <span>{t(language, 'map.searchResults')} {filteredCardOptions.length}{t(language, 'calendar.countSuffix')}</span>}
-                  {filteredCardOptions.map((card) => (
+                  {bareUnitSearch && (
+                    <span>{t(language, 'map.searchUnitHint')}</span>
+                  )}
+                  {!bareUnitSearch && mapSearchResults.length === 0 && <span>{t(language, 'map.noSearchResults')}</span>}
+                  {mapSearchResults.length > 0 && <span>{t(language, 'map.searchResults')} {mapSearchResults.length}{t(language, 'calendar.countSuffix')}</span>}
+                  {mapSearchResults.map((result) => (
                     <button
-                      key={card.id}
-                      onClick={() => {
-                        setSelectedCardId(card.id)
-                        setCardSearch(card.name)
-                        setShowCardFinder(false)
-                      }}
+                      key={result.key}
+                      onClick={() => selectMapSearchResult(result)}
                       type="button"
                     >
-                      <strong>{translateKoreanAddress(card.name, language, translatePlaceNames)}</strong>
-                      <small>{placeLabel(card.region)} · {placeLabel(card.area)}</small>
+                      <span className={`mobile-map-search-kind kind-${result.kind}`}>
+                        {t(language, `map.searchKind.${result.kind}`)}
+                      </span>
+                      <strong>{translateKoreanAddress(result.title, language, translatePlaceNames)}</strong>
+                      {result.subtitle && <small>{translateKoreanAddress(result.subtitle, language, translatePlaceNames)}</small>}
                     </button>
                   ))}
                 </div>
@@ -1847,8 +1907,8 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                             type="button"
                             aria-label={msg('더보기')}
                           >⋯</button>
-                          {buildingMenuId === building.id && buildingMenuPosition && getOverlayRoot() && createPortal(
-                            <>
+                          {buildingMenuId === building.id && buildingMenuPosition && (
+                            <OverlayPortal>
                               <div
                                 className="bld-menu-backdrop"
                                 onClick={closeBuildingMenu}
@@ -1920,8 +1980,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                   >{building.unitsSurveyed ? `✓ ${t(language, 'map.unitsSurveyed')}` : t(language, 'map.unitsSurveyed')}</button>
                                 )}
                               </div>
-                            </>,
-                            getOverlayRoot()!,
+                            </OverlayPortal>
                           )}
                         </div>
                       </div>
