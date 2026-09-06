@@ -18,6 +18,7 @@ const scripts = [
   'smokeEventAssignments.js',
   'smokeReviewTasks.js',
   'smokeRestaurantRequests.js',
+  'smokeAddUnits.js',
   'smokeReturnVisitCreate.js',
   'smokeReturnVisitEnd.js',
   'smokePlaceDeletion.js',

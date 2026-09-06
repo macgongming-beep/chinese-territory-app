@@ -1,7 +1,8 @@
 // 모바일 호수 일괄 추가 바텀시트
 // 층 범위 + 층당 호수 + 시작 호번호 (+ 지하) → 미리보기 → 일괄 추가
 import { useState } from 'react'
-import { generateBulkUnits } from '../utils/bulkUnits'
+import { filterNewUnitNumbers, generateBulkUnits } from '../utils/bulkUnits'
+import { normalizeUnitNumber } from '../utils/duplicateBuildingMerge'
 import { t, currentLang } from '../i18n'
 import { msg } from '../lib/msg'
 
@@ -27,8 +28,9 @@ export function MobileBulkUnitSheet({
   const [adding, setAdding] = useState(false)
 
   const preview = generateBulkUnits({ startFloor, endFloor, unitsPerFloor, startUnit, hasBasement, basementFloors })
-  const newOnes = preview.filter((n) => !existingNumbers.has(n))
-  const skipped = preview.length - newOnes.length
+  const { newNumbers: newOnes, skippedNumbers } = filterNewUnitNumbers(preview, existingNumbers)
+  const skipped = skippedNumbers.length
+  const existingKeys = new Set(Array.from(existingNumbers, normalizeUnitNumber))
 
   // 층별 범위 요약 (101호~105호 식) — 가로 절약
   const floorRanges = (() => {
@@ -41,7 +43,7 @@ export function MobileBulkUnitSheet({
       byFloor.set(floor, arr)
     })
     return Array.from(byFloor.entries()).map(([, nums]) => {
-      const allSkip = nums.every((n) => existingNumbers.has(n))
+      const allSkip = nums.every((n) => existingKeys.has(normalizeUnitNumber(n)))
       return { first: nums[0], last: nums[nums.length - 1], allSkip }
     })
   })()

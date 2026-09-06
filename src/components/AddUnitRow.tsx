@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { generateBulkUnits } from '../utils/bulkUnits'
+import { filterNewUnitNumbers, generateBulkUnits } from '../utils/bulkUnits'
 import { t, currentLang } from '../i18n'
 
 /**
@@ -42,8 +42,8 @@ export function AddUnitRow({
   // 미리보기 생성 (지하 + 지상) — 공유 유틸
   const preview = generateBulkUnits({ startFloor, endFloor, unitsPerFloor, startUnit, hasBasement, basementFloors })
 
-  const newOnes = preview.filter((n) => !existingNumbers.has(n))
-  const skipped = preview.length - newOnes.length
+  const { newNumbers: newOnes, skippedNumbers } = filterNewUnitNumbers(preview, existingNumbers)
+  const skipped = skippedNumbers.length
 
   const handleBulkAdd = async () => {
     if (newOnes.length === 0) return

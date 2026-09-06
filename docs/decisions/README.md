@@ -15,9 +15,10 @@
 
 | 번호 | 상태 | 결정 |
 | --- | --- | --- |
-| [0001](0001-preserve-orphaned-return-visits.md) | 승인, 운영 미적용 | 전출·계정 삭제 후에도 정기방문 기록을 보존하고 관리자가 재배정한다 |
-| [0002](0002-end-return-visits-and-report-place-changes.md) | 승인, 운영 미적용 | 정기방문 종료와 장소 수정 요청을 분리한다 |
-| [0003](0003-unit-usage-and-building-access.md) | 승인, 운영 미적용 | 건물은 기본 용도, 세대는 예외 용도를 갖고 출입불가는 건물에 기록한다 |
+| [0001](0001-preserve-orphaned-return-visits.md) | 운영 적용 | 전출·계정 삭제 후에도 정기방문 기록을 보존하고 관리자가 재배정한다 |
+| [0002](0002-end-return-visits-and-report-place-changes.md) | 운영 적용 | 정기방문 종료와 장소 수정 요청을 분리한다 |
+| [0003](0003-unit-usage-and-building-access.md) | 운영 적용 | 건물은 기본 용도, 세대는 예외 용도를 갖고 출입불가는 건물에 기록한다 |
+| [0004](0004-skip-existing-units-and-prevent-duplicates.md) | 운영 적용 | 같은 건물의 중복 세대를 막되 일괄 추가는 기존 호수를 제외하고 계속한다 |
 
 ## 새 기록 틀
 

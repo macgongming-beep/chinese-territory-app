@@ -154,11 +154,9 @@ export function makeBuildingMutations(deps: {
     unitNumber: string | string[],
     usageType?: Building['type'],
   ): Promise<number[] | false> => {
-    const unitNumbers = [...new Set(
-      (Array.isArray(unitNumber) ? unitNumber : [unitNumber])
-        .map((number) => number.trim())
-        .filter(Boolean),
-    )]
+    const unitNumbers = (Array.isArray(unitNumber) ? unitNumber : [unitNumber])
+      .map((number) => number.trim())
+      .filter(Boolean)
     if (unitNumbers.length === 0) return false
 
     // 새로 만든 행을 돌려받는다 — id 는 추가 직후 기록(출입불가 → 대상외)에,
@@ -168,20 +166,28 @@ export function makeBuildingMutations(deps: {
       showToast(msg('건물을 찾을 수 없습니다.'), 'error')
       return false
     }
-    const storedUsageType = usageType && usageType !== building.type ? usageType : null
-    const result = await supabase.from('units').insert(
-      unitNumbers.map((number) => ({
-        building_id: buildingId,
-        number,
-        status: '미방문',
-        usage_type: storedUsageType,
-      })),
-    ).select('id, number, status, usage_type')
-    if (result.error) {
+    const token = getAuthToken()
+    if (!token) {
+      showToast(msg('다시 로그인해 주세요.'), 'error')
+      return false
+    }
+    const result = await supabase.rpc('add_units_to_building_tx', {
+      p_token: token,
+      p_building_id: buildingId,
+      p_unit_numbers: unitNumbers,
+      p_usage_type: usageType ?? building.type,
+    })
+    const payload = result.data as {
+      ok?: boolean
+      created?: Array<{ id: number; number: string; status: string; usage_type: Building['type'] | null }>
+      skipped?: Array<{ id: number; number: string }>
+    } | null
+    if (result.error || !payload?.ok) {
       reportMutationError(msg('호수를 추가하지 못했습니다.'), result.error)
       return false
     }
-    const created = (result.data ?? []) as Array<{ id: number; number: string; status: string; usage_type: Building['type'] | null }>
+    const created = payload.created ?? []
+    const skipped = payload.skipped ?? []
     const newIds = created.map((row) => row.id)
     // 건물 전체를 다시 받지 않고 새 호수만 목록에 얹는다
     appendUnits(buildingId, created.map((row) => ({
@@ -191,11 +197,13 @@ export function makeBuildingMutations(deps: {
       isChinese: false,
       usageType: row.usage_type ?? undefined,
     })))
-    showToast(
-      unitNumbers.length === 1
-        ? `${unitNumbers[0]} 호수가 추가됐습니다`
-        : `${unitNumbers.length}개 호수가 추가됐습니다`,
-    )
+    if (created.length === 0) {
+      showToast(msg('이미 등록된 호수입니다.'), 'info')
+    } else if (skipped.length > 0) {
+      showToast(msg('{created}개 호수 추가 · 기존 {skipped}개 제외', { created: created.length, skipped: skipped.length }))
+    } else {
+      showToast(created.length === 1 ? `${created[0].number} 호수가 추가됐습니다` : `${created.length}개 호수가 추가됐습니다`)
+    }
     return newIds
   }
 
