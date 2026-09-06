@@ -5643,8 +5643,8 @@ button:focus-visible {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  column-gap: 8px;
-  gap: 2px;
+  column-gap: 11px;
+  row-gap: 3px;
   min-height: 46px;
   padding: 8px 10px;
   border: 0;
