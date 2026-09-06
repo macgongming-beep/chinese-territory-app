@@ -1308,6 +1308,44 @@ export function MobileMap({
               </button>
             </div>
           )}
+          {navLevel === 'map' && showCardFinder && (
+            <div className="mobile-map-card-finder">
+              <input
+                autoFocus
+                placeholder={t(language, 'map.searchAllPlaceholder')}
+                value={cardSearch}
+                onChange={(event) => setCardSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && mapSearchResults[0]) {
+                    event.preventDefault()
+                    selectMapSearchResult(mapSearchResults[0])
+                  }
+                }}
+              />
+              {cardSearch && (
+                <div className="mobile-map-card-results">
+                  {bareUnitSearch && (
+                    <span>{t(language, 'map.searchUnitHint')}</span>
+                  )}
+                  {!bareUnitSearch && mapSearchResults.length === 0 && <span>{t(language, 'map.noSearchResults')}</span>}
+                  {mapSearchResults.length > 0 && <span>{t(language, 'map.searchResults')} {mapSearchResults.length}{t(language, 'calendar.countSuffix')}</span>}
+                  {mapSearchResults.map((result) => (
+                    <button
+                      key={result.key}
+                      onClick={() => selectMapSearchResult(result)}
+                      type="button"
+                    >
+                      <span className={`mobile-map-search-kind kind-${result.kind}`}>
+                        {t(language, `map.searchKind.${result.kind}`)}
+                      </span>
+                      <strong>{translateKoreanAddress(result.title, language, translatePlaceNames)}</strong>
+                      {result.subtitle && <small>{translateKoreanAddress(result.subtitle, language, translatePlaceNames)}</small>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -1399,45 +1437,6 @@ export function MobileMap({
                   type="button"
                 >{placeLabel(area)} <em>{areaCardCount(area)}</em></button>
               ))}
-            </div>
-          )}
-
-          {showCardFinder && (
-            <div className="mobile-map-card-finder">
-              <input
-                autoFocus
-                placeholder={t(language, 'map.searchAllPlaceholder')}
-                value={cardSearch}
-                onChange={(event) => setCardSearch(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && mapSearchResults[0]) {
-                    event.preventDefault()
-                    selectMapSearchResult(mapSearchResults[0])
-                  }
-                }}
-              />
-              {cardSearch && (
-                <div className="mobile-map-card-results">
-                  {bareUnitSearch && (
-                    <span>{t(language, 'map.searchUnitHint')}</span>
-                  )}
-                  {!bareUnitSearch && mapSearchResults.length === 0 && <span>{t(language, 'map.noSearchResults')}</span>}
-                  {mapSearchResults.length > 0 && <span>{t(language, 'map.searchResults')} {mapSearchResults.length}{t(language, 'calendar.countSuffix')}</span>}
-                  {mapSearchResults.map((result) => (
-                    <button
-                      key={result.key}
-                      onClick={() => selectMapSearchResult(result)}
-                      type="button"
-                    >
-                      <span className={`mobile-map-search-kind kind-${result.kind}`}>
-                        {t(language, `map.searchKind.${result.kind}`)}
-                      </span>
-                      <strong>{translateKoreanAddress(result.title, language, translatePlaceNames)}</strong>
-                      {result.subtitle && <small>{translateKoreanAddress(result.subtitle, language, translatePlaceNames)}</small>}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 

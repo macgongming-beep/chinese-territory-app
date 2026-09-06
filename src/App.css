@@ -5597,12 +5597,17 @@ button:focus-visible {
 }
 
 .mobile-map-card-finder {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 31;
   display: grid;
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--line-muted);
   background: #ffffff;
-  flex-shrink: 0;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
 }
 
 .mobile-map-card-finder input {
