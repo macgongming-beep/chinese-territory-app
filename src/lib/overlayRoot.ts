@@ -14,12 +14,9 @@ export function getOverlayRoot(): HTMLElement | null {
   if (existing) return existing
 
   const root = document.getElementById('root')
-  // #root 가 없으면 만들지 않는다. body 로 떨어뜨리면 확대 밖이 되는데,
-  // 그건 조용히 잘못 보이는 상태라 차라리 안 그리는 편이 낫다… 가 아니라,
-  // 화면이 안 뜨는 게 더 나쁘다. body 로 붙이되 그건 예외 상황이다.
-  const parent = root ?? document.body
+  if (!root) return null
   const el = document.createElement('div')
   el.id = ID
-  parent.appendChild(el)
+  root.appendChild(el)
   return el
 }

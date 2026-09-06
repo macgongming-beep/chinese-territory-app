@@ -26,6 +26,7 @@ import { getNextMobileMapDetailLevel, type MobileMapDetailLevel } from '../utils
 import { getFloatingMenuPosition } from '../utils/floatingMenu'
 import { isBareUnitSearch, searchMapData, type MapSearchResult } from '../utils/mapSearch'
 import { OverlayPortal } from './OverlayPortal'
+import { getCurrentRestaurantAssignmentsForUnit } from '../utils/restaurantAssignments'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
@@ -2503,7 +2504,12 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               allUsers={allUsers}
               onSetRegularVisitor={onSetRegularVisitor}
               onMemoEditingChange={handleUnitMemoEditingChange}
-              restaurantAssignments={eventRestaurantAssignments.filter((a) => a.unitId === liveFullScreenUnit.unit.id)}
+              restaurantAssignments={getCurrentRestaurantAssignmentsForUnit(
+                eventRestaurantAssignments,
+                calendarEvents,
+                liveFullScreenUnit.unit.id,
+                today,
+              )}
               calendarEvents={calendarEvents}
             />
           </div>
