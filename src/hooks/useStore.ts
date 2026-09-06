@@ -199,7 +199,7 @@ export function useStore(enabled: boolean = true) {
         for (let from = 0; ; from += pageSize) {
           const buildingsRes = await supabase
             .from('buildings')
-            .select('id, card_id, name, address, type, lat, lng, warning, memo, is_restaurant, units_surveyed, units(id, building_id, number, status, is_chinese, is_restaurant, memo, regular_visits(visitor_name, registered_at))')
+            .select('id, card_id, name, address, type, lat, lng, warning, access_status, memo, is_restaurant, units_surveyed, building_access_events(id, action, visitor_name, visited_at, time_slot, memo, created_at), units(id, building_id, number, status, is_chinese, is_restaurant, usage_type, memo, regular_visits(visitor_name, registered_at))')
             .order('id')
             .range(from, from + pageSize - 1)
 
@@ -737,6 +737,7 @@ export function useStore(enabled: boolean = true) {
     createBuilding,
     importBuildings,
     addUnitToBuilding,
+    setBuildingAccess,
     deleteUnitFromBuilding,
     deleteBuilding,
     deleteBuildings,
@@ -864,6 +865,7 @@ export function useStore(enabled: boolean = true) {
     createBuilding,
     importBuildings,
     addUnitToBuilding,
+    setBuildingAccess,
     deleteUnitFromBuilding,
     deleteBuilding,
     deleteBuildings,

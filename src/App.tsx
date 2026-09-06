@@ -109,6 +109,7 @@ function App() {
     createBuilding,
     importBuildings,
     addUnitToBuilding,
+    setBuildingAccess,
     deleteUnitFromBuilding,
     deleteBuilding,
     deleteBuildings,
@@ -482,6 +483,7 @@ function App() {
               onCreateNotice={createNotice}
               onDeleteNotice={deleteNotice}
               onAddUnit={addUnitToBuilding}
+              onSetBuildingAccess={setBuildingAccess}
               onCreateBuilding={createBuilding}
               onDeleteBuilding={deleteBuilding}
               onUpdateBuilding={updateBuilding}

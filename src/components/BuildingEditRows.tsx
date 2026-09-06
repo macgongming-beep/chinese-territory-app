@@ -81,14 +81,17 @@ export type UnitEditDraft = {
   isForbidden: boolean
   /** 이 세대가 식당인가 (업종). 중국어 사용 여부와 별개 */
   isRestaurant: boolean
+  usageType: Building['type']
 }
 
 export function UnitEditForm({
   unit,
+  buildingType,
   onSave,
   onCancel,
 }: {
   unit: Unit
+  buildingType: Building['type']
   onSave: (draft: UnitEditDraft) => void
   onCancel: () => void
 }) {
@@ -100,6 +103,7 @@ export function UnitEditForm({
     isRegularVisit: unit.isRegularVisit ?? false,
     isForbidden: unit.isForbidden ?? false,
     isRestaurant: unit.isRestaurant ?? false,
+    usageType: unit.isRestaurant ? '상가' : unit.usageType ?? buildingType,
   })
   return (
     <div className="unit-edit-layout">
@@ -133,6 +137,18 @@ export function UnitEditForm({
       </div>
       <div className="unit-edit-flags">
         <label className="unit-flag-label">
+          용도
+          <select
+            aria-label="세대 용도"
+            value={draft.usageType}
+            disabled={draft.isRestaurant}
+            onChange={(e) => setDraft((d) => ({ ...d, usageType: e.target.value as Building['type'] }))}
+          >
+            <option value="주택">주택</option>
+            <option value="상가">상가</option>
+          </select>
+        </label>
+        <label className="unit-flag-label">
           <input
             type="checkbox"
             checked={draft.isForbidden}
@@ -160,7 +176,7 @@ export function UnitEditForm({
           <input
             type="checkbox"
             checked={draft.isRestaurant}
-            onChange={(e) => setDraft((d) => ({ ...d, isRestaurant: e.target.checked }))}
+            onChange={(e) => setDraft((d) => ({ ...d, isRestaurant: e.target.checked, usageType: e.target.checked ? '상가' : d.usageType }))}
           />
           식당
         </label>

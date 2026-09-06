@@ -44,6 +44,7 @@ type RefUnit = {
   buildingType: string
   isRestaurant: boolean      // 건물에 식당이 있는지 (참고용)
   unitIsRestaurant: boolean  // 이 세대가 식당인지 (수정 대상)
+  usageType: '' | '주택' | '상가'
   cardName: string
 }
 
@@ -52,8 +53,8 @@ async function loadRefUnits(): Promise<Map<number, RefUnit>> {
     supabase.from('cards').select('id, name').order('id').range(f, t))
   const buildings = await fetchAllRows<{ id: number; card_id: number; name: string; address: string; type: string; is_restaurant: boolean | null }>((f, t) =>
     supabase.from('buildings').select('id, card_id, name, address, type, is_restaurant').order('id').range(f, t))
-  const units = await fetchAllRows<{ id: number; building_id: number; number: string; status: string; is_chinese: boolean | null; is_restaurant: boolean | null; memo: string | null; regular_visits: { visitor_name: string }[] | null }>((f, t) =>
-    supabase.from('units').select('id, building_id, number, status, is_chinese, is_restaurant, memo, regular_visits(visitor_name)').order('id').range(f, t))
+  const units = await fetchAllRows<{ id: number; building_id: number; number: string; status: string; is_chinese: boolean | null; is_restaurant: boolean | null; usage_type: '주택' | '상가' | null; memo: string | null; regular_visits: { visitor_name: string }[] | null }>((f, t) =>
+    supabase.from('units').select('id, building_id, number, status, is_chinese, is_restaurant, usage_type, memo, regular_visits(visitor_name)').order('id').range(f, t))
 
   const cardName = new Map(cards.map((c) => [c.id, c.name]))
   const bMap = new Map(buildings.map((b) => [b.id, b]))
@@ -71,6 +72,7 @@ async function loadRefUnits(): Promise<Map<number, RefUnit>> {
       buildingType: b?.type ?? '',
       isRestaurant: Boolean(b?.is_restaurant),
       unitIsRestaurant: Boolean(u.is_restaurant),
+      usageType: u.usage_type ?? '',
       cardName: b ? (cardName.get(b.card_id) ?? '') : '',
     })
   }
@@ -91,13 +93,13 @@ type VisitPlan = {
 }
 
 type UnitPlan = {
-  updates: Array<{ unitId: number; ops: { isChinese?: boolean; isRestaurant?: boolean; forbidden?: boolean; memo?: string; regular?: string | null }; label: string }>
+  updates: Array<{ unitId: number; ops: { isChinese?: boolean; isRestaurant?: boolean; usageType?: '' | '주택' | '상가'; forbidden?: boolean; memo?: string; regular?: string | null }; label: string }>
   errors: Array<{ line: number; reason: string }>
   unchanged: number
 }
 
 // '식당' 은 수정 가능한 칸 (이 세대가 식당인가). 뒤쪽 (참고) 칸들은 읽기 전용
-const UNIT_HEADERS = ['세대ID', '식당', '중국인', '방문금지', '정기방문담당자', '세대메모', '카드(참고)', '건물(참고)', '호수(참고)', '건물유형(참고)']
+const UNIT_HEADERS = ['세대ID', '식당', '세대용도', '중국인', '방문금지', '정기방문담당자', '세대메모', '카드(참고)', '건물(참고)', '호수(참고)', '건물유형(참고)']
 
 function headerIndex(header: string[], names: string[]): Map<string, number> | null {
   const idx = new Map<string, number>()
@@ -158,7 +160,7 @@ export function DataRoundTrip() {
       const sorted = [...refs.values()].sort((a, b) => a.cardName.localeCompare(b.cardName, 'ko') || a.buildingName.localeCompare(b.buildingName, 'ko'))
       for (const u of sorted) {
         rows.push([
-          String(u.id), u.unitIsRestaurant ? 'Y' : '', u.isChinese ? 'Y' : '',
+          String(u.id), u.unitIsRestaurant ? 'Y' : '', u.usageType, u.isChinese ? 'Y' : '',
           u.status === '거절' ? 'Y' : '', u.regularVisitor, u.memo,
           u.cardName, u.buildingName, u.number, u.buildingType,
         ])
@@ -283,7 +285,7 @@ export function DataRoundTrip() {
     try {
       const rows = parseCsv(await file.text())
       if (rows.length < 2) { showToast(msg('데이터 행이 없습니다'), 'error'); return }
-      const idx = headerIndex(rows[0], ['세대ID', '식당', '중국인', '방문금지', '정기방문담당자', '세대메모'])
+      const idx = headerIndex(rows[0], ['세대ID', '식당', '세대용도', '중국인', '방문금지', '정기방문담당자', '세대메모'])
       if (!idx) { showToast(msg('헤더가 다릅니다. 다운로드한 파일 형식을 유지해 주세요'), 'error'); return }
       const refs = await loadRefUnits()
       const get = (r: string[], name: string) => (r[idx.get(name)!] ?? '').trim()
@@ -297,6 +299,13 @@ export function DataRoundTrip() {
         if (!Number.isInteger(unitId) || !ref) { plan.errors.push({ line, reason: `세대ID 없음: "${get(r, '세대ID')}"` }); continue }
         const restaurant = parseYN(get(r, '식당'))
         if (restaurant === null) { plan.errors.push({ line, reason: `식당은 Y 또는 빈칸: "${get(r, '식당')}"` }); continue }
+        const usageType = get(r, '세대용도')
+        if (usageType !== '' && usageType !== '주택' && usageType !== '상가') {
+          plan.errors.push({ line, reason: `세대용도는 주택·상가 또는 빈칸: "${usageType}"` }); continue
+        }
+        if (restaurant && usageType === '주택') {
+          plan.errors.push({ line, reason: '식당 세대는 주택으로 지정할 수 없습니다' }); continue
+        }
         const chinese = parseYN(get(r, '중국인'))
         if (chinese === null) { plan.errors.push({ line, reason: `중국인은 Y 또는 빈칸: "${get(r, '중국인')}"` }); continue }
         const forbidden = parseYN(get(r, '방문금지'))
@@ -307,6 +316,8 @@ export function DataRoundTrip() {
         const ops: UnitPlan['updates'][number]['ops'] = {}
         if (chinese !== ref.isChinese) ops.isChinese = chinese
         if (restaurant !== ref.unitIsRestaurant) ops.isRestaurant = restaurant
+        const normalizedUsage = restaurant ? '상가' : usageType as '' | '주택' | '상가'
+        if (normalizedUsage !== ref.usageType) ops.usageType = normalizedUsage
         const curForbidden = ref.status === '거절'
         if (forbidden !== curForbidden) ops.forbidden = forbidden
         if (memo !== ref.memo) ops.memo = memo
@@ -314,6 +325,7 @@ export function DataRoundTrip() {
         if (Object.keys(ops).length === 0) { plan.unchanged++; continue }
         const parts: string[] = []
         if (ops.isRestaurant !== undefined) parts.push(`식당 ${ops.isRestaurant ? 'Y' : 'N'}`)
+        if (ops.usageType !== undefined) parts.push(`세대용도 ${ops.usageType || '건물 기본값'}`)
         if (ops.isChinese !== undefined) parts.push(`중국인 ${ops.isChinese ? 'Y' : 'N'}`)
         if (ops.forbidden !== undefined) parts.push(`방문금지 ${ops.forbidden ? 'Y' : 'N'}`)
         if (ops.regular !== undefined) parts.push(`정기방문 ${ops.regular ?? '해제'}`)
@@ -342,6 +354,7 @@ export function DataRoundTrip() {
         const patch: Record<string, unknown> = {}
         if (u.ops.isChinese !== undefined) patch.is_chinese = u.ops.isChinese
         if (u.ops.isRestaurant !== undefined) patch.is_restaurant = u.ops.isRestaurant
+        if (u.ops.usageType !== undefined) patch.usage_type = u.ops.usageType || null
         if (u.ops.memo !== undefined) patch.memo = u.ops.memo || null
         if (u.ops.forbidden !== undefined) patch.status = u.ops.forbidden ? '거절' : '미방문'
         if (Object.keys(patch).length > 0) {

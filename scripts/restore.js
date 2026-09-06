@@ -67,7 +67,7 @@ const RESTORE_ORDER = [
   'calendar_events',
   'service_sessions',
   // 5. 방문 (세대·세션을 참조한다)
-  'visit_histories', 'regular_visits', 'return_visits', 'return_visit_logs',
+  'visit_histories', 'building_access_events', 'regular_visits', 'return_visits', 'return_visit_logs',
   // 6. 배정
   'event_participants', 'event_card_assignments', 'event_card_assignment_cards',
   'event_informal_assignments', 'event_restaurant_assignments', 'informal_assets',

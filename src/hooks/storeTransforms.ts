@@ -5,6 +5,7 @@
  * mutate 로직은 useStore.ts 에 그대로 두고, 순수 변환만 분리.
  */
 import { compareUnitNumbers } from '../utils/unitNumber'
+import { isLegacyNoEntryUnit } from '../utils/unitUsage'
 import { INFORMAL_KINDS, type InformalKind } from '../types'
 import type {
   Building,
@@ -43,6 +44,7 @@ export type RawUnit = {
   status: UnitStatus
   is_chinese: boolean
   is_restaurant?: boolean | null
+  usage_type?: '주택' | '상가' | null
   is_forbidden?: boolean | null
   memo: string | null
   regular_visits: { visitor_name: string; registered_at?: string | null }[]
@@ -57,9 +59,19 @@ export type RawBuilding = {
   lat: number
   lng: number
   warning: boolean
+  access_status?: 'normal' | 'blocked' | null
   memo: string | null
   is_restaurant?: boolean | null
   units_surveyed?: boolean | null
+  building_access_events?: Array<{
+    id: number
+    action: 'blocked' | 'reopened'
+    visitor_name: string
+    visited_at: string
+    time_slot: TimeSlot | null
+    memo: string | null
+    created_at: string
+  }>
   units: RawUnit[]
 }
 
@@ -247,6 +259,17 @@ export function toBuilding(raw: RawBuilding): Building {
     lat: Number(raw.lat),
     lng: Number(raw.lng),
     warning: raw.warning,
+    accessStatus: raw.access_status ?? (raw.warning ? 'blocked' : 'normal'),
+    accessEvents: [...(raw.building_access_events ?? [])]
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map((event) => ({
+        id: event.id,
+        action: event.action,
+        visitor: event.visitor_name,
+        visitedAt: event.visited_at,
+        timeSlot: event.time_slot ?? undefined,
+        memo: event.memo ?? undefined,
+      })),
     memo: raw.memo ?? undefined,
     isRestaurant: raw.is_restaurant ?? false,
     unitsSurveyed: raw.units_surveyed ?? false,
@@ -258,6 +281,7 @@ export function toBuilding(raw: RawBuilding): Building {
         status: u.status,
         isChinese: u.is_chinese,
         isRestaurant: u.is_restaurant ?? false,
+        usageType: u.usage_type ?? undefined,
         isForbidden: Boolean(u.is_forbidden) || u.status === '거절',
         memo: u.memo ?? undefined,
         isRegularVisit: !!(u.regular_visits && (Array.isArray(u.regular_visits) ? u.regular_visits.length > 0 : true)),
@@ -284,12 +308,13 @@ export function normalizeCardType(): CardType {
 export function recomputeCardStats(card: TerritoryCard, buildings: Building[]): TerritoryCard {
   const cardBuildings = buildings.filter((b) => b.cardId === card.id)
   // 식당도 상가의 일부(구역의 한 세대)이므로 진행률에 포함한다.
-  const allUnits = cardBuildings.flatMap((b) => b.units)
+  const allUnits = cardBuildings.flatMap((b) => b.units.filter((unit) => !isLegacyNoEntryUnit(unit)))
   // "완료" 기준을 지도의 방문완료 판정과 동일하게 — 미방문·부재는 아직 방문필요로 본다.
   const completed = allUnits.filter((u) => u.status !== '미방문' && u.status !== '부재').length
   const total = allUnits.length
   const regularVisitPoints = cardBuildings.flatMap((b) =>
     b.units
+      .filter((unit) => !isLegacyNoEntryUnit(unit))
       .filter((u) => u.isRegularVisit)
       .map((u) => ({ point: `${b.name} ${u.number}`, visitor: u.regularVisitor ?? '' })),
   )

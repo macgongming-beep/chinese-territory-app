@@ -80,6 +80,25 @@ try {
   const ownUnit = units.data.find((row) => row.number === '101')
   const occupiedUnit = units.data.find((row) => row.number === '102')
 
+  const blockedBuilding = await user.rpc('set_building_access_tx', {
+    p_token: userToken, p_building_id: madeBuilding, p_blocked: true, p_note: '현장 확인',
+  })
+  const blockedState = await db.from('buildings')
+    .select('access_status,warning,building_access_events(action,visitor_name,memo)')
+    .eq('id', madeBuilding).single()
+  check(!blockedBuilding.error && blockedState.data?.access_status === 'blocked'
+    && blockedState.data?.warning === true
+    && blockedState.data?.building_access_events?.some((event) => event.action === 'blocked'
+      && event.visitor_name === userName && event.memo === '현장 확인'),
+  '일반 사용자의 출입불가 확인을 건물 상태와 이력에 함께 남긴다')
+  const reopenedBuilding = await user.rpc('set_building_access_tx', {
+    p_token: userToken, p_building_id: madeBuilding, p_blocked: false, p_note: '재확인',
+  })
+  const reopenedState = await db.from('buildings').select('access_status,warning').eq('id', madeBuilding).single()
+  check(!reopenedBuilding.error && reopenedState.data?.access_status === 'normal'
+    && reopenedState.data?.warning === false,
+  '출입불가 해제도 상태와 레거시 표시를 함께 맞춘다')
+
   const base = {
     p_token: userToken,
     p_display_name: `${marker}_별명`,
@@ -192,15 +211,18 @@ try {
     p_first_result: null,
     p_existing_building_id: madeBuilding,
     p_building_name: '',
+    p_building_type: '주택',
     p_unit_number: '103',
+    p_unit_usage_type: '상가',
     p_card_id: null,
     p_lat: null,
     p_lng: null,
   })
-  const existingBuildingUnits = await db.from('units').select('id').eq('building_id', madeBuilding)
+  const existingBuildingUnits = await db.from('units').select('id,number,usage_type').eq('building_id', madeBuilding)
+  const addedCommercialUnit = existingBuildingUnits.data?.find((row) => row.number === '103')
   check(!existingBuildingLocation.error && existingBuildingLocation.data?.building_id === madeBuilding
-    && existingBuildingUnits.data?.length === 3,
-  '인도자는 선택한 기존 건물에 새 세대만 추가한다')
+    && existingBuildingUnits.data?.length === 3 && addedCommercialUnit?.usage_type === '상가',
+  '인도자는 주택 건물에 상가 세대를 추가할 수 있다')
 
   const locationParams = {
     p_token: leaderToken,
@@ -210,7 +232,9 @@ try {
     p_first_result: '부재',
     p_existing_building_id: null,
     p_building_name: `${marker}_새건물`,
+    p_building_type: '상가',
     p_unit_number: '201',
+    p_unit_usage_type: '상가',
     p_card_id: card.data.id,
     p_lat: 37.235,
     p_lng: 127.205,
@@ -225,11 +249,13 @@ try {
   const locationBuildingId = madeLocation.data?.building_id
   if (locationBuildingId) madeBuildings.add(locationBuildingId)
   const locationRows = await db.from('buildings')
-    .select('id,name,address,units(id,number,is_chinese,regular_visits(visitor_name),return_visits(id,last_result,return_visit_logs(result,memo)))')
+    .select('id,name,address,type,units(id,number,is_chinese,usage_type,regular_visits(visitor_name),return_visits(id,last_result,return_visit_logs(result,memo)))')
     .eq('id', locationBuildingId).single()
   const locationUnit = locationRows.data?.units?.[0]
-  check(!madeLocation.error && locationRows.data?.name === `${marker}_새건물` && locationUnit?.number === '201',
-    '인도자는 검색 후보로 새 건물과 세대를 만든다', madeLocation.error?.message)
+  check(!madeLocation.error && locationRows.data?.name === `${marker}_새건물`
+    && locationRows.data?.type === '상가' && locationUnit?.number === '201'
+    && locationUnit?.usage_type === null,
+    '인도자는 선택한 기본 용도로 새 건물과 세대를 만든다', madeLocation.error?.message)
   const locationRegular = Array.isArray(locationUnit?.regular_visits)
     ? locationUnit.regular_visits[0]
     : locationUnit?.regular_visits

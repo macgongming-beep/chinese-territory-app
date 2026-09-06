@@ -13237,6 +13237,30 @@ button:focus-visible {
     gap: 0;
   }
 
+  .unit-add-usage-row {
+    display: inline-grid;
+    grid-template-columns: repeat(2, minmax(62px, 1fr));
+    align-self: flex-start;
+    margin: 6px 0 2px 40px;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle, #d8dde5);
+    border-radius: 7px;
+  }
+
+  .unit-add-usage-row button {
+    min-height: 30px;
+    padding: 4px 12px;
+    border: 0;
+    border-right: 1px solid var(--border-subtle, #d8dde5);
+    background: #fff;
+    color: #667085;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .unit-add-usage-row button:last-child { border-right: 0; }
+  .unit-add-usage-row button.active { background: #171715; color: #fff; }
+
   /* 일괄 추가 토글 버튼 */
   .unit-bulk-toggle {
     border-color: var(--brand-300, #93c5fd) !important;
@@ -29934,7 +29958,16 @@ button:focus-visible {
 }
 
 /* ━━━ 모바일 세대 추가 행 (블랙 톤) ━━━ */
-.mm-unit-add-row { padding: 8px 10px; border-top: 1px dashed var(--line-2, #cbd5e1); display: flex; gap: 6px; align-items: center; }
+.mm-unit-add-box { padding: 8px 10px 10px; border-top: 1px dashed var(--line-2, #cbd5e1); }
+.mm-unit-add-row { display: flex; gap: 6px; align-items: center; }
+.mm-unit-add-options { display: flex; align-items: center; gap: 8px; margin-top: 8px; min-width: 0; }
+.mm-unit-usage-toggle { display: inline-grid; grid-template-columns: repeat(2, minmax(48px, 1fr)); border: 1px solid var(--line, #e2e8f0); border-radius: 7px; overflow: hidden; flex-shrink: 0; }
+.mm-unit-usage-toggle button { min-height: 32px; padding: 5px 10px; border: 0; border-right: 1px solid var(--line, #e2e8f0); background: var(--surface, #fff); color: var(--muted, #64748b); font-size: 12px; font-weight: 700; }
+.mm-unit-usage-toggle button:last-child { border-right: 0; }
+.mm-unit-usage-toggle button.active { background: var(--ink, #171715); color: #fff; }
+.bld-access-note { display: block; margin-top: 2px; color: #9a3412; font-size: 11px; font-weight: 700; }
+.mm-unit-bulk-link { margin-left: auto; padding: 5px 0; border: 0; background: transparent; color: var(--muted, #64748b); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.unit-usage-exception-badge { padding: 1px 5px; border-radius: 4px; background: #eef2f7; color: #526174; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .mm-unit-add-input { flex: 1; min-width: 0; padding: 9px 10px; border: 1px solid var(--line-2, #e2e8f0); border-radius: 8px; font-size: 13px; color: var(--ink); background: var(--surface, #fff); box-sizing: border-box; }
 .mm-unit-add-btn { padding: 9px 14px; background: var(--ink); color: #fff; border: none; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; flex-shrink: 0; }
 .mm-unit-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -30288,6 +30321,9 @@ button > svg {
   background: var(--surface); color: var(--ink); font-size: 13.5px; cursor: pointer;
 }
 .rv-addr-candidate span { min-width: 0; overflow-wrap: anywhere; }
+.rv-addr-candidate-copy { display: grid; gap: 2px; }
+.rv-addr-candidate-copy strong { color: var(--ink); font-size: 13.5px; }
+.rv-addr-candidate-copy small { color: var(--muted); font-size: 12px; line-height: 1.4; }
 .rv-addr-select-label {
   align-self: center;
   padding: 3px 7px;

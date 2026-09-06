@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ActiveRestaurantSession, Building, CalendarEvent, CardBoundary, EndReturnVisitInput, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ManualReturnVisitInput, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot, Unit, VisitHistory } from '../types'
+import { buildingHasUsage } from '../utils/unitUsage'
 import type { AppLanguage } from '../i18n'
 import { t, translateKoreanAddress, weekdayShortLabels } from '../i18n'
 import { getTerritoryCardOperationalState, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
@@ -12,6 +13,7 @@ import { getAssignmentTeamMembers } from '../utils/assignmentTeamMembers'
 import { chooseCardForBuilding } from '../utils/chooseCardForBuilding'
 import { shortAddress } from '../utils/shortAddress'
 import { EndReturnVisitDialog } from './EndReturnVisitDialog'
+import { searchPlacesForCongregation } from '../lib/placeSearch'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
   if (!assignment) return []
@@ -49,7 +51,13 @@ function fmtDate(dateStr: string, language: AppLanguage): string {
 }
 
 /** 주소 검색 후보. 좌표는 SDK 가 안 줄 수도 있어 null 을 허용한다 */
-type AddressCandidate = { address: string; lat: number | null; lng: number | null }
+type AddressCandidate = {
+  address: string
+  lat: number | null
+  lng: number | null
+  name?: string
+  category?: string
+}
 
 function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const rad = Math.PI / 180
@@ -250,6 +258,8 @@ export function MobileTerritory({
   const [addSelectedCandidate, setAddSelectedCandidate] = useState<AddressCandidate | null>(null)
   const [addNewUnitBuilding, setAddNewUnitBuilding] = useState<number | 'new' | null>(null)
   const [addBuildingName, setAddBuildingName] = useState('')
+  const [addBuildingType, setAddBuildingType] = useState<Building['type']>('주택')
+  const [addUnitUsageType, setAddUnitUsageType] = useState<Building['type']>('주택')
   const [addUnitNumber, setAddUnitNumber] = useState('')
   const [addrEditGeocoding, setAddrEditGeocoding] = useState(false)
   const [addrEditCandidates, setAddrEditCandidates] = useState<AddressCandidate[]>([])
@@ -283,8 +293,8 @@ export function MobileTerritory({
     buildings.forEach((building) => {
       const current = map.get(building.cardId) ?? { total: 0, house: 0, shop: 0 }
       current.total += 1
-      if (building.type === '주택') current.house += 1
-      if (building.type === '상가') current.shop += 1
+      if (buildingHasUsage(building, '주택')) current.house += 1
+      if (buildingHasUsage(building, '상가')) current.shop += 1
       map.set(building.cardId, current)
     })
     return map
@@ -573,40 +583,65 @@ export function MobileTerritory({
    *   봉사자 여러 명이 같은 증상을 신고했다 (2026-09-05).
    *   이제 사용자가 **검색을 누를 때만** 부르고, 후보를 보여 주고 고르게 한다.
    */
-  const searchAddressCandidates = (
+  const searchAddressCandidates = async (
     query: string,
     setResults: (v: AddressCandidate[]) => void,
     setLoading: (v: boolean) => void,
   ) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
-    const naver = (window as any).naver
-    if (!naver?.maps?.Service) {
-      showToast(msg('지도를 아직 불러오는 중입니다. 잠시 후 다시 눌러 주세요.'), 'info')
-      return
-    }
     setLoading(true)
     setResults([])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
-    naver.maps.Service.geocode({ query }, (status: any, response: any) => {
-      setLoading(false)
-      if (status === naver.maps.Service.Status.ERROR) {
-        showToast(msg('주소를 찾지 못했습니다.'), 'error')
-        return
-      }
+    const naver = (window as any).naver
+    const geocoded = new Promise<AddressCandidate[]>((resolve) => {
+      if (!naver?.maps?.Service) { resolve([]); return }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
-      const items: any[] = response?.v2?.addresses ?? []
-      const out = items.slice(0, 5).map((item) => {
-        const lat = Number(item.y)
-        const lng = Number(item.x)
-        return {
-          address: String(item.roadAddress || item.jibunAddress || '').trim(),
-          lat: Number.isFinite(lat) ? lat : null,
-          lng: Number.isFinite(lng) ? lng : null,
-        }
-      }).filter((c) => c.address)
-      if (out.length === 0) showToast(msg('주소를 찾지 못했습니다.'), 'info')
-      setResults(out)
+      naver.maps.Service.geocode({ query }, (status: any, response: any) => {
+        if (status === naver.maps.Service.Status.ERROR) { resolve([]); return }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 네이버 지도 SDK 무타입
+        const items: any[] = response?.v2?.addresses ?? []
+        resolve(items.map((item) => {
+          const lat = Number(item.y)
+          const lng = Number(item.x)
+          return {
+            address: String(item.roadAddress || item.jibunAddress || '').trim(),
+            lat: Number.isFinite(lat) ? lat : null,
+            lng: Number.isFinite(lng) ? lng : null,
+          }
+        }).filter((candidate) => candidate.address))
+      })
     })
+
+    const [placeResult, addressResults] = await Promise.all([
+      searchPlacesForCongregation(query),
+      geocoded,
+    ])
+    const placeResults: AddressCandidate[] = placeResult.ok
+      ? placeResult.places.map((place) => ({
+          name: place.name,
+          address: place.address,
+          category: place.category,
+          lat: place.lat,
+          lng: place.lng,
+        }))
+      : []
+    const addressLike = /(로|길|동|읍|면)\s*\d|\d+(-\d+)?\s*$/.test(query)
+    const combined = addressLike
+      ? [...addressResults, ...placeResults]
+      : [...placeResults, ...addressResults]
+    const seen = new Set<string>()
+    const out = combined.filter((candidate) => {
+      const key = `${candidate.name ?? ''}|${candidate.address}|${candidate.lat}|${candidate.lng}`
+      if (!candidate.address || seen.has(key)) return false
+      seen.add(key)
+      return true
+    }).slice(0, 5)
+    setLoading(false)
+    setResults(out)
+    if (out.length === 0) {
+      showToast(placeResult.ok
+        ? msg('장소나 주소를 찾지 못했습니다.')
+        : msg('장소 검색을 쓸 수 없습니다. 잠시 뒤 다시 시도해 주세요.'), 'info')
+    }
   }
 
   /**
@@ -969,6 +1004,8 @@ export function MobileTerritory({
                         setAddSelectedCandidate(null)
                         setAddNewUnitBuilding(null)
                         setAddBuildingName('')
+                        setAddBuildingType('주택')
+                        setAddUnitUsageType('주택')
                         setAddUnitNumber('')
                       }}
                       type="button"
@@ -1164,7 +1201,7 @@ export function MobileTerritory({
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' && addressEditValue.trim()) {
                                   e.preventDefault()
-                                  searchAddressCandidates(addressEditValue.trim(), setAddrEditCandidates, setAddrEditGeocoding)
+                                  void searchAddressCandidates(addressEditValue.trim(), setAddrEditCandidates, setAddrEditGeocoding)
                                 }
                               }}
                               placeholder={t(language, 'territory.addressPlaceholderShort')}
@@ -1175,7 +1212,7 @@ export function MobileTerritory({
                               className="rv-addr-search-btn"
                               type="button"
                               disabled={!addressEditValue.trim() || addrEditGeocoding}
-                              onClick={() => searchAddressCandidates(addressEditValue.trim(), setAddrEditCandidates, setAddrEditGeocoding)}
+                              onClick={() => void searchAddressCandidates(addressEditValue.trim(), setAddrEditCandidates, setAddrEditGeocoding)}
                             >{addrEditGeocoding ? '…' : msg('검색')}</button>
                             {addrEditCandidates.length > 0 && (
                               <div className="rv-add-matches" style={{ marginTop: 6 }}>
@@ -1375,7 +1412,7 @@ export function MobileTerritory({
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && addAddress.trim()) {
                             e.preventDefault()
-                            searchAddressCandidates(addAddress.trim(), setAddAddressCandidates, setAddAddressGeocoding)
+                            void searchAddressCandidates(addAddress.trim(), setAddAddressCandidates, setAddAddressGeocoding)
                           }
                         }}
                         style={{ paddingRight: 62 }}
@@ -1384,15 +1421,15 @@ export function MobileTerritory({
                         className="rv-addr-search-btn"
                         type="button"
                         disabled={!addAddress.trim() || addAddressGeocoding}
-                        onClick={() => searchAddressCandidates(addAddress.trim(), setAddAddressCandidates, setAddAddressGeocoding)}
+                        onClick={() => void searchAddressCandidates(addAddress.trim(), setAddAddressCandidates, setAddAddressGeocoding)}
                       >{addAddressGeocoding ? '…' : msg('검색')}</button>
                     </div>
                     {addAddressCandidates.length > 0 && (
                       <div className="rv-add-matches">
-                        <p className="rv-add-matches-title">{msg('정확한 주소를 눌러 선택하세요')}</p>
+                        <p className="rv-add-matches-title">{msg('장소 또는 주소를 눌러 선택하세요')}</p>
                         {addAddressCandidates.map((c) => (
                           <button
-                            key={c.address}
+                            key={`${c.name ?? ''}-${c.address}-${c.lat}-${c.lng}`}
                             className="rv-addr-candidate"
                             type="button"
                             onClick={() => {
@@ -1407,14 +1444,20 @@ export function MobileTerritory({
                                 setAddLinked(null)
                                 setAddUnitPickBuilding(null)
                                 setAddNewUnitBuilding('new')
-                                setAddBuildingName(shortAddress(c.address))
+                                setAddBuildingName(c.name || shortAddress(c.address))
+                                const commercial = Boolean(c.category && /(음식점|쇼핑|생활,편의|병원|의료|학원|교육|기업|회사|숙박)/.test(c.category))
+                                setAddBuildingType(commercial ? '상가' : '주택')
+                                setAddUnitUsageType(commercial ? '상가' : '주택')
                                 setAddUnitNumber('')
                               } else {
                                 setAddNewUnitBuilding(null)
                               }
                             }}
                           >
-                            <span>{c.address}</span>
+                            <span className="rv-addr-candidate-copy">
+                              {c.name && <strong>{c.name}</strong>}
+                              <small>{c.address}</small>
+                            </span>
                             <b className="rv-addr-select-label">{msg('선택')}</b>
                             {isFarFromService(c) && <em className="rv-addr-far">{msg('봉사 범위 밖')}</em>}
                           </button>
@@ -1466,6 +1509,8 @@ export function MobileTerritory({
                                   setAddUnitPickBuilding(null)
                                   setAddNewUnitBuilding(b.id)
                                   setAddBuildingName(b.name)
+                                  setAddBuildingType(b.type)
+                                  setAddUnitUsageType(b.type)
                                   setAddUnitNumber('')
                                 }}
                               >{msg('새 세대')}</button>
@@ -1500,14 +1545,26 @@ export function MobileTerritory({
                 <div className="rv-add-location-fields">
                   <strong>{addNewUnitBuilding === 'new' ? msg('새 건물과 세대') : msg('선택한 건물에 새 세대')}</strong>
                   {addNewUnitBuilding === 'new' && (
-                    <label className="rv-add-field">
-                      <span className="rv-add-label">{msg('건물 이름')}</span>
-                      <input
-                        className="rv-add-input"
-                        value={addBuildingName}
-                        onChange={(e) => setAddBuildingName(e.target.value)}
-                      />
-                    </label>
+                    <>
+                      <label className="rv-add-field">
+                        <span className="rv-add-label">{msg('건물 이름')}</span>
+                        <input
+                          className="rv-add-input"
+                          value={addBuildingName}
+                          onChange={(e) => setAddBuildingName(e.target.value)}
+                        />
+                      </label>
+                      <div className="rv-add-field">
+                        <span className="rv-add-label">{msg('건물 유형')}</span>
+                        <div className="rv-log-result-chips" role="group" aria-label={msg('건물 유형')}>
+                          {(['주택', '상가'] as const).map((usage) => (
+                            <button key={usage} type="button" className={`rv-chip${addBuildingType === usage ? ' rv-chip-selected' : ''}`} onClick={() => { setAddBuildingType(usage); setAddUnitUsageType(usage) }}>
+                              {usage === '주택' ? t(language, 'map.house') : t(language, 'map.shop')}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
                   )}
                   <label className="rv-add-field">
                     <span className="rv-add-label">{msg('세대(호수)')} <span className="rv-add-required">{t(language, 'territory.required')}</span></span>
@@ -1519,6 +1576,16 @@ export function MobileTerritory({
                     />
                     <small className="rv-add-help">{msg('건물 안의 정확한 위치만 적어 주세요. 별칭은 적지 않습니다.')}</small>
                   </label>
+                  <div className="rv-add-field">
+                    <span className="rv-add-label">{msg('용도')}</span>
+                    <div className="rv-log-result-chips" role="group" aria-label={msg('용도')}>
+                      {(['주택', '상가'] as const).map((usage) => (
+                        <button key={usage} type="button" className={`rv-chip${addUnitUsageType === usage ? ' rv-chip-selected' : ''}`} onClick={() => setAddUnitUsageType(usage)}>
+                          {usage === '주택' ? t(language, 'map.house') : t(language, 'map.shop')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <button className="rv-add-unlink" type="button" onClick={() => setAddNewUnitBuilding(null)}>{t(language, 'common.cancel')}</button>
                 </div>
               )}
@@ -1605,7 +1672,9 @@ export function MobileTerritory({
                         newLocation: addNewUnitBuilding === null ? null : {
                           existingBuildingId: addNewUnitBuilding === 'new' ? null : addNewUnitBuilding,
                           buildingName: addBuildingName,
+                          buildingType: addBuildingType,
                           unitNumber: normalizeUnitNumberInput(addUnitNumber),
+                          unitUsageType: addUnitUsageType,
                           cardId: selectedCard,
                           lat: addSelectedCandidate?.lat ?? null,
                           lng: addSelectedCandidate?.lng ?? null,

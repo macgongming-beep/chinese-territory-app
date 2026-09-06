@@ -21,6 +21,7 @@ import { confirmDialog } from '../lib/confirm'
 import type { Building, TerritoryCard } from '../types'
 import { isEmptyTerritoryCard, sortTerritoryCardsByOperationalPriority } from '../utils/cardSearch'
 import { msg } from '../lib/msg'
+import { buildingHasUsage } from '../utils/unitUsage'
 
 function getCardLeaders(card: TerritoryCard) {
   return card.assignedLeaders && card.assignedLeaders.length > 0
@@ -167,8 +168,8 @@ export function MobileAdminAssignment({
     buildings.forEach((building) => {
       const prev = m.get(building.cardId) ?? { total: 0, house: 0, shop: 0 }
       prev.total += 1
-      if (building.type === '주택') prev.house += 1
-      if (building.type === '상가') prev.shop += 1
+      if (buildingHasUsage(building, '주택')) prev.house += 1
+      if (buildingHasUsage(building, '상가')) prev.shop += 1
       m.set(building.cardId, prev)
     })
     cards.forEach((card) => {

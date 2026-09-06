@@ -19,6 +19,11 @@ const card: TerritoryCard = {
 } as TerritoryCard
 
 describe('recomputeCardStats', () => {
+  test('과거 출입불가 가짜 세대는 카드 세대 수와 진행률에서 제외한다', () => {
+    const r = recomputeCardStats(card, [building(1, 1, [unit(1, '대상외', { number: '출입불가' })])])
+    expect(r.units).toBe(0)
+    expect(r.completed).toBe(0)
+  })
   it('세대가 없으면 100% (돌 곳이 없으므로 완료로 본다)', () => {
     const r = recomputeCardStats(card, [])
     expect(r.units).toBe(0)

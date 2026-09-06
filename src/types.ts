@@ -162,11 +162,22 @@ export type Unit = {
   isChinese?: boolean
   /** 이 세대가 식당인가 (업종). 중국어 사용 여부와는 별개 — utils/restaurants 참고 */
   isRestaurant?: boolean
+  /** 건물 기본 용도와 다른 세대만 값을 갖는다. */
+  usageType?: '주택' | '상가' | null
   isKorean?: boolean
   isForbidden?: boolean
   isRegularVisit?: boolean
   regularVisitor?: string
   regularVisitStart?: string
+  memo?: string
+}
+
+export type BuildingAccessEvent = {
+  id: number
+  action: 'blocked' | 'reopened'
+  visitor: string
+  visitedAt: string
+  timeSlot?: TimeSlot
   memo?: string
 }
 
@@ -179,6 +190,10 @@ export type Building = {
   lat: number
   lng: number
   warning?: boolean
+  /** 건물 전체의 현재 접근 상태. warning은 기존 호환용으로만 남긴다. */
+  accessStatus?: 'normal' | 'blocked'
+  /** 출입 상태를 바꾼 근거. 최신 항목이 먼저 온다. */
+  accessEvents?: BuildingAccessEvent[]
   memo?: string
   isRestaurant?: boolean
   /**
@@ -368,7 +383,9 @@ export type ManualReturnVisitInput = {
   newLocation?: {
     existingBuildingId: number | null
     buildingName: string
+    buildingType: Building['type']
     unitNumber: string
+    unitUsageType: Building['type']
     cardId: number | null
     lat: number | null
     lng: number | null

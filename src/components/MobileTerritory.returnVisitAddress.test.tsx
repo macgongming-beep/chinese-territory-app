@@ -57,7 +57,7 @@ describe('정기방문 주소 입력', () => {
     fireEvent.click(screen.getByRole('button', { name: '검색' }))
 
     await waitFor(() => expect(screen.getByText('경기도 용인시 처인구 명지로 116')).toBeVisible())
-    expect(screen.getByText('정확한 주소를 눌러 선택하세요')).toBeVisible()
+    expect(screen.getByText('장소 또는 주소를 눌러 선택하세요')).toBeVisible()
     // 후보만 떴을 뿐 칸은 그대로다
     expect((addr as HTMLInputElement).value).toBe('명지로 116')
 

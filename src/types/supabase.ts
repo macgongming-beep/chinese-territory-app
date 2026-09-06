@@ -126,6 +126,7 @@ export type Database = {
       }
       buildings: {
         Row: {
+          access_status: string
           address: string
           card_id: number
           created_at: string | null
@@ -139,6 +140,7 @@ export type Database = {
           warning: boolean | null
         }
         Insert: {
+          access_status?: string
           address: string
           card_id: number
           created_at?: string | null
@@ -152,6 +154,7 @@ export type Database = {
           warning?: boolean | null
         }
         Update: {
+          access_status?: string
           address?: string
           card_id?: number
           created_at?: string | null
@@ -170,6 +173,50 @@ export type Database = {
             columns: ["card_id"]
             isOneToOne: false
             referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      building_access_events: {
+        Row: {
+          action: string
+          building_id: number
+          created_at: string
+          id: number
+          memo: string | null
+          source_visit_history_id: number | null
+          time_slot: string | null
+          visited_at: string
+          visitor_name: string
+        }
+        Insert: {
+          action: string
+          building_id: number
+          created_at?: string
+          id?: number
+          memo?: string | null
+          source_visit_history_id?: number | null
+          time_slot?: string | null
+          visited_at?: string
+          visitor_name: string
+        }
+        Update: {
+          action?: string
+          building_id?: number
+          created_at?: string
+          id?: number
+          memo?: string | null
+          source_visit_history_id?: number | null
+          time_slot?: string | null
+          visited_at?: string
+          visitor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "building_access_events_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
             referencedColumns: ["id"]
           },
         ]
@@ -1189,6 +1236,7 @@ export type Database = {
           memo: string | null
           number: string
           status: string
+          usage_type: string | null
         }
         Insert: {
           building_id: number
@@ -1198,6 +1246,7 @@ export type Database = {
           memo?: string | null
           number: string
           status?: string
+          usage_type?: string | null
         }
         Update: {
           building_id?: number
@@ -1207,6 +1256,7 @@ export type Database = {
           memo?: string | null
           number?: string
           status?: string
+          usage_type?: string | null
         }
         Relationships: [
           {
@@ -1287,6 +1337,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      set_building_access_tx: {
+        Args: {
+          p_blocked: boolean
+          p_building_id: number
+          p_note?: string
+          p_token: string
+        }
+        Returns: Json
+      }
+      create_return_visit_location_tx: {
+        Args: {
+          p_address: string
+          p_building_name?: string
+          p_building_type?: string
+          p_card_id?: number
+          p_display_name: string
+          p_existing_building_id?: number
+          p_first_result?: string
+          p_lat?: number
+          p_lng?: number
+          p_memo?: string
+          p_token: string
+          p_unit_number?: string
+          p_unit_usage_type?: string
+        }
+        Returns: Json
+      }
       auth_login: {
         Args: {
           p_device_label?: string

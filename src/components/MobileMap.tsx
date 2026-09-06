@@ -27,6 +27,7 @@ import { getFloatingMenuPosition } from '../utils/floatingMenu'
 import { isBareUnitSearch, searchMapData, type MapSearchResult } from '../utils/mapSearch'
 import { OverlayPortal } from './OverlayPortal'
 import { getCurrentRestaurantAssignmentsForUnit } from '../utils/restaurantAssignments'
+import { buildingHasUsage, effectiveUnitUsage, scopeBuildingToUsage, unitsForUsage } from '../utils/unitUsage'
 
 type NavLevel = 'area' | 'region' | 'card' | 'map'
 type StrategyFilter = '전체' | '중국인' | '부재' | '만남'
@@ -73,6 +74,7 @@ export function MobileMap({
   onOpenLocationSettings,
   onBack,
   onAddUnit,
+  onSetBuildingAccess,
   onCreateBuilding,
   onDeleteBuilding,
   onUpdateBuilding,
@@ -131,10 +133,11 @@ export function MobileMap({
   focusedScopeLabel?: string
   onOpenLocationSettings?: () => void
   onBack: () => void
-  onAddUnit: (buildingId: number, unitNumber: string | string[]) => Promise<number[] | false>
+  onAddUnit: (buildingId: number, unitNumber: string | string[], usageType?: Building['type']) => Promise<number[] | false>
+  onSetBuildingAccess: (buildingId: number, blocked: boolean, note?: string) => Promise<boolean>
   onCreateBuilding: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => void
   onDeleteBuilding: (buildingId: number) => void
-  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number) => void
+  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type']) => void
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
@@ -422,12 +425,13 @@ export function MobileMap({
   const [_absentTimestamps, _setAbsentTimestamps] = useState<Record<number, number>>({})
   // 미리 채워두면 매번 지우고 다시 쳐야 한다 — 비워두고 추천 번호는 placeholder 로만 보여준다
   const [newUnitNumber, setNewUnitNumber] = useState('')
-  const [addingNoEntry, setAddingNoEntry] = useState(false)
+  const [newUnitUsageType, setNewUnitUsageType] = useState<Building['type']>('주택')
   const [addingUnitToBuildingId, setAddingUnitToBuildingId] = useState<number | null>(null)
   const [bulkUnitBuildingId, setBulkUnitBuildingId] = useState<number | null>(null)
 
   // 건물 수정
   const [editingBuildingId, setEditingBuildingId] = useState<number | null>(null)
+  const [editBuildingType, setEditBuildingType] = useState<Building['type']>('주택')
   const [buildingMenuId, setBuildingMenuId] = useState<number | null>(null)
   const [buildingMenuPosition, setBuildingMenuPosition] = useState<{
     right: number
@@ -788,9 +792,9 @@ export function MobileMap({
     cards.forEach((card) => map.set(card.id, { total: 0, house: 0, shop: 0 }))
     buildings.forEach((building) => {
       const current = map.get(building.cardId) ?? { total: 0, house: 0, shop: 0 }
-      current.total += 1
-      if (building.type === '주택') current.house += 1
-      if (building.type === '상가') current.shop += 1
+      current.total += unitsForUsage(building, '전체').length
+      current.house += unitsForUsage(building, '주택').length
+      current.shop += unitsForUsage(building, '상가').length
       map.set(building.cardId, current)
     })
     return map
@@ -804,30 +808,30 @@ export function MobileMap({
     return true
   }
 
-  const baseFilteredBuildings = useMemo(() =>
+  const geographicallyFilteredBuildings = useMemo(() =>
     buildings.filter((b) => {
       if (selectedCardId != null && b.cardId !== selectedCardId) return false
       if (selectedCardId == null && focusedCardIdSet.size > 0 && !focusedCardIdSet.has(b.cardId)) return false
       if (selectedCardId == null && (selectedArea || selectedRegion) && !scopedCardIds.has(b.cardId)) return false
-      if (statusFilter !== '전체' && getPinGroup(b) !== statusFilter) return false
       if (b.units.length > 0 && !b.units.some(unitMatchesStrategyFilter)) return false
       return true
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 필터 함수는 이미 포함된 필터 state만 참조함
-    [buildings, selectedCardId, focusedCardIdSet, selectedArea, selectedRegion, scopedCardIds, statusFilter, strategyFilter]
+    [buildings, selectedCardId, focusedCardIdSet, selectedArea, selectedRegion, scopedCardIds, strategyFilter]
   )
 
   const typeCounts = useMemo(() => ({
-    전체: baseFilteredBuildings.length,
-    주택: baseFilteredBuildings.filter((building) => building.type === '주택').length,
-    상가: baseFilteredBuildings.filter((building) => building.type === '상가').length,
-  }), [baseFilteredBuildings])
+    전체: geographicallyFilteredBuildings.reduce((sum, building) => sum + unitsForUsage(building, '전체').length, 0),
+    주택: geographicallyFilteredBuildings.reduce((sum, building) => sum + unitsForUsage(building, '주택').length, 0),
+    상가: geographicallyFilteredBuildings.reduce((sum, building) => sum + unitsForUsage(building, '상가').length, 0),
+  }), [geographicallyFilteredBuildings])
 
   const filteredBuildings = useMemo(() =>
-    buildingTypeFilter === '전체'
-      ? baseFilteredBuildings
-      : baseFilteredBuildings.filter((building) => building.type === buildingTypeFilter),
-    [baseFilteredBuildings, buildingTypeFilter]
+    geographicallyFilteredBuildings
+      .filter((building) => buildingHasUsage(building, buildingTypeFilter))
+      .map((building) => scopeBuildingToUsage(building, buildingTypeFilter))
+      .filter((building) => statusFilter === '전체' || getPinGroup(building) === statusFilter),
+    [geographicallyFilteredBuildings, buildingTypeFilter, statusFilter]
   )
 
   const statusCounts = useMemo(() =>
@@ -883,9 +887,9 @@ export function MobileMap({
         pointCount: 0,
       }
       current.count += 1
-      current.unitCount += building.units.length
-      if (building.type === '주택') current.houseCount += 1
-      if (building.type === '상가') current.shopCount += 1
+      current.unitCount += unitsForUsage(building, '전체').length
+      current.houseCount += unitsForUsage(building, '주택').length
+      current.shopCount += unitsForUsage(building, '상가').length
       if (Number.isFinite(building.lat) && Number.isFinite(building.lng)) {
         current.latSum += building.lat
         current.lngSum += building.lng
@@ -1834,7 +1838,8 @@ export function MobileMap({
                     >
                       <div>
                         <strong>{marker.label}</strong>
-                        <span>{t(language, 'map.building')} {marker.count} · {t(language, 'map.house')} {marker.houseCount} · {t(language, 'map.shop')} {marker.shopCount}</span>
+                        <span>{t(language, 'map.building')} {marker.count} · {t(language, 'map.unit')} {marker.unitCount}</span>
+                        <span>{t(language, 'map.house')} {marker.houseCount} · {t(language, 'map.shop')} {marker.shopCount}</span>
                       </div>
                       <em>{t(language, 'map.unit')} {marker.unitCount}</em>
                     </button>
@@ -1895,6 +1900,12 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                             <strong>{translateKoreanAddress(building.name || shortenAddress(building.address), language, translatePlaceNames)}</strong>
                             {building.name && <span className="bld-sub-name">{translateKoreanAddress(shortenAddress(building.address), language, translatePlaceNames)}</span>}
                             {card && selectedCardId === null && <span className="bld-sub-name" style={{ color: '#94a3b8' }}>{translateKoreanAddress(card.name, language, translatePlaceNames)}</span>}
+                            {building.accessStatus === 'blocked' && (
+                              <span className="bld-access-note">
+                                {msg('출입불가')}
+                                {building.accessEvents?.[0] && ` · ${building.accessEvents[0].visitor} · ${building.accessEvents[0].visitedAt.slice(5)}`}
+                              </span>
+                            )}
                           </div>
                           <div className="bld-head-right">
                             <small>{handledUnits}/{building.units.length} · {completion}%</small>
@@ -1921,6 +1932,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                     setEditingBuildingId(building.id)
                                     setEditName(building.name || '')
                                     setEditAddress(building.address)
+                                    setEditBuildingType(building.type)
                                     setShowDeleteConfirm(false)
                                   }}
                                 >{t(language, 'map.settings')}</button>
@@ -1979,6 +1991,14 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                     }}
                                   >{building.unitsSurveyed ? `✓ ${t(language, 'map.unitsSurveyed')}` : t(language, 'map.unitsSurveyed')}</button>
                                 )}
+                                <button
+                                  type="button"
+                                  className={building.accessStatus === 'blocked' ? 'bld-menu-on' : undefined}
+                                  onClick={() => {
+                                    closeBuildingMenu()
+                                    void onSetBuildingAccess(building.id, building.accessStatus !== 'blocked')
+                                  }}
+                                >{building.accessStatus === 'blocked' ? `✓ ${msg('출입불가')}` : msg('출입불가로 표시')}</button>
                               </div>
                             </OverlayPortal>
                           )}
@@ -1989,9 +2009,26 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                         <div className="edit-input-group">
                           <input className="modern-edit-address" onChange={e => setEditAddress(e.target.value)} placeholder={t(language, 'map.address')} value={editAddress} />
                           <input className="modern-edit-name" onChange={e => setEditName(e.target.value)} placeholder={t(language, 'map.buildingNameOptional')} value={editName} />
+                          {(actualRole === 'leader' || actualRole === 'admin' || actualRole === 'developer') && (
+                            <select className="modern-edit-name" aria-label={msg('건물 유형')} value={editBuildingType} onChange={(event) => setEditBuildingType(event.target.value as Building['type'])}>
+                              <option value="주택">{t(language, 'map.house')}</option>
+                              <option value="상가">{t(language, 'map.shop')}</option>
+                            </select>
+                          )}
                         </div>
                         <div className="edit-action-group">
-                          <button className="edit-save-btn" onClick={() => { onUpdateBuilding(building.id, editName.trim(), editAddress.trim()); setEditingBuildingId(null) }}>{t(language, 'common.save')}</button>
+                          <button className="edit-save-btn" onClick={async () => {
+                            if (editBuildingType !== building.type) {
+                              const inherited = building.units.filter((unit) => unit.usageType == null && !unit.isRestaurant && unit.number.trim() !== '출입불가').length
+                              const ok = await confirmDialog({
+                                message: msg('건물 유형을 바꾸면 기본 용도를 따르는 세대 {count}개도 함께 바뀌니다. 변경할까요?', { count: inherited }),
+                                confirmLabel: msg('변경'),
+                              })
+                              if (!ok) return
+                            }
+                            onUpdateBuilding(building.id, editName.trim(), editAddress.trim(), undefined, undefined, editBuildingType)
+                            setEditingBuildingId(null)
+                          }}>{t(language, 'common.save')}</button>
                           <button className="edit-cancel-btn" onClick={() => setEditingBuildingId(null)}>{t(language, 'common.cancel')}</button>
                           <button className="edit-delete-btn" onClick={() => setShowDeleteConfirm(true)}>{placeDeletionCopy(actualRole, 'building').actionLabel}</button>
                         </div>
@@ -2026,6 +2063,9 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                                   <span className="unit-chevron">›</span>
                                   <span className="unit-number-text">{unit.number}</span>
                                   {unit.isChinese && <span className="unit-chinese-badge">中</span>}
+                                  {effectiveUnitUsage(building, unit) !== building.type && (
+                                    <span className="unit-usage-exception-badge">{effectiveUnitUsage(building, unit) === '상가' ? t(language, 'map.shop') : t(language, 'map.house')}</span>
+                                  )}
                                   {unit.isForbidden && <span className="unit-forbidden-badge">{t(language, 'map.forbidden')}</span>}
                                   {unit.isRegularVisit && (
                                     <span className="unit-regular-badge">
@@ -2109,45 +2149,34 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                           const submitUnit = async () => {
                             const number = newUnitNumber.trim() || suggested
                             // 결과를 보고 나서 비운다 — 실패했는데 비우면 적은 호수가 사라진다
-                            if (await onAddUnit(building.id, number)) setNewUnitNumber('')
-                          }
-                          const noEntryLabel = t(language, 'unit.noEntry')
-                          const addNoEntry = async () => {
-                            if (addingNoEntry) return
-                            if (existingNumbers.includes(noEntryLabel) || existingNumbers.includes('출입불가')) {
-                              showToast(t(language, 'unit.noEntryExists'))
-                              return
-                            }
-                            setAddingNoEntry(true)
-                            try {
-                              // 호수 이름은 언어와 무관하게 '출입불가' 로 저장 (다른 언어 사용자와 같은 데이터)
-                              const created = await onAddUnit(building.id, '출입불가')
-                              const newId = Array.isArray(created) ? created[0] : undefined
-                              if (newId != null) {
-                                // 추가하자마자 대상외로 기록 — 들어갈 수 없는 건물은 그걸로 끝난다
-                                onQuickLogVisit(building.id, newId, '대상외')
-                                showToast(t(language, 'unit.noEntryAdded'))
-                              }
-                            } finally {
-                              setAddingNoEntry(false)
-                            }
+                            if (await onAddUnit(building.id, number, newUnitUsageType)) setNewUnitNumber('')
                           }
                           return (
-                          <div className="mm-unit-add-row">
-                            <input autoFocus placeholder={suggested} value={newUnitNumber} onChange={e => setNewUnitNumber(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') void submitUnit() }}
-                              className="mm-unit-add-input" />
-                            <button onClick={submitUnit}
-                              className="mm-unit-add-btn">{t(language, 'common.add')}</button>
-                            <button onClick={addNoEntry} disabled={addingNoEntry} className="mm-unit-noentry-btn" type="button">{noEntryLabel}</button>
-                            <button onClick={() => setBulkUnitBuildingId(building.id)} className="mm-unit-bulk-btn" type="button">{t(language, 'unit.bulkShort')}</button>
-                            <button onClick={() => setAddingUnitToBuildingId(null)} className="mm-unit-cancel-btn" aria-label={msg('닫기')}>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
-                            </button>
+                          <div className="mm-unit-add-box">
+                            <div className="mm-unit-add-row">
+                              <input autoFocus placeholder={suggested} value={newUnitNumber} onChange={e => setNewUnitNumber(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') void submitUnit() }}
+                                className="mm-unit-add-input" />
+                              <button onClick={submitUnit}
+                                className="mm-unit-add-btn">{t(language, 'common.add')}</button>
+                              <button onClick={() => setAddingUnitToBuildingId(null)} className="mm-unit-cancel-btn" aria-label={msg('닫기')}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                              </button>
+                            </div>
+                            <div className="mm-unit-add-options">
+                              <div className="mm-unit-usage-toggle" role="group" aria-label={msg('용도')}>
+                                {(['주택', '상가'] as const).map((usage) => (
+                                  <button key={usage} className={newUnitUsageType === usage ? 'active' : ''} type="button" onClick={() => setNewUnitUsageType(usage)}>
+                                    {usage === '주택' ? t(language, 'map.house') : t(language, 'map.shop')}
+                                  </button>
+                                ))}
+                              </div>
+                              <button onClick={() => setBulkUnitBuildingId(building.id)} className="mm-unit-bulk-link" type="button">{t(language, 'unit.bulkAdd')} ›</button>
+                            </div>
                           </div>
                           )
                         })() : (
-                          <button className="bld-add-unit-btn" onClick={() => setAddingUnitToBuildingId(building.id)} type="button">{t(language, 'map.addUnit')}</button>
+                          <button className="bld-add-unit-btn" onClick={() => { setNewUnitUsageType(building.type); setNewUnitNumber(''); setAddingUnitToBuildingId(building.id) }} type="button">{t(language, 'map.addUnit')}</button>
                         )}
                       </div>
                     )}
@@ -2940,6 +2969,25 @@ function UnitDetailScreen({
             </div>
           </div>
         )}
+
+        {/* 세대 용도는 건물 기본값을 미리 선택해 보여 준다. */}
+        <div style={{ ...sectionStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <strong style={{ fontSize: 14, color: 'var(--ink)' }}>{msg('용도')}</strong>
+          <div className="mm-unit-usage-toggle" role="group" aria-label={msg('용도')}>
+            {(['주택', '상가'] as const).map((usage) => {
+              const active = effectiveUnitUsage(building, unit) === usage
+              return (
+                <button
+                  key={usage}
+                  className={active ? 'active' : ''}
+                  disabled={Boolean(unit.isRestaurant) && usage === '주택'}
+                  onClick={() => onUpdateUnitFlags(unit.id, { usageType: usage === building.type ? null : usage })}
+                  type="button"
+                >{usage === '주택' ? t(language, 'map.house') : t(language, 'map.shop')}</button>
+              )
+            })}
+          </div>
+        </div>
 
         {/* 메모 */}
         <div style={sectionStyle}>

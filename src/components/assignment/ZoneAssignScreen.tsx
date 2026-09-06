@@ -19,6 +19,7 @@ import { sortTerritoryCardsByOperationalPriority } from '../../utils/cardSearch'
 import { MapCanvas } from '../MapCanvas'
 import { getBuildingStatus } from '../../utils/mapUtils'
 import { msg } from '../../lib/msg'
+import { buildingHasUsage, scopeBuildingToUsage, unitsForUsage } from '../../utils/unitUsage'
 
 type BuildingTypeFilter = '전체' | '주택' | '상가'
 
@@ -109,8 +110,8 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
   const mapBuildings = useMemo(() => {
     return buildings.filter((b) => {
       if (!myCardIds.has(b.cardId)) return false
-      if (buildingTypeFilter !== '전체' && b.type !== buildingTypeFilter) return false
-      if (getBuildingStatus(b) === '방문완료') return false
+      if (!buildingHasUsage(b, buildingTypeFilter)) return false
+      if (getBuildingStatus(scopeBuildingToUsage(b, buildingTypeFilter)) === '방문완료') return false
       return true
     })
   }, [buildings, myCardIds, buildingTypeFilter])
@@ -120,9 +121,8 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
     const m = new Map<number, { house: number; shop: number }>()
     buildings.forEach((b) => {
       const prev = m.get(b.cardId) ?? { house: 0, shop: 0 }
-      const u = b.units?.length ?? 0
-      if (b.type === '주택') prev.house += u
-      else if (b.type === '상가') prev.shop += u
+      prev.house += unitsForUsage(b, '주택').length
+      prev.shop += unitsForUsage(b, '상가').length
       m.set(b.cardId, prev)
     })
     return m

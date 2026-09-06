@@ -31,15 +31,15 @@ export function RestaurantRegistrationModal({ buildings, cardBoundaries = [], vi
   const [selectedLat, setSelectedLat] = useState<number | null>(null)
   const [selectedLng, setSelectedLng] = useState<number | null>(null)
   const submitting = useRef(false)
-  const selected = buildings.find(b => b.id === buildingId && b.type === '상가')
+  const selected = buildings.find(b => b.id === buildingId)
   const resolvedAddress = existing ? selected?.address ?? '' : address.trim()
   const q = normalizeCardSearch(search)
-  const matches = buildings.filter(b => b.type === '상가' && normalizeCardSearch(
+  const matches = buildings.filter(b => normalizeCardSearch(
     `${b.name} ${b.address} ${b.units.map(u => u.number).join(' ')}`,
   ).includes(q)).slice(0, 50)
   const addressQuery = normalizeCardSearch(address)
   const addressMatches = addressQuery.length >= 3
-    ? buildings.filter(b => b.type === '상가' && normalizeCardSearch(`${b.name} ${b.address}`).includes(addressQuery)).slice(0, 8)
+    ? buildings.filter(b => normalizeCardSearch(`${b.name} ${b.address}`).includes(addressQuery)).slice(0, 8)
     : []
   const regularVisitorOptions = [...new Set([regularVisitor, ...visitorNames].map((value) => value.trim()).filter(Boolean))]
 

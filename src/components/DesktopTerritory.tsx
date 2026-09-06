@@ -154,7 +154,7 @@ export function DesktopTerritory({
   onToggleChinese: (buildingId: number, unitId: number) => void
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
-  onAddUnit: (buildingId: number, unitNumber: string | string[]) => Promise<number[] | false>
+  onAddUnit: (buildingId: number, unitNumber: string | string[], usageType?: Building['type']) => Promise<number[] | false>
   /** 건물의 '세대 확인 완료' 표시 (utils/buildingPin — 없으면 완료로 안 친다) */
   onSetUnitsSurveyed?: (buildingId: number, surveyed: boolean) => Promise<boolean> | void
   onDeleteUnit: (buildingId: number, unitId: number) => void
@@ -788,6 +788,14 @@ export function DesktopTerritory({
     const nextCardId = draft.cardId || building.cardId
     const nextAddress = draft.address.trim()
     const addressChanged = nextAddress !== (building.address ?? '').trim()
+    if (draft.type !== building.type) {
+      const inherited = building.units.filter((unit) => unit.usageType == null && !unit.isRestaurant && unit.number.trim() !== '출입불가').length
+      const ok = await confirmDialog({
+        message: msg('건물 유형을 바꾸면 기본 용도를 따르는 세대 {count}개도 함께 바뀌니다. 변경할까요?', { count: inherited }),
+        confirmLabel: msg('변경'),
+      })
+      if (!ok) return
+    }
 
     // 주소를 고쳤으면 핀 좌표도 새 주소로 다시 찍는다.
     // (전에는 주소만 바뀌고 핀은 그대로여서, 잘못 찍힌 핀이 계속 남았음)
@@ -2070,6 +2078,7 @@ export function DesktopTerritory({
                                 <UnitEditForm
                                   key={unit.id}
                                   unit={unit}
+                                  buildingType={building.type}
                                   onSave={(draft) => {
                                     onUpdateUnitStatus(building.id, unit.id, draft.status, draft.memo)
                                     onUpdateUnitFlags(unit.id, {
@@ -2081,6 +2090,7 @@ export function DesktopTerritory({
                                       isRegularVisit: draft.isRegularVisit,
                                       isForbidden: draft.isForbidden,
                                       isRestaurant: draft.isRestaurant,
+                                      usageType: draft.usageType === building.type ? null : draft.usageType,
                                       memo: draft.memo,
                                     })
                                     setEditingUnitId(null)
@@ -2119,6 +2129,7 @@ export function DesktopTerritory({
                         {/* 새 세대 추가 행 */}
                         <AddUnitRow
                           buildingId={building.id}
+                          buildingType={building.type}
                           existingNumbers={new Set(building.units.map((u) => u.number))}
                           onAdd={onAddUnit}
                           unitsSurveyed={building.unitsSurveyed}

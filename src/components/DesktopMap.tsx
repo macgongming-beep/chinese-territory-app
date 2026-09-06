@@ -37,6 +37,7 @@ import { mergeCardBoundaryPoints } from '../utils/boundaryMerge'
 import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundaries'
 import { msg } from '../lib/msg'
 import { placeDeletionCopy } from '../utils/placeDeletion'
+import { buildingHasUsage, effectiveUnitUsage, scopeBuildingToUsage, unitsForUsage } from '../utils/unitUsage'
 
 type VisitResultFilter = '전체' | '부재' | '만남'
 type HistoryEditor = {
@@ -136,7 +137,7 @@ export function DesktopMap({
   serviceSessions: ServiceSession[]
   focusedCardId?: number | null
   focusedBuildingId?: number | null
-  onAddUnit: (buildingId: number, unitNumber: string | string[]) => Promise<number[] | false>
+  onAddUnit: (buildingId: number, unitNumber: string | string[], usageType?: Building['type']) => Promise<number[] | false>
   onCreateBuilding: (input: {
     cardId: number
     name: string
@@ -716,11 +717,11 @@ export function DesktopMap({
       const card = cardMap.get(building.cardId)
       if (!card || !cardMatchesStructureFilters(card)) return false
       if (cardFilter !== '전체' && building.cardId !== cardFilter) return false
-      if (targetTypeFilter !== '전체' && building.type !== targetTypeFilter) return false
-      if (statusFilter !== '전체' && getPinGroup(building) !== statusFilter) return false
-      if ((chineseOnlyFilter || visitResultFilter !== '전체') && !building.units.some(unitMatchesOperatingFilter)) return false
+      if (!buildingHasUsage(building, targetTypeFilter)) return false
       return true
-    }),
+    }).map((building) => scopeBuildingToUsage(building, targetTypeFilter))
+      .filter((building) => statusFilter === '전체' || getPinGroup(building) === statusFilter)
+      .filter((building) => !(chineseOnlyFilter || visitResultFilter !== '전체') || building.units.some(unitMatchesOperatingFilter)),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 필터 함수는 이미 포함된 필터 state만 참조함
     [buildings, cardMap, regionFilter, areaFilter, cardFilter, targetTypeFilter, statusFilter, chineseOnlyFilter, visitResultFilter]
   )
@@ -729,11 +730,11 @@ export function DesktopMap({
     buildings.filter((building) => {
       const card = cardMap.get(building.cardId)
       if (!card || !cardMatchesStructureFilters(card)) return false
-      if (targetTypeFilter !== '전체' && building.type !== targetTypeFilter) return false
-      if (statusFilter !== '전체' && getPinGroup(building) !== statusFilter) return false
-      if ((chineseOnlyFilter || visitResultFilter !== '전체') && !building.units.some(unitMatchesOperatingFilter)) return false
+      if (!buildingHasUsage(building, targetTypeFilter)) return false
       return true
-    }),
+    }).map((building) => scopeBuildingToUsage(building, targetTypeFilter))
+      .filter((building) => statusFilter === '전체' || getPinGroup(building) === statusFilter)
+      .filter((building) => !(chineseOnlyFilter || visitResultFilter !== '전체') || building.units.some(unitMatchesOperatingFilter)),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 필터 함수는 이미 포함된 필터 state만 참조함
     [buildings, cardMap, regionFilter, areaFilter, targetTypeFilter, statusFilter, chineseOnlyFilter, visitResultFilter]
   )
@@ -787,9 +788,9 @@ export function DesktopMap({
           lat: 0, lng: 0, latSum: 0, lngSum: 0, pointCount: 0,
         }
         current.count += 1
-        current.unitCount += building.units.length
-        if (building.type === '주택') current.houseCount += 1
-        if (building.type === '상가') current.shopCount += 1
+        current.unitCount += unitsForUsage(building, '전체').length
+        current.houseCount += unitsForUsage(building, '주택').length
+        current.shopCount += unitsForUsage(building, '상가').length
         if (Number.isFinite(building.lat) && Number.isFinite(building.lng)) {
           current.latSum += building.lat
           current.lngSum += building.lng
@@ -812,9 +813,9 @@ export function DesktopMap({
           lat: 0, lng: 0, latSum: 0, lngSum: 0, pointCount: 0,
         }
         current.count += 1
-        current.unitCount += building.units.length
-        if (building.type === '주택') current.houseCount += 1
-        if (building.type === '상가') current.shopCount += 1
+        current.unitCount += unitsForUsage(building, '전체').length
+        current.houseCount += unitsForUsage(building, '주택').length
+        current.shopCount += unitsForUsage(building, '상가').length
         if (Number.isFinite(building.lat) && Number.isFinite(building.lng)) {
           current.latSum += building.lat
           current.lngSum += building.lng
@@ -2245,6 +2246,7 @@ export function DesktopMap({
                             <button className="unit-name-btn" onClick={() => { setExpandedUnitId(isUnitExpanded ? null : unit.id); if (!isUnitExpanded) moveMapToBuilding(building) }} type="button">
                               <span className="unit-chevron">{isUnitExpanded ? '▾' : '▸'}</span>
                               <span className="unit-number-text">{unit.number}</span>
+                              {effectiveUnitUsage(building, unit) !== building.type && <span className="unit-usage-exception-badge">{effectiveUnitUsage(building, unit)}</span>}
                               {unit.isChinese && <span className="unit-chinese-badge">中</span>}
                               {unit.isForbidden && <span className="unit-forbidden-badge">{t(language, 'map.forbidden')}</span>}
                               {unit.isRegularVisit && <span className="unit-regular-badge">{t(language, 'map.revisitShort')}</span>}

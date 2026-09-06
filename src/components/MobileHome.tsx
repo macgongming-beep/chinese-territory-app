@@ -235,6 +235,7 @@ export function MobileHome({
   onChangeLanguage,
   onSetCardLeaders,
   onAddUnit,
+  onSetBuildingAccess,
   allUsers = [],
   onChangePin,
   onUpdateMyProfile,
@@ -334,7 +335,8 @@ export function MobileHome({
   onChangeViewMode: (role: Role) => void
   onChangeLanguage: (language: AppLanguage) => void
   onSetCardLeaders: (cardId: number, leaderNames: string[], options?: { silentSuccess?: boolean }) => Promise<void> | void
-  onAddUnit: (buildingId: number, unitNumber: string | string[]) => Promise<number[] | false>
+  onAddUnit: (buildingId: number, unitNumber: string | string[], usageType?: Building['type']) => Promise<number[] | false>
+  onSetBuildingAccess: (buildingId: number, blocked: boolean, note?: string) => Promise<boolean>
   allUsers?: Array<{ id: number; name: string; phone?: string | null; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked'; isActive?: boolean; groupName?: string | null }>
   onChangePin: (newPin: string) => Promise<boolean>
   onUpdateMyProfile: (input: { name: string; phone?: string | null }) => Promise<boolean>
@@ -352,7 +354,7 @@ export function MobileHome({
   ) => Promise<void> | void
   onCreateBuilding: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => void
   onDeleteBuilding: (buildingId: number) => void
-  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number) => void
+  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type']) => void
   /** 건물의 '세대를 다 파악함' 표시. 없으면 완료로 안 친다 (utils/buildingPin) */
   onSetUnitsSurveyed?: (buildingId: number, surveyed: boolean) => Promise<boolean> | void
   onDeleteUnit: (buildingId: number, unitId: number) => void
@@ -728,6 +730,7 @@ export function MobileHome({
             focusedScopeLabel={focusedMapScopeLabel}
             onBack={() => navigate(-1)}
             onAddUnit={onAddUnit}
+            onSetBuildingAccess={onSetBuildingAccess}
             onCreateBuilding={onCreateBuilding}
             onDeleteBuilding={onDeleteBuilding}
             onUpdateBuilding={onUpdateBuilding}

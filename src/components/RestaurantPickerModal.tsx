@@ -28,7 +28,6 @@ export function RestaurantPickerModal({
   const filtered = useMemo(() => {
     const q = normalizeCardSearch(search)
     return buildings
-      .filter((b) => b.type === '상가')
       .filter((b) => (restaurantOnly ? b.isRestaurant : true))
       .filter((b) => {
         if (!q) return true

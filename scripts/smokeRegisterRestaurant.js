@@ -46,9 +46,29 @@ try {
   madeBuilding = leader.data?.building_id ?? null
   if (madeBuilding) madeBuildings.add(madeBuilding)
 
-  const made = await db.from('buildings').select('id,name,address,type,is_restaurant,units(id,number,status,is_chinese,is_restaurant)').eq('id', madeBuilding).single()
+  const made = await db.from('buildings').select('id,name,address,type,is_restaurant,units(id,number,status,is_chinese,is_restaurant,usage_type)').eq('id', madeBuilding).single()
   check(made.data?.type === '상가' && made.data?.is_restaurant === true && made.data?.name === `${marker} 짧은주소`, '건물은 짧은 주소 이름의 상가·식당으로 저장된다')
-  check(made.data?.units?.[0]?.number === `${marker}_식당1` && made.data?.units?.[0]?.status === '부재' && made.data?.units?.[0]?.is_chinese === false && made.data?.units?.[0]?.is_restaurant === true, '선택한 상태와 중국어 여부로 식당을 저장한다')
+  check(made.data?.units?.[0]?.number === `${marker}_식당1` && made.data?.units?.[0]?.status === '부재'
+    && made.data?.units?.[0]?.is_chinese === false && made.data?.units?.[0]?.is_restaurant === true
+    && made.data?.units?.[0]?.usage_type === '상가',
+  '선택한 상태·중국어 여부와 상가 용도로 식당을 저장한다')
+
+  const residential = await client(adminToken).from('buildings').insert({
+    card_id: card.id, name: `${marker}_주택건물`, address: `${marker} 주택 주소`,
+    type: '주택', lat: 37.5005, lng: 127.1005,
+  }).select('id').single()
+  if (residential.error) throw residential.error
+  madeBuildings.add(residential.data.id)
+  const mixedRestaurant = await db.rpc('register_restaurant_v2_tx', {
+    ...params, p_token: leaderToken, p_name: `${marker}_주택1층식당`,
+    p_address: `${marker} 주택 주소`, p_existing_building_id: residential.data.id,
+  })
+  const mixed = await db.from('buildings')
+    .select('type,units(number,is_restaurant,usage_type)').eq('id', residential.data.id).single()
+  check(!mixedRestaurant.error && mixed.data?.type === '주택'
+    && mixed.data?.units?.[0]?.is_restaurant === true
+    && mixed.data?.units?.[0]?.usage_type === '상가',
+  '주택 건물 유형은 보존하고 식당 세대만 상가로 추가한다', mixedRestaurant.error?.message)
 
   const second = await db.rpc('register_restaurant_v2_tx', { ...params, p_token: leaderToken, p_name: `${marker}_식당2`, p_existing_building_id: madeBuilding, p_is_chinese: true, p_initial_state: '정기방문', p_regular_visitor: `${marker}_leader` })
   check(!second.error && second.data?.building_id === madeBuilding, '기존 상가에 두 번째 식당을 추가한다', second.error?.message)

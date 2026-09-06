@@ -8,14 +8,16 @@ import { t, currentLang } from '../i18n'
  */
 export function AddUnitRow({
   buildingId,
+  buildingType,
   existingNumbers,
   onAdd,
   unitsSurveyed,
   onSetUnitsSurveyed,
 }: {
   buildingId: number
+  buildingType: '주택' | '상가'
   existingNumbers: Set<string>
-  onAdd: (buildingId: number, unitNumber: string | string[]) => void | Promise<boolean | void | number[]>
+  onAdd: (buildingId: number, unitNumber: string | string[], usageType?: '주택' | '상가') => void | Promise<boolean | void | number[]>
   /** 이 건물의 세대를 다 파악했나. 이 표시가 없으면 지도 핀이 '완료' 가 안 된다 */
   unitsSurveyed?: boolean
   onSetUnitsSurveyed?: (buildingId: number, surveyed: boolean) => Promise<boolean> | void
@@ -29,10 +31,11 @@ export function AddUnitRow({
   const [hasBasement, setHasBasement] = useState(false)
   const [basementFloors, setBasementFloors] = useState(1)
   const [adding, setAdding] = useState(false)
+  const [usageType, setUsageType] = useState<'주택' | '상가'>(buildingType)
 
   const handleAdd = () => {
     if (!value.trim()) return
-    onAdd(buildingId, value.trim())
+    onAdd(buildingId, value.trim(), usageType)
     setValue('')
   }
 
@@ -46,7 +49,7 @@ export function AddUnitRow({
     if (newOnes.length === 0) return
     setAdding(true)
     try {
-      const added = await onAdd(buildingId, newOnes)
+      const added = await onAdd(buildingId, newOnes, usageType)
       if (added !== false) setShowBulk(false)
     } finally {
       setAdding(false)
@@ -89,6 +92,23 @@ export function AddUnitRow({
             </button>
           )}
         </span>
+      </div>
+
+      <div className="unit-add-usage-row" aria-label="세대 용도">
+        <button
+          className={usageType === '주택' ? 'active' : ''}
+          onClick={() => setUsageType('주택')}
+          type="button"
+        >
+          {t(currentLang(), 'map.house')}
+        </button>
+        <button
+          className={usageType === '상가' ? 'active' : ''}
+          onClick={() => setUsageType('상가')}
+          type="button"
+        >
+          {t(currentLang(), 'map.shop')}
+        </button>
       </div>
 
       {/* 일괄 추가 패널 */}

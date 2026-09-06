@@ -7,6 +7,7 @@
 // (합쳤다가 세대 목록이 건물 조건에 끌려가는 일이 생긴다)
 import type { Building, TerritoryCard } from '../types'
 import { getRestaurantUnits } from './restaurants'
+import { buildingHasUsage } from './unitUsage'
 
 export type BuildingScopeFilters = {
   region: string
@@ -59,7 +60,7 @@ export function filterBuildingsByScope(
     if (f.region !== '전체' && card.region !== f.region) return false
     if (f.area !== '전체' && card.area !== f.area) return false
     if (f.card !== '전체' && b.cardId !== f.card) return false
-    if (f.type !== '전체' && b.type !== f.type) return false
+    if (f.type !== '전체' && !buildingHasUsage(b, f.type as '주택' | '상가')) return false
     return true
   })
 }

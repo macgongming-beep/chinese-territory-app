@@ -72,6 +72,7 @@ const TABLES = [
 
   // 방문/봉사
   'visit_histories',
+  'building_access_events',
   'regular_visits',
   'service_sessions',
 

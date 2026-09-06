@@ -24,6 +24,7 @@ import { Card } from '../ui'
 import { msg } from '../../lib/msg'
 import { getRestaurantUnits } from '../../utils/restaurants'
 import { countInformalCards } from '../../utils/informalAssets'
+import { buildingHasUsage, scopeBuildingToUsage } from '../../utils/unitUsage'
 
 type ZoneKind = 'territory' | 'informal' | 'restaurant'
 type Scope = 'mine' | 'all'
@@ -238,9 +239,14 @@ export function AdminMobileZone({
     const map = new Map<number, { house: number; shop: number; houseNeed: number; shopNeed: number }>()
     for (const b of buildings) {
       const prev = map.get(b.cardId) ?? { house: 0, shop: 0, houseNeed: 0, shopNeed: 0 }
-      const need = getBuildingStatus(b) === '방문필요'
-      if (b.type === '주택') { prev.house += 1; if (need) prev.houseNeed += 1 }
-      else if (b.type === '상가') { prev.shop += 1; if (need) prev.shopNeed += 1 }
+      if (buildingHasUsage(b, '주택')) {
+        prev.house += 1
+        if (getBuildingStatus(scopeBuildingToUsage(b, '주택')) === '방문필요') prev.houseNeed += 1
+      }
+      if (buildingHasUsage(b, '상가')) {
+        prev.shop += 1
+        if (getBuildingStatus(scopeBuildingToUsage(b, '상가')) === '방문필요') prev.shopNeed += 1
+      }
       map.set(b.cardId, prev)
     }
     return map

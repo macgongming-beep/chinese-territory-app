@@ -71,7 +71,7 @@ export function hasUnvisitedUnit(building: Building): boolean {
  *   이걸 부른다 — 예전에 지도 핀과 목록이 각자 판정해서 어긋난 적이 있다.
  */
 export function isForbiddenBuilding(building: Building): boolean {
-  if (building.warning) return true
+  if (building.accessStatus === 'blocked' || building.warning) return true
   const hasForbiddenUnit = building.units.some((u) => u.status === '거절' || u.isForbidden)
   return hasForbiddenUnit && !hasUnvisitedUnit(building)
 }

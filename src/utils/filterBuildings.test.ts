@@ -36,6 +36,11 @@ describe('① 범위', () => {
     expect(ids(filterBuildingsByScope(list, { ...SCOPE, type: '상가' }, cardOf))).toEqual([2])
   })
 
+  test('주택 건물 안 식당 세대도 상가 필터에 잡힌다', () => {
+    const mixed = bld(1, { type: '주택', units: [unit({ isRestaurant: true })] })
+    expect(ids(filterBuildingsByScope([mixed], { ...SCOPE, type: '상가' }, cardOf))).toEqual([1])
+  })
+
   test('⚠ 카드를 못 찾는 건물은 아예 빠진다', () => {
     // 지역·동을 판단할 수 없어서다. 삭제된 카드에 딸린 고아 건물이 여기 걸린다
     const list = [bld(1), bld(2, { cardId: 999 })]

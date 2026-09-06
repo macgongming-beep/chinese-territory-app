@@ -40,6 +40,12 @@ describe('핀 — 색(성격)과 채움(가야 하나)을 나눈다', () => {
     expect(getPinGroup(b)).toBe('방문금지')
   })
 
+  test('명시적인 건물 출입불가 상태는 레거시 warning 없이도 금지다', () => {
+    const b = bld({ accessStatus: 'blocked', warning: false, units: [unit({ status: '미방문' })] })
+    expect(isForbiddenBuilding(b)).toBe(true)
+    expect(getPinGroup(b)).toBe('방문금지')
+  })
+
   test('⚠ 정기방문 세대가 있어도 **갈 곳이 남으면 테두리**', () => {
     // 예전에는 정기방문이 먼저 판정돼 금색으로 꽉 차 보였고, 나머지 세대를 지나쳤다
     const b = bld({ units: [unit({ id: 1, isRegularVisit: true, status: '만남' }), unit({ id: 2, status: '미방문' })] })

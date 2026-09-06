@@ -152,6 +152,7 @@ export function makeBuildingMutations(deps: {
   const addUnitToBuilding = async (
     buildingId: number,
     unitNumber: string | string[],
+    usageType?: Building['type'],
   ): Promise<number[] | false> => {
     const unitNumbers = [...new Set(
       (Array.isArray(unitNumber) ? unitNumber : [unitNumber])
@@ -162,18 +163,25 @@ export function makeBuildingMutations(deps: {
 
     // 새로 만든 행을 돌려받는다 — id 는 추가 직후 기록(출입불가 → 대상외)에,
     // 나머지는 화면에 바로 반영하는 데 쓴다
+    const building = buildings.find((item) => item.id === buildingId)
+    if (!building) {
+      showToast(msg('건물을 찾을 수 없습니다.'), 'error')
+      return false
+    }
+    const storedUsageType = usageType && usageType !== building.type ? usageType : null
     const result = await supabase.from('units').insert(
       unitNumbers.map((number) => ({
         building_id: buildingId,
         number,
         status: '미방문',
+        usage_type: storedUsageType,
       })),
-    ).select('id, number, status')
+    ).select('id, number, status, usage_type')
     if (result.error) {
       reportMutationError(msg('호수를 추가하지 못했습니다.'), result.error)
       return false
     }
-    const created = (result.data ?? []) as Array<{ id: number; number: string; status: string }>
+    const created = (result.data ?? []) as Array<{ id: number; number: string; status: string; usage_type: Building['type'] | null }>
     const newIds = created.map((row) => row.id)
     // 건물 전체를 다시 받지 않고 새 호수만 목록에 얹는다
     appendUnits(buildingId, created.map((row) => ({
@@ -181,6 +189,7 @@ export function makeBuildingMutations(deps: {
       number: row.number,
       status: (row.status ?? '미방문') as UnitStatus,
       isChinese: false,
+      usageType: row.usage_type ?? undefined,
     })))
     showToast(
       unitNumbers.length === 1
@@ -188,6 +197,27 @@ export function makeBuildingMutations(deps: {
         : `${unitNumbers.length}개 호수가 추가됐습니다`,
     )
     return newIds
+  }
+
+  const setBuildingAccess = async (buildingId: number, blocked: boolean, note = ''): Promise<boolean> => {
+    const token = getAuthToken()
+    if (!token) {
+      showToast(msg('다시 로그인해 주세요.'), 'error')
+      return false
+    }
+    const result = await supabase.rpc('set_building_access_tx', {
+      p_token: token,
+      p_building_id: buildingId,
+      p_blocked: blocked,
+      p_note: note,
+    })
+    if (result.error || !(result.data as { ok?: boolean } | null)?.ok) {
+      reportMutationError(msg('건물 출입 상태를 변경하지 못했습니다.'), result.error)
+      return false
+    }
+    await fetchAll()
+    showToast(blocked ? msg('건물을 출입불가로 표시했습니다') : msg('건물 출입불가를 해제했습니다'))
+    return true
   }
 
   const deletePlace = async (
@@ -430,6 +460,7 @@ export function makeBuildingMutations(deps: {
     createBuilding,
     importBuildings,
     addUnitToBuilding,
+    setBuildingAccess,
     deleteUnitFromBuilding,
     deleteBuilding,
     deleteBuildings,
