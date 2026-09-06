@@ -2193,7 +2193,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                 }
               }}
             >
-              <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', padding: '24px 20px 36px' }} onClick={e => e.stopPropagation()}>
+              <div className="mm-building-edit-sheet" onClick={e => e.stopPropagation()}>
                 <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700 }}>{t(language, 'map.addBuilding')}</h3>
                 {addLat && <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#94a3b8' }}>{addLat.toFixed(5)}, {addLng?.toFixed(5)} {geocoding ? `· ${t(language, 'map.searchingAddress')}` : ''}</p>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -2236,7 +2236,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                 {!showDeleteConfirm ? (
                   <>
                     <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700 }}>{t(language, 'map.editBuilding')}</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div className="mm-building-edit-fields">
                       <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>{t(language, 'map.buildingName')}</label>
                         <input value={editName} onChange={e => setEditName(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: 'var(--r-md)', fontSize: '14px', boxSizing: 'border-box' }} />
@@ -2983,7 +2983,7 @@ function UnitDetailScreen({
         <div style={sectionStyle}>
           <h3 style={{ ...sectionTitleStyle, marginBottom: 6 }}>{t(language, 'map.unitMemoLabel')}</h3>
           {canManagePlaceType && (
-            <div className="mm-unit-info-row">
+            <div className="mm-unit-info-row has-next">
               <span>{t(language, 'map.placeKind')}</span>
               <select
                 aria-label={t(language, 'map.placeKind')}
@@ -3050,8 +3050,8 @@ function UnitDetailScreen({
               }}
               className={canManagePlaceType ? 'mm-unit-info-row mm-unit-info-memo-button has-divider' : 'mm-unit-info-row mm-unit-info-memo-button'}
               style={{
-                width: '100%', minHeight: 40, textAlign: 'left', background: 'transparent',
-                border: 0, color: memo ? 'var(--ink)' : 'var(--muted)',
+                width: '100%', minHeight: 40, textAlign: 'left',
+                color: memo ? 'var(--ink)' : 'var(--muted)',
                 cursor: canRecordVisits ? 'pointer' : 'default',
                 display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto',
                 alignItems: 'center', gap: 10, fontFamily: 'inherit',
