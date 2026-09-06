@@ -7630,6 +7630,62 @@ button:focus-visible {
   color: rgba(255, 255, 255, 0.85);
 }
 
+.desktop-map-command-bar {
+  display: flex;
+  align-items: center;
+  min-height: 54px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-card);
+}
+
+.desktop-map-command-bar .desk-map-area-chips {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 7px 8px 7px 0;
+  border-bottom: 0;
+  scrollbar-width: none;
+}
+
+.desktop-map-command-bar .desk-map-area-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.desktop-map-command-bar .desk-map-area-chips button {
+  flex-shrink: 0;
+  padding: 5px 11px;
+}
+
+.desktop-map-command-bar .map-toolbar {
+  flex: 0 0 auto;
+  gap: 10px;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.map-navigation-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.map-navigation-toggle.active {
+  border-color: var(--primary-200);
+  background: var(--primary-50);
+  color: var(--primary-700);
+}
+
 /* 모바일 지도 — 지역 칩 필터 (drill 대체) */
 .mobile-map-area-chips {
   display: flex;
@@ -23739,17 +23795,22 @@ button:focus-visible {
 .ots-theme .map-workspace {
   flex: 1;
   display: flex;
-  padding: 20px;
-  gap: 20px;
-  height: calc(calc(100vh / var(--app-zoom, 1)) - 68px);
+  position: relative;
+  padding: 14px;
+  gap: 14px;
+  min-height: 0;
   overflow: hidden;
   box-sizing: border-box;
 }
 
 .ots-theme .map-card-panel {
-  width: 300px;
-  flex-shrink: 0;
-  height: 100%;
+  position: absolute;
+  z-index: 30;
+  top: 26px;
+  bottom: 26px;
+  left: 26px;
+  width: 268px;
+  height: auto;
   display: flex;
   flex-direction: column;
   border-radius: var(--r-lg);
@@ -23757,6 +23818,29 @@ button:focus-visible {
   border: 1px solid #e2e8f0;
   background: #fff;
   overflow: hidden;
+}
+
+.map-card-panel-close,
+.map-detail-close {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.map-card-panel-close:hover,
+.map-detail-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-900);
 }
 
 .ots-theme .map-card-list article {
@@ -23950,7 +24034,7 @@ button:focus-visible {
 }
 
 .ots-theme .map-detail-pane {
-  width: 440px;
+  width: clamp(360px, 25vw, 420px);
   flex-shrink: 0;
   background: #fff;
   height: 100%;
@@ -23961,6 +24045,59 @@ button:focus-visible {
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
   margin: 0 !important;
   overflow: hidden;
+}
+
+.desktop-unit-visit-time {
+  padding: 6px 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.desktop-unit-visit-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.desktop-unit-visit-summary strong {
+  color: var(--gray-900);
+  font-size: 12px;
+}
+
+.desktop-unit-visit-summary span {
+  overflow: hidden;
+  color: var(--gray-500);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-unit-visit-summary em {
+  color: var(--gray-500);
+  font-size: 11px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.desktop-unit-visit-time > div:not(.desktop-unit-visit-summary) {
+  margin-top: 6px;
+}
+
+@media (max-width: 1450px) {
+  .desktop-map-command-bar .map-toolbar-label {
+    display: none;
+  }
+
+  .desktop-map-command-bar .desk-map-area-chips button {
+    padding-inline: 9px;
+  }
 }
 
 .ots-theme .boundary-toolbar {

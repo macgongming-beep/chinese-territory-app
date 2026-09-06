@@ -45,6 +45,17 @@ function mapProps() {
 }
 
 describe('PC 지도 확대 단계', () => {
+  test('긴 구역 목록은 평소에 지도 폭을 차지하지 않고 필요할 때만 연다', () => {
+    render(<MemoryRouter><DesktopMap {...(mapProps() as never)} /></MemoryRouter>)
+
+    expect(screen.queryByLabelText('지도 카드 목록')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '구역 목록' }))
+    expect(screen.getByLabelText('지도 카드 목록')).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: '구역 목록 닫기' }))
+    expect(screen.queryByLabelText('지도 카드 목록')).not.toBeInTheDocument()
+  })
+
   test('확대 수준에 따라 구에서 동, 건물 포인트 순서로 상세화한다', () => {
     render(<MemoryRouter><DesktopMap {...(mapProps() as never)} /></MemoryRouter>)
 

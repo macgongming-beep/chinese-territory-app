@@ -53,6 +53,34 @@ type HistoryEditor = {
   invitationLeft?: boolean
 }
 
+function getVisitTimeSummary(histories: VisitHistory[], language: AppLanguage): string {
+  if (histories.length === 0) return msg('기록 없음')
+
+  const slots = ['오전', '오후', '저녁'] as const
+  const absenceCounts = new Map<string, number>()
+  histories.forEach((history) => {
+    if (history.result !== '부재' || !slots.includes(history.timeSlot as typeof slots[number])) return
+    const day = new Date(history.visitedAt).getDay()
+    const row = day === 0 || day === 6 ? '주말' : '평일'
+    const key = `${row}:${history.timeSlot}`
+    absenceCounts.set(key, (absenceCounts.get(key) ?? 0) + 1)
+  })
+
+  const buckets = Array.from(absenceCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([key, count]) => {
+      const [row, slot] = key.split(':')
+      const rowLabel = row === '평일' ? t(language, 'map.weekday') : t(language, 'map.weekend')
+      const slotLabel = slot === '오전' ? t(language, 'map.morning') : slot === '오후' ? t(language, 'map.afternoon') : t(language, 'map.evening')
+      return `${rowLabel} ${slotLabel}${count > 1 ? ` ${count}${t(language, 'map.cases')}` : ''}`
+    })
+
+  return buckets.length > 0
+    ? `${msg('못 만난 시간')} · ${buckets.join(' · ')}`
+    : `${msg('못 만난 기록 없음')} · ${msg('최근')} ${histories[0]?.result}`
+}
+
 
 /** 종류의 화면 이름. 값(kind)과 라벨을 섞지 않는다 — 판단은 값으로 한다. */
 function informalKindLabel(kind: InformalKind): string {
@@ -255,6 +283,8 @@ export function DesktopMap({
   const [savingBoundary, setSavingBoundary] = useState(false)
   const [draftBoundaryPoints, setDraftBoundaryPoints] = useState<GeoPoint[]>([])
   const [detailOpen, setDetailOpen] = useState(false)
+  const [navigationOpen, setNavigationOpen] = useState(false)
+  const [expandedVisitGridUnitId, setExpandedVisitGridUnitId] = useState<number | null>(null)
   const [undoStack, setUndoStack] = useState<GeoPoint[][]>([])
   const [expandedUnitId, setExpandedUnitId] = useState<number | null>(null)
   const [unitDeleteMenuId, setUnitDeleteMenuId] = useState<number | null>(null)
@@ -1485,7 +1515,8 @@ export function DesktopMap({
             </em>
           </div>
         )}
-        {/* 지역 칩 (모바일과 패러티) */}
+        <div className="desktop-map-command-bar">
+        {/* 지역 칩과 지도 필터를 한 줄에 두어 지도의 세로 면적을 지킨다. */}
         <div className="desk-map-area-chips" role="tablist" aria-label="지역 필터">
           {(() => {
             const regionCounts = new Map<string, number>()
@@ -1518,6 +1549,17 @@ export function DesktopMap({
           })()}
         </div>
         <div className="map-toolbar" aria-label="지도 필터">
+          <button
+            aria-expanded={navigationOpen}
+            className={`map-navigation-toggle${navigationOpen ? ' active' : ''}`}
+            onClick={() => setNavigationOpen((open) => !open)}
+            type="button"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1"/><circle cx="3" cy="12" r="1"/><circle cx="3" cy="18" r="1"/>
+            </svg>
+            {areaFilter !== '전체' ? areaFilter : regionFilter !== '전체' ? regionFilter : '구역 목록'}
+          </button>
           {/* 건물 유형 segment */}
           <div className="map-toolbar-item">
             <span className="map-toolbar-label">{t(language, 'map.buildings')}</span>
@@ -1638,11 +1680,12 @@ export function DesktopMap({
             </div>
           )}
         </div>
+        </div>
 
         <div className={`map-workspace${informalOnlyBoundaries ? ' informal-only' : ''}`}>
           {/* 비공식 장소를 보고 있을 때는 구역 카드 목록이 뜻이 없다 —
               여기 온 목적은 그 장소 하나다. */}
-          {!informalOnlyBoundaries && (
+          {!informalOnlyBoundaries && navigationOpen && (
           <aside className="map-card-panel" aria-label="지도 카드 목록">
             {/* 패널 헤더 */}
             <div className="map-card-panel-head">
@@ -1681,6 +1724,12 @@ export function DesktopMap({
                   전체 보기
                 </button>
               )}
+              <button
+                aria-label="구역 목록 닫기"
+                className="map-card-panel-close"
+                onClick={() => setNavigationOpen(false)}
+                type="button"
+              >×</button>
             </div>
 
             {/* 패널 콘텐츠 — 3단계 드릴다운 */}
@@ -2101,6 +2150,17 @@ export function DesktopMap({
               {panelVisitedTotal}/{panelUnitTotal} 세대 · {cardFilter !== '전체' ? getCardName(cards, cardFilter) : '전체 필터'}
             </div>
           </div>
+          <button
+            aria-label="건물 상세 닫기"
+            className="map-detail-close"
+            onClick={() => {
+              setDetailOpen(false)
+              setSelectedBuildingId(null)
+              setExpandedBuildingIds(new Set())
+              setExpandedUnitId(null)
+            }}
+            type="button"
+          >×</button>
         </div>
 
         {!canRecordVisits && (
@@ -2319,17 +2379,29 @@ export function DesktopMap({
                           {isUnitExpanded && (
                             <div className="unit-grid-detail">
 
-                              {/* ── 6칸 슬롯 그리드 (중국인 세대만) ── */}
+                              {/* 방문 시간은 모바일처럼 요약을 먼저 보이고, 표는 필요할 때만 펼친다. */}
                               {unit.isChinese && (
-                                <div style={{ padding: '10px 12px 0' }}>
-                                  <UnitSlotGrid
-                                    histories={unitHistories}
-                                    canRecord={canRecordVisits}
-                                    onRecordVisit={async (result) => {
-                                      if (!requireRecordAccess()) return
-                                      onQuickLogVisit(building.id, unit.id, result)
-                                    }}
-                                  />
+                                <div className="desktop-unit-visit-time">
+                                  <button
+                                    aria-expanded={expandedVisitGridUnitId === unit.id}
+                                    className="desktop-unit-visit-summary"
+                                    onClick={() => setExpandedVisitGridUnitId((current) => current === unit.id ? null : unit.id)}
+                                    type="button"
+                                  >
+                                    <strong>{msg('방문 시간')}</strong>
+                                    <span>{getVisitTimeSummary(unitHistories, language)}</span>
+                                    <em>{unitHistories.length}{t(language, 'map.cases')} {expandedVisitGridUnitId === unit.id ? '⌃' : '⌄'}</em>
+                                  </button>
+                                  {expandedVisitGridUnitId === unit.id && (
+                                    <UnitSlotGrid
+                                      histories={unitHistories}
+                                      canRecord={canRecordVisits}
+                                      onRecordVisit={async (result) => {
+                                        if (!requireRecordAccess()) return
+                                        onQuickLogVisit(building.id, unit.id, result)
+                                      }}
+                                    />
+                                  )}
                                 </div>
                               )}
 
