@@ -22437,27 +22437,37 @@ button:focus-visible {
 }
 
 .building-edit-mode {
-  padding: 16px;
-  background: #f8fafc;
+  padding: 10px;
+  background: #ffffff;
   border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.edit-input-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
+.building-edit-title {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.edit-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid #e1e4e8;
+  border-radius: 8px;
+  background: #f6f7f8;
+}
+
 .edit-input-group input {
   width: 100%;
-  height: 40px;
-  padding: 0 16px;
-  border: 1.5px solid #cbd5e1;
-  border-radius: var(--r-pill);
-  font-size: 14px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #d8dde3;
+  border-radius: 7px;
+  font-size: 12px;
   font-weight: 600;
   background: white;
   box-sizing: border-box;
@@ -22466,30 +22476,59 @@ button:focus-visible {
 .edit-input-group input:focus {
   outline: none;
   border-color: var(--ink);
-  box-shadow: 0 0 0 3px rgba(26, 26, 24, 0.08);
+  box-shadow: 0 0 0 2px rgba(26, 26, 24, 0.07);
+}
+
+.edit-building-kind-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+  padding-top: 7px;
+  border-top: 1px solid #dde1e6;
+  color: var(--ink-600);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.edit-building-kind-row select {
+  min-width: 88px;
+  height: 29px;
+  padding: 0 26px 0 9px;
+  border: 1px solid #d8dde3;
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  font: inherit;
 }
 
 .edit-action-group {
   display: flex;
+  align-items: center;
   gap: 8px;
-  justify-content: flex-start;
-  flex-wrap: wrap;
+  margin: 0 -10px -10px;
+  padding: 8px 10px;
+  border-top: 1px solid #e1e4e8;
+  background: #f6f7f8;
 }
 
 .edit-action-group button {
-  height: 36px;
-  min-height: 36px;
-  padding: 0 16px;
-  border-radius: var(--r-pill);
-  font-size: 13px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 700;
-  border: none;
   cursor: pointer;
 }
+
+.edit-action-spacer { flex: 1; }
 
 .edit-save-btn {
   background: var(--ink);
   color: white;
+  border: 1px solid var(--ink);
 }
 
 .edit-save-btn:hover { background: #30302d; }
@@ -22605,19 +22644,20 @@ button:focus-visible {
 .mm-unit-info-privacy { margin: 7px 2px 0; color: var(--muted); font-size: 10.5px; line-height: 1.4; }
 
 .edit-cancel-btn {
-  background: #e2e8f0;
-  color: #475569;
+  border: 1px solid #d8dde3;
+  background: #ffffff;
+  color: var(--ink-600);
 }
 
-.edit-cancel-btn:hover { background: #cbd5e1; }
+.edit-cancel-btn:hover { background: #eceff2; }
 
 .edit-delete-btn {
-  background: #ef4444;
-  color: white;
-  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--danger-600);
 }
 
-.edit-delete-btn:hover { background: var(--danger-600); }
+.edit-delete-btn:hover { background: #fef2f2; }
 
 .header-badges {
   display: flex;

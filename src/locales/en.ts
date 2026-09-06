@@ -66,6 +66,7 @@ export const en = {
     'map.buildings': 'Building',
     'map.units': 'Unit',
     'map.type': 'Type',
+    'map.buildingInfo': 'Building information',
     'map.buildingKind': 'Building type',
     'map.placeKind': 'Place type',
     'map.house': 'House',

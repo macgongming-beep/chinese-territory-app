@@ -2282,21 +2282,26 @@ export function DesktopMap({
                   </div>
                 ) : (
                   <div className="building-edit-mode">
+                    <strong className="building-edit-title">{t(language, 'map.buildingInfo')}</strong>
                     <div className="edit-input-group">
                       <input className="modern-edit-address" onChange={(e) => setEditAddress(e.target.value)} placeholder={t(language, 'map.buildingAddressPlaceholder')} value={editAddress} />
                       <input className="modern-edit-name" onChange={(e) => setEditName(e.target.value)} placeholder={t(language, 'map.buildingNameOptional')} value={editName} />
-                      <select value={editType} onChange={e => setEditType(e.target.value as Building['type'])} style={{ padding: '4px 8px', borderRadius: 'var(--r-sm)', border: '1px solid #e2e8f0', fontSize: '12px', background: '#f8fafc' }}>
-                        <option value="주택">{t(language, 'map.house')}</option>
-                        <option value="상가">{t(language, 'map.shop')}</option>
-                      </select>
+                      <label className="edit-building-kind-row">
+                        <span>{t(language, 'map.buildingKind')}</span>
+                        <select value={editType} onChange={e => setEditType(e.target.value as Building['type'])}>
+                          <option value="주택">{t(language, 'map.house')}</option>
+                          <option value="상가">{t(language, 'map.shop')}</option>
+                        </select>
+                      </label>
                     </div>
                     <div className="edit-action-group">
+                      <button className="edit-delete-btn" onClick={() => { setPendingDeleteBuildingId(building.id); setShowDeleteBuildingConfirmModal(true) }}>{placeDeletionCopy(actualRole, 'building').actionLabel}</button>
+                      <span className="edit-action-spacer" />
+                      <button className="edit-cancel-btn" onClick={() => setEditingBuildingId(null)}>{t(language, 'map.cancel')}</button>
                       <button className="edit-save-btn" onClick={async () => {
                         const saved = await onUpdateBuilding(building.id, editName.trim(), editAddress.trim(), undefined, undefined, editType)
                         if (saved) setEditingBuildingId(null)
                       }}>{t(language, 'map.save')}</button>
-                      <button className="edit-cancel-btn" onClick={() => setEditingBuildingId(null)}>{t(language, 'map.cancel')}</button>
-                      <button className="edit-delete-btn" onClick={() => { setPendingDeleteBuildingId(building.id); setShowDeleteBuildingConfirmModal(true) }}>{placeDeletionCopy(actualRole, 'building').actionLabel}</button>
                     </div>
                   </div>
                 )}
