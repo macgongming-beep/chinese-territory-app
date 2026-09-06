@@ -92,7 +92,7 @@ export function UnitEditForm({
 }: {
   unit: Unit
   buildingType: Building['type']
-  onSave: (draft: UnitEditDraft) => void
+  onSave: (draft: UnitEditDraft) => void | Promise<void>
   onCancel: () => void
 }) {
   const [draft, setDraft] = useState<UnitEditDraft>({

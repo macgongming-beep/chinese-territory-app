@@ -8,6 +8,7 @@ import type { MergeResult } from '../../utils/duplicateBuildingMerge'
 import { supabase, showToast, reportMutationError } from './shared'
 import { logServiceAction } from './serviceLog'
 import { msg } from '../../lib/msg'
+import { canonicalUnitNumber } from '../../utils/unitNumber'
 
 export function makeBuildingMutations(deps: {
   fetchAll: () => Promise<void>
@@ -155,7 +156,7 @@ export function makeBuildingMutations(deps: {
     usageType?: Building['type'],
   ): Promise<number[] | false> => {
     const unitNumbers = (Array.isArray(unitNumber) ? unitNumber : [unitNumber])
-      .map((number) => number.trim())
+      .map(canonicalUnitNumber)
       .filter(Boolean)
     if (unitNumbers.length === 0) return false
 

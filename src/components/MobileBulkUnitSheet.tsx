@@ -32,7 +32,7 @@ export function MobileBulkUnitSheet({
   const skipped = skippedNumbers.length
   const existingKeys = new Set(Array.from(existingNumbers, normalizeUnitNumber))
 
-  // 층별 범위 요약 (101호~105호 식) — 가로 절약
+  // 층별 범위 요약 (101~105 식) — 가로 절약
   const floorRanges = (() => {
     // 호수 → 층 prefix (101 → '1', B201 → 'B2')
     const byFloor = new Map<string, string[]>()
@@ -116,7 +116,7 @@ export function MobileBulkUnitSheet({
           <div className="mbu-preview-grid">
             {floorRanges.map((r) => (
               <span key={r.first} className={`mbu-chip${r.first.startsWith('B') ? ' is-basement' : ''}${r.allSkip ? ' is-skip' : ''}`}>
-                {r.first === r.last ? `${r.first}호` : `${r.first}~${r.last}호`}
+                {r.first === r.last ? r.first : `${r.first}~${r.last}`}
               </span>
             ))}
           </div>

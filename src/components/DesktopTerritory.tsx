@@ -158,7 +158,7 @@ export function DesktopTerritory({
   /** 건물의 '세대 확인 완료' 표시 (utils/buildingPin — 없으면 완료로 안 친다) */
   onSetUnitsSurveyed?: (buildingId: number, surveyed: boolean) => Promise<boolean> | void
   onDeleteUnit: (buildingId: number, unitId: number) => void
-  onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
+  onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void | Promise<boolean>
   onUpdateUnitStatus: (buildingId: number, unitId: number, status: UnitStatus, memo?: string) => void
   onAddVisitHistory: (
     buildingId: number,
@@ -2079,9 +2079,8 @@ export function DesktopTerritory({
                                   key={unit.id}
                                   unit={unit}
                                   buildingType={building.type}
-                                  onSave={(draft) => {
-                                    onUpdateUnitStatus(building.id, unit.id, draft.status, draft.memo)
-                                    onUpdateUnitFlags(unit.id, {
+                                  onSave={async (draft) => {
+                                    const saved = await onUpdateUnitFlags(unit.id, {
                                         // 호수 이름도 저장한다. 폼에 칸은 있는데
                                         // 여기서 안 넘겨서 아무리 고쳐도 그대로였다
                                         // (식당을 '전체' 에서 가게 이름으로 못 바꿨다)
@@ -2093,13 +2092,15 @@ export function DesktopTerritory({
                                       usageType: draft.usageType === building.type ? null : draft.usageType,
                                       memo: draft.memo,
                                     })
+                                    if (saved === false) return
+                                    onUpdateUnitStatus(building.id, unit.id, draft.status, draft.memo)
                                     setEditingUnitId(null)
                                   }}
                                   onCancel={() => setEditingUnitId(null)}
                                 />
                               ) : (
                                 <>
-                                  <span className="unit-number">{unit.number}{/^\d+$/.test(unit.number) ? '호' : ''}</span>
+                                  <span className="unit-number">{unit.number}</span>
                                   <span className={`unit-status unit-status-${unit.status}`}>{unit.status}</span>
                                   <div className="unit-flags-display">
                                     {unit.isForbidden && <span className="unit-flag-chip forbidden">방문금지</span>}

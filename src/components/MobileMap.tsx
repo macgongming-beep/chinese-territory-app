@@ -145,7 +145,7 @@ export function MobileMap({
   onUpdateVisitHistory: (historyId: number, unitId: number, input: { result: UnitStatus; timeSlot: TimeSlot; memo: string; visitedAt: string; invitationLeft?: boolean; visitor?: string }) => void | Promise<boolean>
   onDeleteVisitHistory: (historyId: number, unitId: number) => void
   onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus) => void
-  onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
+  onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void | Promise<boolean>
   onToggleInvitationLeft?: (buildingId: number, unitId: number, mode?: 'direct' | 'door') => void
   visitHistories: VisitHistory[]
   specialPeriods?: SpecialPeriod[]
@@ -2507,10 +2507,11 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               >{t(language, 'map.cancel')}</button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   const v = unitNumberDraft.trim()
-                  if (v) onUpdateUnitFlags(liveFullScreenUnit.unit.id, { number: v })
-                  setEditingUnitNumber(false)
+                  if (!v) return
+                  const saved = await onUpdateUnitFlags(liveFullScreenUnit.unit.id, { number: v })
+                  if (saved !== false) setEditingUnitNumber(false)
                 }}
                 style={{ padding: '7px 12px', border: 'none', borderRadius: 7, background: 'var(--ink)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
               >{t(language, 'map.save')}</button>
@@ -2614,7 +2615,7 @@ function UnitDetailScreen({
   unitMemos: Record<number, string>
   setUnitMemos: React.Dispatch<React.SetStateAction<Record<number, string>>>
   requireRecordAccess: () => boolean
-  onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
+  onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void | Promise<boolean>
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
   onDeleteVisitHistory: (historyId: number, unitId: number) => void

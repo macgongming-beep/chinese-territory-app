@@ -14,6 +14,7 @@ import { chooseCardForBuilding } from '../utils/chooseCardForBuilding'
 import { shortAddress } from '../utils/shortAddress'
 import { EndReturnVisitDialog } from './EndReturnVisitDialog'
 import { searchPlacesForCongregation } from '../lib/placeSearch'
+import { canonicalUnitNumber } from '../utils/unitNumber'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
   if (!assignment) return []
@@ -85,7 +86,7 @@ function matchingBuildingsForAddress(address: string, candidate: AddressCandidat
 }
 
 function normalizeUnitNumberInput(value: string) {
-  return value.trim().replace(/^(\d+)\s*호$/, '$1')
+  return canonicalUnitNumber(value)
 }
 
 export function MobileTerritory({
@@ -1385,7 +1386,7 @@ export function MobileTerritory({
                 {addLinked ? (
                   <div className="rv-add-linked">
                     <span className="rv-add-linked-text">
-                      <b>{addLinked.building.name} {addLinked.unit.number}호</b>
+                      <b>{addLinked.building.name} {addLinked.unit.number}</b>
                       <em>{addLinked.building.address}</em>
                     </span>
                     <button className="rv-add-unlink" type="button" onClick={() => {
@@ -1531,7 +1532,7 @@ export function MobileTerritory({
                                   setAddUnitPickBuilding(null)
                                   setAddNewUnitBuilding(null)
                                 }}
-                              >{u.number}호</button>
+                              >{u.number}</button>
                             ))}
                           </div>
                         )}

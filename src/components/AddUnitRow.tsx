@@ -44,6 +44,7 @@ export function AddUnitRow({
 
   const { newNumbers: newOnes, skippedNumbers } = filterNewUnitNumbers(preview, existingNumbers)
   const skipped = skippedNumbers.length
+  const newNumberSet = new Set(newOnes)
 
   const handleBulkAdd = async () => {
     if (newOnes.length === 0) return
@@ -175,8 +176,8 @@ export function AddUnitRow({
             </div>
             <div className="unit-bulk-preview-grid">
               {preview.map((n) => (
-                <span key={n} className={`unit-bulk-chip${n.startsWith('B') ? ' basement' : ''}${existingNumbers.has(n) ? ' skip' : ''}`}>
-                  {n}호
+                <span key={n} className={`unit-bulk-chip${n.startsWith('B') ? ' basement' : ''}${!newNumberSet.has(n) ? ' skip' : ''}`}>
+                  {n}
                 </span>
               ))}
             </div>

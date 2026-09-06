@@ -5,6 +5,8 @@ import { supabase, showToast, reportMutationError, getLocalDateString, requireVi
 import { logServiceAction } from './serviceLog'
 import { t, currentLang } from '../../i18n'
 import { msg } from '../../lib/msg'
+import { normalizeUnitNumber } from '../../utils/duplicateBuildingMerge'
+import { canonicalUnitNumber } from '../../utils/unitNumber'
 
 export function makeVisitMutations(deps: {
   fetchAll: () => Promise<void>
@@ -278,7 +280,19 @@ export function makeVisitMutations(deps: {
     showToast(`${slot} ${result} ${historyStatus}`, 'success')
   }
 
-  const updateUnitFlags = async (unitId: number, flags: Partial<Unit>) => {
+  const updateUnitFlags = async (unitId: number, flags: Partial<Unit>): Promise<boolean> => {
+    if (flags.number !== undefined) {
+      const number = canonicalUnitNumber(flags.number)
+      const building = buildings.find((item) => item.units.some((unit) => unit.id === unitId))
+      const duplicate = building?.units.find((unit) => (
+        unit.id !== unitId && normalizeUnitNumber(unit.number) === normalizeUnitNumber(number)
+      ))
+      if (duplicate) {
+        showToast(msg('이미 {number} 세대가 있습니다.', { number: duplicate.number }), 'error')
+        return false
+      }
+      flags = { ...flags, number }
+    }
     const dbFlags: Record<string, unknown> = {}
     // 상태를 방문 기록 없이 직접 고치는 경로 (예: 대상외 해제)
     // ⚠ 방문한 것이 아니므로 visit_histories 에는 남기지 않는다 — 통계가 어긋난다
@@ -295,7 +309,7 @@ export function makeVisitMutations(deps: {
       const result = await supabase.from('units').update(dbFlags).eq('id', unitId)
       if (result.error) {
         reportMutationError(msg('세대 정보를 수정하지 못했습니다.'), result.error)
-        return
+        return false
       }
       patchUnit(unitId, flags)
     }
@@ -307,7 +321,7 @@ export function makeVisitMutations(deps: {
         .eq('id', unitId)
       if (statusResult.error) {
         reportMutationError(msg('방문금지 상태를 수정하지 못했습니다.'), statusResult.error)
-        return
+        return false
       }
       patchUnit(unitId, { isForbidden: flags.isForbidden, status: flags.isForbidden ? '거절' : '미방문' })
     }
@@ -328,6 +342,7 @@ export function makeVisitMutations(deps: {
     })
 
     await fetchAll()
+    return true
   }
 
   const undoLatestVisit = async (buildingId: number, unitId: number) => {
