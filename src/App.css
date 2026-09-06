@@ -22328,8 +22328,8 @@ button:focus-visible {
 
 .edit-input-group input:focus {
   outline: none;
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(26, 26, 24, 0.08);
 }
 
 .edit-action-group {
@@ -22351,11 +22351,46 @@ button:focus-visible {
 }
 
 .edit-save-btn {
-  background: var(--primary-500);
+  background: var(--ink);
   color: white;
 }
 
-.edit-save-btn:hover { background: var(--primary-600); }
+.edit-save-btn:hover { background: #30302d; }
+
+.mm-building-edit-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mm-building-type-segment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--r-md);
+  background: #f3f4f6;
+}
+
+.mm-building-type-segment button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mm-building-type-segment button.is-active {
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.16);
+}
 
 .edit-cancel-btn {
   background: #e2e8f0;

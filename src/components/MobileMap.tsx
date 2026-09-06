@@ -1100,6 +1100,29 @@ export function MobileMap({
 
   const editingBuilding = editingBuildingId != null ? buildings.find(b => b.id === editingBuildingId) ?? null : null
   const buildingTypeLabel = (type: Building['type']) => type === '상가' ? t(language, 'map.shop') : t(language, 'map.house')
+  const canChangeBuildingType = actualRole === 'leader' || actualRole === 'admin' || actualRole === 'developer'
+
+  const saveBuildingEdit = async (building: Building) => {
+    if (canChangeBuildingType && editBuildingType !== building.type) {
+      const inherited = building.units.filter((unit) =>
+        unit.usageType == null && !unit.isRestaurant && unit.number.trim() !== '출입불가'
+      ).length
+      const ok = await confirmDialog({
+        message: msg('건물 유형을 바꾸면 기본 용도를 따르는 세대 {count}개도 함께 바뀝니다. 변경할까요?', { count: inherited }),
+        confirmLabel: msg('변경'),
+      })
+      if (!ok) return
+    }
+    onUpdateBuilding(
+      building.id,
+      editName.trim(),
+      editAddress.trim(),
+      undefined,
+      undefined,
+      canChangeBuildingType ? editBuildingType : undefined,
+    )
+    setEditingBuildingId(null)
+  }
 
   const moveMobileMapToBuilding = (building: Building) => {
     const naver = (window as any).naver
@@ -1868,7 +1891,6 @@ export function MobileMap({
                 const isExpanded = expandedBuildingIds.has(building.id)
                 const handledUnits = building.units.filter(u => u.status !== '미방문').length
 const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / building.units.length) * 100)
-                const isEditing = building.id === editingBuildingId
                 const card = cardMap.get(building.cardId)
 
                 return (
@@ -1878,8 +1900,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                     id={`building-card-${building.id}`}
                     style={{ scrollMargin: '120px' }}
                   >
-                    {!isEditing ? (
-                      <div className="bld-row-head">
+                    <div className="bld-row-head">
                         <button
                           className="bld-row-head-btn"
                           onClick={() => {
@@ -2004,38 +2025,8 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                           )}
                         </div>
                       </div>
-                    ) : (
-                      <div className="building-edit-mode">
-                        <div className="edit-input-group">
-                          <input className="modern-edit-address" onChange={e => setEditAddress(e.target.value)} placeholder={t(language, 'map.address')} value={editAddress} />
-                          <input className="modern-edit-name" onChange={e => setEditName(e.target.value)} placeholder={t(language, 'map.buildingNameOptional')} value={editName} />
-                          {(actualRole === 'leader' || actualRole === 'admin' || actualRole === 'developer') && (
-                            <select className="modern-edit-name" aria-label={msg('건물 유형')} value={editBuildingType} onChange={(event) => setEditBuildingType(event.target.value as Building['type'])}>
-                              <option value="주택">{t(language, 'map.house')}</option>
-                              <option value="상가">{t(language, 'map.shop')}</option>
-                            </select>
-                          )}
-                        </div>
-                        <div className="edit-action-group">
-                          <button className="edit-save-btn" onClick={async () => {
-                            if (editBuildingType !== building.type) {
-                              const inherited = building.units.filter((unit) => unit.usageType == null && !unit.isRestaurant && unit.number.trim() !== '출입불가').length
-                              const ok = await confirmDialog({
-                                message: msg('건물 유형을 바꾸면 기본 용도를 따르는 세대 {count}개도 함께 바뀌니다. 변경할까요?', { count: inherited }),
-                                confirmLabel: msg('변경'),
-                              })
-                              if (!ok) return
-                            }
-                            onUpdateBuilding(building.id, editName.trim(), editAddress.trim(), undefined, undefined, editBuildingType)
-                            setEditingBuildingId(null)
-                          }}>{t(language, 'common.save')}</button>
-                          <button className="edit-cancel-btn" onClick={() => setEditingBuildingId(null)}>{t(language, 'common.cancel')}</button>
-                          <button className="edit-delete-btn" onClick={() => setShowDeleteConfirm(true)}>{placeDeletionCopy(actualRole, 'building').actionLabel}</button>
-                        </div>
-                      </div>
-                    )}
 
-                    {isExpanded && !isEditing && (
+                    {isExpanded && (
                       <div className="bld-body">
                         <div className={`unit-col-header${activeInvitation ? ' with-invitation' : ''}`}>
                           <span>{t(language, 'map.unitInfo')}</span>
@@ -2254,11 +2245,29 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                         <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>{t(language, 'map.address')}</label>
                         <input value={editAddress} onChange={e => setEditAddress(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: 'var(--r-md)', fontSize: '14px', boxSizing: 'border-box' }} />
                       </div>
+                      {canChangeBuildingType && (
+                        <div>
+                          <span className="mm-building-edit-label">{msg('건물 유형')}</span>
+                          <div className="mm-building-type-segment" role="group" aria-label={msg('건물 유형')}>
+                            {(['주택', '상가'] as const).map((type) => (
+                              <button
+                                key={type}
+                                type="button"
+                                className={editBuildingType === type ? 'is-active' : undefined}
+                                aria-pressed={editBuildingType === type}
+                                onClick={() => setEditBuildingType(type)}
+                              >
+                                {buildingTypeLabel(type)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
                       <button onClick={() => setShowDeleteConfirm(true)} style={{ padding: '12px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--danger-100)', color: 'var(--danger-600)', fontWeight: 700, cursor: 'pointer', fontSize: '14px' }}>{placeDeletionCopy(actualRole, 'building').actionLabel}</button>
                       <button onClick={() => { setEditingBuildingId(null); setShowDeleteConfirm(false) }} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'common.cancel')}</button>
-                      <button onClick={() => { onUpdateBuilding(editingBuilding.id, editName.trim(), editAddress.trim()); setEditingBuildingId(null) }} style={{ flex: 2, padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--accent-700)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'common.save')}</button>
+                      <button onClick={() => void saveBuildingEdit(editingBuilding)} style={{ flex: 2, padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--ink)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'common.save')}</button>
                     </div>
                   </>
                 ) : (

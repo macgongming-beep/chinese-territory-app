@@ -791,7 +791,7 @@ export function DesktopTerritory({
     if (draft.type !== building.type) {
       const inherited = building.units.filter((unit) => unit.usageType == null && !unit.isRestaurant && unit.number.trim() !== '출입불가').length
       const ok = await confirmDialog({
-        message: msg('건물 유형을 바꾸면 기본 용도를 따르는 세대 {count}개도 함께 바뀌니다. 변경할까요?', { count: inherited }),
+        message: msg('건물 유형을 바꾸면 기본 용도를 따르는 세대 {count}개도 함께 바뀝니다. 변경할까요?', { count: inherited }),
         confirmLabel: msg('변경'),
       })
       if (!ok) return

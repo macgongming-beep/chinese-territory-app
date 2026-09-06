@@ -1,10 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- MapCanvas 전체 대신 집계 핀 선택 계약만 시험한다 */
 import '@testing-library/jest-dom/vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, test, vi } from 'vitest'
 import { testBuilding, testCard, territoryProps } from '../test/territoryFixture'
 import { MobileMap } from './MobileMap'
+
+const confirmDialog = vi.hoisted(() => vi.fn().mockResolvedValue(true))
+
+vi.mock('../lib/confirm', () => ({ confirmDialog }))
+vi.mock('./OverlayPortal', () => ({
+  OverlayPortal: ({ children }: { children: ReactNode }) => children,
+}))
 
 vi.mock('./MapCanvas', () => ({
   MapCanvas: (props: any) => (
@@ -92,5 +100,46 @@ describe('모바일 지도 하단 시트', () => {
     fireEvent.change(input, { target: { value: '영덕빌라 101' } })
     expect(await screen.findByText('영덕빌라 · 101호')).toBeVisible()
     expect(screen.getByText('세대')).toBeVisible()
+  })
+
+  test('모바일 건물 수정 시트에서 건물 유형을 바꾼다', async () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    confirmDialog.mockClear()
+    const building = testBuilding(7, 1, '명지로 106')
+    building.type = '상가'
+    building.units = [
+      { ...building.units[0], id: 701, number: '101호' },
+      { ...building.units[0], id: 702, number: '진주옥', isRestaurant: true, usageType: '상가' },
+    ]
+    const onUpdateBuilding = vi.fn()
+    const props = territoryProps({
+      actualRole: 'admin',
+      currentVisitor: '관리자',
+      cards: [testCard(1, '처인구 역북동 1')],
+      buildings: [building],
+      focusedCardId: 1,
+      focusedBuildingId: 7,
+      focusedCardIds: [],
+      serviceSessions: [],
+      specialPeriods: [],
+      eventRestaurantAssignments: [],
+      calendarEvents: [],
+      onBack: vi.fn(),
+      onUpdateBuilding,
+    })
+
+    render(<MemoryRouter><MobileMap {...(props as never)} /></MemoryRouter>)
+    fireEvent.click(await screen.findByLabelText('더보기'))
+    fireEvent.click(await screen.findByRole('button', { name: '수정' }))
+
+    const usage = screen.getByRole('group', { name: '건물 유형' })
+    expect(within(usage).getByRole('button', { name: '상가' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(within(usage).getByRole('button', { name: '주택' }))
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(confirmDialog).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(onUpdateBuilding).toHaveBeenCalledWith(
+      7, '명지로 106', building.address, undefined, undefined, '주택',
+    ))
   })
 })
