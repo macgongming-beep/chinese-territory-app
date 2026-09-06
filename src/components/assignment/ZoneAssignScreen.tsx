@@ -396,7 +396,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
             <div className="asg-zone-toggle" style={{ padding: 0, margin: 0, flexShrink: 0 }}>
               <button className={view === 'list' ? 'is-on' : ''} onClick={() => setView('list')} type="button" style={{ padding: '6px 10px', fontSize: 12 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                목록
+                {msg('목록')}
               </button>
               <button className={view === 'map' ? 'is-on' : ''} onClick={() => setView('map')} type="button" style={{ padding: '6px 10px', fontSize: 12 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
@@ -484,7 +484,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
             />
             <label className="asg-zone-unassigned-toggle" style={{ flexShrink: 0 }}>
               <input type="checkbox" checked={unassignedOnly} onChange={(e) => setUnassignedOnly(e.target.checked)} />
-              미배정만
+              {msg('미배정만')}
             </label>
             {mainTab === '카드' && (['전체', '주택', '상가'] as BuildingTypeFilter[]).map((t) => {
               const on = buildingTypeFilter === t
@@ -503,7 +503,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
               {!activeTeam && <div className="asg-empty">{msg('먼저 위에서 팀을 선택하세요.')}</div>}
               {activeTeam && (
                 <div style={{ padding: '0 2px 8px', fontSize: 12, color: 'var(--muted)' }}>
-                  탭하면 <b style={{ color: 'var(--ink)' }}>{activeTeam.name}</b>({activeTeam.members.join('·') || msg('멤버 없음')}) 배정 ↔ 다시 탭하면 해제
+                  {msg('탭하면 {name}({members}) 배정 ↔ 다시 탭하면 해제', { name: activeTeam.name, members: activeTeam.members.join('·') || msg('멤버 없음') })}
                 </div>
               )}
               {subTotal === 0 ? (
@@ -566,7 +566,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
                                   )}
                                   {item.assignedTo.length > 0 && (
                                     <div style={{ fontSize: 11.5, color: 'var(--primary-600, #2563eb)', marginTop: 4, fontWeight: 600 }}>
-                                      {item.assignedTo.join('·')} 배정됨
+                                      {msg('{v1} 배정됨', { v1: item.assignedTo.join('·') })}
                                     </div>
                                   )}
                                 </div>
@@ -652,7 +652,7 @@ export function ZoneAssignScreen({ teams, activeTeamId, cards, buildings, visitH
                   <button type="button" className="asg-zone-completed-head is-btn" onClick={() => toggleCompletedGroup(groupName)} style={{ marginTop: 4, padding: '8px 4px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: 'none', background: 'transparent', cursor: 'pointer' }}>
                     <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ display: 'inline-block', width: 14, height: 1, background: 'var(--line)' }} />
-                      완료됨
+                      {msg('완료됨')}
                       <span style={{ display: 'inline-block', width: 14, height: 1, background: 'var(--line)' }} />
                     </span>
                     <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 400, display: 'flex', alignItems: 'center', gap: 4 }}>

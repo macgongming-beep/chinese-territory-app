@@ -870,8 +870,8 @@ export function RestaurantsTab({
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--line)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <UploadIcon size={16} />
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>CSV 일괄등록</span>
-              <span style={{ fontSize: 12, color: 'var(--muted)' }}>식당 건물에 식당 표시를 한꺼번에 적용합니다</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{msg('CSV 일괄등록')}</span>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>{msg('식당 건물에 식당 표시를 한꺼번에 적용합니다')}</span>
             </div>
             <button type="button" onClick={handleCloseCsv}
               style={{ width: 28, height: 28, minHeight: 0, display: 'grid', placeItems: 'center', background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', borderRadius: 6 }}>
@@ -886,11 +886,11 @@ export function RestaurantsTab({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10 }}>
                   <span style={{ fontSize: 13, color: 'var(--text)', flex: 1 }}>
-                    CSV 형식: <code style={{ fontSize: 12, background: 'var(--tint)', padding: '2px 6px', borderRadius: 4, color: 'var(--ink)' }}>시구, 동, 상세주소, 식당명</code>
+                    {msg('CSV 형식')}: <code style={{ fontSize: 12, background: 'var(--tint)', padding: '2px 6px', borderRadius: 4, color: 'var(--ink)' }}>{msg('시구, 동, 상세주소, 식당명')}</code>
                   </span>
                   <button type="button" onClick={handleSampleDownload}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, padding: '0 10px', border: '1px solid var(--line-2)', borderRadius: 7, background: 'var(--surface)', color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    <DownloadIcon /> 예시 파일
+                    <DownloadIcon /> {msg('예시 파일')}
                   </button>
                 </div>
 
@@ -908,8 +908,8 @@ export function RestaurantsTab({
                   }}
                 >
                   <UploadIcon size={24} />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>CSV 파일 선택 또는 드래그</span>
-                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>Excel에서 내보낸 .csv 파일을 올려주세요</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{msg('CSV 파일 선택 또는 드래그')}</span>
+                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>{msg('Excel에서 내보낸 .csv 파일을 올려주세요')}</span>
                   {csvFileName && <span style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 600 }}>📎 {csvFileName}</span>}
                 </div>
                 <input ref={fileInputRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleFileChange} />
@@ -919,7 +919,7 @@ export function RestaurantsTab({
             {/* CSV 완료 메시지 */}
             {csvDone && (
               <div style={{ padding: '20px', textAlign: 'center', fontSize: 14, color: '#16a34a', fontWeight: 600 }}>
-                ✓ 식당 등록이 완료됐습니다
+                ✓ {msg('식당 등록이 완료됐습니다')}
               </div>
             )}
 
@@ -931,15 +931,15 @@ export function RestaurantsTab({
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                   <div style={{ padding: '12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, textAlign: 'center' }}>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#16a34a' }}>{csvMatched.length}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>매칭됨 (신규)</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{msg('매칭됨 (신규)')}</div>
                   </div>
                   <div style={{ padding: '12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, textAlign: 'center' }}>
                     <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--muted)' }}>{csvAlready.length}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>이미 식당</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{msg('이미 식당')}</div>
                   </div>
                   <div style={{ padding: '12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, textAlign: 'center' }}>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#c44536' }}>{csvUnmatched.length}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>미매칭</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{msg('미매칭')}</div>
                   </div>
                 </div>
 
@@ -947,7 +947,7 @@ export function RestaurantsTab({
                 {csvMatched.length > 0 && (
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      식당 표시 적용 예정 ({csvMatched.length}개)
+                      {msg('식당 표시 적용 예정 ({count}개)', { count: csvMatched.length })}
                     </div>
                     <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, padding: '2px 0' }}>
                       {csvMatched.map((r, i) => (
@@ -956,7 +956,7 @@ export function RestaurantsTab({
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{r.row.name || r.row.address}</span>
                             {r.nameWillUpdate && (
-                              <span style={{ marginLeft: 6, fontSize: 11, color: '#0891b2', background: '#ecfeff', padding: '1px 5px', borderRadius: 4 }}>이름 업데이트</span>
+                              <span style={{ marginLeft: 6, fontSize: 11, color: '#0891b2', background: '#ecfeff', padding: '1px 5px', borderRadius: 4 }}>{msg('이름 업데이트')}</span>
                             )}
                             <span style={{ color: 'var(--muted)', marginLeft: 6, fontSize: 12 }}>→ {r.matched!.address}</span>
                           </div>
@@ -970,7 +970,7 @@ export function RestaurantsTab({
                 {csvUnmatched.length > 0 && (
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      주소 미매칭 ({csvUnmatched.length}개) — 건너뜀
+                      {msg('주소 미매칭 ({count}개) — 건너뜀', { count: csvUnmatched.length })}
                     </div>
                     <div style={{ maxHeight: 140, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {csvUnmatched.map((r, i) => (
@@ -990,13 +990,13 @@ export function RestaurantsTab({
                   <button type="button"
                     onClick={() => { setCsvResults(null); setCsvFileName('') }}
                     style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: '1px solid var(--line-2)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 0 }}>
-                    다시 선택
+                    {msg('다시 선택')}
                   </button>
                   <button type="button"
                     disabled={csvMatched.length === 0 || csvApplying}
                     onClick={handleApplyBulk}
                     style={{ flex: 2, padding: '9px 0', borderRadius: 9, border: 'none', background: csvMatched.length === 0 ? 'var(--muted)' : 'var(--ink)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: csvMatched.length === 0 ? 'default' : 'pointer', minHeight: 0 }}>
-                    {csvApplying ? '적용 중...' : csvMatched.length === 0 ? '적용 대상 없음' : `${csvMatched.length}개 식당 표시 적용`}
+                    {csvApplying ? msg('적용 중...') : csvMatched.length === 0 ? msg('적용 대상 없음') : msg('{count}개 식당 표시 적용', { count: csvMatched.length })}
                   </button>
                 </div>
               </div>

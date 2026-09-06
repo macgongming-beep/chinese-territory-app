@@ -2370,7 +2370,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                     onChange={e => setHistoryToEdit({ ...historyToEdit, invitationLeft: e.target.checked })}
                     style={{ width: 16, height: 16, accentColor: '#f59e0b', cursor: 'pointer' }}
                   />
-                  초대장 남김
+                  {msg('초대장 남김')}
                 </label>
               </div>
             )}
@@ -2674,11 +2674,22 @@ function UnitDetailScreen({
     }),
   ).sort((a, b) => b.count - a.count)
   const latestResult = unitHistories[0]?.result
+  const latestResultLabel = latestResult === '만남'
+    ? t(language, 'map.met')
+    : latestResult === '부재'
+      ? t(language, 'map.absent')
+      : latestResult === '대상외'
+        ? t(language, 'map.notTarget')
+        : latestResult === '미방문'
+          ? t(language, 'map.unvisited')
+          : latestResult === '확인필요'
+            ? t(language, 'map.needsCheck')
+            : latestResult
   const historySummary = unitHistories.length === 0
     ? msg('기록 없음')
     : absenceBuckets.length > 0
       ? `${msg('못 만난 시간')} · ${absenceBuckets.slice(0, 2).map((bucket) => bucket.label).join(' · ')}`
-      : `${msg('못 만난 기록 없음')}${latestResult ? ` · ${msg('최근')} ${latestResult}` : ''}`
+      : `${msg('못 만난 기록 없음')}${latestResultLabel ? ` · ${msg('최근')} ${latestResultLabel}` : ''}`
 
   const resultColor = (r: string) => r === '만남' ? '#4F7A4B' : r === '부재' ? '#C44536' : '#94a3b8'
 
@@ -2703,7 +2714,7 @@ function UnitDetailScreen({
         {restaurantAssignments.length > 0 && (
           <div style={{ padding: '12px 14px', background: '#fef3e7', border: '1px solid #f5cfa1', borderRadius: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#b4621f', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-              🍴 식당 봉사 배정
+              {msg('식당 봉사 배정')}
             </div>
             {restaurantAssignments.map((asn) => {
               const ev = calendarEvents.find((e) => e.id === asn.eventId)

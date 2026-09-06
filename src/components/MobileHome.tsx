@@ -1026,7 +1026,7 @@ export function MobileHome({
                     c.assignedLeader === currentVisitor ||
                     c.assignedUsers?.includes(currentVisitor)
                   ).length
-                  return `담당 카드 ${myCards}개`
+                  return `${t(language, 'home.assignedCards')} ${myCards}`
                 })()}
                 userId={currentUser.id}
                 userName={currentVisitor}
@@ -1443,7 +1443,7 @@ export function MobileHome({
                 </section>
 
                 {/* [소식 & 알림] 섹션 */}
-                <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>소식 & 알림</div>
+                <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>{msg('소식 & 알림')}</div>
                 <section className="mobile-settings-menu" aria-label={msg('소식 및 알림 메뉴')}>
                   {role === 'admin' && (
                     <button onClick={() => navigate('/notices')} type="button">
@@ -1482,7 +1482,7 @@ export function MobileHome({
                 {(role === 'admin' || role === 'developer') && (
                   <>
                     {/* [관리 (Admin)] 섹션 — 관리자·개발자 */}
-                    <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>관리 (Admin)</div>
+                    <div style={{ marginTop: 24, paddingLeft: 16, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--gray-500)', letterSpacing: 0.5 }}>{msg('관리 (Admin)')}</div>
                     <section className="mobile-settings-menu" aria-label={msg('관리 메뉴')}>
                       <button onClick={() => navigate('/users')} type="button">
                         <span className="mobile-settings-icon mobile-settings-icon-neutral" aria-hidden="true">

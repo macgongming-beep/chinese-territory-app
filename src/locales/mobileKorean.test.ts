@@ -15,7 +15,7 @@ import { messagesEn } from './messages.en'
 import { messagesZh } from './messages.zh'
 
 const COMPONENTS = 'src/components'
-const TRANSLATION_AUDIT_FILES = [
+const EXTRA_TRANSLATION_AUDIT_FILES = [
   'src/components/EndReturnVisitDialog.tsx',
   'src/components/PlaceChangeRequestDialog.tsx',
   'src/components/PlaceChangeRequests.tsx',
@@ -55,6 +55,8 @@ function mobileFiles(): string[] {
           'PlaceChangeRequestDialog.tsx',
           'PlaceChangeRequests.tsx',
           'RegularVisitManagement.tsx',
+          'RestaurantRegistrationModal.tsx',
+          'RestaurantsTab.tsx',
         ].includes(entry.name)
       if (isMobile) out.push(path)
     }
@@ -64,7 +66,7 @@ function mobileFiles(): string[] {
 }
 
 // JSX 본문: 한 줄 안의 >글자< 이고 코드 문자가 없어야 한다 (제네릭 오인 방지)
-const JSX_TEXT = /> *([^<>{}\n]*[가-힣][^<>{}\n]*?) *</g
+const JSX_TEXT = />\s*([^<>{}\n]*[가-힣][^<>{}\n]*?)\s*</g
 const VISIBLE_ATTRS = /(?:placeholder|title|aria-label|alt|label|sub|pageTitle)="([^"\n]*[가-힣][^"\n]*)"/g
 
 function findUntranslated(source: string): string[] {
@@ -101,7 +103,8 @@ describe('모바일 화면에 번역 안 된 한국어', () => {
 
   it('별도 화면과 토스트에서 쓰는 한국어 열쇠가 영문·중문 사전에 모두 있다', () => {
     const missing: string[] = []
-    for (const file of TRANSLATION_AUDIT_FILES) {
+    const files = new Set([...mobileFiles(), ...EXTRA_TRANSLATION_AUDIT_FILES])
+    for (const file of files) {
       const source = readFileSync(file, 'utf8')
       const keys = new Set<string>()
       for (const match of source.matchAll(/msg\(\s*'([^']*[가-힣][^']*)'/g)) keys.add(match[1])

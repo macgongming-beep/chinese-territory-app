@@ -448,7 +448,7 @@ export function ChatRoom({
         <div className="chat-empty">
           {t(lang, 'chat.cannotLoad')}<br />
           <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted-2)' }}>
-            Supabase 에 V1+ 채팅 SQL 미적용 또는 권한 문제
+            {msg('Supabase 에 V1+ 채팅 SQL 미적용 또는 권한 문제')}
           </span>
         </div>
       </section>

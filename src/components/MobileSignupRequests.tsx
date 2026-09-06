@@ -147,7 +147,7 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
                     onClick={() => updateUserApprovalStatus(item.id, 'approved')}
                     type="button"
                   >
-                    승인
+                    {msg('승인')}
                   </button>
                 )}
                 {activeTab !== 'blocked' && currentUser?.id !== item.id && (
@@ -156,7 +156,7 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
                     onClick={() => updateUserApprovalStatus(item.id, 'blocked')}
                     type="button"
                   >
-                    차단
+                    {msg('차단')}
                   </button>
                 )}
                 {activeTab !== 'pending' && (
@@ -165,7 +165,7 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
                     onClick={() => updateUserApprovalStatus(item.id, 'pending')}
                     type="button"
                   >
-                    대기
+                    {msg('대기')}
                   </button>
                 )}
                 {currentUser?.id !== item.id && (
@@ -177,7 +177,7 @@ export function MobileSignupRequests({ isEmbedded }: { isEmbedded?: boolean }) {
                     }}
                     type="button"
                   >
-                    삭제
+                    {msg('삭제')}
                   </button>
                 )}
               </div>

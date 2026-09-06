@@ -186,7 +186,7 @@ export function AssignmentEditor({ event, cards, allCards = [], buildings, visit
       <div className="asg-conflict-backdrop">
         <div className="asg-conflict">
           <h2>{msg('임시 저장본과 공유본이 다릅니다')}</h2>
-          <p>다른 곳에서 배정이 공유되었어요. 무엇을 사용할까요?</p>
+          <p>{msg('다른 곳에서 배정이 공유되었어요. 무엇을 사용할까요?')}</p>
           <button onClick={() => { reload(conflict.server); setConflict(null) }} type="button">{msg('공유본 사용')}</button>
           <button onClick={() => { reload(conflict.local); setConflict(null) }} type="button">{msg('내 임시 저장 이어서')}</button>
           <button className="danger" onClick={() => { clearLocalDraft(event.id, currentVisitor); reload(conflict.server); setConflict(null) }} type="button">{msg('임시 저장 삭제')}</button>

@@ -259,7 +259,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
         {isEmbedded && (
           <div style={{ marginBottom: 16 }}>
             <button className="ds-btn ds-btn-secondary" onClick={() => setSelectedUserId(null)} type="button">
-              뒤로
+              {msg('뒤로')}
             </button>
           </div>
         )}
@@ -295,7 +295,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
             }}
             type="button"
           >
-            아이디 · 닉네임 저장
+            {msg('아이디 · 닉네임 저장')}
           </button>
         </section>
 
@@ -382,7 +382,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
         <section className="mobile-user-manage-card mobile-user-password-card">
           <h2>{msg('비밀번호')}</h2>
           <button onClick={() => resetUserPin(selectedUser.id)} type="button">
-            0000으로 초기화
+            {msg('0000으로 초기화')}
           </button>
           <div className="mobile-user-inline-form">
             <input
@@ -398,7 +398,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
               }}
               type="button"
             >
-              변경
+              {msg('변경')}
             </button>
           </div>
         </section>
@@ -417,7 +417,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
             }}
             type="button"
           >
-            제거
+            {msg('제거')}
           </button>
         </section>
       </div>
@@ -483,7 +483,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="mobile-users-add-toggle" onClick={() => setShowAddForm((value) => !value)} type="button">
-            + 사용자 추가
+            {msg('사용자 추가')}
           </button>
           <button
             className="mobile-users-add-toggle"
@@ -493,7 +493,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
             {selectMode ? msg('선택 취소') : msg('집단 일괄 지정')}
           </button>
           <button className="mobile-users-add-toggle" onClick={() => setGroupEditOpen((v) => !v)} type="button">
-            집단 편집
+            {msg('집단 편집')}
           </button>
         </div>
       </section>
@@ -503,12 +503,11 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
         <section className="mobile-user-manage-card">
           <h2>{msg('집단 관리')}</h2>
           <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 10px' }}>
-            집단 이름을 누르면 수정할 수 있고, ×로 삭제합니다. 이름을 바꾸면 소속된 사용자도 함께 옮겨집니다.
-            삭제해도 사용자 정보는 유지되며 해당 집단은 미지정으로 표시됩니다.
+            {msg('집단 이름을 누르면 수정할 수 있고, ×로 삭제합니다. 이름을 바꾸면 소속된 사용자도 함께 옮겨집니다. 삭제해도 사용자 정보는 유지되며 해당 집단은 미지정으로 표시됩니다.')}
           </p>
           {groups.length === 0 && (
             <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 10px' }}>
-              아직 집단이 없습니다. 아래에 이름을 넣어 만드세요. 집단을 쓰지 않는다면 비워 둬도 됩니다.
+              {msg('아직 집단이 없습니다. 아래에 이름을 넣어 만드세요. 집단을 쓰지 않는다면 비워 둬도 됩니다.')}
             </p>
           )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
@@ -640,7 +639,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
               }}
               type="button"
             >
-              취소
+              {msg('취소')}
             </button>
             <button
               disabled={!newLoginId.trim() || !newName.trim() || !newPin.trim()}
@@ -653,7 +652,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
               }}
               type="button"
             >
-              추가
+              {msg('추가')}
             </button>
           </div>
         </section>
@@ -686,7 +685,7 @@ export function MobileUsers({ isEmbedded }: { isEmbedded?: boolean }) {
                 <span className={`mobile-user-avatar ${roleClass(item.role)}`}>{item.name.slice(0, 1)}</span>
               )}
               <span className="mobile-users-row-main">
-                <strong>{item.name}{currentUser?.id === item.id ? <small> (나)</small> : null}</strong>
+                <strong>{item.name}{currentUser?.id === item.id ? <small> ({msg('나')})</small> : null}</strong>
                 <small>
                   {item.loginId} · {formatLastLogin(item.lastLoginAt)}
                   {item.groupName ? ` · ${item.groupName}` : ''}

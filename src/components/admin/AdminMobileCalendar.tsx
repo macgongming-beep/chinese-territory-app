@@ -354,7 +354,7 @@ export function AdminMobileCalendar({
               cursor: 'pointer',
             }}
           >
-            오늘
+            {msg('오늘')}
           </button>
         </div>
         <div
@@ -1704,7 +1704,7 @@ export function TimePresetEditor({ language,
       ))}
 
       <p style={{ margin: 0, color: 'var(--muted)', fontSize: 11.5, lineHeight: 1.35 }}>
-        시간을 누르면 종료시간은 소요시간만큼 자동 입력됩니다. 기본 소요시간은 120분입니다.
+        {msg('시간을 누르면 종료시간은 소요시간만큼 자동 입력됩니다. 기본 소요시간은 120분입니다.')}
       </p>
     </div>
   )
