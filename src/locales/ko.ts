@@ -66,6 +66,8 @@ export const ko = {
     'map.buildings': '건물',
     'map.units': '세대',
     'map.type': '유형',
+    'map.buildingKind': '건물 종류',
+    'map.placeKind': '장소 종류',
     'map.house': '주택',
     'map.shop': '상가',
     'map.forbidden': '방문금지',

@@ -22357,40 +22357,64 @@ button:focus-visible {
 
 .edit-save-btn:hover { background: #30302d; }
 
-.mm-building-edit-label {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--ink-500);
-  font-size: 12px;
+.mm-building-kind-row,
+.mm-unit-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  color: var(--ink);
+  font-size: 13px;
   font-weight: 700;
 }
 
-.mm-building-type-segment {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid #e2e8f0;
-  border-radius: var(--r-md);
-  background: #f3f4f6;
+.mm-place-kind-select {
+  min-width: 82px;
+  height: 32px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 7px;
+  background: var(--surface, #fff);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
 }
 
-.mm-building-type-segment button {
-  min-height: 40px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #6b7280;
-  font-size: 14px;
+.mm-place-kind-select:disabled {
+  opacity: 0.65;
+}
+
+.mm-building-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.mm-building-edit-actions button {
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 7px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.mm-building-type-segment button.is-active {
-  background: var(--ink);
-  color: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.16);
+.mm-building-edit-action-spacer { flex: 1; }
+.mm-building-delete-action { border: 0; background: transparent; color: var(--danger-600); }
+.mm-building-cancel-action { border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.mm-building-save-action { min-width: 72px; border: 0; background: var(--ink); color: #fff; }
+
+.mm-unit-info-row.has-divider,
+.mm-unit-info-memo.has-divider {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
 }
+
+.mm-unit-info-memo-button { padding: 0; font-family: inherit; }
+.mm-unit-info-privacy { margin: 6px 0 0; color: var(--muted); font-size: 10.5px; line-height: 1.4; }
 
 .edit-cancel-btn {
   background: #e2e8f0;

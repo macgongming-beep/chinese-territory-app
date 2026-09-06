@@ -129,7 +129,8 @@ describe('모바일 세대 상세', () => {
     expect(screen.getByRole('button', { name: /204호/ }).closest('.unit-grid-row')).toHaveClass('is-detail-selected')
 
     const navigatorHeight = sheet.style.height
-    fireEvent.click(screen.getByRole('button', { name: /세대 정보/ }))
+    expect(screen.getByRole('combobox', { name: '장소 종류' })).toHaveValue('주택')
+    fireEvent.click(screen.getByRole('button', { name: /메모/ }))
     expect(screen.getByLabelText('세대 정보')).toBeVisible()
     expect(screen.getByText('이름·연락처 등 개인정보는 적지 마세요.')).toBeVisible()
     expect(sheet.style.height).toBe('65px')
@@ -139,5 +140,32 @@ describe('모바일 세대 상세', () => {
     fireEvent.click(screen.getByRole('button', { name: '닫기' }))
     await waitFor(() => expect(screen.queryByText('우일빌라G동 204호')).not.toBeInTheDocument())
     expect(sheet.style.height).toBe(originalHeight)
+  })
+
+  test('일반 사용자에게는 세대의 장소 종류 설정을 숨긴다', async () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    const building = testBuilding(9, 1, '우일빌라G동', [testUnit(203, '203호')])
+    const props = territoryProps({
+      actualRole: 'user',
+      currentVisitor: '봉사자',
+      cards: [testCard(1, '처인구 고림동 9')],
+      buildings: [building],
+      focusedCardId: 1,
+      focusedBuildingId: 9,
+      focusedCardIds: [],
+      serviceSessions: [],
+      specialPeriods: [],
+      visitHistories: [],
+      eventRestaurantAssignments: [],
+      calendarEvents: [],
+      onBack: vi.fn(),
+    })
+
+    render(<MemoryRouter><MobileMap {...(props as never)} /></MemoryRouter>)
+    fireEvent.click(await screen.findByRole('button', { name: /203호/ }))
+
+    expect(await screen.findByText('우일빌라G동 203호')).toBeVisible()
+    expect(screen.queryByRole('combobox', { name: '장소 종류' })).not.toBeInTheDocument()
+    expect(screen.getByText('이름·연락처 등 개인정보는 적지 마세요.')).toBeVisible()
   })
 })

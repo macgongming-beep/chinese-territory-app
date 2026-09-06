@@ -66,6 +66,8 @@ export const zh = {
     'map.buildings': '建筑',
     'map.units': '住户',
     'map.type': '类型',
+    'map.buildingKind': '建筑类型',
+    'map.placeKind': '场所类型',
     'map.house': '住宅',
     'map.shop': '商铺',
     'map.forbidden': '禁止访问',

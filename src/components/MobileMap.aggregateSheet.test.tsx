@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- MapCanvas 전체 대신 집계 핀 선택 계약만 시험한다 */
 import '@testing-library/jest-dom/vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, test, vi } from 'vitest'
@@ -132,9 +132,9 @@ describe('모바일 지도 하단 시트', () => {
     fireEvent.click(await screen.findByLabelText('더보기'))
     fireEvent.click(await screen.findByRole('button', { name: '수정' }))
 
-    const usage = screen.getByRole('group', { name: '건물 유형' })
-    expect(within(usage).getByRole('button', { name: '상가' })).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(within(usage).getByRole('button', { name: '주택' }))
+    const usage = screen.getByRole('combobox', { name: '건물 종류' })
+    expect(usage).toHaveValue('상가')
+    fireEvent.change(usage, { target: { value: '주택' } })
     fireEvent.click(screen.getByRole('button', { name: '저장' }))
 
     await waitFor(() => expect(confirmDialog).toHaveBeenCalledTimes(1))

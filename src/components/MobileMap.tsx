@@ -2246,28 +2246,25 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
                         <input value={editAddress} onChange={e => setEditAddress(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: 'var(--r-md)', fontSize: '14px', boxSizing: 'border-box' }} />
                       </div>
                       {canChangeBuildingType && (
-                        <div>
-                          <span className="mm-building-edit-label">{msg('건물 유형')}</span>
-                          <div className="mm-building-type-segment" role="group" aria-label={msg('건물 유형')}>
-                            {(['주택', '상가'] as const).map((type) => (
-                              <button
-                                key={type}
-                                type="button"
-                                className={editBuildingType === type ? 'is-active' : undefined}
-                                aria-pressed={editBuildingType === type}
-                                onClick={() => setEditBuildingType(type)}
-                              >
-                                {buildingTypeLabel(type)}
-                              </button>
-                            ))}
-                          </div>
+                        <div className="mm-building-kind-row">
+                          <span>{t(language, 'map.buildingKind')}</span>
+                          <select
+                            aria-label={t(language, 'map.buildingKind')}
+                            className="mm-place-kind-select"
+                            value={editBuildingType}
+                            onChange={(event) => setEditBuildingType(event.target.value as Building['type'])}
+                          >
+                            <option value="주택">{buildingTypeLabel('주택')}</option>
+                            <option value="상가">{buildingTypeLabel('상가')}</option>
+                          </select>
                         </div>
                       )}
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-                      <button onClick={() => setShowDeleteConfirm(true)} style={{ padding: '12px 16px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--danger-100)', color: 'var(--danger-600)', fontWeight: 700, cursor: 'pointer', fontSize: '14px' }}>{placeDeletionCopy(actualRole, 'building').actionLabel}</button>
-                      <button onClick={() => { setEditingBuildingId(null); setShowDeleteConfirm(false) }} style={{ flex: 1, padding: '12px', borderRadius: 'var(--r-md)', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'common.cancel')}</button>
-                      <button onClick={() => void saveBuildingEdit(editingBuilding)} style={{ flex: 2, padding: '12px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--ink)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>{t(language, 'common.save')}</button>
+                    <div className="mm-building-edit-actions">
+                      <button className="mm-building-delete-action" onClick={() => setShowDeleteConfirm(true)}>{placeDeletionCopy(actualRole, 'building').actionLabel}</button>
+                      <span className="mm-building-edit-action-spacer" />
+                      <button className="mm-building-cancel-action" onClick={() => { setEditingBuildingId(null); setShowDeleteConfirm(false) }}>{t(language, 'common.cancel')}</button>
+                      <button className="mm-building-save-action" onClick={() => void saveBuildingEdit(editingBuilding)}>{t(language, 'common.save')}</button>
                     </div>
                   </>
                 ) : (
@@ -2542,6 +2539,7 @@ const completion = building.units.length === 0 ? 0 : Math.round((handledUnits / 
               allUsers={allUsers}
               onSetRegularVisitor={onSetRegularVisitor}
               onMemoEditingChange={handleUnitMemoEditingChange}
+              canManagePlaceType={canChangeBuildingType}
               restaurantAssignments={getCurrentRestaurantAssignmentsForUnit(
                 eventRestaurantAssignments,
                 calendarEvents,
@@ -2601,6 +2599,7 @@ function UnitDetailScreen({
   allUsers = [],
   onSetRegularVisitor,
   onMemoEditingChange,
+  canManagePlaceType = false,
   restaurantAssignments = [],
   calendarEvents = [],
 }: {
@@ -2624,6 +2623,7 @@ function UnitDetailScreen({
   allUsers?: { id: number; name: string }[]
   onSetRegularVisitor?: (unitId: number, visitorName: string, registeredAt?: string) => Promise<void>
   onMemoEditingChange?: (editing: boolean) => void
+  canManagePlaceType?: boolean
   restaurantAssignments?: EventRestaurantAssignment[]
   calendarEvents?: CalendarEvent[]
 }) {
@@ -2979,30 +2979,29 @@ function UnitDetailScreen({
           </div>
         )}
 
-        {/* 세대 용도는 건물 기본값을 미리 선택해 보여 준다. */}
-        <div style={{ ...sectionStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <strong style={{ fontSize: 14, color: 'var(--ink)' }}>{msg('용도')}</strong>
-          <div className="mm-unit-usage-toggle" role="group" aria-label={msg('용도')}>
-            {(['주택', '상가'] as const).map((usage) => {
-              const active = effectiveUnitUsage(building, unit) === usage
-              return (
-                <button
-                  key={usage}
-                  className={active ? 'active' : ''}
-                  disabled={Boolean(unit.isRestaurant) && usage === '주택'}
-                  onClick={() => onUpdateUnitFlags(unit.id, { usageType: usage === building.type ? null : usage })}
-                  type="button"
-                >{usage === '주택' ? t(language, 'map.house') : t(language, 'map.shop')}</button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* 메모 */}
+        {/* 세대 정보: 장소 종류는 관리자·인도자만 보고, 메모는 같은 카드에서 다룬다. */}
         <div style={sectionStyle}>
+          <h3 style={{ ...sectionTitleStyle, marginBottom: 6 }}>{t(language, 'map.unitMemoLabel')}</h3>
+          {canManagePlaceType && (
+            <div className="mm-unit-info-row">
+              <span>{t(language, 'map.placeKind')}</span>
+              <select
+                aria-label={t(language, 'map.placeKind')}
+                className="mm-place-kind-select"
+                disabled={Boolean(unit.isRestaurant)}
+                value={effectiveUnitUsage(building, unit)}
+                onChange={(event) => {
+                  const usage = event.target.value as Building['type']
+                  onUpdateUnitFlags(unit.id, { usageType: usage === building.type ? null : usage })
+                }}
+              >
+                <option value="주택">{t(language, 'map.house')}</option>
+                <option value="상가">{t(language, 'map.shop')}</option>
+              </select>
+            </div>
+          )}
           {memoEditing ? (
-            <div>
-              <h3 style={sectionTitleStyle}>{t(language, 'map.unitMemoLabel')}</h3>
+            <div className={canManagePlaceType ? 'mm-unit-info-memo has-divider' : 'mm-unit-info-memo'}>
               <textarea
                 autoFocus
                 aria-label={t(language, 'map.unitMemoLabel')}
@@ -3021,9 +3020,6 @@ function UnitDetailScreen({
                   resize: 'none', boxSizing: 'border-box',
                 }}
               />
-              <p style={{ margin: '6px 0 0', fontSize: 10.5, lineHeight: 1.4, color: 'var(--muted)' }}>
-                {t(language, 'map.unitInfoPrivacy')}
-              </p>
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 <button
                   onClick={() => {
@@ -3052,22 +3048,24 @@ function UnitDetailScreen({
                 setMemoEditing(true)
                 onMemoEditingChange?.(true)
               }}
+              className={canManagePlaceType ? 'mm-unit-info-row mm-unit-info-memo-button has-divider' : 'mm-unit-info-row mm-unit-info-memo-button'}
               style={{
                 width: '100%', minHeight: 40, textAlign: 'left', background: 'transparent',
-                border: 0, padding: 0, color: memo ? 'var(--ink)' : 'var(--muted)',
+                border: 0, color: memo ? 'var(--ink)' : 'var(--muted)',
                 cursor: canRecordVisits ? 'pointer' : 'default',
                 display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto',
                 alignItems: 'center', gap: 10, fontFamily: 'inherit',
               }}
               type="button"
             >
-              <strong style={{ fontSize: 14, color: 'var(--ink)' }}>{t(language, 'map.unitMemoLabel')}</strong>
+              <strong style={{ fontSize: 13, color: 'var(--ink)' }}>{t(language, 'map.memoLabel')}</strong>
               <span style={{ overflow: 'hidden', fontSize: 12.5, lineHeight: 1.4, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {memo || t(language, 'map.addUnitInfo')}
               </span>
               <span aria-hidden="true" style={{ fontSize: 16 }}>›</span>
             </button>
           )}
+          <p className="mm-unit-info-privacy">{t(language, 'map.unitInfoPrivacy')}</p>
         </div>
 
         {/* 정기방문 담당자 팝업 */}
