@@ -354,7 +354,7 @@ export function DesktopApp({
     rawActivePage === '지도' && viewMode === 'leader' ? '구역' : rawActivePage
 
   const visibleDesktopPages: DesktopPage[] = viewMode === 'user'
-    ? ['홈', '캘린더', '활동', '지도', '설정']
+    ? ['홈', '캘린더', '활동', '설정']
     : viewMode === 'leader'
       ? ['홈', '캘린더', '활동', '배정', '구역', '설정']
       : ['홈', '캘린더', '구역', '지도', '배정', '통계', '설정']
