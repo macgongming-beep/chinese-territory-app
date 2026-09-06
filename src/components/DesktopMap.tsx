@@ -266,11 +266,12 @@ export function DesktopMap({
   const [editingPinMode, setEditingPinMode] = useState(false)
   const [showAddBuildingModal, setShowAddBuildingModal] = useState(false)
   const [newUnitNumber, setNewUnitNumber] = useState('101')
+  const [newUnitUsageType, setNewUnitUsageType] = useState<Building['type']>('주택')
   /** 호수 추가. 결과를 보고 나서 입력을 비운다 — 실패했는데 비우면 적은 호수가 사라진다 */
   const submitUnit = async (buildingId: number) => {
     const number = newUnitNumber.trim()
     if (!number) return
-    if (await onAddUnit(buildingId, number)) setNewUnitNumber('')
+    if (await onAddUnit(buildingId, number, newUnitUsageType)) setNewUnitNumber('')
   }
   const [boundaryCardId, setBoundaryCardId] = useState<number>(cards[0]?.id ?? 1)
   const [visibleBoundarySelection, setVisibleBoundarySelection] = useState<number | '전체' | null>('전체')
@@ -283,6 +284,11 @@ export function DesktopMap({
   const [savingBoundary, setSavingBoundary] = useState(false)
   const [draftBoundaryPoints, setDraftBoundaryPoints] = useState<GeoPoint[]>([])
   const [detailOpen, setDetailOpen] = useState(false)
+  const [detailPaneWidth, setDetailPaneWidth] = useState(() => {
+    if (typeof window === 'undefined') return 520
+    const saved = Number(window.localStorage.getItem('desktop-map-detail-width'))
+    return Number.isFinite(saved) && saved >= 380 && saved <= 760 ? saved : 520
+  })
   const [navigationOpen, setNavigationOpen] = useState(false)
   const [expandedVisitGridUnitId, setExpandedVisitGridUnitId] = useState<number | null>(null)
   const [undoStack, setUndoStack] = useState<GeoPoint[][]>([])
@@ -315,6 +321,7 @@ export function DesktopMap({
     : undefined
   const canRecordVisits = actualRole !== 'user' || !!todayRecordableSession
   const isAdmin = actualRole === 'admin' || actualRole === 'developer'
+  const canManagePlaceType = isAdmin || actualRole === 'leader'
 
   // ⚠ 비공식 장소는 관리자·개발자만 만들고 고친다. DB 정책이 이미 그렇게 막지만
   //   (role_admin_informal_assets_*), /map 은 누구나 들어오는 화면이라 여기서
@@ -2132,7 +2139,39 @@ export function DesktopMap({
           </div>{/* /map-canvas-panel */}
 
       {detailOpen && (
-      <aside className="map-detail-pane" style={{ position: 'relative' }}>
+      <aside className="map-detail-pane" style={{ position: 'relative', width: detailPaneWidth }}>
+        <div
+          aria-label="세대 상세 폭 조절"
+          aria-orientation="vertical"
+          className="map-detail-resizer"
+          onKeyDown={(event) => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+            event.preventDefault()
+            const next = Math.min(760, Math.max(380, detailPaneWidth + (event.key === 'ArrowLeft' ? 32 : -32)))
+            setDetailPaneWidth(next)
+            window.localStorage.setItem('desktop-map-detail-width', String(next))
+          }}
+          onPointerDown={(event) => {
+            event.preventDefault()
+            const startX = event.clientX
+            const startWidth = detailPaneWidth
+            document.body.classList.add('is-resizing-map-detail')
+            const handleMove = (moveEvent: PointerEvent) => {
+              const next = Math.min(760, Math.max(380, startWidth + startX - moveEvent.clientX))
+              setDetailPaneWidth(next)
+              window.localStorage.setItem('desktop-map-detail-width', String(next))
+            }
+            const handleUp = () => {
+              document.body.classList.remove('is-resizing-map-detail')
+              window.removeEventListener('pointermove', handleMove)
+              window.removeEventListener('pointerup', handleUp)
+            }
+            window.addEventListener('pointermove', handleMove)
+            window.addEventListener('pointerup', handleUp)
+          }}
+          role="separator"
+          tabIndex={0}
+        ><span /></div>
         <div className="map-detail-head">
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
@@ -2505,12 +2544,26 @@ export function DesktopMap({
                                 </div>
                               </div>
 
-                              {/* ── 세대 메모 (클릭 편집 → 저장/취소) ──
-                                   방문 기록의 메모와 다른 것 — 이 세대에 계속 남는 정보 */}
-                              <div style={{ padding: '8px 12px' }}>
-                                <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: '#94a3b8' }}>
-                                  {t(language, 'map.unitMemoLabel')}
-                                </p>
+                              {/* 세대 정보는 모바일과 같은 순서로: 장소 종류, 메모, 개인정보 안내. */}
+                              <div className="desktop-unit-info-card">
+                                <strong className="desktop-unit-info-title">{t(language, 'map.unitMemoLabel')}</strong>
+                                {canManagePlaceType && (
+                                  <label className="desktop-unit-place-kind">
+                                    <span>{t(language, 'map.placeKind')}</span>
+                                    <select
+                                      aria-label={t(language, 'map.placeKind')}
+                                      disabled={Boolean(unit.isRestaurant)}
+                                      value={effectiveUnitUsage(building, unit)}
+                                      onChange={(event) => {
+                                        const usage = event.target.value as Building['type']
+                                        onUpdateUnitFlags(unit.id, { usageType: usage === building.type ? null : usage })
+                                      }}
+                                    >
+                                      <option value="주택">{t(language, 'map.house')}</option>
+                                      <option value="상가">{t(language, 'map.shop')}</option>
+                                    </select>
+                                  </label>
+                                )}
                                 {unitMemoEdits[unit.id] !== undefined ? (
                                   <>
                                     <textarea
@@ -2558,6 +2611,7 @@ export function DesktopMap({
                                     type="button"
                                   >{(unitMemos[unit.id] ?? unit.memo) || t(language, 'map.addUnitInfo')}</button>
                                 )}
+                                <p className="desktop-unit-info-privacy">{t(language, 'map.unitInfoPrivacy')}</p>
                               </div>
                             </div>
                           )}
@@ -2567,12 +2621,24 @@ export function DesktopMap({
 
                     {addingUnitToBuildingId === building.id ? (
                       <div className="inline-add-unit-form bld-add-unit-form">
-                        <input autoFocus placeholder={t(currentLang(), 'unit.addUnitPlaceholder')} value={newUnitNumber} onChange={(e) => setNewUnitNumber(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newUnitNumber.trim()) void submitUnit(building.id) }} />
-                        <button disabled={!newUnitNumber.trim()} onClick={() => void submitUnit(building.id)}>{t(language, 'map.add')}</button>
-                        <button onClick={() => setAddingUnitToBuildingId(null)} style={{ background: '#f1f5f9', color: 'var(--ink-500)' }}>✕</button>
+                        <div className="bld-add-unit-main">
+                          <input autoFocus placeholder={t(currentLang(), 'unit.addUnitPlaceholder')} value={newUnitNumber} onChange={(e) => setNewUnitNumber(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newUnitNumber.trim()) void submitUnit(building.id) }} />
+                          <button disabled={!newUnitNumber.trim()} onClick={() => void submitUnit(building.id)}>{t(language, 'map.add')}</button>
+                          <button aria-label={msg('닫기')} onClick={() => setAddingUnitToBuildingId(null)} style={{ background: '#f1f5f9', color: 'var(--ink-500)' }}>✕</button>
+                        </div>
+                        <div className="bld-add-unit-options" role="group" aria-label={msg('장소 종류')}>
+                          {(['주택', '상가'] as const).map((usage) => (
+                            <button
+                              className={newUnitUsageType === usage ? 'active' : ''}
+                              key={usage}
+                              onClick={() => setNewUnitUsageType(usage)}
+                              type="button"
+                            >{usage === '주택' ? t(language, 'map.house') : t(language, 'map.shop')}</button>
+                          ))}
+                        </div>
                       </div>
                     ) : (
-                      <button className="bld-add-unit-btn" onClick={() => setAddingUnitToBuildingId(building.id)} type="button">{t(currentLang(), 'map.addUnit')}</button>
+                      <button className="bld-add-unit-btn" onClick={() => { setNewUnitUsageType(building.type); setNewUnitNumber(''); setAddingUnitToBuildingId(building.id) }} type="button">{t(currentLang(), 'map.addUnit')}</button>
                     )}
                   </div>
                 )}

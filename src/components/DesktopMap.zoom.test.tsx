@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- MapCanvas 대신 PC 지도의 단계 전환 계약만 시험한다 */
 import '@testing-library/jest-dom/vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, test, vi } from 'vitest'
 import { testBuilding, testCard, territoryProps } from '../test/territoryFixture'
@@ -18,6 +18,9 @@ vi.mock('./MapCanvas', () => ({
         </button>
       ))}
       {(props.aggregateMarkers ?? []).length === 0 && <span>건물 포인트 {props.buildings.length}개</span>}
+      {(props.buildings ?? []).length > 0 && (
+        <button type="button" onClick={() => props.onSelectBuilding?.(props.buildings[0].id)}>첫 건물 열기</button>
+      )}
     </div>
   ),
 }))
@@ -84,5 +87,30 @@ describe('PC 지도 확대 단계', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'zoom far' }))
     expect(screen.getByText('건물 포인트 1개')).toBeVisible()
+  })
+
+  test('PC 세대 상세에서 폭을 늘리고 상가 세대를 추가한다', async () => {
+    window.localStorage.removeItem('desktop-map-detail-width')
+    const onAddUnit = vi.fn(async () => [999])
+    render(<MemoryRouter><DesktopMap {...(mapProps() as never)} onAddUnit={onAddUnit} /></MemoryRouter>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'zoom close' }))
+    fireEvent.click(screen.getByRole('button', { name: '첫 건물 열기' }))
+
+    const resizer = screen.getByRole('separator', { name: '세대 상세 폭 조절' })
+    fireEvent.keyDown(resizer, { key: 'ArrowLeft' })
+    expect(window.localStorage.getItem('desktop-map-detail-width')).toBe('552')
+
+    fireEvent.click(screen.getByRole('button', { name: /101호/ }))
+    expect(screen.getByText('세대 정보')).toBeVisible()
+    expect(screen.getByRole('combobox', { name: '장소 종류' })).toHaveValue('주택')
+
+    fireEvent.click(screen.getByRole('button', { name: /\+ 세대 추가/ }))
+    const usageGroup = screen.getByRole('group', { name: '장소 종류' })
+    fireEvent.click(within(usageGroup).getByRole('button', { name: '상가' }))
+    fireEvent.change(screen.getByPlaceholderText(/101/), { target: { value: '202' } })
+    fireEvent.click(screen.getByRole('button', { name: '추가' }))
+
+    expect(onAddUnit).toHaveBeenCalledWith(1, '202', '상가')
   })
 })
