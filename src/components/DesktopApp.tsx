@@ -280,7 +280,7 @@ export function DesktopApp({
   onUpdateUnitStatus: (buildingId: number, unitId: number, status: UnitStatus, memo?: string) => void
   onQuickLogVisit: (buildingId: number, unitId: number, result: UnitStatus, invitationLeft?: boolean) => void
   onToggleInvitationLeft: (buildingId: number, unitId: number) => void
-  onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void
+  onUpdateUnitFlags: (unitId: number, flags: Partial<Unit>) => void | Promise<boolean>
   onSaveCardBoundary: (cardId: number, points: GeoPoint[]) => Promise<boolean>
   onRestoreCardBoundaries?: (boundaries: CardBoundary[]) => Promise<void> | void
   onMergeCardBoundaries?: (input: {
@@ -354,7 +354,7 @@ export function DesktopApp({
     rawActivePage === '지도' && viewMode === 'leader' ? '구역' : rawActivePage
 
   const visibleDesktopPages: DesktopPage[] = viewMode === 'user'
-    ? ['홈', '캘린더', '활동', '설정']
+    ? ['홈', '캘린더', '활동', '지도', '설정']
     : viewMode === 'leader'
       ? ['홈', '캘린더', '활동', '배정', '구역', '설정']
       : ['홈', '캘린더', '구역', '지도', '배정', '통계', '설정']
@@ -670,9 +670,14 @@ export function DesktopApp({
               currentVisitor={currentVisitor}
               role={viewMode}
               serviceSessions={serviceSessions}
+              informalAssets={informalAssets}
+              eventInformalAssignments={eventInformalAssignments}
+              eventRestaurantAssignments={eventRestaurantAssignments}
               returnVisits={returnVisits}
               returnVisitLogs={returnVisitLogs}
               onOpenMap={openCardOnMap}
+              onOpenInformalMap={openInformalOnMap}
+              onOpenBuildingMap={openBuildingOnMap}
               onEndServiceSession={onEndServiceSession}
               onAddReturnVisitLog={onAddReturnVisitLog}
             />

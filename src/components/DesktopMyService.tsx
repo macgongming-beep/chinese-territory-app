@@ -1,9 +1,10 @@
 import { t } from '../i18n'
 import type { AppLanguage } from '../i18n'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Building, CalendarEvent, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot } from '../types'
+import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, ReturnVisit, ReturnVisitLog, Role, ServiceSession, TerritoryCard, TimeSlot } from '../types'
 import { getAssignmentTeamMembers } from '../utils/assignmentTeamMembers'
 import { getUserReturnVisits } from '../utils/returnVisits'
+import { msg } from '../lib/msg'
 
 function assignmentCardIds(assignment?: CalendarEvent['cardAssignments'][number]) {
   if (!assignment) return []
@@ -66,9 +67,14 @@ export function DesktopMyService({
   currentVisitor,
   role,
   serviceSessions,
+  informalAssets = [],
+  eventInformalAssignments = [],
+  eventRestaurantAssignments = [],
   returnVisits = [],
   returnVisitLogs = [],
   onOpenMap,
+  onOpenInformalMap,
+  onOpenBuildingMap,
   onEndServiceSession: _onEndServiceSession,  // 종료 버튼 제거 — auto_close가 처리. 후방호환 유지.
   onAddReturnVisitLog,
 }: {
@@ -79,9 +85,14 @@ export function DesktopMyService({
   currentVisitor: string
   role: Role
   serviceSessions: ServiceSession[]
+  informalAssets?: InformalAsset[]
+  eventInformalAssignments?: EventInformalAssignment[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
   returnVisits?: ReturnVisit[]
   returnVisitLogs?: ReturnVisitLog[]
   onOpenMap: (cardId: number) => void
+  onOpenInformalMap?: (assetId: number) => void
+  onOpenBuildingMap?: (buildingId: number) => void
   onEndServiceSession: (sessionId: number) => void
   onAddReturnVisitLog?: (returnVisitId: number, result: '만남' | '부재' | null, memo: string) => Promise<void>
 }) {
@@ -197,7 +208,7 @@ export function DesktopMyService({
     <section className="desktop-my-service-page">
       <header className="page-header">
         <div className="page-header-text">
-          <h1 className="page-header-title">활동</h1>
+          <h1 className="page-header-title">{t(language, 'territory.title')}</h1>
           <p className="page-header-subtitle">{formatToday()} · 오늘 배정 확인과 봉사 실행</p>
         </div>
       </header>
@@ -216,6 +227,13 @@ export function DesktopMyService({
               <div className="dms-today-list">
                 {myTodayAssignments.map(({ event, cards: assignedCards, teammates }) => {
                   const isOpen = expandedEventIds.has(event.id)
+                  const myInformal = eventInformalAssignments.filter(
+                    (assignment) => assignment.eventId === event.id && assignment.userName === currentVisitor,
+                  )
+                  const myRestaurants = eventRestaurantAssignments.filter(
+                    (assignment) => assignment.eventId === event.id && assignment.userName === currentVisitor,
+                  )
+                  const totalAssignments = assignedCards.length + myInformal.length + myRestaurants.length
                   return (
                     <article className={`dms-today-card${isOpen ? ' open' : ''}`} key={event.id}>
                       <button
@@ -236,15 +254,16 @@ export function DesktopMyService({
                           {/* 인도자는 생략 — 같이 도는 팀원 이름만 보이면 충분하다 */}
                           {teammates.length > 0 && <small>팀원 {teammates.join(', ')}</small>}
                         </div>
-                        <b>{assignedCards.length}개 카드</b>
+                        <b>{t(language, 'territory.assignmentCount', { count: totalAssignments })}</b>
                       </button>
 
                       {isOpen && (
                         <div className="dms-assigned-card-list">
-                          {assignedCards.length === 0 ? (
-                            <div className="dms-empty compact">배정된 카드가 없습니다.</div>
-                          ) : assignedCards.map((card) => {
-                            return (
+                          {totalAssignments === 0 ? (
+                            <div className="dms-empty compact">{t(language, 'territory.noAssignedPlaces')}</div>
+                          ) : (
+                            <>
+                              {assignedCards.map((card) => (
                               <div className="dms-assigned-card" key={card.id}>
                                 <div>
                                   <strong>
@@ -255,8 +274,55 @@ export function DesktopMyService({
                                 <em>{card.progress}%</em>
                                 <button onClick={() => onOpenMap(card.id)} type="button">지도</button>
                               </div>
-                            )
-                          })}
+                              ))}
+                              {myInformal.map((assignment) => {
+                                const asset = informalAssets.find((item) => item.id === assignment.assetId)
+                                if (!asset) return null
+                                return (
+                                  <div className="dms-assigned-card dms-assigned-card--informal" key={`informal-${assignment.id}`}>
+                                    <div>
+                                      <strong>{asset.name}</strong>
+                                      <span>{asset.memo || t(language, 'territory.informalMaterial')}</span>
+                                    </div>
+                                    <em>{msg('비공식')}</em>
+                                    {onOpenInformalMap ? (
+                                      <button onClick={() => onOpenInformalMap(asset.id)} type="button">{msg('구역 보기')}</button>
+                                    ) : asset.imageUrl ? (
+                                      <button onClick={() => window.open(asset.imageUrl, '_blank', 'noopener,noreferrer')} type="button">{msg('자료 보기')}</button>
+                                    ) : <span />}
+                                  </div>
+                                )
+                              })}
+                              {myRestaurants.map((assignment) => {
+                                const building = buildings.find((item) => item.id === assignment.buildingId)
+                                if (!building) return null
+                                const unit = assignment.unitId != null
+                                  ? building.units.find((item) => item.id === assignment.unitId)
+                                  : null
+                                const restaurantName = unit?.number || building.name || building.address
+                                return (
+                                  <div className="dms-assigned-card dms-assigned-card--restaurant" key={`restaurant-${assignment.id}`}>
+                                    <div>
+                                      <strong>{restaurantName}</strong>
+                                      <span>{unit ? (building.name || building.address) : building.address}</span>
+                                    </div>
+                                    <em>{msg('식당')}</em>
+                                    <button
+                                      onClick={() => {
+                                        if (building.lat && building.lng) {
+                                          const destination = encodeURIComponent(building.name || building.address)
+                                          window.open(`https://map.naver.com/p/search/${destination}`, '_blank', 'noopener,noreferrer')
+                                        } else {
+                                          onOpenBuildingMap?.(building.id)
+                                        }
+                                      }}
+                                      type="button"
+                                    >{msg('길찾기')}</button>
+                                  </div>
+                                )
+                              })}
+                            </>
+                          )}
                         </div>
                       )}
                     </article>

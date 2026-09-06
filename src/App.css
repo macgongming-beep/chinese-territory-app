@@ -4383,6 +4383,14 @@ button:focus-visible {
   text-align: right;
 }
 
+.dms-assigned-card--informal em {
+  color: #72558f;
+}
+
+.dms-assigned-card--restaurant em {
+  color: #9a6421;
+}
+
 .dms-assigned-card button,
 .dms-regular-item button,
 .dms-active-actions button,
