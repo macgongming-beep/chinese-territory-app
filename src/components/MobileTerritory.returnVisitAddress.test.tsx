@@ -162,8 +162,11 @@ describe('정기방문 저장', () => {
     const create = vi.fn().mockResolvedValue(true)
     renderIt({ onCreateManualReturnVisit: create })
     openAddSheet()
+    expect(screen.getByRole('group', { name: '오늘 결과' })).toHaveClass('rv-add-choice-grid')
+    expect(screen.getByRole('button', { name: '기록 안 함' })).toHaveAttribute('aria-pressed', 'true')
     fireEvent.change(screen.getByPlaceholderText('예: 공원 앞 댁'), { target: { value: '김씨' } })
     fireEvent.click(screen.getByRole('button', { name: '만남' }))
+    expect(screen.getByRole('button', { name: '만남' })).toHaveClass('is-active')
     fireEvent.change(screen.getByPlaceholderText('예: 매주 화요일 방문'), { target: { value: '다음 주 재방문' } })
     fireEvent.click(screen.getByRole('button', { name: '저장' }))
 

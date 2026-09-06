@@ -1374,7 +1374,7 @@ export function MobileTerritory({
         {/* ── 수동 추가 시트 ── */}
         {showAddSheet && (
           <div className="rv-log-backdrop" onClick={() => setShowAddSheet(false)}>
-            <div className="rv-log-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="rv-log-sheet rv-add-sheet" onClick={(e) => e.stopPropagation()}>
               <div className="rv-log-header">
                 <strong>{t(language, 'territory.addRegularVisit')}</strong>
               </div>
@@ -1605,21 +1605,21 @@ export function MobileTerritory({
               {/* 첫 방문 결과 */}
               <div className="rv-add-field">
                 <label className="rv-add-label">{msg('오늘 결과')} <span className="rv-add-optional">{t(language, 'territory.optional')}</span></label>
-                <div className="rv-log-result-chips" role="group" aria-label={msg('오늘 결과')}>
+                <div className="rv-add-choice-grid" role="group" aria-label={msg('오늘 결과')}>
                   <button
-                    className={`rv-chip${addFirstResult === null ? ' rv-chip-selected' : ''}`}
+                    className={`rv-add-choice rv-add-choice-none${addFirstResult === null ? ' is-active' : ''}`}
                     type="button"
                     aria-pressed={addFirstResult === null}
                     onClick={() => setAddFirstResult(null)}
                   >{msg('기록 안 함')}</button>
                   <button
-                    className={`rv-chip${addFirstResult === '만남' ? ' rv-chip-meet' : ''}`}
+                    className={`rv-add-choice rv-add-choice-meet${addFirstResult === '만남' ? ' is-active' : ''}`}
                     type="button"
                     aria-pressed={addFirstResult === '만남'}
                     onClick={() => setAddFirstResult('만남')}
                   >{t(language, 'map.met')}</button>
                   <button
-                    className={`rv-chip${addFirstResult === '부재' ? ' rv-chip-absent' : ''}`}
+                    className={`rv-add-choice rv-add-choice-absent${addFirstResult === '부재' ? ' is-active' : ''}`}
                     type="button"
                     aria-pressed={addFirstResult === '부재'}
                     onClick={() => setAddFirstResult('부재')}

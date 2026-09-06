@@ -9432,6 +9432,60 @@ button:focus-visible {
   gap: 12px;
 }
 
+.rv-add-sheet {
+  max-height: calc(90svh / var(--app-zoom, 1));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--bg, #f5f6f8);
+}
+
+.rv-add-sheet .rv-log-header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+}
+
+.rv-add-sheet .rv-add-input {
+  border-color: #d9dde2;
+  background: var(--surface, #fff);
+  box-shadow: 0 1px 1px rgba(24, 24, 22, 0.025);
+}
+
+.rv-add-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.rv-add-choice {
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid #d9dde2;
+  border-radius: 7px;
+  background: var(--surface, #fff);
+  color: var(--muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rv-add-choice-none.is-active {
+  border-color: #8d918e;
+  background: #e9eae8;
+  color: var(--ink, #171715);
+}
+
+.rv-add-choice-meet.is-active {
+  border-color: #86a383;
+  background: #e7f0e6;
+  color: #365b34;
+}
+
+.rv-add-choice-absent.is-active {
+  border-color: #8995a3;
+  background: #e9edf2;
+  color: #334155;
+}
+
 /* 시트 헤더 */
 .rv-log-header { display: flex; flex-direction: column; gap: 2px; }
 .rv-log-header strong { font-size: 17px; font-weight: 700; color: var(--ink); }
