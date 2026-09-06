@@ -11828,12 +11828,10 @@ button:focus-visible {
   }
   .event-applicants-strip {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
-    overflow-x: auto;
     padding-bottom: 4px;
-    scrollbar-width: none;
   }
-  .event-applicants-strip::-webkit-scrollbar { display: none; }
   .event-applicant-chip {
     display: inline-flex;
     align-items: center;

@@ -770,9 +770,6 @@ export function DesktopCalendar({
                 const canManage = role === 'admin' || role === 'developer'
                 const canManageParticipants = canEdit
 
-                const previewApplicants = event.applicants.slice(0, 7)
-                const overflow = event.applicants.length - previewApplicants.length
-
                 return (
                   <EventDetailCard
                     buildings={buildings}
@@ -789,8 +786,6 @@ export function DesktopCalendar({
                     canManageParticipants={canManageParticipants}
                     canAccessChat={canAccessChat}
                     isApplied={isApplied}
-                    previewApplicants={previewApplicants}
-                    overflow={overflow}
                     currentUserId={currentUserId}
                     currentVisitor={currentVisitor}
                     mentionUsers={mentionUsers}
@@ -957,8 +952,6 @@ function EventDetailCard({
   canManageParticipants,
   canAccessChat,
   isApplied,
-  previewApplicants,
-  overflow,
   currentUserId,
   currentVisitor,
   mentionUsers,
@@ -990,8 +983,6 @@ function EventDetailCard({
   canManageParticipants: boolean
   canAccessChat: boolean
   isApplied: boolean
-  previewApplicants: string[]
-  overflow: number
   currentUserId?: number | null
   currentVisitor: string
   mentionUsers: import('./CommentSection').MentionUser[]
@@ -1191,7 +1182,7 @@ function EventDetailCard({
             )}
           </div>
         <div className="event-applicants-strip">
-          {previewApplicants.map((name) => (
+          {event.applicants.map((name) => (
             <span className="event-applicant-chip" key={name}>
               <span className={`event-applicant-avatar${event.assigned.includes(name) ? ' assigned' : ''}`}>{name.slice(0, 1)}</span>
               <span className="event-applicant-name">{name}</span>
@@ -1211,9 +1202,6 @@ function EventDetailCard({
               )}
             </span>
           ))}
-          {overflow > 0 && (
-            <span className="event-applicants-overflow">+{overflow}</span>
-          )}
           {/* "+ 추가" 칩 제거 — 상단 신청하기 버튼과 동일 기능으로 중복 */}
           {event.applicants.length === 0 && !event.allowApplications && (
             <span style={{ fontSize: 12, color: 'var(--gray-400)', padding: '6px 2px' }}>신청자가 없습니다</span>

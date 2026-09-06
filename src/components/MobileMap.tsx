@@ -1560,11 +1560,11 @@ export function MobileMap({
                 setAddLat(lat)
                 setAddLng(lng)
               }}
-              onMoveBuilding={(id, lat, lng) => {
+              onMoveBuilding={async (id, lat, lng) => {
                 const b = buildings.find(item => item.id === id)
                 if (b) {
-                  onUpdateBuilding(id, b.name, b.address, lat, lng)
-                  showToast(`${placeLabel(b.name || b.address)} ${t(language, 'map.pinSaved')}`, 'success')
+                  const saved = await onUpdateBuilding(id, b.name, b.address, lat, lng)
+                  if (saved) showToast(`${placeLabel(b.name || b.address)} ${t(language, 'map.pinSaved')}`, 'success')
                 }
               }}
               isMobile={true}

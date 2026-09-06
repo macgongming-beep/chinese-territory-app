@@ -108,4 +108,16 @@ describe('PC 일정 배정 권한', () => {
     expect(editor.textContent).toContain('인도자 담당 구역')
     expect(editor.textContent).not.toContain('다른 인도자 구역')
   })
+
+  test('신청자가 일곱 명을 넘어도 전부 보여 준다', () => {
+    const applicants = Array.from({ length: 10 }, (_, index) => `신청자${index + 1}`)
+    render(
+      <MemoryRouter>
+        <DesktopCalendar {...(calendarProps({ events: [{ ...event, applicants }] }) as never)} />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('신청자10')).toBeTruthy()
+    expect(screen.queryByText('+3')).toBeNull()
+  })
 })

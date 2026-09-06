@@ -38,6 +38,7 @@ import type { CardMergeUndoSnapshot } from '../hooks/storeMutations/cardBoundari
 import { msg } from '../lib/msg'
 import { placeDeletionCopy } from '../utils/placeDeletion'
 import { buildingHasUsage, effectiveUnitUsage, scopeBuildingToUsage, unitsForUsage } from '../utils/unitUsage'
+import { getNextMobileMapDetailLevel, type MobileMapDetailLevel } from '../utils/mapClustering'
 
 type VisitResultFilter = '전체' | '부재' | '만남'
 type HistoryEditor = {
@@ -190,6 +191,7 @@ export function DesktopMap({
   const [cardFilter, setCardFilter] = useState<number | '전체'>('전체')
   const [regionFilter, setRegionFilter] = useState<TerritoryRegion | '전체'>('전체')
   const [areaFilter, setAreaFilter] = useState('전체')
+  const [automaticMapDetail, setAutomaticMapDetail] = useState<MobileMapDetailLevel>('region')
   const [regionAllCards, setRegionAllCards] = useState(false)
   const [targetTypeFilter, setTargetTypeFilter] = useState<VisitTargetType>('전체')
   const [editingHistoryId, setEditingHistoryId] = useState<number | null>(null)
@@ -757,12 +759,17 @@ export function DesktopMap({
     [contextBuildings, hiddenMapStatuses],
   )
 
-  // 집계 마커 (항상 동 단위) — 동 미선택 + 카드 미선택 + 그리기 모드 X 일 때 활성
-  // 구 단위 클러스터는 건너뜀 — 처음부터 동별 묶음을 보고, 동 클릭 시 개별 마커
-  // 카드·동 미선택 시 집계 마커 사용 (구 선택 여부와 무관)
+  // 선택한 범위는 사람이 정한 필터이므로 줌보다 우선한다. 그 밖에서는 확대에 따라
+  // 구 → 동 → 건물로 전환한다. 이 둘을 섞으면 동을 고른 뒤 줌할 때 다시 구로 튄다.
+  const mapDetailLevel: MobileMapDetailLevel = areaFilter !== '전체'
+    ? 'building'
+    : regionFilter !== '전체'
+      ? automaticMapDetail === 'building' ? 'building' : 'area'
+      : automaticMapDetail
+
   const shouldUseAggregateMap =
     cardFilter === '전체' &&
-    areaFilter === '전체' &&
+    mapDetailLevel !== 'building' &&
     !focusedBuildingId &&
     !drawingBoundary &&
     !addingBuilding &&
@@ -773,57 +780,30 @@ export function DesktopMap({
     type Acc = MapAggregateMarker & { latSum: number; lngSum: number; pointCount: number }
     const groups = new Map<string, Acc>()
 
-    // 구 미선택 → 구 단위 집계 (건물 전체를 처리하지 않고 buildings 전체를 사용하면 무거우므로
-    //   contextBuildings 대신 buildings를 직접 순회하되 구 단위라 마커 수가 5~6개로 매우 적음)
-    if (regionFilter === '전체') {
-      buildings.forEach((building) => {
-        const card = cardMap.get(building.cardId)
-        if (!card) return
-        const region = String(card.region)
-        if (!region) return
-        const id = `region:${region}`
-        const current = groups.get(id) ?? {
-          id, label: region,
-          count: 0, unitCount: 0, houseCount: 0, shopCount: 0,
-          lat: 0, lng: 0, latSum: 0, lngSum: 0, pointCount: 0,
-        }
-        current.count += 1
-        current.unitCount += unitsForUsage(building, '전체').length
-        current.houseCount += unitsForUsage(building, '주택').length
-        current.shopCount += unitsForUsage(building, '상가').length
-        if (Number.isFinite(building.lat) && Number.isFinite(building.lng)) {
-          current.latSum += building.lat
-          current.lngSum += building.lng
-          current.pointCount += 1
-        }
-        groups.set(id, current)
-      })
-    } else {
-      // 구 선택 → 동 단위 집계 (해당 구 건물만)
-      mapBuildings.forEach((building) => {
-        const card = cardMap.get(building.cardId)
-        if (!card) return
-        const region = String(card.region)
-        const area = card.area
-        if (!area) return
-        const id = `area:${region}::${area}`
-        const current = groups.get(id) ?? {
-          id, label: area,
-          count: 0, unitCount: 0, houseCount: 0, shopCount: 0,
-          lat: 0, lng: 0, latSum: 0, lngSum: 0, pointCount: 0,
-        }
-        current.count += 1
-        current.unitCount += unitsForUsage(building, '전체').length
-        current.houseCount += unitsForUsage(building, '주택').length
-        current.shopCount += unitsForUsage(building, '상가').length
-        if (Number.isFinite(building.lat) && Number.isFinite(building.lng)) {
-          current.latSum += building.lat
-          current.lngSum += building.lng
-          current.pointCount += 1
-        }
-        groups.set(id, current)
-      })
-    }
+    mapBuildings.forEach((building) => {
+      const card = cardMap.get(building.cardId)
+      if (!card) return
+      const region = String(card.region)
+      const area = card.area
+      const label = mapDetailLevel === 'area' ? area : region
+      if (!label) return
+      const id = mapDetailLevel === 'area' ? `area:${region}::${area}` : `region:${region}`
+      const current = groups.get(id) ?? {
+        id, label,
+        count: 0, unitCount: 0, houseCount: 0, shopCount: 0,
+        lat: 0, lng: 0, latSum: 0, lngSum: 0, pointCount: 0,
+      }
+      current.count += 1
+      current.unitCount += unitsForUsage(building, '전체').length
+      current.houseCount += unitsForUsage(building, '주택').length
+      current.shopCount += unitsForUsage(building, '상가').length
+      if (Number.isFinite(building.lat) && Number.isFinite(building.lng)) {
+        current.latSum += building.lat
+        current.lngSum += building.lng
+        current.pointCount += 1
+      }
+      groups.set(id, current)
+    })
 
     return Array.from(groups.values())
       .filter((g) => g.pointCount > 0)
@@ -834,7 +814,7 @@ export function DesktopMap({
         lat: g.latSum / g.pointCount, lng: g.lngSum / g.pointCount,
       }))
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'))
-  }, [buildings, mapBuildings, cardMap, shouldUseAggregateMap, regionFilter])
+  }, [mapBuildings, cardMap, shouldUseAggregateMap, mapDetailLevel])
 
   const aggregateMapBuildings = shouldUseAggregateMap ? [] : mapBuildings
 
@@ -1945,6 +1925,9 @@ export function DesktopMap({
               buildings={informalOnlyBoundaries ? [] : aggregateMapBuildings}
               aggregateMarkers={informalOnlyBoundaries ? [] : mapAggregateMarkers}
               onSelectAggregate={handleSelectAggregateMarker}
+              onZoomChange={(zoom) => {
+                setAutomaticMapDetail((current) => getNextMobileMapDetailLevel(current, zoom))
+              }}
               cardBoundaries={informalOnlyBoundaries ? [] : cardBoundaries}
               highlightedCardIds={highlightedCardIds}
               selectedCardIds={boundaryMultiSelectMode ? selectedBoundaryCardIds : undefined}
@@ -2030,11 +2013,11 @@ export function DesktopMap({
                 setNewBuildingLat(lat)
                 setNewBuildingLng(lng)
               }}
-              onMoveBuilding={(id, lat, lng) => {
+              onMoveBuilding={async (id, lat, lng) => {
                 const b = buildings.find(item => item.id === id)
                 if (b) {
-                  onUpdateBuilding(id, b.name, b.address, lat, lng)
-                  showToast(msg('{v1} 핀 위치가 저장됐습니다', { v1: b.name || b.address }), 'success')
+                  const saved = await onUpdateBuilding(id, b.name, b.address, lat, lng)
+                  if (saved) showToast(msg('{v1} 핀 위치가 저장됐습니다', { v1: b.name || b.address }), 'success')
                 }
               }}
               isMobile={false}

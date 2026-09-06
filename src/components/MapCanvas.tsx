@@ -599,8 +599,6 @@ function NaverMapCanvas({
   addingBuildingRef.current = addingBuilding
   const editingBuildingLocationRef = useRef(editingBuildingLocation)
   editingBuildingLocationRef.current = editingBuildingLocation
-  const isMobileRef = useRef(isMobile)
-  isMobileRef.current = isMobile
   const onSelectBuildingRef = useRef(onSelectBuilding)
   onSelectBuildingRef.current = onSelectBuilding
   const onMoveBuildingRef = useRef(onMoveBuilding)
@@ -1240,7 +1238,9 @@ function NaverMapCanvas({
     if (!naver?.maps || !mapInstanceRef.current) return
 
     const zoom = mapInstanceRef.current.getZoom()
-    const rawBounds = isMobileRef.current && zoom >= 15
+    // 가까이 확대했을 때는 모바일과 PC 모두 화면 주변 구역선만 유지한다.
+    // PC만 600여 폴리곤을 계속 그리던 탓에 줌·팬마다 SVG 갱신이 끊겼다.
+    const rawBounds = zoom >= 15
       ? mapInstanceRef.current.getBounds?.()
       : null
     const visibleBoundaries = rawBounds?.getSW && rawBounds?.getNE

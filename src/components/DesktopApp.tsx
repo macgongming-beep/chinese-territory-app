@@ -956,7 +956,7 @@ export function DesktopApp({
           } />
           <Route path="service-logs" element={
             actualRole === 'developer'
-              ? <section className="la-page" style={{ alignItems: 'center' }}><div style={{ maxWidth: 640, width: '100%', position: 'relative', padding: '24px 0' }}><ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={actualRole} isEmbedded visitHistories={visitHistories} buildings={buildings} /></div></section>
+              ? <section className="la-page" style={{ alignItems: 'center' }}><div style={{ maxWidth: 1100, width: '100%', position: 'relative', padding: '24px' }}><ServiceLogPage cards={cards} calendarEvents={calendarEvents} role={actualRole} isEmbedded visitHistories={visitHistories} buildings={buildings} /></div></section>
               : <Navigate to="/settings/profile" replace />
           } />
           <Route path="regular-visits" element={
