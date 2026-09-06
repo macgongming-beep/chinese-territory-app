@@ -10,7 +10,6 @@ import { DesktopTerritory } from './DesktopTerritory'
 import { DesktopMyService } from './DesktopMyService'
 import { DesktopMap } from './DesktopMap'
 import { DesktopAdminAssignment } from './DesktopAdminAssignment'
-import { DesktopLeaderAssignment } from './DesktopLeaderAssignment'
 import { AdminSuggestions } from './admin/AdminSuggestions'
 import { MobileUsers } from './MobileUsers'
 import { MobileNotices } from './MobileNotices'
@@ -205,8 +204,13 @@ export function DesktopApp({
   onAssignCardToEventParticipant: (eventId: number, userName: string, cardId: number | null) => void
   onAssignCardsToEventParticipantsBulk: (
     eventId: number,
-    assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null }>,
-    options?: { silentSuccess?: boolean; status?: 'confirmed' | 'shared' },
+    assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null; teamKey?: string | null }>,
+    options?: {
+      silentSuccess?: boolean
+      status?: 'confirmed' | 'shared'
+      expectedSharedAt?: string | null
+      onConflict?: (serverSharedAt: string | null) => void
+    },
   ) => Promise<void> | void
   onCreateCalendarEvent: (input: { date: string; time: string; endTime?: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
   onCreateRepeatCalendarEvents: (dates: string[], input: { time: string; endTime?: string; title: string; place: string; mapLink?: string; leader: string; memo: string; hasMeeting: boolean; allowApplications: boolean }) => void
@@ -244,9 +248,9 @@ export function DesktopApp({
   onDeleteBuildings: (buildingIds: number[]) => void
   onDeleteCards: (cardIds: number[]) => void
   onMergeDuplicateBuildings: (scopeCardId?: number, nameOverrides?: Record<number, string>, selectedPrimaryIds?: number[]) => Promise<MergeResult>
-  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => void
+  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => Promise<boolean>
   onSetUnitsSurveyed?: (buildingId: number, surveyed: boolean) => Promise<boolean> | void
-  onMoveBuildingToCard: (buildingId: number, cardId: number) => void
+  onMoveBuildingToCard: (buildingId: number, cardId: number) => Promise<boolean>
   onReassignBuildingsToCards: (updates: Array<{ buildingId: number; cardId: number }>) => Promise<{ updated: number; failed: number }>
   onDeleteCardBoundary: (cardId: number) => Promise<boolean>
   onDeleteNotice: (id: number) => void
@@ -254,7 +258,7 @@ export function DesktopApp({
   specialPeriods: SpecialPeriod[]
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onRemoveParticipantFromEvent: (eventId: number, userName: string) => void
-  onAddParticipantToEvent: (eventId: number, userName: string) => void
+  onAddParticipantToEvent: (eventId: number, userName: string, participantRole?: '신청' | '게스트') => void | Promise<void>
   allUsers: Array<{ id: number; name: string; role: string; approvalStatus?: 'pending' | 'approved' | 'blocked'; isActive?: boolean }>
   returnVisits?: ReturnVisit[]
   returnVisitLogs?: ReturnVisitLog[]
@@ -356,7 +360,7 @@ export function DesktopApp({
   const visibleDesktopPages: DesktopPage[] = viewMode === 'user'
     ? ['홈', '캘린더', '활동', '설정']
     : viewMode === 'leader'
-      ? ['홈', '캘린더', '활동', '배정', '구역', '설정']
+      ? ['홈', '캘린더', '활동', '구역', '설정']
       : ['홈', '캘린더', '구역', '지도', '배정', '통계', '설정']
 
   const focusedMapCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
@@ -575,18 +579,29 @@ export function DesktopApp({
         } />
         <Route path="/calendar" element={
           <DesktopCalendar
+            buildings={buildings}
+            cardBoundaries={cardBoundaries}
+            visitHistories={visitHistories}
             informalAssets={informalAssets}
+            informalGroups={informalGroups}
             eventInformalAssignments={eventInformalAssignments}
+            eventRestaurantAssignments={eventRestaurantAssignments}
             currentVisitor={currentVisitor}
             currentUserId={currentUserId}
             leaderNames={leaderNames}
             events={calendarEvents}
             role={viewMode}
+            actualRole={actualRole}
             allUserNames={allUsers.map((u) => u.name)}
             mentionUsers={allUsers.map((user) => ({ id: user.id, name: user.name, role: user.role }))}
             onApplyToEvent={onApplyToEvent}
             onAssignToEvent={onAssignToEvent}
             onAssignCardToEventParticipant={onAssignCardToEventParticipant}
+            onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
+            onAssignInformalToUser={onAssignInformalToUser}
+            onRemoveInformalAssignment={onRemoveInformalAssignment}
+            onAssignRestaurantToUser={onAssignRestaurantToUser}
+            onRemoveRestaurantAssignment={onRemoveRestaurantAssignment}
             cards={cards}
             onCreateEvent={onCreateCalendarEvent}
             onCreateRepeatEvents={onCreateRepeatCalendarEvents}
@@ -833,28 +848,7 @@ export function DesktopApp({
               leaderNames={leaderNames}
               onSetCardLeaders={onSetCardLeaders}
             />
-          ) : (
-            <DesktopLeaderAssignment
-              cards={cards}
-              calendarEvents={calendarEvents}
-              currentVisitor={currentVisitor}
-              role={viewMode}
-              actualRole={actualRole}
-              leaderNames={leaderNames}
-              onSetCardLeaders={onSetCardLeaders}
-              onSetMultipleCardLeaders={onSetMultipleCardLeaders}
-              onAssignCardsToEventParticipantsBulk={onAssignCardsToEventParticipantsBulk}
-              buildings={buildings}
-              informalAssets={informalAssets}
-              eventInformalAssignments={eventInformalAssignments}
-              eventRestaurantAssignments={eventRestaurantAssignments}
-              onAssignInformalToUser={onAssignInformalToUser}
-              onRemoveInformalAssignment={onRemoveInformalAssignment}
-              onAssignRestaurantToUser={onAssignRestaurantToUser}
-              onRemoveRestaurantAssignment={onRemoveRestaurantAssignment}
-              onToggleBuildingRestaurant={onToggleBuildingRestaurant}
-            />
-          )
+          ) : <Navigate to="/calendar" replace />
         } />
         <Route path="/stats" element={
           <DesktopStats

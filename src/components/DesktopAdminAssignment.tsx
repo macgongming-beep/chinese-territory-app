@@ -28,7 +28,12 @@ function AssignmentStatusModal({
   const leaderStats = useMemo(() => {
     return leaders.map((leader) => {
       const leaderCards = cards.filter((card) => getCardLeaders(card).includes(leader))
-      return { leader, cards: leaderCards }
+      const latestAssignedAt = leaderCards
+        .map((card) => card.leaderAssignedAt?.[leader])
+        .filter((value): value is string => Boolean(value))
+        .sort()
+        .at(-1) ?? null
+      return { leader, cards: leaderCards, latestAssignedAt }
     })
   }, [cards, leaders])
 
@@ -45,10 +50,9 @@ function AssignmentStatusModal({
   const totalLeaders = leaders.length
   const withCards = leaderStats.filter((item) => item.cards.length > 0).length
   const totalCards = leaderStats.reduce((sum, item) => sum + item.cards.length, 0)
-  const today = new Date()
-    .toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-    .replace(/\. /g, '.')
-    .replace(/\.$/, '')
+  const formatAssignedDate = (value: string | null) => value
+    ? new Date(value).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '.').replace(/\.$/, '')
+    : '-'
 
   return (
     <div className="cal-modal-backdrop" onClick={onClose}>
@@ -79,10 +83,10 @@ function AssignmentStatusModal({
               <span>인도자</span>
               <span>담당 구역 수</span>
               <span>담당 구역 목록</span>
-              <span>최근 변경일</span>
+              <span>최근 배정일</span>
             </div>
             <div className="lam-table-body">
-              {filtered.map(({ leader, cards: leaderCards }) => {
+              {filtered.map(({ leader, cards: leaderCards, latestAssignedAt }) => {
                 const isExpanded = expandedLeader === leader
                 const shownCards = isExpanded ? leaderCards : leaderCards.slice(0, 3)
                 const extra = leaderCards.length - 3
@@ -108,7 +112,7 @@ function AssignmentStatusModal({
                         </>
                       )}
                     </div>
-                    <span className="lam-date">{leaderCards.length > 0 ? today : '-'}</span>
+                    <span className="lam-date">{formatAssignedDate(latestAssignedAt)}</span>
                   </div>
                 )
               })}
@@ -118,7 +122,7 @@ function AssignmentStatusModal({
             <span>안내</span>
             <ul>
               <li>담당 구역 목록은 최대 3개까지 표시되며, +숫자를 클릭하면 전체 목록을 확인할 수 있습니다.</li>
-              <li>최근 변경일은 오늘 날짜 기준으로 표시됩니다.</li>
+              <li>최근 배정일은 현재 담당 구역 가운데 가장 늦게 배정된 날짜입니다.</li>
             </ul>
           </div>
         </div>

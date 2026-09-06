@@ -147,7 +147,7 @@ export function DesktopMap({
     lng: number
   }) => Promise<boolean>
   onDeleteBuilding: (buildingId: number) => void
-  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => void
+  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string, isChineseHeavy?: boolean) => Promise<boolean>
   onDeleteCardBoundary: (cardId: number) => Promise<boolean>
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onSaveCardBoundary: (cardId: number, points: GeoPoint[]) => Promise<boolean>
@@ -2209,7 +2209,10 @@ export function DesktopMap({
                       </select>
                     </div>
                     <div className="edit-action-group">
-                      <button className="edit-save-btn" onClick={() => { onUpdateBuilding(building.id, editName.trim(), editAddress.trim(), undefined, undefined, editType); setEditingBuildingId(null) }}>{t(language, 'map.save')}</button>
+                      <button className="edit-save-btn" onClick={async () => {
+                        const saved = await onUpdateBuilding(building.id, editName.trim(), editAddress.trim(), undefined, undefined, editType)
+                        if (saved) setEditingBuildingId(null)
+                      }}>{t(language, 'map.save')}</button>
                       <button className="edit-cancel-btn" onClick={() => setEditingBuildingId(null)}>{t(language, 'map.cancel')}</button>
                       <button className="edit-delete-btn" onClick={() => { setPendingDeleteBuildingId(building.id); setShowDeleteBuildingConfirmModal(true) }}>{placeDeletionCopy(actualRole, 'building').actionLabel}</button>
                     </div>

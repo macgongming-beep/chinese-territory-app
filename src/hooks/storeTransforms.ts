@@ -84,7 +84,7 @@ export type RawCard = {
   status: '미배정' | '진행중' | '완료' | '보류'
   leader_name: string | null
   card_assignments: { user_name: string }[]
-  card_leader_assignments?: { user_name: string }[]
+  card_leader_assignments?: { user_name: string; created_at?: string | null }[]
 }
 
 export type RawCalendarEvent = {
@@ -333,6 +333,12 @@ export function toCard(raw: RawCard, buildings: Building[]): TerritoryCard {
   const assignedLeaders = Array.from(
     new Set((raw.card_leader_assignments ?? []).map((entry) => entry.user_name).filter(Boolean)),
   )
+  const leaderAssignedAt = (raw.card_leader_assignments ?? []).reduce<Record<string, string>>((result, entry) => {
+    if (!entry.user_name || !entry.created_at) return result
+    const previous = result[entry.user_name]
+    if (!previous || entry.created_at > previous) result[entry.user_name] = entry.created_at
+    return result
+  }, {})
 
   const base: TerritoryCard = {
     id: raw.id,
@@ -349,6 +355,7 @@ export function toCard(raw: RawCard, buildings: Building[]): TerritoryCard {
     regularVisitPoints: [],
     assignedLeader: assignedLeaders[0] ?? raw.leader_name,
     assignedLeaders,
+    leaderAssignedAt,
     assignedUsers: (raw.card_assignments ?? []).map((a) => a.user_name),
   }
   return recomputeCardStats(base, buildings)

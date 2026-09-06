@@ -137,7 +137,7 @@ export function MobileMap({
   onSetBuildingAccess: (buildingId: number, blocked: boolean, note?: string) => Promise<boolean>
   onCreateBuilding: (input: { cardId: number; name: string; address: string; type: Building['type']; lat: number; lng: number }) => void
   onDeleteBuilding: (buildingId: number) => void
-  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type']) => void
+  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type']) => Promise<boolean>
   onDeleteUnit: (buildingId: number, unitId: number) => void
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onToggleChinese: (buildingId: number, unitId: number) => void
@@ -1113,7 +1113,7 @@ export function MobileMap({
       })
       if (!ok) return
     }
-    onUpdateBuilding(
+    const saved = await onUpdateBuilding(
       building.id,
       editName.trim(),
       editAddress.trim(),
@@ -1121,7 +1121,7 @@ export function MobileMap({
       undefined,
       canChangeBuildingType ? editBuildingType : undefined,
     )
-    setEditingBuildingId(null)
+    if (saved) setEditingBuildingId(null)
   }
 
   const moveMobileMapToBuilding = (building: Building) => {

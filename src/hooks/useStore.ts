@@ -244,7 +244,7 @@ export function useStore(enabled: boolean = true) {
         const cardsQueryPromise = (async () => {
           const withLeader = await fetchAllPages((from, to) => supabase
             .from('cards')
-            .select('*, card_assignments(user_name), card_leader_assignments(user_name)')
+            .select('*, card_assignments(user_name), card_leader_assignments(user_name, created_at)')
             .order('id')
             .range(from, to))
           if (!withLeader.error) {

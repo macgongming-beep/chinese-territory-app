@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 import { confirmDialog } from '../lib/confirm'
 import { showToast } from '../lib/toast'
 import { findActivePeriod } from '../utils/specialPeriod'
-import type { CalendarEvent, EventInformalAssignment, InformalAsset, SpecialPeriod, TerritoryCard } from '../types'
+import type { Building, CalendarEvent, CardBoundary, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, InformalGroup, Role, SpecialPeriod, TerritoryCard, VisitHistory } from '../types'
 import { PERIOD_COLORS } from '../types'
 import { ChatRoom } from './ChatRoom'
 import { CommentSection, type MentionUser } from './CommentSection'
@@ -17,6 +17,8 @@ import { PlacePresetEditor, TimePresetEditor } from './admin/AdminMobileCalendar
 import { ExportEventsModal } from './calendar/ExportEventsModal'
 import { ImportEventsModal } from './calendar/ImportEventsModal'
 import { msg } from '../lib/msg'
+import { AssignmentEditor } from './assignment/AssignmentEditor'
+import { buildSharedAssignmentTeams } from './admin/sharedAssignmentTeams'
 
 
 function getCalendarDays(year: number, month: number): (number | null)[] {
@@ -62,19 +64,30 @@ type ScopeModal =
   | { kind: 'delete'; id: number; date: string; seriesId: string; title: string }
 
 export function DesktopCalendar({
+  buildings = [],
+  cardBoundaries = [],
+  visitHistories = [],
   informalAssets = [],
+  informalGroups = [],
   eventInformalAssignments = [],
+  eventRestaurantAssignments = [],
   currentVisitor,
   currentUserId,
   leaderNames = [],
   cards,
   events,
   role = 'user',
+  actualRole = role,
   allUserNames = [],
   mentionUsers = [],
   onApplyToEvent,
   onAssignToEvent: _onAssignToEvent,
   onAssignCardToEventParticipant: _onAssignCardToEventParticipant,
+  onAssignCardsToEventParticipantsBulk,
+  onAssignInformalToUser,
+  onRemoveInformalAssignment,
+  onAssignRestaurantToUser,
+  onRemoveRestaurantAssignment,
   onAddParticipant,
   onCreateEvent,
   onCreateRepeatEvents,
@@ -90,20 +103,40 @@ export function DesktopCalendar({
   globalSettings = {},
   onUpsertGlobalSetting,
 }: {
+  buildings?: Building[]
+  cardBoundaries?: CardBoundary[]
+  visitHistories?: VisitHistory[]
   informalAssets?: InformalAsset[]
+  informalGroups?: InformalGroup[]
   eventInformalAssignments?: EventInformalAssignment[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
   currentVisitor: string
   currentUserId?: number | null
   leaderNames?: string[]
   cards: TerritoryCard[]
   events: CalendarEvent[]
-  role?: import('../types').Role
+  role?: Role
+  actualRole?: Role
   allUserNames?: string[]
   mentionUsers?: MentionUser[]
   onApplyToEvent: (eventId: number) => void
   onAssignToEvent: (eventId: number, userName: string) => void
   onAssignCardToEventParticipant: (eventId: number, userName: string, cardId: number | null) => void
-  onAddParticipant?: (eventId: number, userName: string) => void
+  onAssignCardsToEventParticipantsBulk?: (
+    eventId: number,
+    assignments: Array<{ userName: string; cardId?: number | null; cardIds?: number[] | null; teamKey?: string | null }>,
+    options?: {
+      silentSuccess?: boolean
+      status?: 'confirmed' | 'shared'
+      expectedSharedAt?: string | null
+      onConflict?: (serverSharedAt: string | null) => void
+    },
+  ) => Promise<void> | void
+  onAssignInformalToUser?: (input: { eventId: number; userName: string; assetId: number; assignedBy: string }) => Promise<boolean>
+  onRemoveInformalAssignment?: (assignmentId: number) => Promise<void>
+  onAssignRestaurantToUser?: (input: { eventId: number; userName: string; buildingId: number; unitId?: number | null; assignedBy: string }) => Promise<boolean>
+  onRemoveRestaurantAssignment?: (assignmentId: number) => Promise<void>
+  onAddParticipant?: (eventId: number, userName: string, participantRole?: '신청' | '게스트') => void | Promise<void>
   onCreateEvent: (input: EventInput & { date: string }) => void
   onCreateRepeatEvents: (dates: string[], input: EventInput) => void
   onDeleteEvent: (eventId: number) => void
@@ -126,6 +159,7 @@ export function DesktopCalendar({
   const [chatEvent, setChatEvent] = useState<CalendarEvent | null>(null)
   const [isExportOpen, setIsExportOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
+  const [assignEventId, setAssignEventId] = useState<number | null>(null)
 
   // openChat=<eventId> 쿼리 처리: 해당 일정 날짜로 이동 + 채팅방 열기
   useEffect(() => {
@@ -741,8 +775,10 @@ export function DesktopCalendar({
 
                 return (
                   <EventDetailCard
+                    buildings={buildings}
                     informalAssets={informalAssets}
                     eventInformalAssignments={eventInformalAssignments}
+                    eventRestaurantAssignments={eventRestaurantAssignments}
                     key={event.id}
                     event={event}
                     cards={cards}
@@ -766,6 +802,11 @@ export function DesktopCalendar({
                     onApply={() => onApplyToEvent(event.id)}
                     onRemoveParticipant={onRemoveParticipant}
                     onOpenChat={() => setChatEvent(event)}
+                    onOpenAssignment={
+                      onAssignCardsToEventParticipantsBulk && (actualRole === 'admin' || actualRole === 'developer' || event.leaders.includes(currentVisitor))
+                        ? () => setAssignEventId(event.id)
+                        : undefined
+                    }
                     onEdit={() => {
                       setEditingEventId(event.id)
                       setEditDraft({ time: event.time, endTime: event.endTime ?? '', title: event.title, place: event.place, mapLink: event.mapLink ?? '', leader: event.leader, memo: event.memo, hasMeeting: event.hasMeeting, allowApplications: event.allowApplications })
@@ -815,75 +856,62 @@ export function DesktopCalendar({
           </div>
         </div>
       )}
+      {assignEventId !== null && onAssignCardsToEventParticipantsBulk && (() => {
+        const assignmentEvent = events.find((event) => event.id === assignEventId)
+        if (!assignmentEvent) return null
+        const isAdminLike = actualRole === 'admin' || actualRole === 'developer'
+        const assignmentCards = isAdminLike
+          ? cards
+          : cards.filter((card) => {
+              const leaders = card.assignedLeaders?.length
+                ? card.assignedLeaders
+                : card.assignedLeader ? [card.assignedLeader] : []
+              return leaders.includes(currentVisitor)
+            })
+        const canEditAssignment = isAdminLike || assignmentEvent.leaders.includes(currentVisitor)
+        return (
+          <AssignmentEditor
+            event={assignmentEvent}
+            cards={assignmentCards}
+            allCards={cards}
+            buildings={buildings}
+            visitHistories={visitHistories}
+            cardBoundaries={cardBoundaries}
+            currentVisitor={currentVisitor}
+            canEdit={canEditAssignment}
+            informalAssets={informalAssets}
+            informalGroups={informalGroups}
+            eventInformalAssignments={eventInformalAssignments}
+            eventRestaurantAssignments={eventRestaurantAssignments}
+            onAssignInformalToUser={onAssignInformalToUser}
+            onRemoveInformalAssignment={onRemoveInformalAssignment}
+            onAssignRestaurantToUser={onAssignRestaurantToUser}
+            onRemoveRestaurantAssignment={onRemoveRestaurantAssignment}
+            onAddGuest={onAddParticipant ? (eventId, name) => onAddParticipant(eventId, name, '게스트') : undefined}
+            onClose={() => setAssignEventId(null)}
+            onShare={(eventId, assignments, options) => onAssignCardsToEventParticipantsBulk(eventId, assignments, {
+              status: 'shared',
+              expectedSharedAt: options.expectedSharedAt,
+              onConflict: options.onConflict,
+            })}
+          />
+        )
+      })()}
     </>
   )
 }
 
-function getAssignmentCardIds(assignment: CalendarEvent['cardAssignments'][number]) {
-  const ids = assignment.assignedCardIds?.length
-    ? assignment.assignedCardIds
-    : assignment.assignedCardId
-      ? [assignment.assignedCardId]
-      : []
-  return Array.from(new Set(ids.filter((id): id is number => typeof id === 'number' && id > 0))).sort((a, b) => a - b)
-}
-
-function buildSharedAssignmentTeams(
-  event: CalendarEvent,
-  cards: TerritoryCard[],
-  informalAssets: InformalAsset[] = [],
-  informalAssignments: EventInformalAssignment[] = [],
-) {
-  const cardNameById = new Map(cards.map((card) => [card.id, card.name]))
-  const assetNameById = new Map(informalAssets.map((a) => [a.id, a.name]))
-  const grouped = new Map<string, { members: string[]; cardIds: number[] }>()
-
-  event.cardAssignments.forEach((assignment) => {
-    const cardIds = getAssignmentCardIds(assignment)
-    // teamKey 가 있으면 그걸로 묶는다. 구역 카드가 없어도 팀은 팀이다 —
-    // 예전에는 카드 없는 사람을 각자 한 팀으로 쪼갰다 (비공식만 맡은 6명이 6팀이 됐다)
-    const key = assignment.teamKey
-      ? `team:${assignment.teamKey}`
-      : cardIds.length ? cardIds.join(',') : `member:${assignment.userName}`
-    const existing = grouped.get(key) ?? { members: [], cardIds }
-    existing.members.push(assignment.userName)
-    grouped.set(key, existing)
-  })
-
-  return Array.from(grouped.values()).map((team, index) => {
-    const cardNames = team.cardIds.map((id) => cardNameById.get(id)).filter((name): name is string => Boolean(name))
-    // 구역이 없으면 그 팀이 맡은 비공식 자료 이름을 대신 보여 준다.
-    // 예전에는 그냥 '카드 미배정' 이라, 비공식을 받은 팀이 아무 일도 안 받은
-    // 것처럼 보였다.
-    if (cardNames.length === 0) {
-      const mine = new Set(team.members)
-      cardNames.push(...Array.from(new Set(
-        informalAssignments
-          // ⚠ **이 일정 것만.** 저장소엔 모든 일정의 배정이 들어 있어서,
-          //   이름만 보고 걸렀더니 다른 일정에서 받은 비공식이 여기 붙어 보였다.
-          .filter((a) => a.eventId === event.id && mine.has(a.userName))
-          .map((a) => assetNameById.get(a.assetId))
-          .filter((n): n is string => Boolean(n)),
-      )))
-    }
-    return {
-      id: `${team.cardIds.join('-') || 'none'}-${index}`,
-      label: `팀 ${index + 1}`,
-      members: team.members,
-      cardNames,
-    }
-  })
-}
-
-function SharedAssignmentTeams({ event, cards, informalAssets = [], eventInformalAssignments = [] }: {
+function SharedAssignmentTeams({ event, cards, informalAssets = [], eventInformalAssignments = [], buildings = [], eventRestaurantAssignments = [] }: {
   event: CalendarEvent
   cards: TerritoryCard[]
   informalAssets?: InformalAsset[]
   eventInformalAssignments?: EventInformalAssignment[]
+  buildings?: Building[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
 }) {
   if (event.assignmentStatus !== 'shared') return null
 
-  const teams = buildSharedAssignmentTeams(event, cards, informalAssets, eventInformalAssignments)
+  const teams = buildSharedAssignmentTeams(event, cards, informalAssets, eventInformalAssignments, buildings, eventRestaurantAssignments)
   if (teams.length === 0) return null
 
   return (
@@ -918,8 +946,10 @@ function SharedAssignmentTeams({ event, cards, informalAssets = [], eventInforma
 function EventDetailCard({
   event,
   cards,
+  buildings = [],
   informalAssets = [],
   eventInformalAssignments = [],
+  eventRestaurantAssignments = [],
   role,
   globalSettings,
   canEdit,
@@ -940,6 +970,7 @@ function EventDetailCard({
   onApply,
   onRemoveParticipant,
   onOpenChat,
+  onOpenAssignment,
   onEdit,
   onDelete,
   setAddParticipantEventId,
@@ -948,8 +979,10 @@ function EventDetailCard({
   /** 비공식 봉사 배정 — 구역이 없어도 맡은 일이 있으면 보여 준다 */
   informalAssets?: InformalAsset[]
   eventInformalAssignments?: EventInformalAssignment[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
   event: CalendarEvent
   cards: TerritoryCard[]
+  buildings?: Building[]
   role: import('../types').Role
   globalSettings: Record<string, string>
   canEdit: boolean
@@ -966,10 +999,11 @@ function EventDetailCard({
   addParticipantEventId: number | null
   addParticipantRef: React.RefObject<HTMLDivElement | null>
   addParticipantQuery: string
-  onAddParticipant?: (eventId: number, userName: string) => void
+  onAddParticipant?: (eventId: number, userName: string) => void | Promise<void>
   onApply: () => void
   onRemoveParticipant: (eventId: number, userName: string) => void
   onOpenChat: () => void
+  onOpenAssignment?: () => void
   onEdit: () => void
   onDelete: () => void
   setAddParticipantEventId: (id: number | null) => void
@@ -1188,7 +1222,21 @@ function EventDetailCard({
       </div>
       )}
 
-      <SharedAssignmentTeams event={event} cards={cards} informalAssets={informalAssets} eventInformalAssignments={eventInformalAssignments} />
+      {onOpenAssignment && (
+        <button className="cal-assignment-open-btn" type="button" onClick={onOpenAssignment}>
+          <span>팀 구성 및 배정</span>
+          <span aria-hidden>›</span>
+        </button>
+      )}
+
+      <SharedAssignmentTeams
+        event={event}
+        cards={cards}
+        buildings={buildings}
+        informalAssets={informalAssets}
+        eventInformalAssignments={eventInformalAssignments}
+        eventRestaurantAssignments={eventRestaurantAssignments}
+      />
 
       {/* 댓글 + 채팅 열기 — 모바일 방식: CommentSection headerRight 로 통합 */}
       <div className="event-collab-grid">

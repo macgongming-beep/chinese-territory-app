@@ -12,7 +12,7 @@
 // 단순화: 댓글/지도 썸네일은 기본 placeholder 만, 본격 기능은 다음 라운드.
 
 import { useMemo, useState } from 'react'
-import type { CalendarEvent, EventInformalAssignment, InformalAsset, Role, TerritoryCard } from '../../types'
+import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset, Role, TerritoryCard } from '../../types'
 import { buildSharedAssignmentTeams } from './sharedAssignmentTeams'
 import { confirmDialog } from '../../lib/confirm'
 import { t, translateKoreanAddress, type AppLanguage } from '../../i18n'
@@ -22,6 +22,8 @@ type Props = {
   /** 비공식 봉사 배정 — 구역이 없어도 맡은 일이 있으면 보여 준다 */
   informalAssets?: InformalAsset[]
   eventInformalAssignments?: EventInformalAssignment[]
+  buildings?: Building[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
   language?: AppLanguage
   translatePlaceNames?: boolean
   event: CalendarEvent
@@ -101,18 +103,22 @@ function SharedAssignmentTeams({
   translatePlaceNames,
   informalAssets = [],
   eventInformalAssignments = [],
+  buildings = [],
+  eventRestaurantAssignments = [],
 }: {
   event: CalendarEvent
   cards: TerritoryCard[]
   /** 비공식 봉사 배정 — 구역이 없어도 맡은 일이 있으면 보여 준다 */
   informalAssets?: InformalAsset[]
   eventInformalAssignments?: EventInformalAssignment[]
+  buildings?: Building[]
+  eventRestaurantAssignments?: EventRestaurantAssignment[]
   language: AppLanguage
   translatePlaceNames: boolean
 }) {
   if (event.assignmentStatus !== 'shared') return null
 
-  const teams = buildSharedAssignmentTeams(event, cards, informalAssets, eventInformalAssignments)
+  const teams = buildSharedAssignmentTeams(event, cards, informalAssets, eventInformalAssignments, buildings, eventRestaurantAssignments)
   if (teams.length === 0) return null
 
   return (
@@ -164,6 +170,8 @@ export function AdminEventDetailSheet({
   globalSettings = {},
   informalAssets = [],
   eventInformalAssignments = [],
+  buildings = [],
+  eventRestaurantAssignments = [],
 }: Props) {
   const isApplied = useMemo(() => event.applicants.includes(currentVisitor), [event.applicants, currentVisitor])
   const canApply = event.allowApplications
@@ -627,7 +635,7 @@ export function AdminEventDetailSheet({
           </button>
         )}
 
-        <SharedAssignmentTeams event={event} cards={cards} language={language} translatePlaceNames={translatePlaceNames} informalAssets={informalAssets} eventInformalAssignments={eventInformalAssignments} />
+        <SharedAssignmentTeams event={event} cards={cards} language={language} translatePlaceNames={translatePlaceNames} informalAssets={informalAssets} eventInformalAssignments={eventInformalAssignments} buildings={buildings} eventRestaurantAssignments={eventRestaurantAssignments} />
 
         <CommentSection
           compact

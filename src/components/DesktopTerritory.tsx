@@ -148,9 +148,9 @@ export function DesktopTerritory({
   onDeleteCards: (cardIds: number[]) => void
   onMergeDuplicateBuildings: (scopeCardId?: number, nameOverrides?: Record<number, string>, selectedPrimaryIds?: number[]) => Promise<MergeResult>
   onImportBuildings: (inputs: CsvBuildingImport[]) => Promise<{ inserted: number; skipped: number }>
-  onMoveBuildingToCard: (buildingId: number, cardId: number) => void
+  onMoveBuildingToCard: (buildingId: number, cardId: number) => Promise<boolean>
   onReassignBuildingsToCards: (updates: Array<{ buildingId: number; cardId: number }>) => Promise<{ updated: number; failed: number }>
-  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string) => void
+  onUpdateBuilding: (buildingId: number, name: string, address: string, lat?: number, lng?: number, type?: Building['type'], memo?: string) => Promise<boolean>
   onToggleChinese: (buildingId: number, unitId: number) => void
   onToggleRegularVisit: (buildingId: number, unitId: number, visitorName?: string) => void
   onSetRegularVisitor: (unitId: number, visitorName: string) => void
@@ -802,7 +802,6 @@ export function DesktopTerritory({
     let lat: number | undefined
     let lng: number | undefined
     if (addressChanged && nextAddress) {
-      setEditingBuildingId(null)
       const geocoded = await geocodeAddress(nextAddress)
       if (geocoded) {
         lat = geocoded.lat
@@ -812,7 +811,7 @@ export function DesktopTerritory({
       }
     }
 
-    onUpdateBuilding(
+    const updated = await onUpdateBuilding(
       building.id,
       draft.name.trim(),
       nextAddress,
@@ -821,8 +820,10 @@ export function DesktopTerritory({
       draft.type,
       draft.memo,
     )
+    if (!updated) return
     if (nextCardId !== building.cardId) {
-      onMoveBuildingToCard(building.id, nextCardId)
+      const moved = await onMoveBuildingToCard(building.id, nextCardId)
+      if (!moved) return
     }
     setEditingBuildingId(null)
   }

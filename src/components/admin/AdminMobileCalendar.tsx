@@ -544,8 +544,10 @@ export function AdminMobileCalendar({
       {/* ── 일정 상세 시트 ─────────────── */}
       {detailEvent && assignEventId === null && (
         <AdminEventDetailSheet
+            buildings={buildings}
             informalAssets={informalAssets}
             eventInformalAssignments={eventInformalAssignments}
+            eventRestaurantAssignments={eventRestaurantAssignments}
           language={language}
           translatePlaceNames={translatePlaceNames}
           event={detailEvent}

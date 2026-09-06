@@ -3,7 +3,7 @@
 // 화면에는 '카드 미배정' 으로 떴다.
 import { describe, test, expect } from 'vitest'
 import { buildSharedAssignmentTeams } from './sharedAssignmentTeams'
-import type { CalendarEvent, EventInformalAssignment, InformalAsset } from '../../types'
+import type { Building, CalendarEvent, EventInformalAssignment, EventRestaurantAssignment, InformalAsset } from '../../types'
 
 const members = ['崔芝園최지원', '全孝元전효원', '姜英银강영은', '徐银美서은미', '杨笑恩양소은', '任昭娟임소연']
 
@@ -42,6 +42,39 @@ describe('공유 화면 팀 묶기', () => {
 
   test('비공식도 없으면 빈 목록이다 (화면이 미배정으로 그린다)', () => {
     const teams = buildSharedAssignmentTeams(event, [], assets, [])
+    expect(teams[0].cardNames).toEqual([])
+  })
+
+  test('식당만 맡은 팀은 식당 세대 이름을 보여 준다', () => {
+    const buildings = [{
+      id: 81,
+      name: 'AK몰',
+      address: '기흥역로 63',
+      units: [{ id: 901, number: '4층 메이탄' }],
+    }] as Building[]
+    const restaurants = members.map((userName, index) => ({
+      id: index + 1,
+      eventId: 394,
+      userName,
+      buildingId: 81,
+      unitId: 901,
+    })) as EventRestaurantAssignment[]
+
+    const teams = buildSharedAssignmentTeams(event, [], [], [], buildings, restaurants)
+    expect(teams[0].cardNames).toEqual(['4층 메이탄'])
+  })
+
+  test('다른 일정의 식당은 보이지 않는다', () => {
+    const buildings = [{ id: 81, name: 'AK몰', address: '기흥역로 63', units: [] }] as Building[]
+    const restaurants = [{
+      id: 1,
+      eventId: 999,
+      userName: members[0],
+      buildingId: 81,
+      unitId: null,
+    }] as EventRestaurantAssignment[]
+
+    const teams = buildSharedAssignmentTeams(event, [], [], [], buildings, restaurants)
     expect(teams[0].cardNames).toEqual([])
   })
 })

@@ -1341,6 +1341,27 @@ button:focus-visible {
   margin: 0 0 10px;
 }
 
+.cal-assignment-open-btn {
+  width: 100%;
+  min-height: 44px;
+  margin: 0 0 12px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--border-default, #e5e7eb);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--gray-900, #111827);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cal-assignment-open-btn:hover {
+  background: var(--gray-50, #f9fafb);
+}
+
 .shared-assignment-list {
   display: grid;
   gap: 6px;

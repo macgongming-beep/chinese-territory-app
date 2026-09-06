@@ -5,7 +5,7 @@ import { buildImportPayload } from '../../utils/importBuildingPayload'
 import { explainDbError } from '../../utils/dbError'
 import { getAuthToken } from '../../lib/authToken'
 import type { MergeResult } from '../../utils/duplicateBuildingMerge'
-import { supabase, showToast, reportMutationError } from './shared'
+import { ensureAffectedRows, supabase, showToast, reportMutationError } from './shared'
 import { logServiceAction } from './serviceLog'
 import { msg } from '../../lib/msg'
 import { canonicalUnitNumber } from '../../utils/unitNumber'
@@ -397,17 +397,18 @@ export function makeBuildingMutations(deps: {
     lng?: number,
     type?: string,
     memo?: string,
-  ) => {
+  ): Promise<boolean> => {
     const payload: Record<string, unknown> = { name, address }
     if (lat !== undefined) payload.lat = lat
     if (lng !== undefined) payload.lng = lng
     if (type !== undefined) payload.type = type
     if (memo !== undefined) payload.memo = memo
-    const result = await supabase.from('buildings').update(payload).eq('id', buildingId)
+    const result = await supabase.from('buildings').update(payload).eq('id', buildingId).select('id')
     if (result.error) {
       reportMutationError(msg('건물 정보를 수정하지 못했습니다.'), result.error)
-      return
+      return false
     }
+    if (!ensureAffectedRows(result.data, msg('건물 정보를 수정하지 못했습니다.'))) return false
     const building = buildings.find((b) => b.id === buildingId)
     const card = building ? cards.find((c) => c.id === building.cardId) : undefined
     await logServiceAction({
@@ -421,16 +422,19 @@ export function makeBuildingMutations(deps: {
     if (lat === undefined) {
       showToast(msg('건물 정보가 수정됐습니다'))
     }
+    return true
   }
 
-  const moveBuildingToCard = async (buildingId: number, cardId: number) => {
-    const result = await supabase.from('buildings').update({ card_id: cardId }).eq('id', buildingId)
+  const moveBuildingToCard = async (buildingId: number, cardId: number): Promise<boolean> => {
+    const result = await supabase.from('buildings').update({ card_id: cardId }).eq('id', buildingId).select('id')
     if (result.error) {
       reportMutationError(msg('건물 카드를 변경하지 못했습니다.'), result.error)
-      return
+      return false
     }
+    if (!ensureAffectedRows(result.data, msg('건물 카드를 변경하지 못했습니다.'))) return false
     await fetchAll()
     showToast(msg('건물 카드가 변경됐습니다'))
+    return true
   }
 
   const reassignBuildingsToCards = async (
