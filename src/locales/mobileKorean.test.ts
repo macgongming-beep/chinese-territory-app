@@ -56,6 +56,7 @@ function mobileFiles(): string[] {
           'PlaceChangeRequests.tsx',
           'RegularVisitManagement.tsx',
           'RestaurantRegistrationModal.tsx',
+          'RestaurantServiceSheet.tsx',
           'RestaurantsTab.tsx',
         ].includes(entry.name)
       if (isMobile) out.push(path)

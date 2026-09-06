@@ -12,6 +12,7 @@ import { normalizeCardSearch } from '../utils/cardSearch'
 import { t, translateKoreanAddress, type AppLanguage } from '../i18n'
 import { getRestaurantUnits } from '../utils/restaurants'
 import { RESTAURANT_INITIAL_STATES, type RestaurantInitialState, type SubmitRestaurantRequest } from '../types/restaurantRegistration'
+import { msg } from '../lib/msg'
 
 // ── 아이콘 ────────────────────────────────────────────────────
 function ForkIcon() {
@@ -62,14 +63,22 @@ function ClockIcon() {
 }
 
 // ── 유틸 ─────────────────────────────────────────────────────
-function fmtVisitDate(iso: string): string {
+function fmtVisitDate(iso: string, language: AppLanguage): string {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const diff = Math.round((today.getTime() - new Date(iso.slice(0, 10)).getTime()) / 86400000)
-  if (diff === 0) return '오늘'
-  if (diff === 1) return '어제'
-  if (diff < 30) return `${diff}일 전`
+  if (diff === 0) return msg('오늘')
+  if (diff === 1) return msg('어제')
+  if (diff < 30) return language === 'zh' ? `${diff}天前` : language === 'en' ? `${diff}d ago` : `${diff}일 전`
   const d = new Date(iso)
   return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+function restaurantStateLabel(state: RestaurantInitialState, language: AppLanguage): string {
+  if (state === '정기방문') return t(language, 'territory.regularVisit')
+  if (state === '만남') return t(language, 'map.met')
+  if (state === '부재') return t(language, 'map.absent')
+  if (state === '대상외') return t(language, 'map.notTarget')
+  return t(language, 'map.unvisited')
 }
 
 type RestaurantRow = {
@@ -280,7 +289,7 @@ export function RestaurantServiceSheet({
           <div className="restaurant-sheet-head">
             <span className="restaurant-sheet-icon"><ForkIcon /></span>
             <h2>{t(language, 'restaurant.title')}</h2>
-            <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            <button className="restaurant-sheet-close" type="button" aria-label={msg('닫기')} onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
 
           <div className="restaurant-search-wrap">
@@ -315,7 +324,7 @@ export function RestaurantServiceSheet({
                       <strong className="restaurant-item-name">{req.name}</strong>
                       <span className="restaurant-item-address">{req.address}</span>
                     </div>
-                    <span className="restaurant-item-pending-badge">대기중</span>
+                    <span className="restaurant-item-pending-badge">{msg('대기중')}</span>
                     <ChevronRight />
                   </button>
                 ))}
@@ -326,13 +335,13 @@ export function RestaurantServiceSheet({
               <div className="restaurant-empty">
                 {search.trim() ? (
                   <>
-                    <p>"{search}" 검색 결과가 없습니다</p>
+                    <p>{msg('"{query}" 검색 결과가 없습니다', { query: search })}</p>
                     <button type="button" className="restaurant-add-request-btn" onClick={handleOpenAddRequest}>
-                      + 이 식당 추가 신청
+                      {msg('이 식당 추가 신청')}
                     </button>
                   </>
                 ) : myPendingRequests.length > 0 ? null : (
-                  <p>등록된 식당이 없습니다</p>
+                  <p>{msg('등록된 식당이 없습니다')}</p>
                 )}
               </div>
             ) : (
@@ -371,7 +380,7 @@ export function RestaurantServiceSheet({
                                   <span className="restaurant-item-address">{translateKoreanAddress(b.address, language, translatePlaceNames)}</span>
                                   {lastHistory && (
                                     <span className="restaurant-item-last">
-                                      마지막: {fmtVisitDate(lastHistory.visitedAt)}
+                                      {msg('마지막')}: {fmtVisitDate(lastHistory.visitedAt, language)}
                                       {lastHistory.visitor ? ` · ${lastHistory.visitor}` : ''}
                                     </span>
                                   )}
@@ -388,7 +397,7 @@ export function RestaurantServiceSheet({
                 {search.trim() && (
                   <div className="restaurant-add-row">
                     <button type="button" className="restaurant-add-request-btn" onClick={handleOpenAddRequest}>
-                      + "{search}" 식당 추가 신청
+                      {msg('"{query}" 식당 추가 신청', { query: search })}
                     </button>
                   </div>
                 )}
@@ -409,11 +418,11 @@ export function RestaurantServiceSheet({
         <section className="mobile-sheet restaurant-service-sheet" onClick={(e) => e.stopPropagation()}>
           <div className="mobile-sheet-handle" />
           <div className="restaurant-sheet-head">
-            <button type="button" className="restaurant-back-btn" onClick={handleBack} aria-label="뒤로">
+            <button type="button" className="restaurant-back-btn" onClick={handleBack} aria-label={msg('뒤로')}>
               <BackIcon />
             </button>
             <h2>{selectedRestaurantName}</h2>
-            <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            <button className="restaurant-sheet-close" type="button" aria-label={msg('닫기')} onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
 
           <div className="restaurant-record-body">
@@ -424,11 +433,11 @@ export function RestaurantServiceSheet({
             {/* 이전 기록 */}
             {buildingHistories.length > 0 && (
               <div className="restaurant-history-section">
-                <p className="restaurant-history-label">이전 기록</p>
+                <p className="restaurant-history-label">{msg('이전 기록')}</p>
                 <ul className="restaurant-history-list">
                   {buildingHistories.map((h) => (
                     <li key={h.id} className="restaurant-history-item">
-                      <span className="restaurant-history-date">{fmtVisitDate(h.visitedAt)}</span>
+                      <span className="restaurant-history-date">{fmtVisitDate(h.visitedAt, language)}</span>
                       {h.visitor && <span className="restaurant-history-visitor">{h.visitor}</span>}
                       {h.visitType === 'restaurant' && (
                         <span className="restaurant-history-badge">{t(language, 'restaurant.badge')}</span>
@@ -474,11 +483,11 @@ export function RestaurantServiceSheet({
         <section className="mobile-sheet restaurant-service-sheet" onClick={(e) => e.stopPropagation()}>
           <div className="mobile-sheet-handle" />
           <div className="restaurant-sheet-head">
-            <button type="button" className="restaurant-back-btn" onClick={handleBack} aria-label="뒤로">
+            <button type="button" className="restaurant-back-btn" onClick={handleBack} aria-label={msg('뒤로')}>
               <BackIcon />
             </button>
             <h2>{selectedRequest.name}</h2>
-            <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            <button className="restaurant-sheet-close" type="button" aria-label={msg('닫기')} onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
 
           <div className="restaurant-record-body">
@@ -490,7 +499,7 @@ export function RestaurantServiceSheet({
             </div>
 
             <p style={{ fontSize: 13, color: 'var(--muted)', margin: '12px 0 0', lineHeight: 1.6 }}>
-              관리자 승인 후 목록에 추가됩니다.<br />봉사 기록은 승인 후 반영됩니다.
+              {t(language, 'restaurant.registeredNotice')}<br />{msg('봉사 기록은 승인 후 반영됩니다.')}
             </p>
 
             <button
@@ -522,52 +531,52 @@ export function RestaurantServiceSheet({
       <section className="mobile-sheet restaurant-service-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="mobile-sheet-handle" />
         <div className="restaurant-sheet-head">
-          <button type="button" className="restaurant-back-btn" onClick={handleBack} aria-label="뒤로">
+          <button type="button" className="restaurant-back-btn" onClick={handleBack} aria-label={msg('뒤로')}>
             <BackIcon />
           </button>
           <h2>{t(language, 'restaurant.adminApprove')}</h2>
-          <button className="restaurant-sheet-close" type="button" aria-label="닫기" onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+          <button className="restaurant-sheet-close" type="button" aria-label={msg('닫기')} onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
 
         <div className="restaurant-record-body">
           <p className="restaurant-request-desc">
-            관리자 승인 후 목록에 추가됩니다.
+            {t(language, 'restaurant.registeredNotice')}
           </p>
 
           <div className="mobile-form-field">
-            <label>식당 이름 <span aria-hidden>*</span></label>
+            <label>{msg('식당 이름')} <span aria-hidden>*</span></label>
             <input
               type="text"
-              placeholder="예: 명장인력직업식당"
+              placeholder={msg('예: 명장인력직업식당')}
               value={reqName}
               onChange={(e) => setReqName(e.target.value)}
             />
           </div>
           <div className="mobile-form-field">
-            <label>주소 <span aria-hidden>*</span></label>
+            <label>{msg('주소')} <span aria-hidden>*</span></label>
             <input
               type="text"
-              placeholder="예: 청명남로 16"
+              placeholder={msg('예: 청명남로 16')}
               value={reqAddress}
               onChange={(e) => setReqAddress(e.target.value)}
             />
           </div>
 
           <div className="mobile-form-field">
-            <label htmlFor="restaurant-request-state">현재 상태</label>
+            <label htmlFor="restaurant-request-state">{msg('현재 상태')}</label>
             <select id="restaurant-request-state" value={reqInitialState} onChange={(e) => setReqInitialState(e.target.value as RestaurantInitialState)}>
-              {RESTAURANT_INITIAL_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
+              {RESTAURANT_INITIAL_STATES.map((state) => <option key={state} value={state}>{restaurantStateLabel(state, language)}</option>)}
             </select>
           </div>
           {reqInitialState === '정기방문' && (
             <div className="mobile-form-field">
-              <label htmlFor="restaurant-request-regular-visitor">정기방문 담당자 <span aria-hidden>*</span></label>
+              <label htmlFor="restaurant-request-regular-visitor">{msg('정기방문 담당자')} <span aria-hidden>*</span></label>
               <input id="restaurant-request-regular-visitor" value={reqRegularVisitor} onChange={(e) => setReqRegularVisitor(e.target.value)} />
             </div>
           )}
           <label className="restaurant-request-check">
             <input type="checkbox" checked={reqIsChinese} onChange={(e) => setReqIsChinese(e.target.checked)} />
-            <span>중국어를 사용하는 식당</span>
+            <span>{msg('중국어를 사용하는 식당')}</span>
           </label>
 
           <button
@@ -576,7 +585,7 @@ export function RestaurantServiceSheet({
             onClick={handleSubmitRequest}
             disabled={saving || !reqName.trim() || !reqAddress.trim() || (reqInitialState === '정기방문' && !reqRegularVisitor.trim())}
           >
-            {saving ? '신청 중...' : '추가 신청'}
+            {saving ? msg('신청 중...') : msg('추가 신청')}
           </button>
         </div>
       </section>

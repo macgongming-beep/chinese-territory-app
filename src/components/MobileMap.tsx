@@ -2857,7 +2857,7 @@ function UnitDetailScreen({
                           background: c + '22', color: c,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: 10, fontWeight: 700,
-                        }}>{cell.lastResult} {cell.total}</span>
+                        }}>{cell.lastResult === '만남' ? t(language, 'map.met') : cell.lastResult === '부재' ? t(language, 'map.absent') : cell.lastResult === '대상외' ? t(language, 'map.notTarget') : cell.lastResult} {cell.total}</span>
                       ) : (
                         <span style={{ color: 'var(--line)', fontSize: 14 }}>—</span>
                       )}
