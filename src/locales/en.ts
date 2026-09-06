@@ -701,7 +701,7 @@ export const en = {
     'assign.alreadyCorrect': 'Already the correct card',
     'assign.assignmentRemoved': 'Card assignment removed',
     'assign.makeFirstCard': 'No cards. Please click the + Add Card button above to create your first card.',
-    'map.addRecord': '+ Log',
+    'map.addRecord': 'Add log',
     'map.delete': '✕ Delete',
     'map.visitTotal': 'Visited {count} times total',
     'map.addRecordNow': 'Add visit log now',

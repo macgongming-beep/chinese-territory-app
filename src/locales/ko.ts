@@ -708,7 +708,7 @@ export const ko = {
     'assign.alreadyCorrect': '이미 올바른 카드',
     'assign.assignmentRemoved': '카드 배정을 해제했습니다',
     'assign.makeFirstCard': '카드가 없습니다. 위의 + 카드 추가 버튼으로 첫 카드를 만들어보세요.',
-    'map.addRecord': '+ 기록',
+    'map.addRecord': '기록 추가',
     'map.delete': '✕ 삭제',
     'map.visitTotal': '총 {count}회 방문',
     'map.addRecordNow': '지금 방문 기록 추가',

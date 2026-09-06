@@ -103,10 +103,18 @@ describe('PC 지도 확대 단계', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /101호/ }))
     expect(screen.getByText('세대 정보')).toBeVisible()
-    expect(screen.getByRole('combobox', { name: '장소 종류' })).toHaveValue('주택')
+    const unitUsageGroup = screen.getByRole('group', { name: '장소 종류' })
+    expect(within(unitUsageGroup).getByRole('button', { name: /주택/ })).toHaveAttribute('aria-pressed', 'true')
+    const addHistoryButton = screen.getByRole('button', { name: '기록 추가' })
+    expect(addHistoryButton).toBeVisible()
+    expect(screen.queryByRole('button', { name: /\+\+ 기록/ })).not.toBeInTheDocument()
+    fireEvent.click(addHistoryButton)
+    const historyOverlay = document.querySelector('.desktop-history-modal-overlay') as HTMLElement
+    expect(historyOverlay).toBeVisible()
+    fireEvent.click(within(historyOverlay).getByRole('button', { name: '닫기' }))
 
     fireEvent.click(screen.getByRole('button', { name: /\+ 세대 추가/ }))
-    const usageGroup = screen.getByRole('group', { name: '장소 종류' })
+    const usageGroup = screen.getAllByRole('group', { name: '장소 종류' })[1]
     fireEvent.click(within(usageGroup).getByRole('button', { name: '상가' }))
     fireEvent.change(screen.getByPlaceholderText(/101/), { target: { value: '202' } })
     fireEvent.click(screen.getByRole('button', { name: '추가' }))

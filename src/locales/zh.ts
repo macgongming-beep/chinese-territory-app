@@ -702,7 +702,7 @@ export const zh = {
     'assign.alreadyCorrect': '已经是正确的卡片',
     'assign.assignmentRemoved': '已取消卡片分配',
     'assign.makeFirstCard': '没有卡片。请点击上方的 + 添加卡片按钮创建第一张卡片。',
-    'map.addRecord': '+ 记录',
+    'map.addRecord': '添加记录',
     'map.delete': '✕ 删除',
     'map.visitTotal': '共访问 {count} 次',
     'map.addRecordNow': '现在添加访问记录',

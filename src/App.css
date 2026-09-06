@@ -7599,7 +7599,7 @@ button:focus-visible {
   gap: 5px;
   padding: 6px 14px;
   border: 1px solid var(--border-default);
-  border-radius: 99px;
+  border-radius: 7px;
   background: #ffffff;
   color: var(--ink-600);
   font-size: 12px;
@@ -7616,18 +7616,24 @@ button:focus-visible {
 }
 
 .desk-map-area-chips button:hover {
-  border-color: var(--brand-700, #2563eb);
-  color: var(--brand-700, #2563eb);
+  border-color: #b9c0c9;
+  background: #f4f5f6;
+  color: var(--ink);
 }
 
 .desk-map-area-chips button.active {
-  background: var(--brand-700, #2563eb);
-  border-color: var(--brand-700, #2563eb);
+  background: var(--ink);
+  border-color: var(--ink);
   color: #ffffff;
 }
 
 .desk-map-area-chips button.active em {
   color: rgba(255, 255, 255, 0.85);
+}
+
+.desk-map-chip-check {
+  font-size: 10px;
+  line-height: 1;
 }
 
 .desktop-map-command-bar {
@@ -22492,15 +22498,40 @@ button:focus-visible {
   font-weight: 700;
 }
 
-.edit-building-kind-row select {
-  min-width: 88px;
+.place-kind-options {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.place-kind-options button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 62px;
   height: 29px;
-  padding: 0 26px 0 9px;
+  min-height: 29px;
+  padding: 0 9px;
   border: 1px solid #d8dde3;
   border-radius: 6px;
   background: #ffffff;
-  color: var(--ink);
-  font: inherit;
+  color: var(--ink-500);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.place-kind-options button.active,
+.place-kind-options button[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.place-kind-options button:disabled {
+  cursor: default;
+  opacity: 0.72;
 }
 
 .edit-action-group {
@@ -24196,17 +24227,6 @@ button:focus-visible {
   font-weight: 600;
 }
 
-.desktop-unit-place-kind select {
-  min-width: 92px;
-  min-height: 30px;
-  padding: 0 28px 0 10px;
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  background: var(--bg-card);
-  color: var(--gray-900);
-  font: inherit;
-}
-
 .desktop-unit-info-privacy {
   margin: 6px 0 0;
   color: var(--gray-500);
@@ -24255,9 +24275,116 @@ button:focus-visible {
 }
 
 .inline-add-unit-form .bld-add-unit-options button.active {
-  background: var(--bg-card);
-  color: var(--gray-900);
-  box-shadow: var(--shadow-xs);
+  background: var(--ink);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.desktop-history-modal-overlay {
+  z-index: 50000;
+}
+
+.desktop-history-modal {
+  width: min(380px, calc(100vw - 40px));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.2);
+}
+
+.desktop-history-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e1e4e8;
+  background: #ffffff;
+}
+
+.desktop-history-modal .desktop-history-modal-head h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.desktop-history-modal-head button {
+  display: grid;
+  width: 28px;
+  min-height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 19px;
+}
+
+.desktop-history-modal-head button:hover {
+  background: var(--gray-100);
+  color: var(--ink);
+}
+
+.desktop-history-modal .admin-modal-form {
+  display: grid;
+  gap: 5px;
+  padding: 14px 16px 4px;
+}
+
+.desktop-history-input {
+  width: 100%;
+  min-height: 34px;
+  margin: 0 0 7px;
+  padding: 6px 9px;
+  border: 1px solid #d8dde3;
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.desktop-history-input:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px rgba(26, 26, 24, 0.07);
+}
+
+.desktop-history-memo {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.desktop-history-modal .admin-modal-footer {
+  justify-content: flex-end;
+  gap: 7px;
+  margin: 10px 0 0;
+  padding: 10px 16px;
+  border-top: 1px solid #e1e4e8;
+  background: #f6f7f8;
+}
+
+.desktop-history-modal .admin-modal-footer button {
+  flex: 0 0 auto;
+  min-width: 66px;
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.desktop-history-cancel {
+  border: 1px solid #d8dde3 !important;
+  background: #ffffff;
+  color: var(--ink-600);
+}
+
+.desktop-history-save {
+  border: 1px solid var(--ink) !important;
+  background: var(--ink);
+  color: #ffffff;
 }
 
 @media (max-width: 1450px) {

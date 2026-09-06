@@ -1542,6 +1542,7 @@ export function DesktopMap({
                   onClick={() => { setRegionFilter(region); setAreaFilter('전체') }}
                   type="button"
                 >
+                  {active && <span className="desk-map-chip-check" aria-hidden="true">✓</span>}
                   {label}
                   {region !== '전체' && <em>{count}</em>}
                 </button>
@@ -2286,13 +2287,17 @@ export function DesktopMap({
                     <div className="edit-input-group">
                       <input className="modern-edit-address" onChange={(e) => setEditAddress(e.target.value)} placeholder={t(language, 'map.buildingAddressPlaceholder')} value={editAddress} />
                       <input className="modern-edit-name" onChange={(e) => setEditName(e.target.value)} placeholder={t(language, 'map.buildingNameOptional')} value={editName} />
-                      <label className="edit-building-kind-row">
+                      <div className="edit-building-kind-row">
                         <span>{t(language, 'map.buildingKind')}</span>
-                        <select value={editType} onChange={e => setEditType(e.target.value as Building['type'])}>
-                          <option value="주택">{t(language, 'map.house')}</option>
-                          <option value="상가">{t(language, 'map.shop')}</option>
-                        </select>
-                      </label>
+                        <div className="place-kind-options" role="group" aria-label={t(language, 'map.buildingKind')}>
+                          {(['주택', '상가'] as const).map((type) => (
+                            <button aria-pressed={editType === type} className={editType === type ? 'active' : ''} key={type} onClick={() => setEditType(type)} type="button">
+                              {editType === type && <span aria-hidden="true">✓</span>}
+                              {type === '주택' ? t(language, 'map.house') : t(language, 'map.shop')}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                     <div className="edit-action-group">
                       <button className="edit-delete-btn" onClick={() => { setPendingDeleteBuildingId(building.id); setShowDeleteBuildingConfirmModal(true) }}>{placeDeletionCopy(actualRole, 'building').actionLabel}</button>
@@ -2459,7 +2464,7 @@ export function DesktopMap({
                                     onClick={() => openHistoryEditorForAdd(building.id, unit.id)}
                                     style={{ marginLeft: 'auto' }}
                                     type="button"
-                                  >+ {t(currentLang(), 'map.addRecord')}</button>
+                                  >{t(currentLang(), 'map.addRecord')}</button>
                                 </div>
                                 <div className="ugd-history-stack">
                                   {unitHistories.slice(0, 5).map((history) => {
@@ -2553,21 +2558,27 @@ export function DesktopMap({
                               <div className="desktop-unit-info-card">
                                 <strong className="desktop-unit-info-title">{t(language, 'map.unitMemoLabel')}</strong>
                                 {canManagePlaceType && (
-                                  <label className="desktop-unit-place-kind">
+                                  <div className="desktop-unit-place-kind">
                                     <span>{t(language, 'map.placeKind')}</span>
-                                    <select
-                                      aria-label={t(language, 'map.placeKind')}
-                                      disabled={Boolean(unit.isRestaurant)}
-                                      value={effectiveUnitUsage(building, unit)}
-                                      onChange={(event) => {
-                                        const usage = event.target.value as Building['type']
-                                        onUpdateUnitFlags(unit.id, { usageType: usage === building.type ? null : usage })
-                                      }}
-                                    >
-                                      <option value="주택">{t(language, 'map.house')}</option>
-                                      <option value="상가">{t(language, 'map.shop')}</option>
-                                    </select>
-                                  </label>
+                                    <div className="place-kind-options" role="group" aria-label={t(language, 'map.placeKind')}>
+                                      {(['주택', '상가'] as const).map((usage) => {
+                                        const active = effectiveUnitUsage(building, unit) === usage
+                                        return (
+                                          <button
+                                            aria-pressed={active}
+                                            className={active ? 'active' : ''}
+                                            disabled={Boolean(unit.isRestaurant)}
+                                            key={usage}
+                                            onClick={() => onUpdateUnitFlags(unit.id, { usageType: usage === building.type ? null : usage })}
+                                            type="button"
+                                          >
+                                            {active && <span aria-hidden="true">✓</span>}
+                                            {usage === '주택' ? t(language, 'map.house') : t(language, 'map.shop')}
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
                                 )}
                                 {unitMemoEdits[unit.id] !== undefined ? (
                                   <>
@@ -2631,14 +2642,17 @@ export function DesktopMap({
                           <button disabled={!newUnitNumber.trim()} onClick={() => void submitUnit(building.id)}>{t(language, 'map.add')}</button>
                           <button aria-label={msg('닫기')} onClick={() => setAddingUnitToBuildingId(null)} style={{ background: '#f1f5f9', color: 'var(--ink-500)' }}>✕</button>
                         </div>
-                        <div className="bld-add-unit-options" role="group" aria-label={msg('장소 종류')}>
+                        <div className="bld-add-unit-options place-kind-options" role="group" aria-label={msg('장소 종류')}>
                           {(['주택', '상가'] as const).map((usage) => (
                             <button
                               className={newUnitUsageType === usage ? 'active' : ''}
                               key={usage}
                               onClick={() => setNewUnitUsageType(usage)}
                               type="button"
-                            >{usage === '주택' ? t(language, 'map.house') : t(language, 'map.shop')}</button>
+                            >
+                              {newUnitUsageType === usage && <span aria-hidden="true">✓</span>}
+                              {usage === '주택' ? t(language, 'map.house') : t(language, 'map.shop')}
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -2959,15 +2973,18 @@ export function DesktopMap({
         </div>
       </div>
       {historyEditor && (
-        <div className="admin-modal-overlay">
-          <div className="admin-modal-body" style={{ width: '320px' }}>
-            <h3>{historyEditor.mode === 'add' ? t(language, 'map.addHistory') : t(language, 'map.editHistory')}</h3>
+        <div className="admin-modal-overlay desktop-history-modal-overlay" onClick={() => setHistoryEditor(null)}>
+          <div className="admin-modal-body desktop-history-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="desktop-history-modal-head">
+              <h3>{historyEditor.mode === 'add' ? t(language, 'map.addHistory') : t(language, 'map.editHistory')}</h3>
+              <button aria-label={msg('닫기')} onClick={() => setHistoryEditor(null)} type="button">×</button>
+            </div>
             <div className="admin-modal-form">
               <label>{t(language, 'map.status')}</label>
               <select 
                 value={historyEditor.result}
                 onChange={e => setHistoryEditor({ ...historyEditor, result: e.target.value as UnitStatus })}
-                style={{ width: '100%', padding: '8px', marginBottom: '12px' }}
+                className="desktop-history-input"
               >
                 <option value="미방문">{t(language, 'map.unvisited')}</option>
                 <option value="만남">{t(language, 'map.met')}</option>
@@ -2979,7 +2996,7 @@ export function DesktopMap({
               <select 
                 value={historyEditor.timeSlot}
                 onChange={e => setHistoryEditor({ ...historyEditor, timeSlot: e.target.value as TimeSlot })}
-                style={{ width: '100%', padding: '8px', marginBottom: '12px' }}
+                className="desktop-history-input"
               >
                 <option value="오전">{t(language, 'map.morning')}</option>
                 <option value="오후">{t(language, 'map.afternoon')}</option>
@@ -2991,14 +3008,14 @@ export function DesktopMap({
                 type="date"
                 value={historyEditor.visitedAt}
                 onChange={e => setHistoryEditor({ ...historyEditor, visitedAt: e.target.value })}
-                style={{ width: '100%', padding: '8px', marginBottom: '12px' }}
+                className="desktop-history-input"
               />
 
               <label>{t(language, 'map.memoLabel')}</label>
               <textarea
                 value={historyEditor.memo}
                 onChange={e => setHistoryEditor({ ...historyEditor, memo: e.target.value })}
-                style={{ width: '100%', padding: '8px', height: '60px', marginBottom: '12px' }}
+                className="desktop-history-input desktop-history-memo"
               />
 
               {/* 특별봉사 활성 시즌일 때만 표시 */}
@@ -3027,11 +3044,8 @@ export function DesktopMap({
               )}
             </div>
             <div className="admin-modal-footer">
-              <button
-                onClick={() => setHistoryEditor(null)}
-                style={{ background: '#f1f5f9', color: 'var(--ink-500)' }}
-              >{t(language, 'map.cancel')}</button>
-              <button onClick={saveHistoryEditor}>{t(language, 'map.save')}</button>
+              <button className="desktop-history-cancel" onClick={() => setHistoryEditor(null)}>{t(language, 'map.cancel')}</button>
+              <button className="desktop-history-save" onClick={saveHistoryEditor}>{t(language, 'map.save')}</button>
             </div>
           </div>
         </div>
