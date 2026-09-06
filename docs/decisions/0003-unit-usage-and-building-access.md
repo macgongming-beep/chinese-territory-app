@@ -1,6 +1,6 @@
 # 건물은 기본 용도, 세대는 예외 용도를 갖고 출입불가는 건물에 기록한다
 
-- 상태: **승인, 운영 미적용**
+- 상태: **승인, 운영 적용 완료**
 - 결정일: 2026-09-06
 - 관련 기능: 구역 필터, 지도 핀, 건물·세대 등록, 식당, 정기방문, 출입불가
 
@@ -82,10 +82,13 @@
 - 스키마·이력: `supabase/migrations/20260906_1400_unit_usage_and_building_access.sql`
 - 정기방문 등록: `supabase/migrations/20260906_1410_return_visit_unit_usage.sql`
 - 식당 등록: `supabase/migrations/20260906_1420_restaurant_unit_usage.sql`
+- 가짜 세대 정리: `supabase/migrations/20260906_1430_remove_legacy_no_entry_units.sql`
 - 계약 시험: `src/utils/unitUsage.test.ts`, `src/utils/filterBuildings.test.ts`,
   `src/utils/buildingPin.test.ts`
 
 ## 운영 상태
 
-2026-09-06 현재 로컬 구현과 정적 검증 단계다. 운영 DB와 원격 앱에는 아직 적용하지
-않았다. 가짜 세대 원본 삭제와 `스톤빌 B05` UNIQUE 추가는 별도 검증 후 진행한다.
+2026-09-06 운영 DB에 적용했다. 기존 `출입불가` 가짜 세대 11개에 연결된 방문 기록
+11개가 `building_access_events`에 정확히 복사됐고 다른 연결 자료가 0개임을 확인한 뒤,
+가짜 세대와 원본 방문 기록을 제거했다. 건물 11개와 출입 상태·확인자·날짜·메모는
+그대로 보존됐다. `스톤빌 B05` UNIQUE 추가는 양쪽 기록을 사람이 판단한 뒤 진행한다.
